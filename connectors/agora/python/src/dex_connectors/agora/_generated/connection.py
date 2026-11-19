@@ -63,6 +63,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.agora.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Agora Conversational AI credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,24 +88,24 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Agora Conversational AI stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Agora Conversational AI stored credential does not match the connector credential fields")
         if set(material) - set(('appId', 'customerId', 'customerSecret')):
-            raise ValueError("Agora Conversational AI stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Agora Conversational AI stored credential does not match the connector credential fields")
         app_id = material.get("appId")
         if app_id is not None and not (isinstance(app_id, str)):
-            raise ValueError("Agora Conversational AI credential appId has an invalid type")
+            raise CredentialMaterialError("Agora Conversational AI credential appId has an invalid type")
         customer_id = material.get("customerId")
         if customer_id is not None and not (isinstance(customer_id, str)):
-            raise ValueError("Agora Conversational AI credential customerId has an invalid type")
+            raise CredentialMaterialError("Agora Conversational AI credential customerId has an invalid type")
         customer_secret = material.get("customerSecret")
         if customer_secret is not None and not (isinstance(customer_secret, str)):
-            raise ValueError("Agora Conversational AI credential customerSecret has an invalid type")
+            raise CredentialMaterialError("Agora Conversational AI credential customerSecret has an invalid type")
         if not app_id:
-            raise ValueError("Agora Conversational AI credential appId is required")
+            raise CredentialMaterialError("Agora Conversational AI credential appId is required")
         if not customer_id:
-            raise ValueError("Agora Conversational AI credential customerId is required")
+            raise CredentialMaterialError("Agora Conversational AI credential customerId is required")
         if not customer_secret:
-            raise ValueError("Agora Conversational AI credential customerSecret is required")
+            raise CredentialMaterialError("Agora Conversational AI credential customerSecret is required")
         return Credentials(app_id, customer_id, SecretString(customer_secret))
 
 

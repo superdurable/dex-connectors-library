@@ -63,6 +63,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.alibaba.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Alibaba Cloud credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,19 +88,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Alibaba Cloud stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Alibaba Cloud stored credential does not match the connector credential fields")
         if set(material) - set(('access_key_id', 'access_key_secret')):
-            raise ValueError("Alibaba Cloud stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Alibaba Cloud stored credential does not match the connector credential fields")
         access_key_id = material.get("access_key_id")
         if access_key_id is not None and not (isinstance(access_key_id, str)):
-            raise ValueError("Alibaba Cloud credential access_key_id has an invalid type")
+            raise CredentialMaterialError("Alibaba Cloud credential access_key_id has an invalid type")
         access_key_secret = material.get("access_key_secret")
         if access_key_secret is not None and not (isinstance(access_key_secret, str)):
-            raise ValueError("Alibaba Cloud credential access_key_secret has an invalid type")
+            raise CredentialMaterialError("Alibaba Cloud credential access_key_secret has an invalid type")
         if not access_key_id:
-            raise ValueError("Alibaba Cloud credential access_key_id is required")
+            raise CredentialMaterialError("Alibaba Cloud credential access_key_id is required")
         if not access_key_secret:
-            raise ValueError("Alibaba Cloud credential access_key_secret is required")
+            raise CredentialMaterialError("Alibaba Cloud credential access_key_secret is required")
         return Credentials(SecretString(access_key_id), SecretString(access_key_secret))
 
 
