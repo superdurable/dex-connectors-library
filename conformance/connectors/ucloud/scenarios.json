@@ -1,0 +1,580 @@
+{
+  "connector": "ucloud",
+  "scenarios": [
+    {
+      "callId": "730f79d9-0909-51a7-9426-c96215abac41",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":0,\"Regions\":[{\"RegionId\":1,\"RegionName\":\"Beijing\",\"IsDefault\":true,\"BitMaps\":\"1\",\"Region\":\"cn-bj\",\"Zone\":\"cn-bj-01\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "regions": [
+            {
+              "bitMaps": "1",
+              "isDefault": true,
+              "region": "cn-bj",
+              "regionId": 1,
+              "regionName": "Beijing",
+              "zone": "cn-bj-01"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-found",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "4364dfaf-2987-52e0-8d3b-1989fa6b3e50",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-empty",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "bb2e80e3-896a-5081-9a69-08fe42cf1111",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":171}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-providerRejected-auth",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "08355f6b-f1b2-5696-a739-3bd370a90900",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":293}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-providerRejected-authorization",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "c58514b8-6762-59a8-be4d-fae2429e81e4",
+      "exchanges": [
+        {
+          "body": "rejected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-providerRejected-http",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "f7a88874-3f03-5e36-bdbb-cca934da2433",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":160}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-providerRejected-other",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "838775c0-4a4a-59f8-877a-3aef5301304d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-invalidResponse-json",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "aaef4acb-d7e1-513f-8ae1-7bea172c145c",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":0,\"Regions\":[{\"Region\":\"cn-bj\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-invalidResponse-region",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "7df76531-a234-5cc2-877f-ab708fae428c",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":0,\"Regions\":[{\"RegionId\":1,\"RegionName\":\"Beijing\",\"IsDefault\":true,\"BitMaps\":\"1\",\"Region\":\"cn-bj\",\"Zone\":\"cn-bj-01\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-oversized",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "62ce29cb-79b4-5cf5-aba5-ce153b6eb6ff",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "regions": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-defect",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "8c1174bc-62a7-5941-8e36-995d7901c839",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-retry-429",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "8c500586-693c-5858-af03-97adf4244dbe",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-retry-503",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "d291a58e-f529-5238-8ac6-67ec268cd80b",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":153}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-retry-retcode-153",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "0eb92832-93ef-5324-b28d-91e2088a4d5c",
+      "exchanges": [
+        {
+          "body": "{\"Action\":\"GetRegionResponse\",\"RetCode\":130}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-retry-retcode-130",
+      "operation": "getRegion"
+    },
+    {
+      "callId": "43253d5d-5236-53b9-89a3-2c4538e12047",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Action": "GetRegion",
+            "PublicKey": "test-public-key",
+            "Signature": "dec400a82b05219740991537eb83756ed96bcd9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getRegion-transportFailure",
+      "operation": "getRegion"
+    }
+  ],
+  "schemaVersion": 1
+}
