@@ -5,3 +5,5 @@
 The application token is sent in the provider's documented HTTPS query parameter. The client does not follow redirects; errors, results, and receipts never include the token or URL. HTTP 429, 408, 5xx, and transport failures retry. Definite rejections take an optional branch. Responses are bounded to 64 KiB.
 
 The [runnable Dex Flow](go/examples/subscriber-count/README.md) uses a static connection, typed result, strict FDG and mock-backed real Dex integration. Live application authorization and production responses remain unverified. The logo comes from the [official WxPusher GitHub organization](https://github.com/wxpusher).
+
+Python v0.1.0: [package and runnable example](python/README.md).
