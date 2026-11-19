@@ -2,6 +2,8 @@
 
 This runnable Flow calls `searchDocuments` with the static `opensearch` connection and completes with the search page. Optional branches are unwired, so a missing index or provider rejection fails the Flow.
 
+The same Worker registers `OpenSearchDocumentGet`, which calls `getDocument` with `{ "index": "products", "documentId": "sku-42" }` and retains the latest document source in the `opensearch-retrieved-document` Attribute. Give the connection user `indices:data/read/get` on that index. Its optional missing-document, missing-index, rejection, invalid-response, and defect branches are unwired.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/opensearch/go`, run:

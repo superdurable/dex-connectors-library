@@ -6,6 +6,7 @@ package odoo
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -118,3 +119,21 @@ func partnerBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string
 }
 
 func rejectedStatus(status int) string { return "Odoo rejected HTTP " + strconv.Itoa(status) }
+
+func isDefiniteOdooRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil || len(fields) == 0 || fields["result"] != nil {
+		return false
+	}
+	var providerError struct {
+		Message string `json:"message"`
+	}
+	return json.Unmarshal(fields["error"], &providerError) == nil && strings.TrimSpace(providerError.Message) != ""
+}

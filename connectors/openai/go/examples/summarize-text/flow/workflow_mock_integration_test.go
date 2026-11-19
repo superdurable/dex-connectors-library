@@ -6,6 +6,7 @@
 package summarizetext
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/go"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/go/openaimock"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 func TestSummarizeTextExampleRunsOnOpenAIMockDefaultsWithRealDex(t *testing.T) {
@@ -29,6 +31,52 @@ func TestSummarizeTextExampleRunsOnOpenAIMockDefaultsWithRealDex(t *testing.T) {
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "The OpenAI connector shipped today.", calls[0].Input.Input)
+}
+
+func TestSummarizeTextExampleDeletesStoredResponseWithRealDex(t *testing.T) {
+	mock := openaimock.New(t, ConnectionName)
+	flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{})
+	flowID := fmt.Sprintf("openai-summary-delete-%d", time.Now().UnixNano())
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	_, err := client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The OpenAI connector shipped today.", DeleteAfterSummary: true}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	outcome := waitForSummaryOutcome(t, ctx, client, flowID)
+	require.True(t, outcome.Deleted)
+	require.Equal(t, "resp_mocksummary001", outcome.ResponseID)
+	deleteCalls := mock.DeleteResponse().Calls()
+	require.Len(t, deleteCalls, 1)
+	require.Equal(t, "resp_mocksummary001", deleteCalls[0].Input.ResponseID)
+}
+
+func TestSummarizeTextExampleCreatesConversationWithRealDex(t *testing.T) {
+	mock := openaimock.New(t, ConnectionName)
+	flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{})
+	flowID := fmt.Sprintf("openai-summary-conversation-%d", time.Now().UnixNano())
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	_, err := client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The OpenAI connector shipped today.", CreateConversation: true}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	outcome := waitForSummaryOutcome(t, ctx, client, flowID)
+	require.Equal(t, "conv_mock001", outcome.ConversationID)
+	calls := mock.CreateConversation().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, "The connector shipped today.", calls[0].Input.Items[0].Content)
+}
+
+func TestSummarizeTextExampleListsFileMetadataWithRealDex(t *testing.T) {
+	mock := openaimock.New(t, ConnectionName)
+	flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{})
+	flowID := fmt.Sprintf("openai-summary-files-%d", time.Now().UnixNano())
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	_, err := client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The OpenAI connector shipped today.", ListFilesAfterSummary: true}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	outcome := waitForSummaryOutcome(t, ctx, client, flowID)
+	require.Equal(t, 1, outcome.ListedFileCount)
+	calls := mock.ListFiles().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, flowID, calls[0].FlowID)
 }
 
 func TestSummarizeTextExampleRunsOnAScriptedOpenAIMockAnswerWithRealDex(t *testing.T) {

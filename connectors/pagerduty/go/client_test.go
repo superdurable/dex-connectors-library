@@ -20,6 +20,7 @@ type providerTestContext struct{ dex.Context }
 
 func (providerTestContext) FlowID() string              { return "provider-test" }
 func (providerTestContext) StepExecutionID() string     { return "provider-step" }
+func (providerTestContext) Attempt() int32              { return 1 }
 func (providerTestContext) Deadline() (time.Time, bool) { return time.Time{}, false }
 func (providerTestContext) Done() <-chan struct{}       { return nil }
 func (providerTestContext) Err() error                  { return nil }

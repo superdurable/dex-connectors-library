@@ -24,3 +24,12 @@ func TestDocumentInspectionFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestSendDocumentFlowIdentityAndMapping(t *testing.T) {
+	require.Equal(t, SendDocumentFlowType, dex.GetFinalFlowType(NewSendDocumentFlow(pandadoc.Connection{})))
+	require.Equal(t, "StartSendDocument", dex.GetFinalStepType[pandadoc.SendDocumentInput](startSendDocument{}))
+	require.Equal(t, "CompleteSendDocument", dex.GetFinalStepType[pandadoc.SendDocumentResult](completeSendDocument{}))
+	mock := pandadocmock.New(t, ConnectionName)
+	_, err := dex.NewRegistry([]dex.Flow{NewSendDocumentFlow(mock.Connection())})
+	require.NoError(t, err)
+}

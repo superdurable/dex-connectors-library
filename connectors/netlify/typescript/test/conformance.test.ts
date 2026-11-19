@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { NetlifyClient } from '../src/client.js';
 import { ListDeploysInputSchema, ListSitesInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/netlify/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/netlify/scenarios.json', import.meta.url))
+  .filter(scenario => ['listSites', 'listDeploys'].includes(scenario.operation));
 const connection = { provider: 'netlify', name: 'netlify' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeNetlify));
 

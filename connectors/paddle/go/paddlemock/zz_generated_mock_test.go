@@ -16,6 +16,114 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCustomers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.CustomerPage](`{"items":[{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getCustomer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+			return err
+		}},
+		{name: "createCustomer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+			return err
+		}},
+		{name: "updateCustomer/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"active"}`)
+			return err
+		}},
+		{name: "archiveCustomer/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleCustomer](`{"id":"ctm_01hv8wptq8987qeep44cyrewp9","email":"customer@example.com","name":"Sample Customer","status":"archived"}`)
+			return err
+		}},
+		{name: "listDiscounts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.DiscountPage](`{"items":[{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getDiscount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+			return err
+		}},
+		{name: "createDiscount/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+			return err
+		}},
+		{name: "updateDiscount/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"active"}`)
+			return err
+		}},
+		{name: "archiveDiscount/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"archived"}`)
+			return err
+		}},
+		{name: "listProducts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.ProductPage](`{"items":[{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getProduct/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+			return err
+		}},
+		{name: "createProduct/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+			return err
+		}},
+		{name: "updateProduct/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+			return err
+		}},
+		{name: "archiveProduct/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"archived"}`)
+			return err
+		}},
+		{name: "listPrices/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PricePage](`{"items":[{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"active","billingInterval":"month","billingFrequency":1}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getPrice/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"active","billingInterval":"month","billingFrequency":1}`)
+			return err
+		}},
+		{name: "createPrice/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"active","billingInterval":"month","billingFrequency":1}`)
+			return err
+		}},
+		{name: "updatePrice/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"active","billingInterval":"month","billingFrequency":1}`)
+			return err
+		}},
+		{name: "archivePrice/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"archived","billingInterval":"month","billingFrequency":1}`)
+			return err
+		}},
+		{name: "listTransactions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.TransactionPage](`{"items":[{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "createTransaction/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"draft","currencyCode":"USD"}`)
+			return err
+		}},
+		{name: "updateTransaction/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"ready","currencyCode":"USD"}`)
+			return err
+		}},
+		{name: "cancelTransaction/canceledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"canceled","currencyCode":"USD"}`)
+			return err
+		}},
+		{name: "listSubscriptions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.SubscriptionPage](`{"items":[{"id":"sub_01hv8y5ehszzq0yv20ttx3166y","status":"active","nextBilledAt":"2030-05-12T10:37:59Z"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getSubscription/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleSubscription](`{"id":"sub_01hv8y5ehszzq0yv20ttx3166y","status":"active","nextBilledAt":"2030-05-12T10:37:59Z"}`)
+			return err
+		}},
+		{name: "setNextBillingDate/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleSubscription](`{"id":"sub_01hv8y5ehszzq0yv20ttx3166y","status":"active","nextBilledAt":"2030-06-12T10:37:59Z"}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}`)
 			return err
@@ -30,6 +138,87 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCustomers().Definition().Operation.OperationID != "listCustomers" {
+		t.Errorf("listCustomers mock has another definition")
+	}
+	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
+		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.ArchiveCustomer().Definition().Operation.OperationID != "archiveCustomer" {
+		t.Errorf("archiveCustomer mock has another definition")
+	}
+	if mock.ListDiscounts().Definition().Operation.OperationID != "listDiscounts" {
+		t.Errorf("listDiscounts mock has another definition")
+	}
+	if mock.GetDiscount().Definition().Operation.OperationID != "getDiscount" {
+		t.Errorf("getDiscount mock has another definition")
+	}
+	if mock.CreateDiscount().Definition().Operation.OperationID != "createDiscount" {
+		t.Errorf("createDiscount mock has another definition")
+	}
+	if mock.UpdateDiscount().Definition().Operation.OperationID != "updateDiscount" {
+		t.Errorf("updateDiscount mock has another definition")
+	}
+	if mock.ArchiveDiscount().Definition().Operation.OperationID != "archiveDiscount" {
+		t.Errorf("archiveDiscount mock has another definition")
+	}
+	if mock.ListProducts().Definition().Operation.OperationID != "listProducts" {
+		t.Errorf("listProducts mock has another definition")
+	}
+	if mock.GetProduct().Definition().Operation.OperationID != "getProduct" {
+		t.Errorf("getProduct mock has another definition")
+	}
+	if mock.CreateProduct().Definition().Operation.OperationID != "createProduct" {
+		t.Errorf("createProduct mock has another definition")
+	}
+	if mock.UpdateProduct().Definition().Operation.OperationID != "updateProduct" {
+		t.Errorf("updateProduct mock has another definition")
+	}
+	if mock.ArchiveProduct().Definition().Operation.OperationID != "archiveProduct" {
+		t.Errorf("archiveProduct mock has another definition")
+	}
+	if mock.ListPrices().Definition().Operation.OperationID != "listPrices" {
+		t.Errorf("listPrices mock has another definition")
+	}
+	if mock.GetPrice().Definition().Operation.OperationID != "getPrice" {
+		t.Errorf("getPrice mock has another definition")
+	}
+	if mock.CreatePrice().Definition().Operation.OperationID != "createPrice" {
+		t.Errorf("createPrice mock has another definition")
+	}
+	if mock.UpdatePrice().Definition().Operation.OperationID != "updatePrice" {
+		t.Errorf("updatePrice mock has another definition")
+	}
+	if mock.ArchivePrice().Definition().Operation.OperationID != "archivePrice" {
+		t.Errorf("archivePrice mock has another definition")
+	}
+	if mock.ListTransactions().Definition().Operation.OperationID != "listTransactions" {
+		t.Errorf("listTransactions mock has another definition")
+	}
+	if mock.CreateTransaction().Definition().Operation.OperationID != "createTransaction" {
+		t.Errorf("createTransaction mock has another definition")
+	}
+	if mock.UpdateTransaction().Definition().Operation.OperationID != "updateTransaction" {
+		t.Errorf("updateTransaction mock has another definition")
+	}
+	if mock.CancelTransaction().Definition().Operation.OperationID != "cancelTransaction" {
+		t.Errorf("cancelTransaction mock has another definition")
+	}
+	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
+		t.Errorf("listSubscriptions mock has another definition")
+	}
+	if mock.GetSubscription().Definition().Operation.OperationID != "getSubscription" {
+		t.Errorf("getSubscription mock has another definition")
+	}
+	if mock.SetNextBillingDate().Definition().Operation.OperationID != "setNextBillingDate" {
+		t.Errorf("setNextBillingDate mock has another definition")
+	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")
 	}

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package netlifylookup demonstrates the Netlify listSites Step in a runnable Dex Flow.
+// Package netlifylookup demonstrates Netlify listSites and getSite Steps in a runnable Dex Flow.
 package netlifylookup
 
 import (
@@ -17,6 +17,7 @@ const FlowType = "NetlifyLookup"
 // ConnectionName is the static Dex Web connection used by the example.
 const ConnectionName = "netlify"
 const operationStepType = "ListSitesNetlify"
+const siteStepType = "GetSiteNetlify"
 
 var (
 	lookupRequestAttribute = dex.DefineAttribute[LookupRequest]("netlify-lookup-request")
@@ -27,7 +28,7 @@ var (
 type LookupRequest = netlify.ListSitesInput
 
 // LookupOutput is the value returned when the provider call succeeds.
-type LookupOutput = netlify.SitesPage
+type LookupOutput = netlify.Site
 
 // Flow invokes one Netlify operation and completes with its typed result.
 type Flow struct {
@@ -98,7 +99,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: operationStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "netlify", GroupLabel: "Netlify", Explanation: "List sites visible to the Netlify token."},
 			MapToOperationInput: MapToOperationInput,
-			Listed:              sdkgo.GoTo(completeLookup{}),
+			Listed:              sdkgo.GoTo(selectSite{}),
+		})),
+		dex.DefineStep(selectSite{}),
+		dex.DefineStep(netlify.NewGetSiteStep(netlify.GetSiteStepConfig[netlify.GetSiteInput]{
+			StepType: siteStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations: sdkgo.StepAnnotations{GroupID: "netlify", GroupLabel: "Netlify", Explanation: "Read the first listed site by its Project ID."},
+			MapToOperationInput: func(input netlify.GetSiteInput) netlify.GetSiteInput { return input },
+			Found: sdkgo.GoTo(completeLookup{}),
 		})),
 		dex.DefineStep(completeLookup{}),
 	}
@@ -106,6 +114,17 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 
 // MapToOperationInput passes the typed start input to the connector Step.
 func MapToOperationInput(request LookupRequest) netlify.ListSitesInput { return request }
+
+// dex:group group-id:netlify group-label:"Netlify"
+// dex:explanation text:"Select the first listed Netlify site for inspection."
+type selectSite struct{ dex.StepDefaultsNoWaitFor[netlify.ListSitesResult] }
+
+func (selectSite) Execute(_ dex.Context, result netlify.ListSitesResult) (*dex.StepDecision, error) {
+	if len(result.Value.Sites) == 0 {
+		return dex.ForceFail("Netlify returned no sites to inspect"), nil
+	}
+	return dex.GoTo(sdkgo.StepRef[netlify.GetSiteInput](siteStepType), netlify.GetSiteInput{SiteID: result.Value.Sites[0].ID}), nil
+}
 
 // dex:group group-id:netlify group-label:"Netlify"
 // dex:explanation text:"Start the Netlify lookup with its typed request."
@@ -125,11 +144,11 @@ func (startLookup) Execute(ctx dex.Context, request LookupRequest) (*dex.StepDec
 // dex:group group-id:netlify group-label:"Netlify"
 // dex:explanation text:"Complete with the Netlify result."
 type completeLookup struct {
-	dex.StepDefaultsNoWaitFor[netlify.ListSitesResult]
+	dex.StepDefaultsNoWaitFor[netlify.GetSiteResult]
 }
 
 func (completeLookup) GetStepType() string { return "CompleteNetlifyLookup" }
-func (completeLookup) Execute(ctx dex.Context, result netlify.ListSitesResult) (*dex.StepDecision, error) {
+func (completeLookup) Execute(ctx dex.Context, result netlify.GetSiteResult) (*dex.StepDecision, error) {
 	if err := lookupOutputAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}

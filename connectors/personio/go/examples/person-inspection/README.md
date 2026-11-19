@@ -1,6 +1,6 @@
 # Personio person inspection Flow
 
-This runnable Flow calls `getPerson` through the static `personio` connection. It persists the selected person profile in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+The Worker registers two Flows on the static `personio` connection. `PersonioPersonInspection` calls `getPerson`; `PersonioPersonList` calls `listPersons`. Start the latter with `{"limit":10,"status":"ACTIVE"}` to receive one page of selected IDs and names. Both persist their outcomes in Attributes and expose read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 

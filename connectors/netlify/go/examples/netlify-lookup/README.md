@@ -1,6 +1,6 @@
 # Netlify lookup example
 
-This runnable Flow calls `netlify.NewListSitesStep` with the static connection name `netlify` and completes with the typed `SitesPage` value. Optional branches are unwired and fail the Flow if selected. Its [mock-backed integration test](flow/workflow_mock_integration_test.go) uses a real Dex Worker and Client in CI.
+This runnable Flow calls `netlify.NewListSitesStep`, then `netlify.NewGetSiteStep` for the first listed Project ID, using the static connection name `netlify`. It completes with the typed `Site` value. Optional branches are unwired and fail the Flow if selected. Its [mock-backed integration test](flow/workflow_mock_integration_test.go) uses a real Dex Worker and Client in CI.
 
 ## Generate the strict Flow Definition
 
@@ -22,7 +22,7 @@ mkdir -p /tmp/netlify-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/netlify/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/netlify/go \
-  --version v0.2.0 --tag connectors/netlify/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/netlify/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/netlify-release/connector-release.json \
   --digest-output /tmp/netlify-release/connector-release.json.sha256

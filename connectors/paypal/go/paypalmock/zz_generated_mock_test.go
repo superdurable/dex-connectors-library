@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getPayoutBatch/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paypal.PayoutBatch](`{"batch_header":{"payout_batch_id":"BATCH101","batch_status":"SUCCESS"},"items":[]}`)
+			return err
+		}},
+		{name: "getPayoutItem/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paypal.PayoutItem](`{"payout_item_id":"ITEM101","transaction_status":"SUCCESS"}`)
+			return err
+		}},
+		{name: "createPayoutBatch/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paypal.PayoutBatch](`{"batch_header":{"payout_batch_id":"BATCH101","batch_status":"PENDING"}}`)
+			return err
+		}},
+		{name: "cancelPayoutItem/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paypal.PayoutItem](`{"payout_item_id":"ITEM101","transaction_status":"RETURNED"}`)
+			return err
+		}},
 		{name: "getOrder/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[paypal.Order](`{"id":"ORDER101","status":"COMPLETED"}`)
 			return err
@@ -34,6 +50,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetPayoutBatch().Definition().Operation.OperationID != "getPayoutBatch" {
+		t.Errorf("getPayoutBatch mock has another definition")
+	}
+	if mock.GetPayoutItem().Definition().Operation.OperationID != "getPayoutItem" {
+		t.Errorf("getPayoutItem mock has another definition")
+	}
+	if mock.CreatePayoutBatch().Definition().Operation.OperationID != "createPayoutBatch" {
+		t.Errorf("createPayoutBatch mock has another definition")
+	}
+	if mock.CancelPayoutItem().Definition().Operation.OperationID != "cancelPayoutItem" {
+		t.Errorf("cancelPayoutItem mock has another definition")
+	}
 	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
 		t.Errorf("getOrder mock has another definition")
 	}

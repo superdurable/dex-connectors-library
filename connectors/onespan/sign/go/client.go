@@ -5,14 +5,38 @@
 package onespansign
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
+
+func isDefiniteOneSpanRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil || len(fields) == 0 || fields["id"] != nil || fields["status"] != nil {
+		return false
+	}
+	var providerError struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(fields["error"], &providerError) == nil && strings.TrimSpace(providerError.Message) != "" {
+		return true
+	}
+	var message string
+	return json.Unmarshal(fields["message"], &message) == nil && strings.TrimSpace(message) != ""
+}
 
 // Option configures an HTTP dependency without storing it in a connection.
 type Option interface{ applyClientOption(*Client) }

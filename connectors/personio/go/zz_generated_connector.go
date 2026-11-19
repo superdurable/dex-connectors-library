@@ -42,11 +42,15 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListPersons() sdkgo.Query[ListPersonsInput, PersonPage]
 	GetPerson() sdkgo.Query[GetPersonInput, PersonProfile]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListPersons() sdkgo.Query[ListPersonsInput, PersonPage] {
+	return operations.client.ListPersons()
+}
 func (operations clientOperations) GetPerson() sdkgo.Query[GetPersonInput, PersonProfile] {
 	return operations.client.GetPerson()
 }
@@ -239,6 +243,77 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListPersonsBranchListed sdkgo.BranchID = "listed"
+const ListPersonsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPersonsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPersonsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPersonsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPersons"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPersonsBranchListed, Description: "Personio returned one page of selected persons."},
+		{ID: ListPersonsBranchProviderRejected, Description: "Personio conclusively rejected the list request.", Optional: true},
+		{ID: ListPersonsBranchInvalidResponse, Description: "Personio returned malformed or oversized JSON.", Optional: true},
+		{ID: ListPersonsBranchDefect, Description: "Local filters or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPersonsResult = sdkgo.QueryResult[PersonPage]
+
+type ListPersonsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=personio"`
+	operationID                    struct{}                                      `connector:"operationId=listPersons"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPersonsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPersonsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPersonsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPersonsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPersonsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PersonPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListPersonsStep[IN any](config ListPersonsStepConfig[IN]) sdkgo.QueryStep[IN, ListPersonsInput, PersonPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("personio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPersonsInput, PersonPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPersons(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPersonsResult] {
+			branches := make([]sdkgo.BranchTarget[ListPersonsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPersonsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPersonsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPersonsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPersonsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetPersonBranchFound sdkgo.BranchID = "found"

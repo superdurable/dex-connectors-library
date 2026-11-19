@@ -45,8 +45,47 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "Search company partners by name pattern."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Found:               sdkgo.GoTo(completeResult{}),
+			Found:               sdkgo.GoTo(partnersFound{}),
 		})),
+		dex.DefineStep(odoo.NewGetContactStep(odoo.GetContactStepConfig[odoo.SearchPartnersResult]{
+			StepType: "GetContact", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "Read the first matching contact's communication fields."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(result odoo.SearchPartnersResult) odoo.GetContactInput {
+				return odoo.GetContactInput{ID: result.Value.Partners[0].ID}
+			},
+			Found: sdkgo.GoTo(contactRead{}),
+		})),
+		dex.DefineStep(odoo.NewListOpportunitiesStep(odoo.ListOpportunitiesStepConfig[odoo.SearchPartnersInput]{
+			StepType: "ListOpportunities", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "List a bounded page of CRM opportunities."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input odoo.SearchPartnersInput) odoo.ListOpportunitiesInput {
+				limit := input.Limit
+				if limit == 0 {
+					limit = 20
+				}
+				return odoo.ListOpportunitiesInput{Limit: limit, Offset: 0}
+			},
+			Listed: sdkgo.GoTo(opportunitiesListed{}),
+		})),
+		dex.DefineStep(odoo.NewListRecordsStep(odoo.ListRecordsStepConfig[odoo.SearchPartnersInput]{
+			StepType: "ListActivities", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "List activity summaries from the mail.activity model."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input odoo.SearchPartnersInput) odoo.ListRecordsInput {
+				limit := input.Limit
+				if limit == 0 {
+					limit = 20
+				}
+				return odoo.ListRecordsInput{Model: "mail.activity", Fields: []string{"summary"}, Limit: limit, Offset: 0}
+			},
+			Listed: sdkgo.GoTo(activitiesListed{}),
+		})),
+		dex.DefineStep(partnersFound{}),
+		dex.DefineStep(contactRead{}),
+		dex.DefineStep(opportunitiesListed{}),
+		dex.DefineStep(activitiesListed{}),
 		dex.DefineStep(completeResult{}),
 	}
 }
@@ -99,7 +138,57 @@ func (startRequest) WaitFor(dex.Context, odoo.SearchPartnersInput) (*dex.Wait, e
 	return dex.SkipWaitImmediately(), nil
 }
 func (startRequest) Execute(_ dex.Context, input odoo.SearchPartnersInput) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[odoo.SearchPartnersInput](operationStepType), input), nil
+	return dex.GoToMany(
+		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersInput](operationStepType), input),
+		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersInput]("ListOpportunities"), input),
+		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersInput]("ListActivities"), input),
+	), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the opportunity list after Odoo responds."
+type opportunitiesListed struct {
+	dex.StepDefaultsNoWaitFor[odoo.ListOpportunitiesResult]
+}
+
+func (opportunitiesListed) Execute(_ dex.Context, _ odoo.ListOpportunitiesResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the activity list after Odoo responds."
+type activitiesListed struct {
+	dex.StepDefaultsNoWaitFor[odoo.ListRecordsResult]
+}
+
+func (activitiesListed) Execute(_ dex.Context, _ odoo.ListRecordsResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Read the first matching contact before completing the page."
+type partnersFound struct {
+	dex.StepDefaultsNoWaitFor[odoo.SearchPartnersResult]
+}
+
+func (partnersFound) Execute(_ dex.Context, result odoo.SearchPartnersResult) (*dex.StepDecision, error) {
+	if len(result.Value.Partners) == 0 {
+		return dex.GoTo(completeResult{}, result), nil
+	}
+	return dex.GoToMany(
+		dex.MovementOf(completeResult{}, result),
+		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersResult]("GetContact"), result),
+	), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the contact read after Odoo responds."
+type contactRead struct {
+	dex.StepDefaultsNoWaitFor[odoo.GetContactResult]
+}
+
+func (contactRead) Execute(_ dex.Context, _ odoo.GetContactResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
 }
 
 // dex:group group-id:result group-label:"Result"
