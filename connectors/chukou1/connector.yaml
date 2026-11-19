@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: chukou1
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-chukou1
+      operations: [listWarehouses]
+      triggers: []
   codegen:
     go:
       package: chukou1

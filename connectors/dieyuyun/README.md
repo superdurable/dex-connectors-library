@@ -1,6 +1,6 @@
 # Wuliang AI (无量AI) connector
 
-The operator is [Dieyuyun Technology (Shenzhen) Co., Ltd.](https://open.dieyuyun.com/legal/terms.html). This Go connector calls the official [`GET https://open.dieyuyun.com/v1/balance`](https://open.dieyuyun.com/guide/api-reference.html) endpoint. The Query returns only available tenant balance in CNY yuan, preserving the exact JSON number text. It filters API Key ID, name, daily and monthly budgets, and other account details.
+The operator is [Dieyuyun Technology (Shenzhen) Co., Ltd.](https://open.dieyuyun.com/legal/terms.html). This connector calls the official [`GET https://open.dieyuyun.com/v1/balance`](https://open.dieyuyun.com/guide/api-reference.html) endpoint. The Query returns only available tenant balance in CNY yuan, preserving the exact JSON number text. It filters API Key ID, name, daily and monthly budgets, and other account details.
 
 ## Connection
 
@@ -9,3 +9,7 @@ Sign in to the [Wuliang AI console](https://open-console.dieyuyun.com/), open **
 ## Go
 
 The [account balance Flow](go/examples/account-balance/) is a runnable Worker with static Dex Web connection name `dieyuyun`. `fetched` completes the Flow; optional branches fail it unless an application wires a business response. Read-only transient failures retry safely. The local mock integration test uses synthetic balance data and a real Dex Worker and Client. Live authorization and balance values remain unverified without a user-controlled connection.
+
+## Python
+
+The [Python account balance Flow](python/examples/account_balance/) uses the same static connection and checks exact decimal output across a real Dex Worker and Client retry. Its package replays the Go-recorded provider scenarios. Live authorization and actual tenant balance remain unverified without a user-controlled connection.

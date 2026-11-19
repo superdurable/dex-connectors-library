@@ -1,0 +1,52 @@
+{
+  "connectorId": "dimleap",
+  "releaseTag": "connectors/dimleap/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-dimleap",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_models_step",
+      "kind": "query",
+      "operationId": "listModels",
+      "inputType": "ListModelsInput",
+      "description": "List up to 50 model IDs enabled for the API Key.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListModelsInput requests models visible to the Dimleap API Key.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
