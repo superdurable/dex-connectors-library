@@ -11,3 +11,5 @@ The `listKnowledgeEntries` Query accepts a one-based page number and page size f
 ## Example
 
 The [knowledge catalog Flow](go/examples/knowledge-catalog/) is a runnable Worker with static Dex connection name `tiankechat`. Its local mock uses synthetic data and can be verified through a real Dex Worker and Client. Live application authorization, deployment-specific HTTPS configuration, and provider pagination remain unverified until a user connects a TiankeChat tenant.
+
+The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.

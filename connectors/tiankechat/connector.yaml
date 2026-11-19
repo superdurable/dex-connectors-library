@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: tiankechat
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-tiankechat", operations: [listKnowledgeEntries], triggers: []}
   codegen:
     go:
       package: tiankechat
