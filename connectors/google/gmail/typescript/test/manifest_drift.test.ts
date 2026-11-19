@@ -29,6 +29,7 @@ const ManifestSchema = z.object({
         name: z.string(), branch: z.string().optional(), default: z.boolean().optional(),
         output: z.unknown().optional(), failure: FailureSchema.optional(),
         retry: z.object({ failure: FailureSchema, after: z.string().optional() }).optional(),
+        uncertain: z.object({ failure: FailureSchema }).optional(),
       })),
     })),
   }),
@@ -50,12 +51,14 @@ const cases = [
   { operation: 'sendMessage', name: 'sentToCustomer', create: gmailmock.sendMessageSentToCustomer },
   { operation: 'sendMessage', name: 'invalidRecipient', create: gmailmock.sendMessageInvalidRecipient },
   { operation: 'sendMessage', name: 'connectionLost', create: gmailmock.sendMessageConnectionLost },
+  { operation: 'sendMessage', name: 'sendOutcomeUnknown', create: gmailmock.sendMessageSendOutcomeUnknown },
   { operation: 'sendMessage', name: 'noRecipients', create: gmailmock.sendMessageNoRecipients },
   { operation: 'sendMessage', name: 'unavailable', create: gmailmock.sendMessageUnavailable },
   { operation: 'replyToMessage', name: 'repliedInThread', create: gmailmock.replyToMessageRepliedInThread },
   { operation: 'replyToMessage', name: 'sourceMissing', create: gmailmock.replyToMessageSourceMissing },
   { operation: 'replyToMessage', name: 'malformedSource', create: gmailmock.replyToMessageMalformedSource },
   { operation: 'replyToMessage', name: 'connectionLost', create: gmailmock.replyToMessageConnectionLost },
+  { operation: 'replyToMessage', name: 'replyOutcomeUnknown', create: gmailmock.replyToMessageReplyOutcomeUnknown },
   { operation: 'replyToMessage', name: 'emptyBody', create: gmailmock.replyToMessageEmptyBody },
 ];
 
@@ -68,7 +71,7 @@ function durationMs(value: string): number {
 describe('connector.yaml remains the source of Gmail TypeScript definitions and mocks', () => {
   it('matches every operation identity, branch, and Execute default', async () => {
     const manifest = ManifestSchema.parse(parse(await readFile(new URL('../../connector.yaml', import.meta.url), 'utf8')) as unknown);
-    expect(manifest.spec.languages.typescript.version).toBe('v0.4.1');
+    expect(manifest.spec.languages.typescript.version).toBe('v0.5.0');
     expect(manifest.spec.operations.map(operation => operation.name).sort()).toEqual(Object.keys(definitionByOperation).sort());
     for (const operation of manifest.spec.operations) {
       expect(operation.kind).toBe(operation.name === 'getMessage' ? 'query' : 'mutation');
@@ -116,6 +119,8 @@ describe('connector.yaml remains the source of Gmail TypeScript definitions and 
       const actual = entry.create();
       if (mock.retry) {
         expect(actual).toMatchObject({ kind: 'retry', failure: mock.retry.failure, retryAfterMs: mock.retry.after ? durationMs(mock.retry.after) : 0 });
+      } else if (mock.uncertain) {
+        expect(actual).toMatchObject({ kind: 'uncertain', branch: 'uncertain', failure: mock.uncertain.failure });
       } else {
         expect(actual).toMatchObject({ kind: 'branch', branch: mock.branch });
         if (mock.failure) expect(actual).toMatchObject({ failure: mock.failure });

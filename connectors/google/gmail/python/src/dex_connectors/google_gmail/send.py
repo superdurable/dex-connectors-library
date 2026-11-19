@@ -298,6 +298,8 @@ class SendService:
                     )
             except Exception:
                 found = None
+                if fence_result == DecisionKind.READ_BACK_REQUIRED:
+                    return self._select_uncertain_without_resend(execution, _REPLY, True)
                 # An inconclusive search still permits a resend below the send cap.
                 if fence_result != DecisionKind.READ_BACK_THEN_RESEND_ALLOWED:
                     await self._record_not_sent(execution)
@@ -316,10 +318,7 @@ class SendService:
                     _receipt(execution),
                 )
             if fence_result == DecisionKind.READ_BACK_REQUIRED:
-                return _retry(
-                    _REPLY, FailureKind.AVAILABILITY,
-                    "Gmail sent-mail search found no reply; prior dispatch cannot be repeated",
-                )
+                return self._select_uncertain_without_resend(execution, _REPLY, False)
         status = 0
         headers = httpx.Headers()
         try:
@@ -358,6 +357,7 @@ class SendService:
                 _status_kind(status),
                 "Gmail rejected the source message lookup",
                 _receipt(execution, headers, input.message_id),
+                is_definite=status in _REFUSED_BEFORE_PROCESSING_STATUSES,
             )
         try:
             source_resource = json.loads(source_response.body)
@@ -457,17 +457,26 @@ class SendService:
     ) -> MutationAttempt[SendMessageOutput]:
         """Classify a credential failure before any send in this attempt.
 
-        After an earlier possible send, any failure, even one that needs
-        reconnection, returns Retry without notSent, so later attempts still
-        read back. On a clean first attempt a transient failure records
+        After an earlier possible send, a transient failure returns Retry
+        without notSent, so later attempts still read back, and one that needs
+        reconnection selects uncertain, because no later attempt could read
+        back or resend. On a clean first attempt a transient failure records
         notSent and returns Retry; only a permanent one selects defect.
         """
         is_permanent = isinstance(error, _PERMANENT_CREDENTIAL_ERRORS)
         if await self._is_earlier_send_possible(execution):
-            reason = "need reconnection" if is_permanent else "are temporarily unavailable"
+            if is_permanent:
+                return MutationAttempt.uncertain(
+                    SendMessageOutput(),
+                    _failure(
+                        outcome, FailureKind.AUTHENTICATION,
+                        "Gmail credentials need reconnection; an earlier send may have been delivered",
+                    ),
+                    _receipt(execution),
+                )
             return _retry(
                 outcome, FailureKind.AUTHENTICATION,
-                f"Gmail credentials {reason}; an earlier send may still be delivered",
+                "Gmail credentials are temporarily unavailable; an earlier send may still be delivered",
             )
         if not is_permanent:
             try:
@@ -487,15 +496,51 @@ class SendService:
     ) -> MutationAttempt[SendMessageOutput]:
         """Select defect only when no earlier attempt may have sent.
 
-        Otherwise that send may still be delivered, so Retry keeps the claim
-        and later attempts read back.
+        Otherwise that send may still be delivered, and invalid input cannot
+        resend it, so it selects uncertain.
         """
         if await self._is_earlier_send_possible(execution):
-            return _retry(outcome, kind, f"{message}; an earlier send may still be delivered")
+            return MutationAttempt.uncertain(
+                SendMessageOutput(),
+                _failure(outcome, kind, f"{message}; an earlier send may still be delivered"),
+                _receipt(execution),
+            )
         return _branch(execution, outcome, "defect", kind, message)
 
     async def _is_earlier_send_possible(self, execution: SendExecution) -> bool:
         return execution.fence is not None and (await execution.fence.decide()).prior_send_upper_bound > 0
+
+    async def _can_resend_unknown_outcome(self, execution: SendExecution) -> bool:
+        """Report whether the send cap still permits a send after this attempt's."""
+        prior_send_upper_bound = 0
+        if execution.fence is not None:
+            prior_send_upper_bound = (await execution.fence.decide()).prior_send_upper_bound
+        return prior_send_upper_bound + 1 < execution.call.max_sends
+
+    async def _resend_or_select_uncertain(
+        self, execution: SendExecution, failure: Failure, receipt: Receipt
+    ) -> MutationAttempt[SendMessageOutput]:
+        """Retry a possibly sent message while the send cap permits another send, else select uncertain.
+
+        The next attempt reads back Sent Mail before any resend.
+        """
+        if await self._can_resend_unknown_outcome(execution):
+            return MutationAttempt.retry(failure, 0)
+        return MutationAttempt.uncertain(SendMessageOutput(), failure, receipt)
+
+    def _select_uncertain_without_resend(
+        self, execution: SendExecution, outcome: _SendOutcome, has_search_failed: bool
+    ) -> MutationAttempt[SendMessageOutput]:
+        """Select uncertain when the send cap or a saved message ID forbids another send."""
+        reason = "did not answer" if has_search_failed else "found no message"
+        return MutationAttempt.uncertain(
+            SendMessageOutput(),
+            _failure(
+                outcome, FailureKind.AVAILABILITY,
+                f"Gmail sent-mail search {reason}, and no further {outcome.request_name} is permitted",
+            ),
+            _receipt(execution),
+        )
 
     async def _reject_unless_earlier_send_is_unconfirmed(
         self,
@@ -505,16 +550,20 @@ class SendService:
         kind: FailureKind,
         message: str,
         receipt: Receipt,
+        is_definite: bool = False,
     ) -> MutationAttempt[SendMessageOutput]:
-        """Select a definite rejection only when no earlier attempt may have sent.
+        """Select a rejection branch only when no earlier attempt may have sent.
 
-        Otherwise that send may still be delivered, so Retry keeps the claim and
-        later attempts read back until a match or the retry budget ends.
+        Otherwise that send may still be delivered: a definite refusal proves
+        only that this attempt failed, so it selects uncertain; an indefinite
+        one Retries below the send cap, so the next attempt reads back, and
+        selects uncertain at the cap.
         """
-        if execution.fence is not None and (
-            await execution.fence.decide()
-        ).prior_send_upper_bound > 0:
-            return _retry(outcome, kind, f"{message}; an earlier send may still be delivered")
+        if await self._is_earlier_send_possible(execution):
+            failure = _failure(outcome, kind, f"{message}; an earlier send may still be delivered")
+            if is_definite:
+                return MutationAttempt.uncertain(SendMessageOutput(), failure, receipt)
+            return await self._resend_or_select_uncertain(execution, failure, receipt)
         return _branch(execution, outcome, branch, kind, message, receipt)
 
     async def _reject_refused_send(
@@ -531,12 +580,18 @@ class SendService:
         With no earlier possible send, canResend proves nothing was sent, so
         agent hosts report failure instead of an unknown outcome. Only a
         status in ``_REFUSED_BEFORE_PROCESSING_STATUSES`` with a readable body
-        naming no message proves that. Any other refusal, such as 408 or 409,
-        leaves the outcome unknown: Retry keeps the claim, so the next attempt
-        reads back Sent Mail before any resend.
+        naming no message proves that; after an earlier possible send it
+        selects uncertain. Any other refusal, such as 408 or 409,
+        leaves the outcome unknown: below the send cap Retry keeps the claim,
+        so the next attempt reads back Sent Mail before any resend; at the cap
+        it selects uncertain.
         """
         if not is_definite_refusal:
-            return _retry(outcome, kind, f"{message}; Gmail may still have processed the request")
+            return await self._resend_or_select_uncertain(
+                execution,
+                _failure(outcome, kind, f"{message}; Gmail may still have processed the request"),
+                receipt,
+            )
         if execution.fence is not None and (
             await execution.fence.decide()
         ).prior_send_upper_bound == 0:
@@ -545,7 +600,7 @@ class SendService:
             except Exception:  # noqa: BLE001
                 pass  # A failed checkpoint leaves the claim, so the outcome stays unknown.
         return await self._reject_unless_earlier_send_is_unconfirmed(
-            execution, outcome, "providerRejected", kind, message, receipt
+            execution, outcome, "providerRejected", kind, message, receipt, is_definite=True
         )
 
     async def _record_not_sent(self, execution: SendExecution) -> None:
@@ -572,15 +627,12 @@ class SendService:
                     message_id_address=message.message_id_address,
                 )
         except Exception:
-            return _retry(outcome, FailureKind.AVAILABILITY, "Gmail sent-mail search did not answer")
+            return self._select_uncertain_without_resend(execution, outcome, True)
         if found:
             return await self._sent(
                 execution, budget, credential, outcome, message, found, _receipt(execution)
             )
-        return _retry(
-            outcome, FailureKind.AVAILABILITY,
-            "Gmail sent-mail search found no message; prior dispatch cannot be repeated",
-        )
+        return self._select_uncertain_without_resend(execution, outcome, False)
 
     async def _read_saved_message(
         self, execution: SendExecution, budget: _SendBudget, credential: Credentials
@@ -842,7 +894,9 @@ class SendService:
             if has_lookup_error
             else "; the sent-mail search found no message"
         )
-        return _retry(outcome, kind, failure_message + suffix)
+        return await self._resend_or_select_uncertain(
+            execution, _failure(outcome, kind, failure_message + suffix), receipt
+        )
 
     async def _poll_sent(
         self,

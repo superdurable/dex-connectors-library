@@ -1,10 +1,10 @@
 {
   "connectorId": "gmail",
-  "releaseTag": "connectors/google/gmail/go/v0.27.1",
+  "releaseTag": "connectors/google/gmail/go/v0.28.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-gmail",
-    "version": "0.4.1"
+    "version": "0.5.0"
   },
   "factories": [
     {
@@ -81,7 +81,8 @@
         "approval": "recommended",
         "branches": {
           "defect": "unknown",
-          "providerRejected": "rejected"
+          "providerRejected": "rejected",
+          "uncertain": "unknown"
         },
         "repeatOnUnknown": "limited",
         "maxSends": 3
@@ -101,6 +102,11 @@
         {
           "id": "providerRejected",
           "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
           "optional": true
         },
         {
@@ -156,7 +162,8 @@
         "branches": {
           "defect": "unknown",
           "invalidResponse": "rejected",
-          "providerRejected": "rejected"
+          "providerRejected": "rejected",
+          "uncertain": "unknown"
         },
         "repeatOnUnknown": "limited",
         "maxSends": 3
@@ -181,6 +188,11 @@
         {
           "id": "invalidResponse",
           "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
           "optional": true
         },
         {
