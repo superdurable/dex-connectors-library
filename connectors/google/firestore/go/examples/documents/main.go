@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{documents.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{documents.NewFlow(connection), documents.NewDeleteFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Google Firestore list Flow: %w", err)
 	}

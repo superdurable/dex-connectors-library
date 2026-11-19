@@ -43,11 +43,35 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetDataset() sdkgo.Query[GetDatasetInput, Dataset]
+	ListTables() sdkgo.Query[ListTablesInput, TablesPage]
+	GetTable() sdkgo.Query[GetTableInput, Table]
+	ListTableRows() sdkgo.Query[ListTableRowsInput, TableRowsPage]
+	RunReadQuery() sdkgo.Query[RunReadQueryInput, QueryResultsPage]
+	GetQueryResults() sdkgo.Query[GetQueryResultsInput, QueryResultsPage]
 	ListDatasets() sdkgo.Query[ListDatasetsInput, DatasetsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetDataset() sdkgo.Query[GetDatasetInput, Dataset] {
+	return operations.client.GetDataset()
+}
+func (operations clientOperations) ListTables() sdkgo.Query[ListTablesInput, TablesPage] {
+	return operations.client.ListTables()
+}
+func (operations clientOperations) GetTable() sdkgo.Query[GetTableInput, Table] {
+	return operations.client.GetTable()
+}
+func (operations clientOperations) ListTableRows() sdkgo.Query[ListTableRowsInput, TableRowsPage] {
+	return operations.client.ListTableRows()
+}
+func (operations clientOperations) RunReadQuery() sdkgo.Query[RunReadQueryInput, QueryResultsPage] {
+	return operations.client.RunReadQuery()
+}
+func (operations clientOperations) GetQueryResults() sdkgo.Query[GetQueryResultsInput, QueryResultsPage] {
+	return operations.client.GetQueryResults()
+}
 func (operations clientOperations) ListDatasets() sdkgo.Query[ListDatasetsInput, DatasetsPage] {
 	return operations.client.ListDatasets()
 }
@@ -250,6 +274,474 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetDatasetBranchFound sdkgo.BranchID = "found"
+const GetDatasetBranchNotFound sdkgo.BranchID = "notFound"
+const GetDatasetBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDatasetBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDatasetBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDatasetDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDataset"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDatasetBranchFound, Description: "BigQuery returned the dataset."},
+		{ID: GetDatasetBranchNotFound, Description: "The dataset was not found.", Optional: true},
+		{ID: GetDatasetBranchProviderRejected, Description: "BigQuery rejected the read.", Optional: true},
+		{ID: GetDatasetBranchInvalidResponse, Description: "BigQuery returned malformed or oversized JSON.", Optional: true},
+		{ID: GetDatasetBranchDefect, Description: "Dataset identity or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDatasetResult = sdkgo.QueryResult[Dataset]
+
+type GetDatasetStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=google-bigquery"`
+	operationID                    struct{}                                   `connector:"operationId=getDataset"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDatasetInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDatasetResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDatasetResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDatasetResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDatasetResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDatasetResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Dataset]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetDatasetStep[IN any](config GetDatasetStepConfig[IN]) sdkgo.QueryStep[IN, GetDatasetInput, Dataset] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-bigquery connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDatasetInput, Dataset]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDataset(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDatasetResult] {
+			branches := make([]sdkgo.BranchTarget[GetDatasetResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDatasetBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDatasetBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDatasetBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDatasetBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDatasetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTablesBranchListed sdkgo.BranchID = "listed"
+const ListTablesBranchNotFound sdkgo.BranchID = "notFound"
+const ListTablesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTablesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTablesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTablesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTables"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTablesBranchListed, Description: "BigQuery returned the table page."},
+		{ID: ListTablesBranchNotFound, Description: "The dataset was not found.", Optional: true},
+		{ID: ListTablesBranchProviderRejected, Description: "BigQuery rejected the read.", Optional: true},
+		{ID: ListTablesBranchInvalidResponse, Description: "BigQuery returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTablesBranchDefect, Description: "Dataset or page input is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTablesResult = sdkgo.QueryResult[TablesPage]
+
+type ListTablesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=google-bigquery"`
+	operationID                    struct{}                                      `connector:"operationId=listTables"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTablesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTablesResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListTablesResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListTablesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTablesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTablesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TablesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListTablesStep[IN any](config ListTablesStepConfig[IN]) sdkgo.QueryStep[IN, ListTablesInput, TablesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-bigquery connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTablesInput, TablesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTables(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTablesResult] {
+			branches := make([]sdkgo.BranchTarget[ListTablesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTablesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListTablesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTablesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTablesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTablesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTableBranchFound sdkgo.BranchID = "found"
+const GetTableBranchNotFound sdkgo.BranchID = "notFound"
+const GetTableBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTableBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTableBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTableDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTable"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTableBranchFound, Description: "BigQuery returned the table."},
+		{ID: GetTableBranchNotFound, Description: "The table was not found.", Optional: true},
+		{ID: GetTableBranchProviderRejected, Description: "BigQuery rejected the read.", Optional: true},
+		{ID: GetTableBranchInvalidResponse, Description: "BigQuery returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTableBranchDefect, Description: "Table identity or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTableResult = sdkgo.QueryResult[Table]
+
+type GetTableStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=google-bigquery"`
+	operationID                    struct{}                                 `connector:"operationId=getTable"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTableInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTableResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTableResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTableResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTableResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTableResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Table]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetTableStep[IN any](config GetTableStepConfig[IN]) sdkgo.QueryStep[IN, GetTableInput, Table] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-bigquery connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTableInput, Table]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTable(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTableResult] {
+			branches := make([]sdkgo.BranchTarget[GetTableResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTableBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTableBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTableBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTableBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTableBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTableRowsBranchListed sdkgo.BranchID = "listed"
+const ListTableRowsBranchNotFound sdkgo.BranchID = "notFound"
+const ListTableRowsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTableRowsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTableRowsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTableRowsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTableRows"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTableRowsBranchListed, Description: "BigQuery returned table rows."},
+		{ID: ListTableRowsBranchNotFound, Description: "The table was not found.", Optional: true},
+		{ID: ListTableRowsBranchProviderRejected, Description: "BigQuery rejected the read.", Optional: true},
+		{ID: ListTableRowsBranchInvalidResponse, Description: "BigQuery returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTableRowsBranchDefect, Description: "Table or page input is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTableRowsResult = sdkgo.QueryResult[TableRowsPage]
+
+type ListTableRowsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=google-bigquery"`
+	operationID                    struct{}                                         `connector:"operationId=listTableRows"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTableRowsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTableRowsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListTableRowsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListTableRowsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTableRowsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTableRowsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TableRowsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListTableRowsStep[IN any](config ListTableRowsStepConfig[IN]) sdkgo.QueryStep[IN, ListTableRowsInput, TableRowsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-bigquery connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTableRowsInput, TableRowsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTableRows(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTableRowsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTableRowsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTableRowsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListTableRowsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTableRowsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTableRowsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTableRowsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RunReadQueryBranchCompleted sdkgo.BranchID = "completed"
+const RunReadQueryBranchPending sdkgo.BranchID = "pending"
+const RunReadQueryBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RunReadQueryBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RunReadQueryBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RunReadQueryDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "runReadQuery"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RunReadQueryBranchCompleted, Description: "BigQuery returned completed query results."},
+		{ID: RunReadQueryBranchPending, Description: "BigQuery created a job still running.", Optional: true},
+		{ID: RunReadQueryBranchProviderRejected, Description: "BigQuery rejected the query.", Optional: true},
+		{ID: RunReadQueryBranchInvalidResponse, Description: "BigQuery returned malformed or oversized JSON.", Optional: true},
+		{ID: RunReadQueryBranchDefect, Description: "Query input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RunReadQueryResult = sdkgo.QueryResult[QueryResultsPage]
+
+type RunReadQueryStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=google-bigquery"`
+	operationID                    struct{}                                            `connector:"operationId=runReadQuery"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) RunReadQueryInput                          `connector:"mapToOperationInput"`
+	Completed                      sdkgo.Target[RunReadQueryResult]                    `connector:"branch=completed"`
+	Pending                        sdkgo.Target[RunReadQueryResult]                    `connector:"branch=pending,optional"`
+	ProviderRejected               sdkgo.Target[RunReadQueryResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[RunReadQueryResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[RunReadQueryResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[QueryResultsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewRunReadQueryStep[IN any](config RunReadQueryStepConfig[IN]) sdkgo.QueryStep[IN, RunReadQueryInput, QueryResultsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-bigquery connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, RunReadQueryInput, QueryResultsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RunReadQuery(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RunReadQueryResult] {
+			branches := make([]sdkgo.BranchTarget[RunReadQueryResult], 0, 5)
+			if config.Completed.HasStep() {
+				branches = append(branches, config.Completed.BranchTarget(RunReadQueryBranchCompleted))
+			}
+			if config.Pending.HasStep() {
+				branches = append(branches, config.Pending.BranchTarget(RunReadQueryBranchPending))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RunReadQueryBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RunReadQueryBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RunReadQueryBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetQueryResultsBranchCompleted sdkgo.BranchID = "completed"
+const GetQueryResultsBranchPending sdkgo.BranchID = "pending"
+const GetQueryResultsBranchNotFound sdkgo.BranchID = "notFound"
+const GetQueryResultsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetQueryResultsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetQueryResultsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetQueryResultsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getQueryResults"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetQueryResultsBranchCompleted, Description: "BigQuery returned query results."},
+		{ID: GetQueryResultsBranchPending, Description: "The query job is still running.", Optional: true},
+		{ID: GetQueryResultsBranchNotFound, Description: "The query job was not found.", Optional: true},
+		{ID: GetQueryResultsBranchProviderRejected, Description: "BigQuery rejected the read.", Optional: true},
+		{ID: GetQueryResultsBranchInvalidResponse, Description: "BigQuery returned malformed or oversized JSON.", Optional: true},
+		{ID: GetQueryResultsBranchDefect, Description: "Job or page input is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetQueryResultsResult = sdkgo.QueryResult[QueryResultsPage]
+
+type GetQueryResultsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=google-bigquery"`
+	operationID                    struct{}                                            `connector:"operationId=getQueryResults"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetQueryResultsInput                       `connector:"mapToOperationInput"`
+	Completed                      sdkgo.Target[GetQueryResultsResult]                 `connector:"branch=completed"`
+	Pending                        sdkgo.Target[GetQueryResultsResult]                 `connector:"branch=pending,optional"`
+	NotFound                       sdkgo.Target[GetQueryResultsResult]                 `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetQueryResultsResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetQueryResultsResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetQueryResultsResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[QueryResultsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetQueryResultsStep[IN any](config GetQueryResultsStepConfig[IN]) sdkgo.QueryStep[IN, GetQueryResultsInput, QueryResultsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-bigquery connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetQueryResultsInput, QueryResultsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetQueryResults(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetQueryResultsResult] {
+			branches := make([]sdkgo.BranchTarget[GetQueryResultsResult], 0, 6)
+			if config.Completed.HasStep() {
+				branches = append(branches, config.Completed.BranchTarget(GetQueryResultsBranchCompleted))
+			}
+			if config.Pending.HasStep() {
+				branches = append(branches, config.Pending.BranchTarget(GetQueryResultsBranchPending))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetQueryResultsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetQueryResultsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetQueryResultsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetQueryResultsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListDatasetsBranchListed sdkgo.BranchID = "listed"

@@ -1,6 +1,8 @@
 # Eventbrite organization-inspection Flow
 
-This runnable Flow calls `listOrganizations` with the static `eventbrite` connection. Its happy-path organization page is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. No Private Token enters the Flow result.
+This runnable application registers `EventbriteOrganizationInspection` and `EventbriteEventPublication` with the static `eventbrite` connection. The first Flow calls `listOrganizations`; the second publishes a selected draft event and saves its metadata in an Attribute. Optional branches are unwired and fail the Flow when selected. No Private Token enters a Flow result.
+
+Start `EventbriteEventPublication` with `{"eventId":"67890"}` using a draft event ID from your organization. Eventbrite requires a name, description, organizer, at least one ticket, and valid payment settings before publication. The deterministic integration test uses the generated connector mock; it does not authorize a real Eventbrite account.
 
 ## Strict FDG 2.0 generation
 

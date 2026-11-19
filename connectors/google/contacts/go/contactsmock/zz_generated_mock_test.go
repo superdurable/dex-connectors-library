@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getContactRevision/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contacts.ContactRevision](`{"resourceName":"people/c123","displayName":"Example Contact","emailAddress":"example@example.com","etag":"abc123"}`)
+			return err
+		}},
 		{name: "listContacts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[contacts.ContactsPage](`{"contacts":[{"resourceName":"people/c123","displayName":"Example Contact","emailAddress":"example@example.com"}],"nextPageToken":""}`)
 			return err
@@ -28,6 +32,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[contacts.Contact](`{"resourceName":"people/c123","displayName":"Example Contact","emailAddress":"example@example.com"}`)
 			return err
 		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contacts.Contact](`{"resourceName":"people/c123","displayName":"Example Contact","emailAddress":"example@example.com"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contacts.DeletedContact](`{"resourceName":"people/c123"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -38,6 +50,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetContactRevision().Definition().Operation.OperationID != "getContactRevision" {
+		t.Errorf("getContactRevision mock has another definition")
+	}
 	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
 		t.Errorf("listContacts mock has another definition")
 	}
@@ -46,5 +61,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
 		t.Errorf("createContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 }

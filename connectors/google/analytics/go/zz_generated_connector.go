@@ -44,6 +44,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	RunRealtimeReport() sdkgo.Query[RunRealtimeReportInput, ReportPage]
+	ListProperties() sdkgo.Query[ListPropertiesInput, PropertiesPage]
+	ListDataStreams() sdkgo.Query[ListDataStreamsInput, DataStreamsPage]
 	RunReport() sdkgo.Query[RunReportInput, ReportPage]
 	GetProperty() sdkgo.Query[GetPropertyInput, Property]
 	ListAudiences() sdkgo.Query[ListAudiencesInput, AudiencesPage]
@@ -51,6 +54,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) RunRealtimeReport() sdkgo.Query[RunRealtimeReportInput, ReportPage] {
+	return operations.client.RunRealtimeReport()
+}
+func (operations clientOperations) ListProperties() sdkgo.Query[ListPropertiesInput, PropertiesPage] {
+	return operations.client.ListProperties()
+}
+func (operations clientOperations) ListDataStreams() sdkgo.Query[ListDataStreamsInput, DataStreamsPage] {
+	return operations.client.ListDataStreams()
+}
 func (operations clientOperations) RunReport() sdkgo.Query[RunReportInput, ReportPage] {
 	return operations.client.RunReport()
 }
@@ -269,6 +281,219 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const RunRealtimeReportBranchReported sdkgo.BranchID = "reported"
+const RunRealtimeReportBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RunRealtimeReportBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RunRealtimeReportBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RunRealtimeReportDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "runRealtimeReport"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RunRealtimeReportBranchReported, Description: "Google returned realtime report rows."},
+		{ID: RunRealtimeReportBranchProviderRejected, Description: "Google rejected the realtime request.", Optional: true},
+		{ID: RunRealtimeReportBranchInvalidResponse, Description: "Google returned malformed or oversized report JSON.", Optional: true},
+		{ID: RunRealtimeReportBranchDefect, Description: "Local report input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RunRealtimeReportResult = sdkgo.QueryResult[ReportPage]
+
+type RunRealtimeReportStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=google-analytics-4"`
+	operationID                    struct{}                                      `connector:"operationId=runRealtimeReport"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) RunRealtimeReportInput               `connector:"mapToOperationInput"`
+	Reported                       sdkgo.Target[RunRealtimeReportResult]         `connector:"branch=reported"`
+	ProviderRejected               sdkgo.Target[RunRealtimeReportResult]         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[RunRealtimeReportResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[RunRealtimeReportResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ReportPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewRunRealtimeReportStep[IN any](config RunRealtimeReportStepConfig[IN]) sdkgo.QueryStep[IN, RunRealtimeReportInput, ReportPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-analytics-4 connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, RunRealtimeReportInput, ReportPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RunRealtimeReport(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RunRealtimeReportResult] {
+			branches := make([]sdkgo.BranchTarget[RunRealtimeReportResult], 0, 4)
+			if config.Reported.HasStep() {
+				branches = append(branches, config.Reported.BranchTarget(RunRealtimeReportBranchReported))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RunRealtimeReportBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RunRealtimeReportBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RunRealtimeReportBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListPropertiesBranchListed sdkgo.BranchID = "listed"
+const ListPropertiesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPropertiesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPropertiesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPropertiesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProperties"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPropertiesBranchListed, Description: "Google returned a property page."},
+		{ID: ListPropertiesBranchProviderRejected, Description: "Google rejected the property listing.", Optional: true},
+		{ID: ListPropertiesBranchInvalidResponse, Description: "Google returned malformed or oversized property JSON.", Optional: true},
+		{ID: ListPropertiesBranchDefect, Description: "Account ID or page input is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPropertiesResult = sdkgo.QueryResult[PropertiesPage]
+
+type ListPropertiesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=google-analytics-4"`
+	operationID                    struct{}                                          `connector:"operationId=listProperties"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPropertiesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPropertiesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPropertiesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPropertiesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPropertiesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PropertiesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListPropertiesStep[IN any](config ListPropertiesStepConfig[IN]) sdkgo.QueryStep[IN, ListPropertiesInput, PropertiesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-analytics-4 connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPropertiesInput, PropertiesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProperties(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPropertiesResult] {
+			branches := make([]sdkgo.BranchTarget[ListPropertiesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPropertiesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPropertiesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPropertiesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPropertiesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListDataStreamsBranchListed sdkgo.BranchID = "listed"
+const ListDataStreamsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDataStreamsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDataStreamsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDataStreamsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDataStreams"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDataStreamsBranchListed, Description: "Google returned a data stream page."},
+		{ID: ListDataStreamsBranchProviderRejected, Description: "Google rejected the data stream listing.", Optional: true},
+		{ID: ListDataStreamsBranchInvalidResponse, Description: "Google returned malformed or oversized data stream JSON.", Optional: true},
+		{ID: ListDataStreamsBranchDefect, Description: "Property ID or page input is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDataStreamsResult = sdkgo.QueryResult[DataStreamsPage]
+
+type ListDataStreamsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=google-analytics-4"`
+	operationID                    struct{}                                           `connector:"operationId=listDataStreams"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDataStreamsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDataStreamsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDataStreamsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDataStreamsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDataStreamsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DataStreamsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListDataStreamsStep[IN any](config ListDataStreamsStepConfig[IN]) sdkgo.QueryStep[IN, ListDataStreamsInput, DataStreamsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-analytics-4 connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDataStreamsInput, DataStreamsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDataStreams(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDataStreamsResult] {
+			branches := make([]sdkgo.BranchTarget[ListDataStreamsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDataStreamsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDataStreamsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDataStreamsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDataStreamsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const RunReportBranchReported sdkgo.BranchID = "reported"

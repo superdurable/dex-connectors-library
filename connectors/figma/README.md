@@ -1,10 +1,10 @@
 # Figma connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/figma/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/figma/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/figma`.
 
-`github.com/superdurable/dex-connectors-library/connectors/figma/go` exposes read-only Dex Query Steps against Figma's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
+`github.com/superdurable/dex-connectors-library/connectors/figma/go` exposes read-only Dex Query Steps against Figma's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state. The Go module also reads selected file nodes with the existing `file_content:read` scope.
 
 ## Connection
 
@@ -24,6 +24,7 @@ that reads a file and its comments using the static `figma` connection.
 | --- | --- |
 | `getFile` | [Figma getFile](https://developers.figma.com/docs/rest-api/file-endpoints/) |
 | `getFileComments` | [Figma getFileComments](https://developers.figma.com/docs/rest-api/comments-endpoints/) |
+| `getFileNodes` | [Figma GET file nodes](https://developers.figma.com/docs/rest-api/file-endpoints/) |
 
 Each operation returns a bounded, typed response. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
@@ -33,7 +34,7 @@ The generated `figmamock` package includes one default Meridian answer per opera
 
 ## Example
 
-The runnable [example](go/examples/figma-lookup/README.md) registers a Worker and a Flow using the static `figma` connection. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/figma-lookup/README.md) registers a Worker and a Flow using the static `figma` connection. It reads the file, its root node, and comments. Its mock-backed real-Dex integration test and deterministic mapping tests pass locally.
 
 ## Live verification
 

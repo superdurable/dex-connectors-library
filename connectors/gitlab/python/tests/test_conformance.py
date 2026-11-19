@@ -14,10 +14,16 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/gitlab/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/gitlab/scenarios.json")
+    if scenario["operation"] in {"getProject", "listIssues", "updateIssueLabels"}
+]
 CONNECTION = sdk.ConnectionRef("gitlab", "gitlab")
 ADAPTER = conformance.PythonOperationAdapter(
-    "gitlab", CONNECTION, gitlab,
+    "gitlab",
+    CONNECTION,
+    gitlab,
     lambda client, _: gitlab.Client(
         gitlab.Config(base_url="http://127.0.0.1"),
         conformance.static_credentials(CONNECTION, gitlab.Credentials(sdk.SecretString("test-accesstoken"))),

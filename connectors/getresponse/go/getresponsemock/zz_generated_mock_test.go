@@ -16,12 +16,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createContact/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[getresponse.CreateContactOutput](`{"email":"ada@example.com","campaignId":"abc123"}`)
+			return err
+		}},
 		{name: "listContacts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[getresponse.ContactsPage](`{"contacts":[{"contactId":"abc123","email":"ada@example.com","name":"Ada Lovelace"}],"page":1,"perPage":20}`)
 			return err
 		}},
 		{name: "getContact/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[getresponse.ContactMetadata](`{"contactId":"abc123","email":"ada@example.com","name":"Ada Lovelace"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[getresponse.ContactMetadata](`{"contactId":"abc123","email":"ada@example.com","name":"Ada Byron"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[getresponse.DeleteContactOutput](`{"contactId":"abc123"}`)
 			return err
 		}},
 	}
@@ -34,10 +46,19 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
 	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
 		t.Errorf("listContacts mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 }
