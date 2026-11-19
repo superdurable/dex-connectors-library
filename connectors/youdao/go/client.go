@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -23,8 +24,14 @@ import (
 // Option configures the transport without changing a connection.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ client *http.Client }
+type clockOption struct{ now func() time.Time }
+type randomSourceOption struct{ source io.Reader }
 
 func (option httpClientOption) applyClientOption(client *Client) { client.httpClient = option.client }
+func (option clockOption) applyClientOption(client *Client)      { client.now = option.now }
+func (option randomSourceOption) applyClientOption(client *Client) {
+	client.randomSource = option.source
+}
 
 // WithHTTPClient supplies an HTTP transport for production or provider tests.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -35,6 +42,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
+	randomSource     io.Reader
 }
 
 // New validates Youdao configuration without contacting the provider.
@@ -54,12 +63,15 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsedURL.Path != "" {
 		return nil, errors.New("Youdao API URL must be a host root without a path")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now, randomSource: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Youdao client option is required")
 		}
 		option.applyClientOption(client)
+	}
+	if client.now == nil || client.randomSource == nil {
+		return nil, errors.New("Youdao clock and random source are required")
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil
@@ -86,11 +98,11 @@ func (client *Client) translate(call sdkgo.Call, input TranslateTextInput) provi
 		return providerResponse{err: errCredential}
 	}
 	saltBytes := make([]byte, 16)
-	if _, err := rand.Read(saltBytes); err != nil {
+	if _, err := io.ReadFull(client.randomSource, saltBytes); err != nil {
 		return providerResponse{err: errRequest}
 	}
 	salt := hex.EncodeToString(saltBytes)
-	curtime := strconv.FormatInt(time.Now().Unix(), 10)
+	curtime := strconv.FormatInt(client.now().Unix(), 10)
 	values := url.Values{"q": {input.Text}, "from": {input.SourceLanguage}, "to": {input.TargetLanguage}, "appKey": {appKey}, "salt": {salt}, "curtime": {curtime}, "signType": {"v3"}}
 	values.Set("sign", signTranslation(appKey, input.Text, salt, curtime, appSecret))
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/api", strings.NewReader(values.Encode()))

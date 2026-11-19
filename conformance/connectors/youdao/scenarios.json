@@ -1,0 +1,688 @@
+{
+  "connector": "youdao",
+  "scenarios": [
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"0\",\"translation\":[\"Hello, world\"]}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "translated",
+        "failureKind": "",
+        "output": {
+          "sourceLanguage": "zh-CHS",
+          "targetLanguage": "en",
+          "translation": [
+            "Hello, world"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-translated",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"0\",\"translation\":[\"Long text\"]}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好世界测试翻译文本甲乙丙丁戊己庚辛壬癸子丑寅卯"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "f11e0f48bbf4bed51f29126e6888e317730b103498061d4052ed5181d8b52c9a"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "translated",
+        "failureKind": "",
+        "output": {
+          "sourceLanguage": "zh-CHS",
+          "targetLanguage": "en",
+          "translation": [
+            "Long text"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好世界测试翻译文本甲乙丙丁戊己庚辛壬癸子丑寅卯"
+      },
+      "name": "translateText-translated-long",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"202\"}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-providerRejected",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{\"translation\":[\"Hello\"]}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-invalidResponse",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": ""
+      },
+      "name": "translateText-defect",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-retry-429",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-retry-500",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-retry-503",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-retry-transport",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"411\"}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-retry-rate-code",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8f233a3d-4359-5cd7-a11c-f857c82540ad",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"0\",\"translation\":[\"Hello, world\"]}",
+          "form": {
+            "appKey": [
+              "test-app"
+            ],
+            "curtime": [
+              "1794571200"
+            ],
+            "from": [
+              "zh-CHS"
+            ],
+            "q": [
+              "你好，世界"
+            ],
+            "salt": [
+              "42424242424242424242424242424242"
+            ],
+            "sign": [
+              "015a1866a84b81ffada96446f33a022938f177585e57a2180a4c07b24607d666"
+            ],
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "sourceLanguage": "zh-CHS",
+        "targetLanguage": "en",
+        "text": "你好，世界"
+      },
+      "name": "translateText-oversized",
+      "operation": "translateText"
+    }
+  ],
+  "schemaVersion": 1
+}
