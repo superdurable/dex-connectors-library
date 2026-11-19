@@ -34,6 +34,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // New validates QingCloud configuration without contacting the provider.
@@ -53,7 +54,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsedURL.Path != "" {
 		return nil, errors.New("QingCloud API URL must be a host root without a path")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("QingCloud client option is required")
@@ -90,7 +91,7 @@ func (client *Client) describeZones(call sdkgo.Call) providerResponse {
 	params := url.Values{
 		"access_key_id": {accessKeyID}, "action": {"DescribeZones"}, "limit": {"100"},
 		"signature_method": {"HmacSHA256"}, "signature_version": {"1"},
-		"time_stamp": {time.Now().UTC().Format("2006-01-02T15:04:05Z")}, "version": {"1"},
+		"time_stamp": {client.now().UTC().Format("2006-01-02T15:04:05Z")}, "version": {"1"},
 	}
 	canonicalQuery := params.Encode()
 	params.Set("signature", signCanonicalQuery(secretAccessKey, http.MethodGet, "/iaas/", canonicalQuery))
@@ -104,7 +105,7 @@ func (client *Client) describeZones(call sdkgo.Call) providerResponse {
 		return providerResponse{err: errRequest}
 	}
 	defer func() { _ = response.Body.Close() }()
-	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now())
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

@@ -1,0 +1,497 @@
+{
+  "connector": "qingcloud",
+  "scenarios": [
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [
+        {
+          "body": "{\"action\":\"DescribeZonesResponse\",\"ret_code\":0,\"total_count\":2,\"zone_set\":[{\"zone_id\":\"pek3a\",\"status\":\"active\"},{\"zone_id\":\"gd2\",\"status\":\"faulty\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/iaas/",
+          "query": {
+            "access_key_id": [
+              "REDACTED_QINGCLOUD_ACCESS_KEY"
+            ],
+            "action": [
+              "DescribeZones"
+            ],
+            "limit": [
+              "100"
+            ],
+            "signature": [
+              "yCrvz8AFJyymleRHjAtilPi7/LafI4j34J8ONCzsnLk="
+            ],
+            "signature_method": [
+              "HmacSHA256"
+            ],
+            "signature_version": [
+              "1"
+            ],
+            "time_stamp": [
+              "2026-11-12T10:00:00Z"
+            ],
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "totalCount": 2,
+          "zones": [
+            {
+              "status": "active",
+              "zoneId": "pek3a"
+            },
+            {
+              "status": "faulty",
+              "zoneId": "gd2"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-listed",
+      "operation": "describeZones"
+    },
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [
+        {
+          "body": "{\"action\":\"DescribeZonesResponse\",\"ret_code\":0,\"total_count\":0,\"zone_set\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/iaas/",
+          "query": {
+            "access_key_id": [
+              "REDACTED_QINGCLOUD_ACCESS_KEY"
+            ],
+            "action": [
+              "DescribeZones"
+            ],
+            "limit": [
+              "100"
+            ],
+            "signature": [
+              "yCrvz8AFJyymleRHjAtilPi7/LafI4j34J8ONCzsnLk="
+            ],
+            "signature_method": [
+              "HmacSHA256"
+            ],
+            "signature_version": [
+              "1"
+            ],
+            "time_stamp": [
+              "2026-11-12T10:00:00Z"
+            ],
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "totalCount": 0,
+          "zones": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-empty",
+      "operation": "describeZones"
+    },
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [
+        {
+          "body": "{\"ret_code\":1200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/iaas/",
+          "query": {
+            "access_key_id": [
+              "REDACTED_QINGCLOUD_ACCESS_KEY"
+            ],
+            "action": [
+              "DescribeZones"
+            ],
+            "limit": [
+              "100"
+            ],
+            "signature": [
+              "yCrvz8AFJyymleRHjAtilPi7/LafI4j34J8ONCzsnLk="
+            ],
+            "signature_method": [
+              "HmacSHA256"
+            ],
+            "signature_version": [
+              "1"
+            ],
+            "time_stamp": [
+              "2026-11-12T10:00:00Z"
+            ],
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "totalCount": 0,
+          "zones": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-providerRejected",
+      "operation": "describeZones"
+    },
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [
+        {
+          "body": "{\"action\":\"OtherResponse\",\"ret_code\":0,\"total_count\":0,\"zone_set\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/iaas/",
+          "query": {
+            "access_key_id": [
+              "REDACTED_QINGCLOUD_ACCESS_KEY"
+            ],
+            "action": [
+              "DescribeZones"
+            ],
+            "limit": [
+              "100"
+            ],
+            "signature": [
+              "yCrvz8AFJyymleRHjAtilPi7/LafI4j34J8ONCzsnLk="
+            ],
+            "signature_method": [
+              "HmacSHA256"
+            ],
+            "signature_version": [
+              "1"
+            ],
+            "time_stamp": [
+              "2026-11-12T10:00:00Z"
+            ],
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "totalCount": 0,
+          "zones": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-invalidResponse",
+      "operation": "describeZones"
+    },
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "totalCount": 0,
+          "zones": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-defect",
+      "operation": "describeZones"
+    },
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/iaas/",
+          "query": {
+            "access_key_id": [
+              "REDACTED_QINGCLOUD_ACCESS_KEY"
+            ],
+            "action": [
+              "DescribeZones"
+            ],
+            "limit": [
+              "100"
+            ],
+            "signature": [
+              "yCrvz8AFJyymleRHjAtilPi7/LafI4j34J8ONCzsnLk="
+            ],
+            "signature_method": [
+              "HmacSHA256"
+            ],
+            "signature_version": [
+              "1"
+            ],
+            "time_stamp": [
+              "2026-11-12T10:00:00Z"
+            ],
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-retry-429",
+      "operation": "describeZones"
+    },
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/iaas/",
+          "query": {
+            "access_key_id": [
+              "REDACTED_QINGCLOUD_ACCESS_KEY"
+            ],
+            "action": [
+              "DescribeZones"
+            ],
+            "limit": [
+              "100"
+            ],
+            "signature": [
+              "yCrvz8AFJyymleRHjAtilPi7/LafI4j34J8ONCzsnLk="
+            ],
+            "signature_method": [
+              "HmacSHA256"
+            ],
+            "signature_version": [
+              "1"
+            ],
+            "time_stamp": [
+              "2026-11-12T10:00:00Z"
+            ],
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-retry-500",
+      "operation": "describeZones"
+    },
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/iaas/",
+          "query": {
+            "access_key_id": [
+              "REDACTED_QINGCLOUD_ACCESS_KEY"
+            ],
+            "action": [
+              "DescribeZones"
+            ],
+            "limit": [
+              "100"
+            ],
+            "signature": [
+              "yCrvz8AFJyymleRHjAtilPi7/LafI4j34J8ONCzsnLk="
+            ],
+            "signature_method": [
+              "HmacSHA256"
+            ],
+            "signature_version": [
+              "1"
+            ],
+            "time_stamp": [
+              "2026-11-12T10:00:00Z"
+            ],
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-retry-503",
+      "operation": "describeZones"
+    },
+    {
+      "callId": "bad4d2f8-61e1-5e04-ad8a-93d53213e23d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/iaas/",
+          "query": {
+            "access_key_id": [
+              "REDACTED_QINGCLOUD_ACCESS_KEY"
+            ],
+            "action": [
+              "DescribeZones"
+            ],
+            "limit": [
+              "100"
+            ],
+            "signature": [
+              "yCrvz8AFJyymleRHjAtilPi7/LafI4j34J8ONCzsnLk="
+            ],
+            "signature_method": [
+              "HmacSHA256"
+            ],
+            "signature_version": [
+              "1"
+            ],
+            "time_stamp": [
+              "2026-11-12T10:00:00Z"
+            ],
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {},
+      "name": "describeZones-retry-transport",
+      "operation": "describeZones"
+    }
+  ],
+  "schemaVersion": 1
+}
