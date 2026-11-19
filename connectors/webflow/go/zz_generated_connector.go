@@ -40,12 +40,28 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListCollections() sdkgo.Query[ListCollectionsInput, ListCollectionsOutput]
+	GetCollection() sdkgo.Query[GetCollectionInput, GetCollectionOutput]
+	ListLiveCollectionItems() sdkgo.Query[ListCollectionItemsInput, ListCollectionItemsOutput]
+	GetLiveCollectionItem() sdkgo.Query[GetCollectionItemInput, GetCollectionItemOutput]
 	ListCollectionItems() sdkgo.Query[ListCollectionItemsInput, ListCollectionItemsOutput]
 	GetCollectionItem() sdkgo.Query[GetCollectionItemInput, GetCollectionItemOutput]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListCollections() sdkgo.Query[ListCollectionsInput, ListCollectionsOutput] {
+	return operations.client.ListCollections()
+}
+func (operations clientOperations) GetCollection() sdkgo.Query[GetCollectionInput, GetCollectionOutput] {
+	return operations.client.GetCollection()
+}
+func (operations clientOperations) ListLiveCollectionItems() sdkgo.Query[ListCollectionItemsInput, ListCollectionItemsOutput] {
+	return operations.client.ListLiveCollectionItems()
+}
+func (operations clientOperations) GetLiveCollectionItem() sdkgo.Query[GetCollectionItemInput, GetCollectionItemOutput] {
+	return operations.client.GetLiveCollectionItem()
+}
 func (operations clientOperations) ListCollectionItems() sdkgo.Query[ListCollectionItemsInput, ListCollectionItemsOutput] {
 	return operations.client.ListCollectionItems()
 }
@@ -188,6 +204,308 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential site_token is required")
 	}
 	return nil
+}
+
+const ListCollectionsBranchListed sdkgo.BranchID = "listed"
+const ListCollectionsBranchNotFound sdkgo.BranchID = "notFound"
+const ListCollectionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCollectionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCollectionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCollectionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCollections"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCollectionsBranchListed, Description: "Listed CMS collections."},
+		{ID: ListCollectionsBranchNotFound, Description: "The site does not exist or is not visible.", Optional: true},
+		{ID: ListCollectionsBranchProviderRejected, Description: "The provider rejected the request or credentials.", Optional: true},
+		{ID: ListCollectionsBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCollectionsBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCollectionsResult = sdkgo.QueryResult[ListCollectionsOutput]
+
+type ListCollectionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                 `connector:"connectorId=webflow"`
+	operationID                    struct{}                                                 `connector:"operationId=listCollections"`
+	StepType                       string                                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                     Connection                                               `connector:"connection"`
+	ConnectionName                 string                                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCollectionsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCollectionsResult]                      `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListCollectionsResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListCollectionsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCollectionsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCollectionsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListCollectionsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewListCollectionsStep[IN any](config ListCollectionsStepConfig[IN]) sdkgo.QueryStep[IN, ListCollectionsInput, ListCollectionsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("webflow connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCollectionsInput, ListCollectionsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCollections(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCollectionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCollectionsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCollectionsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListCollectionsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCollectionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCollectionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCollectionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCollectionBranchFound sdkgo.BranchID = "found"
+const GetCollectionBranchNotFound sdkgo.BranchID = "notFound"
+const GetCollectionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCollectionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCollectionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCollectionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCollection"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCollectionBranchFound, Description: "Found the CMS collection."},
+		{ID: GetCollectionBranchNotFound, Description: "The collection does not exist or is not visible.", Optional: true},
+		{ID: GetCollectionBranchProviderRejected, Description: "The provider rejected the request or credentials.", Optional: true},
+		{ID: GetCollectionBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: GetCollectionBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCollectionResult = sdkgo.QueryResult[GetCollectionOutput]
+
+type GetCollectionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=webflow"`
+	operationID                    struct{}                                               `connector:"operationId=getCollection"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCollectionInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCollectionResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCollectionResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCollectionResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCollectionResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCollectionResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetCollectionOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewGetCollectionStep[IN any](config GetCollectionStepConfig[IN]) sdkgo.QueryStep[IN, GetCollectionInput, GetCollectionOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("webflow connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCollectionInput, GetCollectionOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCollection(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCollectionResult] {
+			branches := make([]sdkgo.BranchTarget[GetCollectionResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCollectionBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCollectionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCollectionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCollectionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCollectionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListLiveCollectionItemsBranchListed sdkgo.BranchID = "listed"
+const ListLiveCollectionItemsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListLiveCollectionItemsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListLiveCollectionItemsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListLiveCollectionItemsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLiveCollectionItems"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListLiveCollectionItemsBranchListed, Description: "Listed published CMS items."},
+		{ID: ListLiveCollectionItemsBranchProviderRejected, Description: "The provider rejected the request or credentials.", Optional: true},
+		{ID: ListLiveCollectionItemsBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: ListLiveCollectionItemsBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListLiveCollectionItemsResult = sdkgo.QueryResult[ListCollectionItemsOutput]
+
+type ListLiveCollectionItemsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                     `connector:"connectorId=webflow"`
+	operationID                    struct{}                                                     `connector:"operationId=listLiveCollectionItems"`
+	StepType                       string                                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                     Connection                                                   `connector:"connection"`
+	ConnectionName                 string                                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCollectionItemsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListLiveCollectionItemsResult]                  `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListLiveCollectionItemsResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListLiveCollectionItemsResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListLiveCollectionItemsResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListCollectionItemsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewListLiveCollectionItemsStep[IN any](config ListLiveCollectionItemsStepConfig[IN]) sdkgo.QueryStep[IN, ListCollectionItemsInput, ListCollectionItemsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("webflow connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCollectionItemsInput, ListCollectionItemsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListLiveCollectionItems(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListLiveCollectionItemsResult] {
+			branches := make([]sdkgo.BranchTarget[ListLiveCollectionItemsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListLiveCollectionItemsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListLiveCollectionItemsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListLiveCollectionItemsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListLiveCollectionItemsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetLiveCollectionItemBranchFound sdkgo.BranchID = "found"
+const GetLiveCollectionItemBranchNotFound sdkgo.BranchID = "notFound"
+const GetLiveCollectionItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetLiveCollectionItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetLiveCollectionItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetLiveCollectionItemDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getLiveCollectionItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetLiveCollectionItemBranchFound, Description: "Found the published CMS item."},
+		{ID: GetLiveCollectionItemBranchNotFound, Description: "The item does not exist or is not published.", Optional: true},
+		{ID: GetLiveCollectionItemBranchProviderRejected, Description: "The provider rejected the request or credentials.", Optional: true},
+		{ID: GetLiveCollectionItemBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: GetLiveCollectionItemBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetLiveCollectionItemResult = sdkgo.QueryResult[GetCollectionItemOutput]
+
+type GetLiveCollectionItemStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=webflow"`
+	operationID                    struct{}                                                   `connector:"operationId=getLiveCollectionItem"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCollectionItemInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetLiveCollectionItemResult]                  `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetLiveCollectionItemResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetLiveCollectionItemResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetLiveCollectionItemResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetLiveCollectionItemResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetCollectionItemOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetLiveCollectionItemStep[IN any](config GetLiveCollectionItemStepConfig[IN]) sdkgo.QueryStep[IN, GetCollectionItemInput, GetCollectionItemOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("webflow connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCollectionItemInput, GetCollectionItemOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetLiveCollectionItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetLiveCollectionItemResult] {
+			branches := make([]sdkgo.BranchTarget[GetLiveCollectionItemResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetLiveCollectionItemBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetLiveCollectionItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetLiveCollectionItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetLiveCollectionItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetLiveCollectionItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListCollectionItemsBranchListed sdkgo.BranchID = "listed"

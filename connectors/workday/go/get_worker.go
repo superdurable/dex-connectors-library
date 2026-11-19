@@ -33,6 +33,24 @@ type WorkerSummary struct {
 	Descriptor string `json:"descriptor"`
 }
 
+// ListWorkersInput selects a page of workers and an optional name-prefix search.
+type ListWorkersInput struct {
+	// Limit is the page size from 1 to 100; zero uses Workday's default of 20.
+	Limit int `json:"limit,omitempty"`
+	// Offset is the zero-based position of the first worker.
+	Offset int `json:"offset,omitempty"`
+	// Search is at least three consecutive characters from a worker name when set.
+	Search string `json:"search,omitempty"`
+}
+
+// WorkerPage contains one page and the total count of accessible workers.
+type WorkerPage struct {
+	// Total is the number of accessible workers matching the search.
+	Total int `json:"total"`
+	// Data contains the workers in this page.
+	Data []WorkerSummary `json:"data"`
+}
+
 // GetWorkerOperation reads a worker without mutating the provider.
 type GetWorkerOperation struct{ client *Client }
 

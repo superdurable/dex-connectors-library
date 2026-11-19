@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{taskinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{taskinspection.NewFlow(connection), taskinspection.NewUpdateFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Wrike task inspection Flow: %w", err)
 	}

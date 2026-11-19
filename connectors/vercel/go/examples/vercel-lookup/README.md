@@ -1,6 +1,10 @@
-# Vercel lookup example
+# Vercel lookup and cancellation example
 
 This runnable Flow calls `vercel.NewListDeploymentsStep` with the static connection name `vercel` and completes with the typed `DeploymentsPage` value. Optional branches are unwired and fail the Flow if selected. Its [mock-backed integration test](flow/workflow_mock_integration_test.go) uses a real Dex Worker and Client in CI.
+
+`NewCancelFlow` runs `vercel.NewCancelDeploymentStep` with the same static connection. Its mock-backed real Dex test confirms the cancellation result and one connector call.
+
+`NewProjectDomainFlow` runs `vercel.NewCreateProjectStep` followed by `vercel.NewAddProjectDomainStep`, using the created project ID for the assignment. In Dex Web **Start Flow**, select `VercelCreateProjectWithDomain` and enter `{"name":"meridian-web","domain":"meridian.example.com"}`; set `teamId` when creating in a team. Both writes use bounded possible sends. Its mock-backed real Dex test confirms the project and domain connector calls.
 
 ## Generate the strict Flow Definition
 
@@ -22,7 +26,7 @@ mkdir -p /tmp/vercel-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/vercel/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/vercel/go \
-  --version v0.2.0 --tag connectors/vercel/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/vercel/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/vercel-release/connector-release.json \
   --digest-output /tmp/vercel-release/connector-release.json.sha256

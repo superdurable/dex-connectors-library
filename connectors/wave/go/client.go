@@ -6,6 +6,7 @@ package wave
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // Option configures an HTTP dependency without storing it in a connection.
@@ -108,4 +110,56 @@ func (client *Client) get(call sdkgo.Call, input GetCustomerInput) providerRespo
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}
+
+func (client *Client) sendGraphQL(call sdkgo.Call, requestContext context.Context, query string, variables any, fenced bool) providerResponse {
+	credentials, err := client.credentials.Resolve(call)
+	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()) {
+		return providerResponse{err: errCredential}
+	}
+	requestBody, err := json.Marshal(struct {
+		Query     string `json:"query"`
+		Variables any    `json:"variables"`
+	}{Query: query, Variables: variables})
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+"/graphql/public", bytes.NewReader(requestBody))
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	if fenced {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return providerResponse{err: errRequest}
+		}
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}
+
+func isDefiniteWaveRefusal(response providerResponse) bool {
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	if response.err != nil {
+		return false
+	}
+	var rejection struct {
+		Data json.RawMessage   `json:"data"`
+		Errors []json.RawMessage `json:"errors"`
+	}
+	return json.Unmarshal(response.body, &rejection) == nil && len(rejection.Errors) > 0 && (len(rejection.Data) == 0 || string(rejection.Data) == "null")
 }

@@ -24,7 +24,8 @@ import (
 func TestTransferInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := wisemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	profileFlow := NewProfileFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, profileFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -58,4 +59,15 @@ func TestTransferInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "EUR", output.SourceCurrency)
 	require.Equal(t, "incoming_payment_waiting", output.Status)
 	require.Len(t, mock.GetTransfer().Calls(), 1)
+	profileInput := wise.GetProfileInput{ProfileID: "101"}
+	profileFlowID := "wise-profileinspection-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, profileFlow, profileFlowID, profileInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	profileResult, err := client.WaitForFlow(ctx, profileFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, profileResult.Status, profileResult.ErrorMessage)
+	var profile wise.ProfileSummary
+	require.NoError(t, profileResult.DecodeSingleOutput(&profile))
+	require.Equal(t, "101", profile.ID)
+	require.Len(t, mock.GetProfile().Calls(), 1)
 }

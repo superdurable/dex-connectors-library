@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: wise
   displayName: Wise Platform
-  description: Read selected Wise transfer status through the Platform API.
+  description: Read Wise profiles and transfer status through the Platform API.
   company: Wise
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: wise
   languages:
@@ -55,6 +55,270 @@ spec:
         - Sign in to a Wise business account, open Your Account > Connect and manage apps > API tokens > Add new token, complete two-step verification, then copy the opaque personal API token once into Dex Web secret api_token; blank is invalid. Revoke or rotate it on the same page when retired. Partner OAuth user tokens also work when supplied through this secret field.
         - Leave baseUrl blank for Production or set https://api.wise-sandbox.com/2026Q4 for Sandbox. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret numeric transfer ID in Wise transfer details or an API response and pass it as transferId; blank is invalid.
   operations:
+    - name: listProfiles
+      goName: ListProfiles
+      inputType: ListProfilesInput
+      outputType: ProfilesOutput
+      kind: query
+      description: List accessible profile IDs and types without personal details.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise listed accessible profiles.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultListProfiles
+          branch: listed
+          default: true
+          description: One business profile.
+          output: {profiles: [{id: "101", type: business}]}
+    - name: getProfile
+      goName: GetProfile
+      inputType: GetProfileInput
+      outputType: ProfileSummary
+      kind: query
+      description: Get a profile ID and type without personal details.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Wise returned the profile.}
+        - {id: notFound, goName: NotFound, description: Wise did not expose the profile., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultGetProfile
+          branch: found
+          default: true
+          description: One business profile.
+          output: {id: "101", type: business}
+    - name: getBalance
+      goName: GetBalance
+      inputType: GetBalanceInput
+      outputType: BalanceSummary
+      kind: query
+      description: Get one balance without bank account details.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Wise returned the balance account.}
+        - {id: notFound, goName: NotFound, description: Wise did not expose the balance., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultGetBalance
+          branch: found
+          default: true
+          description: One EUR standard balance.
+          output: {id: "301", currency: EUR, type: STANDARD, availableAmount: 12.5}
+    - name: createBalance
+      goName: CreateBalance
+      inputType: CreateBalanceInput
+      outputType: BalanceSummary
+      kind: mutation
+      description: Open a standard or savings balance with Wise idempotency.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: created, goName: Created, description: Wise opened the balance account.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected balance creation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultCreateBalance
+          branch: created
+          default: true
+          description: One new EUR standard balance.
+          output: {id: "301", currency: EUR, type: STANDARD, availableAmount: 0}
+    - name: listBalances
+      goName: ListBalances
+      inputType: ListBalancesInput
+      outputType: BalancesOutput
+      kind: query
+      description: List balance IDs, currencies, types, and available amounts.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise listed balance accounts.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultListBalances
+          branch: listed
+          default: true
+          description: One EUR standard balance.
+          output: {balances: [{id: "301", currency: EUR, type: STANDARD, availableAmount: 12.5}]}
+    - name: listAvailableBalanceCurrencies
+      goName: ListAvailableBalanceCurrencies
+      inputType: ListPayinCurrenciesInput
+      outputType: PayinCurrenciesOutput
+      kind: query
+      description: List currencies available for Wise balance accounts.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise listed available balance currencies.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultListAvailableBalanceCurrencies
+          branch: listed
+          default: true
+          description: Three available balance currencies.
+          output: {currencies: [EUR, GBP, USD]}
+    - name: listPayinCurrencies
+      goName: ListPayinCurrencies
+      inputType: ListPayinCurrenciesInput
+      outputType: PayinCurrenciesOutput
+      kind: query
+      description: List balance currencies with bank account details support.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise listed payin currencies.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultListPayinCurrencies
+          branch: listed
+          default: true
+          description: Three supported balance currencies.
+          output: {currencies: [EUR, GBP, USD]}
+    - name: listRecipients
+      goName: ListRecipients
+      inputType: ListRecipientsInput
+      outputType: RecipientsOutput
+      kind: query
+      description: List recipient IDs and currencies without bank details.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise listed recipients.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultListRecipients
+          branch: listed
+          default: true
+          description: One recipient without bank details.
+          output: {recipients: [{id: "201", currency: EUR, active: true}]}
+    - name: getExchangeRates
+      goName: GetExchangeRates
+      inputType: GetExchangeRatesInput
+      outputType: ExchangeRatesOutput
+      kind: query
+      description: Get the current rates for a currency pair.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise returned exchange rates.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultGetExchangeRates
+          branch: listed
+          default: true
+          description: One EUR to USD exchange rate.
+          output: {rates: [{source: EUR, target: USD, rate: 1.1, time: "2026-11-17T00:00:00Z"}]}
+    - name: createQuote
+      goName: CreateQuote
+      inputType: CreateQuoteInput
+      outputType: QuoteSummary
+      kind: mutation
+      description: Create a profile quote for one currency pair and amount.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, dispatchFence: true, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Wise created the quote.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the quote request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A quote may have been created but cannot be identified., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultCreateQuote
+          branch: created
+          default: true
+          description: One authenticated quote.
+          output: {id: "11144c35-9fe8-4c32-b7fd-d05c2a7734bf", sourceCurrency: GBP, targetCurrency: USD}
+    - name: getQuote
+      goName: GetQuote
+      inputType: GetQuoteInput
+      outputType: QuoteSummary
+      kind: query
+      description: Get an authenticated quote without account details.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Wise returned the quote.}
+        - {id: notFound, goName: NotFound, description: Wise did not expose the quote., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultGetQuote
+          branch: found
+          default: true
+          description: One authenticated quote.
+          output: {id: "11144c35-9fe8-4c32-b7fd-d05c2a7734bf", sourceCurrency: GBP, targetCurrency: USD}
+    - name: createTransfer
+      goName: CreateTransfer
+      inputType: CreateTransferInput
+      outputType: TransferStatus
+      kind: mutation
+      description: Create an unfunded transfer using a stable customer transaction ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: created, goName: Created, description: Wise created the unfunded transfer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the transfer., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultCreateTransfer
+          branch: created
+          default: true
+          description: One unfunded transfer.
+          output: {id: "16521632", status: incoming_payment_waiting, sourceCurrency: EUR}
+    - name: cancelTransfer
+      goName: CancelTransfer
+      inputType: CancelTransferInput
+      outputType: TransferStatus
+      kind: mutation
+      description: Cancel an unfunded transfer when Wise permits cancellation.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: cancelled, goName: Cancelled, description: Wise cancelled the transfer.}
+        - {id: notFound, goName: NotFound, description: Wise did not expose the transfer., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise refused cancellation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultCancelTransfer
+          branch: cancelled
+          default: true
+          description: One cancelled transfer.
+          output: {id: "16521632", status: cancelled, sourceCurrency: EUR}
     - name: getTransfer
       goName: GetTransfer
       inputType: GetTransferInput
