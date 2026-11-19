@@ -63,6 +63,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.aqara.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Aqara credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,29 +88,29 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Aqara stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Aqara stored credential does not match the connector credential fields")
         if set(material) - set(('app_id', 'key_id', 'app_key', 'access_token')):
-            raise ValueError("Aqara stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Aqara stored credential does not match the connector credential fields")
         app_id = material.get("app_id")
         if app_id is not None and not (isinstance(app_id, str)):
-            raise ValueError("Aqara credential app_id has an invalid type")
+            raise CredentialMaterialError("Aqara credential app_id has an invalid type")
         key_id = material.get("key_id")
         if key_id is not None and not (isinstance(key_id, str)):
-            raise ValueError("Aqara credential key_id has an invalid type")
+            raise CredentialMaterialError("Aqara credential key_id has an invalid type")
         app_key = material.get("app_key")
         if app_key is not None and not (isinstance(app_key, str)):
-            raise ValueError("Aqara credential app_key has an invalid type")
+            raise CredentialMaterialError("Aqara credential app_key has an invalid type")
         access_token = material.get("access_token")
         if access_token is not None and not (isinstance(access_token, str)):
-            raise ValueError("Aqara credential access_token has an invalid type")
+            raise CredentialMaterialError("Aqara credential access_token has an invalid type")
         if not app_id:
-            raise ValueError("Aqara credential app_id is required")
+            raise CredentialMaterialError("Aqara credential app_id is required")
         if not key_id:
-            raise ValueError("Aqara credential key_id is required")
+            raise CredentialMaterialError("Aqara credential key_id is required")
         if not app_key:
-            raise ValueError("Aqara credential app_key is required")
+            raise CredentialMaterialError("Aqara credential app_key is required")
         if not access_token:
-            raise ValueError("Aqara credential access_token is required")
+            raise CredentialMaterialError("Aqara credential access_token is required")
         return Credentials(app_id, key_id, SecretString(app_key), SecretString(access_token))
 
 
