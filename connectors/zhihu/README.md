@@ -10,3 +10,5 @@ The [runnable Dex Flow](go/examples/quota-list/README.md) shows connection setup
 ## Python
 
 The first Python package implements the read-only `listQuotas` operation and replays all Go-recorded outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/quota_list/README.md). Live provider authorization and responses remain unverified.
+
+The [TypeScript package](typescript/) (v0.1.0) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay.
