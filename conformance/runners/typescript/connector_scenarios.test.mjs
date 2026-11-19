@@ -7,7 +7,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
-import { HeartbeatContext, isSameHeartbeat, loadScenarios } from './connector_scenarios.ts';
+import { ExchangeRecorder, HeartbeatContext, isSameHeartbeat, loadScenarios } from './connector_scenarios.ts';
+
+test('pathless URL and root prefix preserve root and child request paths', () => {
+  for (const [prefix, path] of [['', ''], ['/', '/'], ['/', '/resource']]) {
+    const exchange = { method: 'GET', path: path || '/', keyMode: 'absent', status: 200, headers: {}, body: '' };
+    const recorder = new ExchangeRecorder({ callId: 'call', exchanges: [exchange] }, prefix);
+    recorder.record({ method: 'GET', url: `https://example.test${path}`, headers: {} });
+    assert.deepEqual(recorder.mismatches, [], path);
+  }
+});
 
 test('isSameHeartbeat compares a count-free recording without the exact count', () => {
   const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
