@@ -11,3 +11,5 @@ Open your organization's Rainbond console over HTTPS. In the top-right menu choo
 ## Example
 
 The [team catalog Flow](go/examples/team-catalog/) is a runnable Worker with static Dex connection name `rainbond`. Its local mock uses synthetic team data and can be verified through a real Dex Worker and Client. Live console authorization, version compatibility, and provider pagination remain unverified until a user connects an approved Rainbond deployment.
+
+The [TypeScript package](typescript/) provides the same `ListTeams` operation, Go-recorded conformance, and a runnable Dex Worker and Client example.
