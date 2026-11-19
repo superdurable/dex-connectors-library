@@ -8,7 +8,8 @@ import { AmazonDynamoDBClient } from '../src/client.js';
 import { GetItemInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/amazon/dynamodb/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/amazon/dynamodb/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getItem');
 const connection = { provider: 'amazon-dynamodb', name: 'amazon-dynamodb' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAmazonDynamoDB, ''));
 

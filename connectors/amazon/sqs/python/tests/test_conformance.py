@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Replay Go-recorded SQS provider exchanges through the Python connector."""
 
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,7 +16,17 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/amazon/sqs/scenarios.json")
+PACKAGE_MANIFEST = json.loads(
+    (ROOT / "connectors/amazon/sqs/python/src/dex_connectors/amazon_sqs/dex-connector.json").read_text()
+)
+SUPPORTED_OPERATIONS = {
+    factory["operationId"] for factory in PACKAGE_MANIFEST["factories"] if "operationId" in factory
+}
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/amazon/sqs/scenarios.json")
+    if scenario["operation"] in SUPPORTED_OPERATIONS
+]
 CONNECTION = sdk.ConnectionRef("amazon-sqs", "sqs-test")
 ADAPTER = PythonOperationAdapter(
     "amazon-sqs",
@@ -27,13 +38,15 @@ ADAPTER = PythonOperationAdapter(
             default_queue_url="http://127.0.0.1:12345/123456789012/orders",
             region="eu-west-1",
         ),
-        sdk.StaticCredentialProvider({
-            CONNECTION: sqs.Credentials(
-                sdk.SecretString("AKIASQSCONNECTORTEST"),
-                sdk.SecretString("sqs-connector-test/secret+value"),
-                sdk.SecretString(""),
-            ),
-        }),
+        sdk.StaticCredentialProvider(
+            {
+                CONNECTION: sqs.Credentials(
+                    sdk.SecretString("AKIASQSCONNECTORTEST"),
+                    sdk.SecretString("sqs-connector-test/secret+value"),
+                    sdk.SecretString(""),
+                ),
+            }
+        ),
         http_client,
         now=lambda: datetime(2026, 10, 30, tzinfo=UTC),
     ),

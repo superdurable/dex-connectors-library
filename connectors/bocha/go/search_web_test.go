@@ -49,7 +49,7 @@ func TestSearchWebRequestAndFilteredResponse(t *testing.T) {
 	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		calls++
 		require.Equal(t, http.MethodPost, request.Method)
-		require.Equal(t, webSearchEndpoint, request.URL.String())
+		require.Equal(t, "https://api.bochaai.com/v1/web-search", request.URL.String())
 		require.Equal(t, "Bearer test-secret", request.Header.Get("Authorization"))
 		require.Equal(t, "application/json", request.Header.Get("Content-Type"))
 		var payload map[string]any

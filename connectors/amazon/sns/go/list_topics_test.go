@@ -19,6 +19,7 @@ var testConnection = sdkgo.ConnectionRef{Provider: "amazon-sns", Name: "amazon-s
 
 type queryContext struct{ dex.Context }
 
+func (queryContext) Attempt() int32              { return 1 }
 func (queryContext) FlowID() string              { return "sns-provider-test" }
 func (queryContext) StepExecutionID() string     { return "list-topics" }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }

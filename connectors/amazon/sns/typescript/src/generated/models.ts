@@ -12,9 +12,9 @@ export interface Config {
   region?: string;
   /** Optional SNS-compatible API root. Blank derives the regional AWS endpoint from region. Override only for a trusted compatible endpoint; local tests may use loopback HTTP. */
   endpoint?: string;
-  /** Maximum duration of one ListTopics request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
+  /** Maximum duration of one SNS API request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete topic list response in bytes. Blank uses the displayed default; increase only for unusually large responses. */
+  /** Maximum complete SNS API response in bytes. Blank uses the displayed default; increase only for unusually large responses. */
   maxResponseBytes?: number;
 }
 

@@ -17,8 +17,11 @@ import (
 
 // Mock is a scripted amazon-lambda connection. Script each operation through its accessor.
 type Mock struct {
-	connection  lambda.Connection
-	getFunction *connectormock.Query[lambda.GetFunctionInput, lambda.FunctionDetails]
+	connection                lambda.Connection
+	getFunction               *connectormock.Query[lambda.GetFunctionInput, lambda.FunctionDetails]
+	listFunctions             *connectormock.Query[lambda.ListFunctionsInput, lambda.FunctionPage]
+	updateFunctionDescription *connectormock.Mutation[lambda.UpdateFunctionDescriptionInput, lambda.FunctionDetails]
+	deleteFunction            *connectormock.Mutation[lambda.DeleteFunctionInput, lambda.FunctionWriteResult]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +29,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getFunction: connectormock.NewQuery[lambda.GetFunctionInput, lambda.FunctionDetails](t, lambda.GetFunctionDefinition),
+		getFunction:               connectormock.NewQuery[lambda.GetFunctionInput, lambda.FunctionDetails](t, lambda.GetFunctionDefinition),
+		listFunctions:             connectormock.NewQuery[lambda.ListFunctionsInput, lambda.FunctionPage](t, lambda.ListFunctionsDefinition),
+		updateFunctionDescription: connectormock.NewMutation[lambda.UpdateFunctionDescriptionInput, lambda.FunctionDetails](t, lambda.UpdateFunctionDescriptionDefinition),
+		deleteFunction:            connectormock.NewMutation[lambda.DeleteFunctionInput, lambda.FunctionWriteResult](t, lambda.DeleteFunctionDefinition),
 	}
 	mock.getFunction.Default(GetFunctionDefault())
+	mock.listFunctions.Default(ListFunctionsDefault())
+	mock.updateFunctionDescription.Default(UpdateFunctionDescriptionDefault())
+	mock.deleteFunction.Default(DeleteFunctionDefault())
 	connection, err := lambda.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-lambda", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-lambda mock connection: %v", err)
@@ -45,10 +54,34 @@ func (mock *Mock) GetFunction() *connectormock.Query[lambda.GetFunctionInput, la
 	return mock.getFunction
 }
 
+// ListFunctions returns the listFunctions script.
+func (mock *Mock) ListFunctions() *connectormock.Query[lambda.ListFunctionsInput, lambda.FunctionPage] {
+	return mock.listFunctions
+}
+
+// UpdateFunctionDescription returns the updateFunctionDescription script.
+func (mock *Mock) UpdateFunctionDescription() *connectormock.Mutation[lambda.UpdateFunctionDescriptionInput, lambda.FunctionDetails] {
+	return mock.updateFunctionDescription
+}
+
+// DeleteFunction returns the deleteFunction script.
+func (mock *Mock) DeleteFunction() *connectormock.Mutation[lambda.DeleteFunctionInput, lambda.FunctionWriteResult] {
+	return mock.deleteFunction
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetFunction() sdkgo.Query[lambda.GetFunctionInput, lambda.FunctionDetails] {
 	return operations.mock.getFunction
+}
+func (operations mockOperations) ListFunctions() sdkgo.Query[lambda.ListFunctionsInput, lambda.FunctionPage] {
+	return operations.mock.listFunctions
+}
+func (operations mockOperations) UpdateFunctionDescription() sdkgo.Mutation[lambda.UpdateFunctionDescriptionInput, lambda.FunctionDetails] {
+	return operations.mock.updateFunctionDescription
+}
+func (operations mockOperations) DeleteFunction() sdkgo.Mutation[lambda.DeleteFunctionInput, lambda.FunctionWriteResult] {
+	return operations.mock.deleteFunction
 }
 
 // GetFunctionFound selects the found branch: AWS returned the function configuration.
@@ -90,4 +123,112 @@ func GetFunctionFoundDefault() connectormock.Case[lambda.FunctionDetails] {
 // GetFunctionDefault is the manifest default, foundDefault, which New installs.
 func GetFunctionDefault() connectormock.Case[lambda.FunctionDetails] {
 	return GetFunctionFoundDefault()
+}
+
+// ListFunctionsListed selects the listed branch: AWS returned a page of functions.
+func ListFunctionsListed(value lambda.FunctionPage, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionPage] {
+	return connectormock.Branch(lambda.ListFunctionsBranchListed, value, failure)
+}
+
+// ListFunctionsProviderRejected selects the providerRejected branch: AWS conclusively rejected the request or credentials.
+func ListFunctionsProviderRejected(value lambda.FunctionPage, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionPage] {
+	return connectormock.Branch(lambda.ListFunctionsBranchProviderRejected, value, failure)
+}
+
+// ListFunctionsInvalidResponse selects the invalidResponse branch: AWS returned malformed or oversized function metadata.
+func ListFunctionsInvalidResponse(value lambda.FunctionPage, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionPage] {
+	return connectormock.Branch(lambda.ListFunctionsBranchInvalidResponse, value, failure)
+}
+
+// ListFunctionsDefect selects the defect branch: The page input or connection settings are invalid.
+func ListFunctionsDefect(value lambda.FunctionPage, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionPage] {
+	return connectormock.Branch(lambda.ListFunctionsBranchDefect, value, failure)
+}
+
+// ListFunctionsRetry asks Dex to retry the listFunctions Step, after the delay when it is positive.
+func ListFunctionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lambda.FunctionPage] {
+	return connectormock.Retry[lambda.FunctionPage](failure, after)
+}
+
+// ListFunctionsListedDefault is the manifest mock listedDefault: One example function exists.
+func ListFunctionsListedDefault() connectormock.Case[lambda.FunctionPage] {
+	value := connectormock.MustDecodeOutput[lambda.FunctionPage](`{"functions":[{"name":"example-function","arn":"arn:aws:lambda:us-east-1:123456789012:function:example-function"}],"nextMarker":""}`)
+	return connectormock.Branch(lambda.ListFunctionsBranchListed, value, nil)
+}
+
+// ListFunctionsDefault is the manifest default, listedDefault, which New installs.
+func ListFunctionsDefault() connectormock.Case[lambda.FunctionPage] {
+	return ListFunctionsListedDefault()
+}
+
+// UpdateFunctionDescriptionUpdated selects the updated branch: AWS accepted the description update.
+func UpdateFunctionDescriptionUpdated(value lambda.FunctionDetails, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionDetails] {
+	return connectormock.Branch(lambda.UpdateFunctionDescriptionBranchUpdated, value, failure)
+}
+
+// UpdateFunctionDescriptionMissing selects the missing branch: The function does not exist.
+func UpdateFunctionDescriptionMissing(value lambda.FunctionDetails, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionDetails] {
+	return connectormock.Branch(lambda.UpdateFunctionDescriptionBranchMissing, value, failure)
+}
+
+// UpdateFunctionDescriptionProviderRejected selects the providerRejected branch: AWS conclusively rejected the update.
+func UpdateFunctionDescriptionProviderRejected(value lambda.FunctionDetails, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionDetails] {
+	return connectormock.Branch(lambda.UpdateFunctionDescriptionBranchProviderRejected, value, failure)
+}
+
+// UpdateFunctionDescriptionInvalidResponse selects the invalidResponse branch: AWS returned malformed or oversized metadata.
+func UpdateFunctionDescriptionInvalidResponse(value lambda.FunctionDetails, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionDetails] {
+	return connectormock.Branch(lambda.UpdateFunctionDescriptionBranchInvalidResponse, value, failure)
+}
+
+// UpdateFunctionDescriptionDefect selects the defect branch: The update input or connection settings are invalid.
+func UpdateFunctionDescriptionDefect(value lambda.FunctionDetails, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionDetails] {
+	return connectormock.Branch(lambda.UpdateFunctionDescriptionBranchDefect, value, failure)
+}
+
+// UpdateFunctionDescriptionRetry asks Dex to retry the updateFunctionDescription Step, after the delay when it is positive.
+func UpdateFunctionDescriptionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lambda.FunctionDetails] {
+	return connectormock.Retry[lambda.FunctionDetails](failure, after)
+}
+
+// UpdateFunctionDescriptionUpdatedDefault is the manifest mock updatedDefault: The example function description was accepted.
+func UpdateFunctionDescriptionUpdatedDefault() connectormock.Case[lambda.FunctionDetails] {
+	value := connectormock.MustDecodeOutput[lambda.FunctionDetails](`{"name":"example-function","arn":"arn:aws:lambda:us-east-1:123456789012:function:example-function"}`)
+	return connectormock.Branch(lambda.UpdateFunctionDescriptionBranchUpdated, value, nil)
+}
+
+// UpdateFunctionDescriptionDefault is the manifest default, updatedDefault, which New installs.
+func UpdateFunctionDescriptionDefault() connectormock.Case[lambda.FunctionDetails] {
+	return UpdateFunctionDescriptionUpdatedDefault()
+}
+
+// DeleteFunctionDeleted selects the deleted branch: The function is absent after deletion.
+func DeleteFunctionDeleted(value lambda.FunctionWriteResult, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionWriteResult] {
+	return connectormock.Branch(lambda.DeleteFunctionBranchDeleted, value, failure)
+}
+
+// DeleteFunctionProviderRejected selects the providerRejected branch: AWS conclusively rejected the deletion.
+func DeleteFunctionProviderRejected(value lambda.FunctionWriteResult, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionWriteResult] {
+	return connectormock.Branch(lambda.DeleteFunctionBranchProviderRejected, value, failure)
+}
+
+// DeleteFunctionDefect selects the defect branch: The function name or connection settings are invalid.
+func DeleteFunctionDefect(value lambda.FunctionWriteResult, failure *sdkgo.Failure) connectormock.Case[lambda.FunctionWriteResult] {
+	return connectormock.Branch(lambda.DeleteFunctionBranchDefect, value, failure)
+}
+
+// DeleteFunctionRetry asks Dex to retry the deleteFunction Step, after the delay when it is positive.
+func DeleteFunctionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lambda.FunctionWriteResult] {
+	return connectormock.Retry[lambda.FunctionWriteResult](failure, after)
+}
+
+// DeleteFunctionDeletedDefault is the manifest mock deletedDefault: The example function is absent.
+func DeleteFunctionDeletedDefault() connectormock.Case[lambda.FunctionWriteResult] {
+	value := connectormock.MustDecodeOutput[lambda.FunctionWriteResult](`{"applied":true}`)
+	return connectormock.Branch(lambda.DeleteFunctionBranchDeleted, value, nil)
+}
+
+// DeleteFunctionDefault is the manifest default, deletedDefault, which New installs.
+func DeleteFunctionDefault() connectormock.Case[lambda.FunctionWriteResult] {
+	return DeleteFunctionDeletedDefault()
 }

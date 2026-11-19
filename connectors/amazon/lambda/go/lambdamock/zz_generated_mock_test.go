@@ -20,6 +20,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[lambda.FunctionDetails](`{"name":"example-function","arn":"arn:aws:lambda:us-east-1:123456789012:function:example-function"}`)
 			return err
 		}},
+		{name: "listFunctions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lambda.FunctionPage](`{"functions":[{"name":"example-function","arn":"arn:aws:lambda:us-east-1:123456789012:function:example-function"}],"nextMarker":""}`)
+			return err
+		}},
+		{name: "updateFunctionDescription/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lambda.FunctionDetails](`{"name":"example-function","arn":"arn:aws:lambda:us-east-1:123456789012:function:example-function"}`)
+			return err
+		}},
+		{name: "deleteFunction/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lambda.FunctionWriteResult](`{"applied":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +44,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetFunction().Definition().Operation.OperationID != "getFunction" {
 		t.Errorf("getFunction mock has another definition")
+	}
+	if mock.ListFunctions().Definition().Operation.OperationID != "listFunctions" {
+		t.Errorf("listFunctions mock has another definition")
+	}
+	if mock.UpdateFunctionDescription().Definition().Operation.OperationID != "updateFunctionDescription" {
+		t.Errorf("updateFunctionDescription mock has another definition")
+	}
+	if mock.DeleteFunction().Definition().Operation.OperationID != "deleteFunction" {
+		t.Errorf("deleteFunction mock has another definition")
 	}
 }

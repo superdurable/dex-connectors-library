@@ -19,6 +19,7 @@ import (
 
 type providerContext struct{ dex.Context }
 
+func (providerContext) Attempt() int32              { return 1 }
 func (providerContext) FlowID() string              { return "algolia-provider-test" }
 func (providerContext) StepExecutionID() string     { return "provider-step" }
 func (providerContext) Deadline() (time.Time, bool) { return time.Time{}, false }

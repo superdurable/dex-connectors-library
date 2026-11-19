@@ -23,12 +23,16 @@ var testConnection = sdkgo.ConnectionRef{Provider: "activecampaign", Name: "acti
 
 type queryContext struct{ dex.Context }
 
-func (queryContext) FlowID() string              { return "activecampaign-provider-test" }
-func (queryContext) StepExecutionID() string     { return "query" }
-func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }
-func (queryContext) Done() <-chan struct{}       { return nil }
-func (queryContext) Err() error                  { return nil }
-func (queryContext) Value(key any) any           { return context.Background().Value(key) }
+func (queryContext) FlowID() string                          { return "activecampaign-provider-test" }
+func (queryContext) StepExecutionID() string                 { return "query" }
+func (queryContext) Attempt() int32                          { return 1 }
+func (queryContext) FirstAttemptAt() time.Time               { return time.Unix(1, 0) }
+func (queryContext) RecordHeartbeat(any) error               { return nil }
+func (queryContext) GetLastHeartbeatValue(any) (bool, error) { return false, nil }
+func (queryContext) Deadline() (time.Time, bool)             { return time.Time{}, false }
+func (queryContext) Done() <-chan struct{}                   { return nil }
+func (queryContext) Err() error                              { return nil }
+func (queryContext) Value(key any) any                       { return context.Background().Value(key) }
 func newTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
 	client, err := New(Config{BaseURL: baseURL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIKey: sdkgo.NewSecretString(testAPIKey)}})

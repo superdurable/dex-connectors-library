@@ -64,6 +64,9 @@ func (operation SearchUsersOperation) Invoke(call sdkgo.Call, input SearchUsersI
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return usersBranch(SearchUsersBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Amplitude response exceeded the configured limit")
 	}
+	if errors.Is(response.err, errCredentialEcho) {
+		return usersBranch(SearchUsersBranchInvalidResponse, sdkgo.FailureProtocol, "Amplitude response contained connection credentials")
+	}
 	if response.err != nil {
 		return sdkgo.NewQueryRetry[UserSearchPage](usersFailure(sdkgo.FailureTransport, "Amplitude response was interrupted"), 0)
 	}
