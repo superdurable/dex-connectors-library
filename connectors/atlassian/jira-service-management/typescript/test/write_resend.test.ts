@@ -306,6 +306,48 @@ describe('Jira Service Management transition with a recorded checkpoint', () => 
     expect(requests).toHaveLength(1);
   });
 
+  // Request reads that prove nothing about the request.
+  const unknownTransitionReads: [string, number, string][] = [
+    ['409', 409, '{"errorMessages":["SENTINEL"]}'], ['425', 425, '{}'], ['unlisted 4xx', 418, '{}'],
+    ['cut 403', 403, oversizedBody], ['cut 404', 404, oversizedBody], ['oversized 2xx', 200, oversizedBody],
+    ['unparseable 2xx', 200, '{}'], ['token-reflecting 2xx', 200, '{"token":"jsm-access-token"}'],
+  ];
+
+  it.each(unknownTransitionReads)('retries a first read without a definite outcome and records notSent (%s)', async (_name, status, body) => {
+    const { client, requests } = newStallingClient(() => ({ status, body }));
+    const context = new AttemptContext();
+    expect(await runTransition(client, context)).toBe('retry');
+    expect(transitionPosts(requests)).toBe(0);
+    expect(context.marker).toEqual({ callId, attempt: 1, state: 'notSent' });
+  });
+
+  it.each(unknownTransitionReads)('retries a read without a definite outcome after a recorded send (%s)', async (_name, status, body) => {
+    const { client, requests } = newStallingClient(() => ({ status, body }));
+    const context = new AttemptContext(2, recordedPending);
+    expect(await runTransition(client, context), 'a possible earlier transition never selects a failure branch').toBe('retry');
+    expect(requests).toHaveLength(1);
+    expect(context.marker, 'the recorded plan is kept').toEqual(recordedPending);
+  });
+
+  it('keeps a definite refusal of the read', async () => {
+    const { client, requests } = newStallingClient(() => ({ status: 403, body: '{"errorMessages":["SENTINEL"]}' }));
+    expect(await runTransition(client, new AttemptContext())).toBe('providerRejected');
+    expect(transitionPosts(requests)).toBe(0);
+  });
+
+  it.each([429, 503])('passes Retry-After on a transition answered with HTTP %i', async status => {
+    const credentials = new StaticCredentialProvider([[connection, { accessToken: new SecretString('jsm-access-token'), refreshToken: new SecretString(''), oauthClientId: 'client-id', oauthClientSecret: new SecretString('secret') }]]);
+    const client = new JiraServiceManagementClient({ endpoint: 'http://127.0.0.1:12345', cloudId: '11223344-a1b2-4b33-8c44-def123456789' }, credentials, {
+      send: async (request: ProviderRequest) => request.method === 'GET'
+        ? { status: 200, headers: {}, body: Buffer.from(inProgress) }
+        : { status, headers: { 'retry-after': '7' }, body: Buffer.from('{}') },
+    });
+    const call = { id: callId, connection, operation: TransitionTicketDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    const error = await runMutation(client.transitionTicket(), call, pending).then(() => undefined, (caught: unknown) => caught);
+    expect(error).toBeInstanceOf(RetryError);
+    expect((error as RetryError).retryAfterMs).toBe(7_000);
+  });
+
   it('lets the next attempt send after a rate limit', async () => {
     const statuses = [429, 204];
     const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: statuses.shift()!, body: '' });

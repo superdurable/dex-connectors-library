@@ -186,7 +186,7 @@ export const TransitionTicketBranchNotFound = TransitionTicketBranch.NotFound;
 export const TransitionTicketBranchTransitionUnavailable = TransitionTicketBranch.TransitionUnavailable;
 /** Jira conclusively rejected the transition, such as a required transition screen field or missing permission. */
 export const TransitionTicketBranchProviderRejected = TransitionTicketBranch.ProviderRejected;
-/** Jira returned an invalid or oversized issue or transition list. */
+/** No longer selected. An invalid or oversized issue or transition list proves nothing about the request, so the Step retries; the branch stays declared for compatibility. */
 export const TransitionTicketBranchInvalidResponse = TransitionTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const TransitionTicketBranchDefect = TransitionTicketBranch.Defect;
@@ -198,7 +198,7 @@ export const TransitionTicketDefinition: MutationDefinition = {
     { id: "notFound", description: "The issue does not exist or the connection cannot browse it.", optional: true },
     { id: "transitionUnavailable", description: "No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.", optional: true },
     { id: "providerRejected", description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", optional: true },
-    { id: "invalidResponse", description: "Jira returned an invalid or oversized issue or transition list.", optional: true },
+    { id: "invalidResponse", description: "No longer selected. An invalid or oversized issue or transition list proves nothing about the request, so the Step retries; the branch stays declared for compatibility.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },

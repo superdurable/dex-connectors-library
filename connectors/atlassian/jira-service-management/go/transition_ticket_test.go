@@ -262,6 +262,72 @@ func TestRetriedTransitionTicketReadFailures(t *testing.T) {
 	}
 }
 
+// writeCutJSON promises a longer body than it sends, so the client cannot read it in full.
+func writeCutJSON(response http.ResponseWriter, status int) {
+	response.Header().Set("Content-Type", "application/json")
+	response.Header().Set("Content-Length", "64")
+	response.WriteHeader(status)
+	_, _ = response.Write([]byte(`{"errors":`))
+}
+
+// unknownTransitionTicketReads are request reads that prove nothing about the request.
+var unknownTransitionTicketReads = map[string]func(*testing.T, http.ResponseWriter){
+	"409":              func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusConflict, `{"errorMessages":["SENTINEL"]}`) },
+	"425":              func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusTooEarly, `{}`) },
+	"unlisted 4xx":     func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusTeapot, `{}`) },
+	"cut 403":          func(_ *testing.T, response http.ResponseWriter) { writeCutJSON(response, http.StatusForbidden) },
+	"cut 404":          func(_ *testing.T, response http.ResponseWriter) { writeCutJSON(response, http.StatusNotFound) },
+	"unparseable 2xx":  func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{}`) },
+	"token-reflecting": func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"token":"`+testAccessToken+`"}`) },
+}
+
+func TestFirstTransitionTicketReadWithoutADefiniteOutcomeRetriesAndRecordsNotSent(t *testing.T) {
+	for name, answer := range unknownTransitionTicketReads {
+		t.Run(name, func(t *testing.T) {
+			provider := newWorkflowProvider(t, "1")
+			provider.readReply = func(response http.ResponseWriter) bool { answer(t, response); return true }
+			ctx := newTestDexContext("transition-unknown-first-read")
+			_, err := runTransitionTicket(t, ctx, provider, jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Zero(t, provider.transitionPosts)
+			require.Contains(t, string(ctx.recordedHeartbeat), `"state":"notSent"`, "the next attempt may still select")
+		})
+	}
+}
+
+func TestRetriedTransitionTicketReadWithoutADefiniteOutcomeRetries(t *testing.T) {
+	for name, answer := range unknownTransitionTicketReads {
+		t.Run(name, func(t *testing.T) {
+			provider := newWorkflowProvider(t, "1")
+			provider.postReply = unappliedReply(provider, http.StatusBadGateway)
+			input := jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"}
+			ctx := newTestDexContext("transition-unknown-retried-read")
+			_, err := runTransitionTicket(t, ctx, provider, input)
+			requireRetry(t, err, sdkgo.FailureAvailability)
+			provider.readReply = func(response http.ResponseWriter) bool { answer(t, response); return true }
+			retried := ctx.nextAttempt()
+			_, err = runTransitionTicket(t, retried, provider, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "a possible earlier transition never selects a failure branch on an unknown read")
+			require.Equal(t, 1, provider.transitionPosts)
+			require.Zero(t, retried.heartbeatCount, "the recorded plan is kept")
+		})
+	}
+}
+
+func TestTransitionTicketReadWithADefiniteRefusalKeepsItsBranch(t *testing.T) {
+	provider := newWorkflowProvider(t, "1")
+	provider.readReply = func(response http.ResponseWriter) bool {
+		writeJSON(t, response, http.StatusForbidden, `{"errorMessages":["SENTINEL"]}`)
+		return true
+	}
+	result, err := runTransitionTicket(t, newTestDexContext("transition-forbidden-read"), provider, jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"})
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.TransitionTicketBranchProviderRejected, result.Branch)
+	require.Zero(t, provider.transitionPosts)
+}
+
 func TestTransitionTicketRefusalWithAnUnreadableBodyIsUnknown(t *testing.T) {
 	provider := newWorkflowProvider(t, "1")
 	provider.postReply = func(response http.ResponseWriter) bool {

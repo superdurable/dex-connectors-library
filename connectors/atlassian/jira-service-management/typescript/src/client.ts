@@ -185,7 +185,8 @@ export class JiraServiceManagementClient {
     return this.classification('defect', operation, 'AUTHENTICATION', 'Jira Service Management connection credentials are unavailable; reconnect the connection', {});
   }
 
-  private retryAfter(response: JiraResponse): number { return parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now()); }
+  /** Return the provider's Retry-After delay in milliseconds, or 0 when the header is absent or invalid. */
+  retryAfter(response: JiraResponse): number { return parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now()); }
 }
 
 /** Report a credential failure no retry fixes; a store or broker outage may pass. */

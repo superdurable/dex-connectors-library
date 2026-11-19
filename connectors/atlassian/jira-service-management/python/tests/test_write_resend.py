@@ -543,6 +543,53 @@ async def test_retried_transition_read_failures(status: int, branch: str) -> Non
     assert len(requests) == 1
 
 
+UNKNOWN_TRANSITION_READS = [
+    (409, '{"errorMessages":["SENTINEL"]}'),
+    (425, "{}"),
+    (418, "{}"),
+    (403, TRUNCATED_BODY),
+    (404, TRUNCATED_BODY),
+    (200, "{}"),
+    (200, '{"token":"jsm-access-token"}'),
+]
+"""Request reads that prove nothing about the request."""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("status", "body"), UNKNOWN_TRANSITION_READS)
+async def test_first_transition_read_without_a_definite_outcome_retries_and_records_not_sent(
+    status: int, body: str
+) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await run("transitionTicket", always(status, body), context, requests, transition=PENDING)
+    assert branch_of(result) == "retry"
+    assert transition_posts(requests) == 0
+    assert isinstance(context.heartbeat_value, dict) and context.heartbeat_value["state"] == "notSent"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("status", "body"), UNKNOWN_TRANSITION_READS)
+async def test_retried_transition_read_without_a_definite_outcome_retries(status: int, body: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext(2, heartbeat_value=RECORDED_PENDING)
+    result = await run("transitionTicket", always(status, body), context, requests, transition=PENDING)
+    assert branch_of(result) == "retry", "a possible earlier transition never selects a failure branch"
+    assert len(requests) == 1
+    assert context.heartbeat_value == RECORDED_PENDING, "the recorded plan is kept"
+
+
+@pytest.mark.asyncio
+async def test_transition_read_with_a_definite_refusal_keeps_its_branch() -> None:
+    requests: list[httpx.Request] = []
+    result = await run(
+        "transitionTicket", always(403, '{"errorMessages":["SENTINEL"]}'), AttemptContext(), requests,
+        transition=PENDING,
+    )
+    assert branch_of(result) == "providerRejected"
+    assert transition_posts(requests) == 0
+
+
 @pytest.mark.asyncio
 async def test_transition_rate_limit_allows_the_next_attempt_to_send() -> None:
     requests: list[httpx.Request] = []
