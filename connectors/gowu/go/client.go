@@ -5,10 +5,13 @@
 package gowu
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
+	"time"
 )
 
 // Option supplies a non-serializable client dependency to New.
@@ -28,6 +31,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
+	nonceReader      io.Reader
 }
 
 // New validates configuration without contacting Gowu. Rotated credentials take effect on the next call.
@@ -46,7 +51,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Gowu base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now, nonceReader: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Gowu client option is required")

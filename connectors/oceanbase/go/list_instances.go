@@ -5,10 +5,10 @@ package oceanbase
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -72,7 +72,7 @@ func (operation ListInstancesOperation) Invoke(call sdkgo.Call, input ListInstan
 	if err != nil || credentials.Validate() != nil || !isValidCredential(credentials.AccessKeyID.Reveal()) || !isValidCredential(credentials.AccessKeySecret.Reveal()) || !isValidProjectID(credentials.ProjectID.Reveal()) {
 		return instancesBranch(ListInstancesBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
-	requestID, err := newRequestID()
+	requestID, err := newRequestID(operation.client.randomReader)
 	if err != nil {
 		return instancesBranch(ListInstancesBranchDefect, sdkgo.FailureAvailability, "request ID could not be generated")
 	}
@@ -95,7 +95,7 @@ func (operation ListInstancesOperation) Invoke(call sdkgo.Call, input ListInstan
 		if challengeErr != nil {
 			return instancesBranch(ListInstancesBranchProviderRejected, sdkgo.FailureAuthentication, "OceanBase Cloud returned an unsupported Digest challenge")
 		}
-		authorization, authErr := digestAuthorization(challenge, credentials.AccessKeyID.Reveal(), credentials.AccessKeySecret.Reveal(), http.MethodGet, endpoint.RequestURI())
+		authorization, authErr := digestAuthorization(challenge, credentials.AccessKeyID.Reveal(), credentials.AccessKeySecret.Reveal(), http.MethodGet, endpoint.RequestURI(), operation.client.randomReader)
 		if authErr != nil {
 			return instancesBranch(ListInstancesBranchDefect, sdkgo.FailureAvailability, "Digest authorization could not be constructed")
 		}
@@ -105,7 +105,7 @@ func (operation ListInstancesOperation) Invoke(call sdkgo.Call, input ListInstan
 		}
 	}
 	defer func() { _ = response.Body.Close() }()
-	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), operation.client.now())
 	if response.StatusCode == http.StatusTooManyRequests {
 		return instancesRetry(sdkgo.FailureRateLimit, "OceanBase Cloud rate limited the request", retryAfter)
 	}
@@ -190,9 +190,9 @@ func decodeInstances(body []byte, input ListInstancesInput, credentials Credenti
 func containsCredential(value string, credentials Credentials) bool {
 	return strings.Contains(value, credentials.AccessKeyID.Reveal()) || strings.Contains(value, credentials.AccessKeySecret.Reveal()) || strings.Contains(value, credentials.ProjectID.Reveal())
 }
-func newRequestID() (string, error) {
+func newRequestID(randomReader io.Reader) (string, error) {
 	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
+	if _, err := io.ReadFull(randomReader, bytes); err != nil {
 		return "", err
 	}
 	bytes[6] = (bytes[6] & 0x0f) | 0x40

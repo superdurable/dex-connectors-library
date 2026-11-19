@@ -31,12 +31,14 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 
 // Client owns Lingxing configuration and an in-memory access token. It is safe for concurrent Steps.
 type Client struct {
-	baseURL          string
-	maxResponseBytes int64
-	credentials      CredentialSource
-	httpClient       *http.Client
-	tokenMutex       sync.Mutex
-	token            accessTokenCache
+	baseURL           string
+	maxResponseBytes  int64
+	credentials       CredentialSource
+	httpClient        *http.Client
+	now               func() time.Time
+	multipartBoundary string
+	tokenMutex        sync.Mutex
+	token             accessTokenCache
 }
 type accessTokenCache struct {
 	value           string
@@ -60,7 +62,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Lingxing base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Lingxing client option is required")
@@ -80,11 +82,16 @@ func (client *Client) getAccessToken(call sdkgo.Call, credentials Credentials) (
 	hash := sha256.Sum256([]byte(appID + "\x00" + appSecret))
 	client.tokenMutex.Lock()
 	defer client.tokenMutex.Unlock()
-	if client.token.value != "" && client.token.credentialsHash == hash && time.Now().Before(client.token.expiresAt) {
+	if client.token.value != "" && client.token.credentialsHash == hash && client.now().Before(client.token.expiresAt) {
 		return client.token.value, nil
 	}
 	var body strings.Builder
 	writer := multipart.NewWriter(&body)
+	if client.multipartBoundary != "" {
+		if err := writer.SetBoundary(client.multipartBoundary); err != nil {
+			return "", &providerIssue{branch: ListStoresBranchDefect, kind: sdkgo.FailureValidation, message: "Lingxing token request boundary is invalid"}
+		}
+	}
 	if err := writer.WriteField("appId", appID); err != nil {
 		return "", &providerIssue{branch: ListStoresBranchDefect, kind: sdkgo.FailureValidation, message: "Lingxing token request is invalid"}
 	}
@@ -106,7 +113,7 @@ func (client *Client) getAccessToken(call sdkgo.Call, credentials Credentials) (
 	}
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode == http.StatusTooManyRequests {
-		return "", &providerIssue{retry: true, kind: sdkgo.FailureRateLimit, message: "Lingxing token request was rate limited", delay: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())}
+		return "", &providerIssue{retry: true, kind: sdkgo.FailureRateLimit, message: "Lingxing token request was rate limited", delay: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now())}
 	}
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		return "", &providerIssue{retry: true, kind: sdkgo.FailureAvailability, message: "Lingxing token service is unavailable"}
@@ -145,7 +152,7 @@ func (client *Client) getAccessToken(call sdkgo.Call, credentials Credentials) (
 	if !validExpiry || expiresIn < 60 || expiresIn > 86400 {
 		return "", &providerIssue{branch: ListStoresBranchInvalidResponse, kind: sdkgo.FailureProtocol, message: "Lingxing token response was incomplete"}
 	}
-	client.token = accessTokenCache{value: wire.Data.Token, credentialsHash: hash, expiresAt: time.Now().Add(time.Duration(expiresIn-30) * time.Second)}
+	client.token = accessTokenCache{value: wire.Data.Token, credentialsHash: hash, expiresAt: client.now().Add(time.Duration(expiresIn-30) * time.Second)}
 	return wire.Data.Token, nil
 }
 

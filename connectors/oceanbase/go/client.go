@@ -5,9 +5,12 @@
 package oceanbase
 
 import (
+	"crypto/rand"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -29,6 +32,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
+	randomReader     io.Reader
 }
 
 // New validates configuration without contacting OceanBase Cloud.
@@ -44,7 +49,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Site == SiteInternational {
 		baseURL = "https://api-cloud.oceanbase.com"
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now, randomReader: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("OceanBase client option is required")

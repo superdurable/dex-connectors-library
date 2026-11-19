@@ -51,7 +51,7 @@ func (operation GetEnterpriseBasicDetailsOperation) Invoke(call sdkgo.Call, inpu
 	if err != nil || credentials.Validate() != nil || !isValidCredential(credentials.AppKey.Reveal()) || !isValidCredential(credentials.SecretKey.Reveal()) {
 		return basicDetailsBranch(GetEnterpriseBasicDetailsBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().Unix(), 10)
 	signature := signQichachaRequest(credentials.AppKey.Reveal(), timestamp, credentials.SecretKey.Reveal())
 	// Qichacha requires key as a query parameter beside signed headers: https://openapi.qcc.com/dataApi/410
 	query := url.Values{"key": {credentials.AppKey.Reveal()}, "keyword": {input.Keyword}}
@@ -67,7 +67,7 @@ func (operation GetEnterpriseBasicDetailsOperation) Invoke(call sdkgo.Call, inpu
 		return basicDetailsRetry(sdkgo.FailureAvailability, "Qichacha request failed", 0)
 	}
 	defer func() { _ = response.Body.Close() }()
-	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), operation.client.now())
 	if response.StatusCode == http.StatusTooManyRequests {
 		return basicDetailsRetry(sdkgo.FailureRateLimit, "Qichacha rate limited the lookup", retryAfter)
 	}

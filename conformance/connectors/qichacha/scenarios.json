@@ -1,0 +1,415 @@
+{
+  "connector": "qichacha",
+  "scenarios": [
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [
+        {
+          "body": "{\"Status\":\"200\",\"Message\":\"查询成功\",\"Result\":{\"Name\":\"示例科技有限公司\",\"Status\":\"存续\",\"CreditCode\":\"91110101000000000X\",\"EntType\":\"0\",\"OperName\":\"REDACTED_PERSON\",\"Address\":\"REDACTED_ADDRESS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ECIV4/GetBasicDetailsByName",
+          "query": {
+            "key": [
+              "REDACTED_QCC_APP_KEY"
+            ],
+            "keyword": [
+              "示例科技有限公司"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Timespan": [
+              "1794477600"
+            ],
+            "Token": [
+              "E6D19F3FEBD76126B54B80CFED705D66"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "creditCode": "91110101000000000X",
+          "name": "示例科技有限公司",
+          "registrationStatus": "存续"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": "示例科技有限公司"
+      },
+      "name": "getEnterpriseBasicDetails-fetched",
+      "operation": "getEnterpriseBasicDetails"
+    },
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [
+        {
+          "body": "{\"Status\":\"201\",\"Message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ECIV4/GetBasicDetailsByName",
+          "query": {
+            "key": [
+              "REDACTED_QCC_APP_KEY"
+            ],
+            "keyword": [
+              "示例科技有限公司"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Timespan": [
+              "1794477600"
+            ],
+            "Token": [
+              "E6D19F3FEBD76126B54B80CFED705D66"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "creditCode": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": "示例科技有限公司"
+      },
+      "name": "getEnterpriseBasicDetails-providerRejected",
+      "operation": "getEnterpriseBasicDetails"
+    },
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [
+        {
+          "body": "{\"Status\":\"200\",\"Result\":{\"Name\":\"Example Limited\",\"Status\":\"active\",\"EntType\":\"2\",\"CreditCode\":\"HK123\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ECIV4/GetBasicDetailsByName",
+          "query": {
+            "key": [
+              "REDACTED_QCC_APP_KEY"
+            ],
+            "keyword": [
+              "示例科技有限公司"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Timespan": [
+              "1794477600"
+            ],
+            "Token": [
+              "E6D19F3FEBD76126B54B80CFED705D66"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "creditCode": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": "示例科技有限公司"
+      },
+      "name": "getEnterpriseBasicDetails-nonMainland",
+      "operation": "getEnterpriseBasicDetails"
+    },
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [
+        {
+          "body": "{\"Result\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ECIV4/GetBasicDetailsByName",
+          "query": {
+            "key": [
+              "REDACTED_QCC_APP_KEY"
+            ],
+            "keyword": [
+              "示例科技有限公司"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Timespan": [
+              "1794477600"
+            ],
+            "Token": [
+              "E6D19F3FEBD76126B54B80CFED705D66"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "creditCode": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": "示例科技有限公司"
+      },
+      "name": "getEnterpriseBasicDetails-invalidResponse",
+      "operation": "getEnterpriseBasicDetails"
+    },
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "creditCode": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": ""
+      },
+      "name": "getEnterpriseBasicDetails-defect",
+      "operation": "getEnterpriseBasicDetails"
+    },
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ECIV4/GetBasicDetailsByName",
+          "query": {
+            "key": [
+              "REDACTED_QCC_APP_KEY"
+            ],
+            "keyword": [
+              "示例科技有限公司"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Timespan": [
+              "1794477600"
+            ],
+            "Token": [
+              "E6D19F3FEBD76126B54B80CFED705D66"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": "示例科技有限公司"
+      },
+      "name": "getEnterpriseBasicDetails-retry-429",
+      "operation": "getEnterpriseBasicDetails"
+    },
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ECIV4/GetBasicDetailsByName",
+          "query": {
+            "key": [
+              "REDACTED_QCC_APP_KEY"
+            ],
+            "keyword": [
+              "示例科技有限公司"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Timespan": [
+              "1794477600"
+            ],
+            "Token": [
+              "E6D19F3FEBD76126B54B80CFED705D66"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": "示例科技有限公司"
+      },
+      "name": "getEnterpriseBasicDetails-retry-500",
+      "operation": "getEnterpriseBasicDetails"
+    },
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ECIV4/GetBasicDetailsByName",
+          "query": {
+            "key": [
+              "REDACTED_QCC_APP_KEY"
+            ],
+            "keyword": [
+              "示例科技有限公司"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Timespan": [
+              "1794477600"
+            ],
+            "Token": [
+              "E6D19F3FEBD76126B54B80CFED705D66"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": "示例科技有限公司"
+      },
+      "name": "getEnterpriseBasicDetails-retry-503",
+      "operation": "getEnterpriseBasicDetails"
+    },
+    {
+      "callId": "949a4096-4c1a-5a75-ac8a-b3a92efcf0dd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ECIV4/GetBasicDetailsByName",
+          "query": {
+            "key": [
+              "REDACTED_QCC_APP_KEY"
+            ],
+            "keyword": [
+              "示例科技有限公司"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Timespan": [
+              "1794477600"
+            ],
+            "Token": [
+              "E6D19F3FEBD76126B54B80CFED705D66"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-12T10:00:00Z",
+      "input": {
+        "keyword": "示例科技有限公司"
+      },
+      "name": "getEnterpriseBasicDetails-retry-transport",
+      "operation": "getEnterpriseBasicDetails"
+    }
+  ],
+  "schemaVersion": 1
+}
