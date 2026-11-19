@@ -43,7 +43,7 @@
       ],
       "inputSchema": {
         "additionalProperties": false,
-        "description": "ListModelsInput requests models visible to the ZhongkeYunxing API Key.",
+        "description": "ListModelsInput requests models visible to the Zhongke Yunxing API Key.",
         "properties": {},
         "type": "object"
       }
