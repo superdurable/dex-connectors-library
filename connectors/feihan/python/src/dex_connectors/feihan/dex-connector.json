@@ -1,0 +1,60 @@
+{
+  "connectorId": "feihan",
+  "releaseTag": "connectors/feihan/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-feihan",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_query_recharge_order_step",
+      "kind": "query",
+      "operationId": "queryRechargeOrder",
+      "inputType": "QueryRechargeOrderInput",
+      "description": "Query a known merchant order's recharge status without exposing recharge account, card secrets, or other private provider fields.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryRechargeOrderInput identifies an existing merchant order.",
+        "properties": {
+          "merchantOrderId": {
+            "description": "MerchantOrderID is the merchant's order ID supplied during recharge creation.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "merchantOrderId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
