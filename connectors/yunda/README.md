@@ -5,3 +5,5 @@
 Create an application at [Yunda Open Platform](https://open.yundaex.com/) and get its app-key and app-secret. Your cooperating Yunda outlet supplies the Baima partner_id and integration secret. Enter all four values in a Dex Web Connection named `yunda`; the two secrets and identifiers are stored as secret fields. The operation has no input and uses the `common` waybill type.
 
 Yunda's [authentication rules](https://yundaex.apifox.cn/doc-345775) and [balance API](https://yundaex.apifox.cn/api-7039547) define the request and response. The checked-in [runnable Flow](go/examples/get-waybill-balance/) uses a real Dex Worker with a mock by default. Live Yunda authorization and Baima balance behavior remain unverified.
+
+The [TypeScript package](typescript/README.md) implements `getWaybillBalance` with a [runnable Dex Flow](typescript/examples/waybill-balance/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.
