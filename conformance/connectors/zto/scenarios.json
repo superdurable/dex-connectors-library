@@ -1,0 +1,391 @@
+{
+  "connector": "zto",
+  "scenarios": [
+    {
+      "callId": "b494da08-a097-568c-8fc1-20fe6caf5c4e",
+      "exchanges": [
+        {
+          "body": "{\"status\":true,\"statusCode\":\"SYS000\",\"message\":\"ok\",\"result\":[{\"billCode\":\"73100059800035\",\"scanType\":\"收件\",\"scanDate\":1676429769000,\"scanSite\":{\"name\":\"金华浦江县\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zto.merchant.waybill.track.query",
+          "requestBody": {
+            "billCode": "73100059800035"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Appkey": [
+              "app123"
+            ],
+            "X-Datadigest": [
+              "TzhKEP6EgGeAhZkmosT2Mw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "billCode": "73100059800035",
+          "events": [
+            {
+              "scanDate": 1676429769000,
+              "scanSiteName": "金华浦江县",
+              "scanType": "收件"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-found",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "ef0f525a-aa1d-5e27-8969-db8e1ddf4b6b",
+      "exchanges": [
+        {
+          "body": "{\"status\":false,\"statusCode\":\"E403\",\"message\":\"invalid\",\"result\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zto.merchant.waybill.track.query",
+          "requestBody": {
+            "billCode": "73100059800035"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Appkey": [
+              "app123"
+            ],
+            "X-Datadigest": [
+              "TzhKEP6EgGeAhZkmosT2Mw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "billCode": "",
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-providerRejected",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "2c9e5254-54bd-5a0a-8bcd-1080f65626d2",
+      "exchanges": [
+        {
+          "body": "{\"status\":true,\"statusCode\":\"SYS000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zto.merchant.waybill.track.query",
+          "requestBody": {
+            "billCode": "73100059800035"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Appkey": [
+              "app123"
+            ],
+            "X-Datadigest": [
+              "TzhKEP6EgGeAhZkmosT2Mw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "billCode": "",
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-invalidResponse",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "93d7ffa5-3b83-53e9-93e4-353e3240bcb5",
+      "exchanges": [
+        {
+          "body": "{\"status\":false,\"statusCode\":\"E500\",\"message\":\"temporary\",\"result\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zto.merchant.waybill.track.query",
+          "requestBody": {
+            "billCode": "73100059800035"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Appkey": [
+              "app123"
+            ],
+            "X-Datadigest": [
+              "TzhKEP6EgGeAhZkmosT2Mw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-retryProvider500",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "a1cf484e-50c5-587c-9f02-a1c95484711d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zto.merchant.waybill.track.query",
+          "requestBody": {
+            "billCode": "73100059800035"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Appkey": [
+              "app123"
+            ],
+            "X-Datadigest": [
+              "TzhKEP6EgGeAhZkmosT2Mw=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-retry429",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "c0e29b8e-5215-5cad-b889-4b2efd30f02e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zto.merchant.waybill.track.query",
+          "requestBody": {
+            "billCode": "73100059800035"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Appkey": [
+              "app123"
+            ],
+            "X-Datadigest": [
+              "TzhKEP6EgGeAhZkmosT2Mw=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-retry503",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "e2ba93b0-762a-5d09-972b-72dacfee7a68",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zto.merchant.waybill.track.query",
+          "requestBody": {
+            "billCode": "73100059800035"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Appkey": [
+              "app123"
+            ],
+            "X-Datadigest": [
+              "TzhKEP6EgGeAhZkmosT2Mw=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-transport",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "d48e1f9d-dc50-509d-96c0-47dbd16fa7c2",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zto.merchant.waybill.track.query",
+          "requestBody": {
+            "billCode": "73100059800035"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Appkey": [
+              "app123"
+            ],
+            "X-Datadigest": [
+              "TzhKEP6EgGeAhZkmosT2Mw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "billCode": "",
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-oversized",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "f7ce883e-e977-5a04-8530-7db8e9d2e666",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "billCode": "",
+          "events": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "billCode": "73100059800035"
+      },
+      "name": "queryWaybillTrace-defect",
+      "operation": "queryWaybillTrace"
+    }
+  ],
+  "schemaVersion": 1
+}
