@@ -1,0 +1,602 @@
+{
+  "connector": "oppo",
+  "scenarios": [
+    {
+      "callId": "d987e93b-b8a2-56b7-880e-76e6e7948cda",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"auth_token\":\"secret-token\"}}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":{\"total_count\":100000,\"push_count\":10000,\"remain_count\":90000,\"secret\":\"do-not-return\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/server/v1/feedback/fetch_push_permit",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Auth_token": [
+              "secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "pushCount": 10000,
+          "remainCount": 90000,
+          "totalCount": 100000
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-found",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "fd1d4a88-611d-5003-94a7-d511e987e57c",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"auth_token\":\"secret-token\"}}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":11,\"message\":\"secret-token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/server/v1/feedback/fetch_push_permit",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Auth_token": [
+              "secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "pushCount": 0,
+          "remainCount": 0,
+          "totalCount": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-providerRejected",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "4734b330-c23c-5178-8201-032594127df4",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"auth_token\":\"secret-token\"}}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/server/v1/feedback/fetch_push_permit",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Auth_token": [
+              "secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "pushCount": 0,
+          "remainCount": 0,
+          "totalCount": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-invalidResponse",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "a38dd9ec-c137-5c39-8829-4b09ccd50c3a",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"auth_token\":\"secret-token\"}}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/server/v1/feedback/fetch_push_permit",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Auth_token": [
+              "secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-rateLimit",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "23580bb5-777a-5026-b3d7-d41bb0f258dd",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"auth_token\":\"secret-token\"}}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/server/v1/feedback/fetch_push_permit",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Auth_token": [
+              "secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-serverError",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "a2025815-9a16-5d98-b709-b213bfeae8c5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "pushCount": 0,
+          "remainCount": 0,
+          "totalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-defect",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "b44eaebd-84c9-55ec-abc1-e0b7fcb0ac94",
+      "exchanges": [
+        {
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-transport",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "9a97df04-d16e-5cf5-8dbf-27309d125120",
+      "exchanges": [
+        {
+          "body": "{\"code\":16,\"message\":\"test-master-secret\"}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "pushCount": 0,
+          "remainCount": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-authRejected",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "58403678-7089-5d2d-a198-95b504d3604f",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{}}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "pushCount": 0,
+          "remainCount": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-authInvalidResponse",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "a1693e15-d8c2-5a86-a453-15470d46607c",
+      "exchanges": [
+        {
+          "body": "{\"code\":13}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-authRateLimit",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "a130c3fc-8b0a-547c-942b-2742b5bef6fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-authHTTPRateLimit",
+      "operation": "getPushQuota"
+    },
+    {
+      "callId": "f7f62c27-5779-5973-a005-84f23f2eb676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "app_key": [
+              "test-app-key"
+            ],
+            "sign": [
+              "1338dbc313aa33e15ba3502b3063fb57efb796bf9625c537051484cdd5b94c0d"
+            ],
+            "timestamp": [
+              "1731510000000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/server/v1/auth",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getPushQuota-authHTTPServerError",
+      "operation": "getPushQuota"
+    }
+  ],
+  "schemaVersion": 1
+}
