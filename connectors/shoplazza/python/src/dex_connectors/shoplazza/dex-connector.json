@@ -1,0 +1,52 @@
+{
+  "connectorId": "shoplazza",
+  "releaseTag": "connectors/shoplazza/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-shoplazza",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_shop_step",
+      "kind": "query",
+      "operationId": "getShop",
+      "inputType": "GetShopInput",
+      "description": "Read the current store's ID, name, domain, and currency without contact or address data.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetShopInput identifies the configured store; it needs no additional fields.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
