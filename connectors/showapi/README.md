@@ -7,3 +7,7 @@ Sign in to the [ShowAPI console](https://www.showapi.com/console#/myApp), find *
 The lookup is read-only, but repeated calls may consume additional paid package quota. Dex retries transient failures at most three times within one minute. See the [runnable Dex Flow](go/examples/area-code/README.md). Live ShowAPI authorization and responses have not been exercised.
 
 The company logo comes from [ShowAPI's official site](https://www.showapi.com/nuxt3_static/img/logo_white.svg).
+
+## Python
+
+The `python/` package provides the `lookupAreaCodes` Query. Run its checked-in example from `python/examples/`.

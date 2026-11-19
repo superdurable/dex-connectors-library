@@ -15,3 +15,7 @@ GOWORK=off go vet ./...
 ```
 
 Provider tests use a local HTTP server. The example integration test uses a real Dex dev server and generated provider mock. Live Shoplazza authorization, `read_shop` grant, token rotation, and API behavior need verification with a user-controlled store connection.
+
+## Python
+
+The `python/` package provides the `getShop` Query. Run its checked-in example from `python/examples/`.
