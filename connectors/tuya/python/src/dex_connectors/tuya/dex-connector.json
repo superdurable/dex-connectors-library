@@ -1,0 +1,65 @@
+{
+  "connectorId": "tuya",
+  "releaseTag": "connectors/tuya/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-tuya",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_device_details_step",
+      "kind": "query",
+      "operationId": "getDeviceDetails",
+      "inputType": "GetDeviceDetailsInput",
+      "description": "Read safe metadata about a linked device by its device ID.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetDeviceDetailsInput identifies one device linked to the project.",
+        "properties": {
+          "deviceId": {
+            "description": "DeviceID is the non-secret device identifier from the Tuya project Devices tab.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
