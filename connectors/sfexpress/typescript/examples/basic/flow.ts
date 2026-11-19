@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newQueryRoutesStep, type Connection, type QueryRoutesInput, type RouteQueryResult } from '@superdurable/connector-sfexpress';
+import { newQueryRoutesStep, type Connection, type QueryRoutesInput, type RouteQueryResult } from '../../src/index.js';
 
 /** Static Dex Web connection for this example. */
 export const ConnectionName = 'sfexpress';
