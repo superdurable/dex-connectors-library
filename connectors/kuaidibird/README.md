@@ -7,3 +7,5 @@ In Dex Web **Connections**, create a `kuaidibird` connection and enter the decim
 A failed query returns the optional `providerRejected` branch; HTTP rate limits and server failures retry at most twice under the quota-aware policy. The runnable [parcel tracking Flow](go/examples/parcel-tracking/README.md) uses a static `kuaidibird` connection and synthetic mock data for real Dex integration testing. A live customer account is required to verify provider authorization and carrier responses.
 
 For a complete Go application example, see the runnable Flow's `NewProjectConnection` wiring and `NewQueryTrackingStep` usage.
+
+The [TypeScript package](typescript/README.md) implements the same `queryTracking` Query, including Go-recorded conformance replay and a real Dex Worker and Client integration test.

@@ -1,0 +1,65 @@
+{
+  "connectorId": "kuaidibird",
+  "releaseTag": "connectors/kuaidibird/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-kuaidibird",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newQueryTrackingStep",
+      "kind": "query",
+      "operationId": "queryTracking",
+      "inputType": "QueryTrackingInput",
+      "description": "Read one waybill's carrier status and tracking events with the base instant-query product.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "retrieved",
+          "field": "retrieved",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryTrackingInput identifies one carrier waybill for the base instant-query API.",
+        "properties": {
+          "carrierCode": {
+            "description": "CarrierCode is the uppercase code from KuaidiBird's official carrier table.",
+            "type": "string"
+          },
+          "trackingNumber": {
+            "description": "TrackingNumber is the carrier waybill number, at most 30 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "carrierCode",
+          "trackingNumber"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
