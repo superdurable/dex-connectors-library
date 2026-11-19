@@ -72,7 +72,7 @@ CREATE_ISSUE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Jira created the issue and returned its key and ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The request may have reached Jira but could not be confirmed; the issue may exist and must not be created again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Jira accepted the create without a usable issue reference, and read-back could not confirm the issue; it may exist and must not be created again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -89,18 +89,17 @@ TRANSITION_ISSUE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(TRANSITIONED, "The issue is in the transition's destination status, including when it already was.", False),
         BranchDefinition(NOT_FOUND, "The issue does not exist or the connection cannot browse it.", True),
-        BranchDefinition(TRANSITION_UNAVAILABLE, "No available transition from the issue's current status matches the request, or several do; the Value lists the current status and the available transitions.", True),
+        BranchDefinition(TRANSITION_UNAVAILABLE, "No available transition from the issue's current status matches the request, or several do, or on a retry the issue is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.", True),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", True),
-        BranchDefinition(INVALID_RESPONSE, "Jira returned an invalid or oversized issue or transition list.", True),
+        BranchDefinition(INVALID_RESPONSE, "No longer selected. An invalid or oversized issue or transition list proves nothing about the issue, so the Step retries; the branch stays declared for compatibility.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
-        2,
+        1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 ADD_COMMENT_DEFINITION = MutationDefinition(
@@ -109,7 +108,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Jira added the comment and returned its ID.", False),
         BranchDefinition(NOT_FOUND, "The issue does not exist or the connection cannot browse it; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The request may have reached Jira but could not be confirmed; the comment may exist and must not be added again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Jira accepted the comment without a usable comment reference, and read-back could not confirm the comment; it may exist and must not be added again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

@@ -93,13 +93,18 @@ func TestReplaceIssueLabelsClassifiesConclusiveAnswers(t *testing.T) {
 		{status: http.StatusUnauthorized, branch: github.ReplaceIssueLabelsBranchAuthorizationRevoked, kind: sdkgo.FailureAuthentication},
 		{status: http.StatusForbidden, branch: github.ReplaceIssueLabelsBranchInsufficientScope, kind: sdkgo.FailureAuthorization},
 		{status: http.StatusNotFound, branch: github.ReplaceIssueLabelsBranchNotFound, kind: sdkgo.FailureNotFound},
-		{status: http.StatusGone, branch: github.ReplaceIssueLabelsBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
+		{status: http.StatusGone},
 		{status: http.StatusUnprocessableEntity, branch: github.ReplaceIssueLabelsBranchProviderRejected, kind: sdkgo.FailureValidation},
 	} {
 		t.Run(http.StatusText(test.status), func(t *testing.T) {
 			provider := newIssueLabelsProvider(t, test.status)
 			client := newIssueClient(t, provider.server.URL, github.RepositoryAuthMethodID)
 			result, err := sdkgo.RunMutation(testsupport.NewDexContext("issues-flow", "rejected"), client.ReplaceIssueLabels(), githubConnection, relabelInput())
+			if test.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "a 410 does not prove a refusal, and the absolute replacement is repeat-safe")
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, test.kind, result.Failure.Kind)

@@ -76,19 +76,35 @@ export class CreateUserOperation implements Mutation<CreateUserInput, CreateUser
           const receipt = this.client.receipt(call, read.response, user.id);
           if (hasCreationKey(resource, creationKey)) return newMutationBranch('created', { user, wasAlreadyCreated: true }, receipt);
           return newMutationBranch('alreadyExists', { user, wasAlreadyCreated: false }, receipt, failure('createUser', 'CONFLICT', 'address belongs to an account this Step did not create'));
-        } catch { return mutationFailure('createUser', 'invalidResponse', 'PROTOCOL', zeroCreate, read.receipt, 'provider returned an invalid account: account is invalid'); }
+        } catch { return newMutationRetry(failure('createUser', 'PROTOCOL', 'provider returned an invalid account: account is invalid')); }
       }
       if (read.outcome.kind === 'notFound') {
         const firstAttemptAt = call.context.firstAttemptAt;
-        if (firstAttemptAt && this.client.now().getTime() - new Date(firstAttemptAt).getTime() < 60_000) return newMutationRetry(failure('createUser', 'AVAILABILITY', 'Google reports the address as taken but does not return the account yet'));
+        // After an earlier attempt, the unreadable account may be this Step's.
+        if (hasPossibleEarlierAttempt(call) || (firstAttemptAt && this.client.now().getTime() - new Date(firstAttemptAt).getTime() < 60_000)) return newMutationRetry(failure('createUser', 'AVAILABILITY', 'Google reports the address as taken but does not return the account yet'));
         return mutationFailure('createUser', 'alreadyExists', 'CONFLICT', zeroCreate, read.outcome.receipt, 'address belongs to a group or an account outside the directory');
       }
       return mutationOutcome(read.outcome, zeroCreate, 'providerRejected');
     }
     if (exchange.outcome.kind === 'invalidResponse') return newMutationRetry(failure('createUser', exchange.outcome.failure.kind, 'insert response is unusable; the retry reads the account back'));
-    return mutationOutcome(exchange.outcome, zeroCreate, 'providerRejected');
+    const refusal = mutationOutcome(exchange.outcome, zeroCreate, 'providerRejected');
+    if ((exchange.outcome.kind === 'notFound' || exchange.outcome.kind === 'rejected') && hasPossibleEarlierAttempt(call)) return this.confirmRefusal(call, email, creationKey, refusal);
+    return refusal;
+  }
+
+  /** Read the address back, because an earlier attempt may have created the account. */
+  private async confirmRefusal(call: Call, email: string, creationKey: string, refusal: MutationAttempt<CreateUserOutput>): Promise<MutationAttempt<CreateUserOutput>> {
+    const read = await this.client.exchange(call, 'createUser', 'GET', userPath(email));
+    if (!('response' in read)) return read.outcome.kind === 'notFound' ? refusal : mutationOutcome(read.outcome, zeroCreate, 'providerRejected');
+    try {
+      const { user, resource } = decodeUser(read.response.body);
+      return hasCreationKey(resource, creationKey) ? newMutationBranch('created', { user, wasAlreadyCreated: true }, this.client.receipt(call, read.response, user.id)) : refusal;
+    } catch { return newMutationRetry(failure('createUser', 'PROTOCOL', 'provider returned an invalid account: account is invalid')); }
   }
 }
+
+/** Report a later attempt, whose predecessor may have sent the write. */
+function hasPossibleEarlierAttempt(call: Call): boolean { return (call.context?.attempt ?? 1) > 1; }
 
 /** Set the suspended flag to true. */
 export class SuspendUserOperation implements Mutation<SuspendUserInput, User> {
@@ -115,9 +131,10 @@ async function setSuspension(client: WorkspaceAdminClient, call: Call, rawKey: s
   try {
     const { user } = decodeUser(exchange.response.body);
     const receipt = client.receipt(call, exchange.response, user.id);
-    if (user.isSuspended !== suspended) return newMutationBranch('providerRejected', user, receipt, failure(operation, 'PROVIDER_REJECTION', 'Google returned the account without the requested suspension state'));
+    // A 2xx that contradicts the absolute write is unknown, and the write is safe to repeat.
+    if (user.isSuspended !== suspended) return newMutationRetry(failure(operation, 'PROTOCOL', 'Google returned the account without the requested suspension state'));
     return newMutationBranch(suspended ? 'suspended' : 'unsuspended', user, receipt);
-  } catch { return mutationFailure(operation, 'invalidResponse', 'PROTOCOL', zeroUser, exchange.receipt, 'provider returned an invalid account: account is invalid'); }
+  } catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'provider returned an invalid account: account is invalid')); }
 }
 
 /** Insert one direct group membership. */
@@ -139,7 +156,7 @@ export class AddUserToGroupOperation implements Mutation<AddUserToGroupInput, Ad
       const read = await this.client.exchange(call, 'addUserToGroup', 'GET', groupMemberPath(groupKey, email));
       if ('response' in read) {
         try { const membership = decodeMembership(read.response.body, groupKey); return newMutationBranch('added', { membership, wasAlreadyMember: true }, this.client.receipt(call, read.response, membership.memberId)); }
-        catch { return mutationFailure('addUserToGroup', 'invalidResponse', 'PROTOCOL', zeroAdd, read.receipt, 'provider returned an invalid membership: membership is invalid'); }
+        catch { return newMutationRetry(failure('addUserToGroup', 'PROTOCOL', 'provider returned an invalid membership: membership is invalid')); }
       }
       if (read.outcome.kind === 'notFound') return newMutationRetry(failure('addUserToGroup', 'AVAILABILITY', 'Google reports the membership as existing but does not return it yet'));
       return mutationOutcome(read.outcome, zeroAdd, 'providerRejected', 'notFound');
@@ -176,8 +193,9 @@ function queryOutcome<T>(outcome: DirectoryOutcome, zero: T, notFoundBranch = 'p
   if (outcome.kind === 'retry') return newQueryRetry(outcome.failure, outcome.retryAfterMs);
   return newQueryBranch(outcome.kind === 'notFound' ? notFoundBranch : outcome.kind === 'conflict' || outcome.kind === 'rejected' ? 'providerRejected' : outcome.kind, zero, outcome.receipt, outcome.failure);
 }
+/** Every write is safe to repeat, so an unusable response retries instead of selecting invalidResponse. */
 function mutationOutcome<T>(outcome: DirectoryOutcome, zero: T, rejectedBranch: string, notFoundBranch = rejectedBranch): MutationAttempt<T> {
-  if (outcome.kind === 'retry') return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  if (outcome.kind === 'retry' || outcome.kind === 'invalidResponse') return newMutationRetry(outcome.failure, outcome.retryAfterMs);
   return newMutationBranch(outcome.kind === 'notFound' ? notFoundBranch : outcome.kind === 'conflict' || outcome.kind === 'rejected' ? rejectedBranch : outcome.kind, zero, outcome.receipt, outcome.failure);
 }
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider, operation, message }; }

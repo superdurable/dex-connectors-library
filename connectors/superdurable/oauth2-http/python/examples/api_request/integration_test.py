@@ -18,12 +18,14 @@ from dex_connectors.superdurable_oauth2_http import (
     Client,
     Config,
     Credentials,
+    PostNonIdempotentInput,
     SendRequestInput,
     SendRequestOutput,
     new_connection,
 )
 
 from .flow import CONNECTION_NAME, APIRequestFlow
+from .order_flow import OrderFlow
 
 
 @pytest.mark.asyncio
@@ -83,3 +85,75 @@ async def test_api_request_reaches_real_dex_worker() -> None:
                 await connection.aclose()
     assert len(requests) == 1
     assert requests[0].headers["Authorization"] == "Bearer inert-access-token"
+
+
+@pytest.mark.asyncio
+async def test_order_post_is_sent_once_through_real_dex_worker() -> None:
+    """Verify the fenced POST completes, and an unknown outcome fails without a second POST."""
+    server_address = os.environ["DEX_FLOW_SERVICE_ADDRESS"]
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/v1/orders-unavailable":
+            # A 502 after the POST arrived does not prove the order was refused.
+            return httpx.Response(502)
+        return httpx.Response(201, headers={"Content-Type": "application/json"}, content=b'{"id":"order-1"}')
+
+    reference = ConnectionRef("oauth2-http", CONNECTION_NAME)
+    credentials = Credentials(
+        "client", SecretString("inert-client-secret"), SecretString("inert-access-token"), SecretString("")
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as provider_http_client:
+        connection = new_connection(
+            Client(
+                Config(
+                    authorization_endpoint="http://127.0.0.1:12345/auth",
+                    token_endpoint="http://127.0.0.1:12345/token",
+                    scopes=("profile",),
+                    api_base_url="http://127.0.0.1:12345/v1",
+                ),
+                StaticCredentialProvider({reference: credentials}),
+                provider_http_client,
+            ),
+            reference,
+        )
+        flow = OrderFlow(connection)
+        registry = dex.Registry([flow], allow_async_handlers=True)
+        with tempfile.TemporaryDirectory(prefix="oauth2-http-python-order-dex-") as directory:
+            cache = dex.open_blob_cache(dex.BlobCacheConfig(str(Path(directory) / "blobs"), 1 << 24))
+            try:
+                worker = dex.AsyncWorker(registry, cache, dex.WorkerOptions(server_address=server_address))
+                worker_task = asyncio.create_task(worker.start())
+                try:
+                    await worker.wait_pull_registered(timeout=15)
+                    async with dex.AsyncClient(
+                        registry, cache, dex.ClientOptions(server_address=server_address)
+                    ) as client:
+                        flow_id = f"oauth2-http-python-order-{uuid4().hex}"
+                        await client.start_flow(
+                            flow, flow_id, PostNonIdempotentInput(path="/orders", body='{"item":"gear"}')
+                        )
+                        result = await asyncio.wait_for(
+                            client.wait_for_flow(flow_id, timedelta(seconds=30)), 40
+                        )
+                        assert result.status == dex.FlowStatus.COMPLETED, result.error_message
+                        assert result.single_output(SendRequestOutput).status_code == 201
+                        unknown_flow_id = f"oauth2-http-python-order-unknown-{uuid4().hex}"
+                        await client.start_flow(
+                            flow,
+                            unknown_flow_id,
+                            PostNonIdempotentInput(path="/orders-unavailable", body='{"item":"gear"}'),
+                        )
+                        unknown = await asyncio.wait_for(
+                            client.wait_for_flow(unknown_flow_id, timedelta(seconds=30)), 40
+                        )
+                        assert unknown.status == dex.FlowStatus.FAILED
+                finally:
+                    await worker.stop()
+                    await worker_task
+            finally:
+                cache.close()
+                await connection.aclose()
+    assert [request.url.path for request in requests] == ["/v1/orders", "/v1/orders-unavailable"]
+    assert all(request.method == "POST" for request in requests)

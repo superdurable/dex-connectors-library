@@ -106,60 +106,76 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.calendly.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Calendly credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Calendly stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Calendly stored credential does not match the connector credential fields")
     if set(material) - set(('access_token', 'webhook_signing_key', 'oauth_client_id', 'oauth_client_secret', 'refresh_token', 'auth_method')):
-        raise ValueError("Calendly stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Calendly stored credential does not match the connector credential fields")
     is_shared = shared
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Calendly credential access_token has an invalid type")
+        raise CredentialMaterialError("Calendly credential access_token has an invalid type")
     webhook_signing_key = material.get("webhook_signing_key")
     if webhook_signing_key is not None and not (isinstance(webhook_signing_key, str)):
-        raise ValueError("Calendly credential webhook_signing_key has an invalid type")
+        raise CredentialMaterialError("Calendly credential webhook_signing_key has an invalid type")
     oauth_client_id = material.get("oauth_client_id")
     if oauth_client_id is not None and not (isinstance(oauth_client_id, str)):
-        raise ValueError("Calendly credential oauth_client_id has an invalid type")
+        raise CredentialMaterialError("Calendly credential oauth_client_id has an invalid type")
     oauth_client_secret = material.get("oauth_client_secret")
     if oauth_client_secret is not None and not (isinstance(oauth_client_secret, str)):
-        raise ValueError("Calendly credential oauth_client_secret has an invalid type")
+        raise CredentialMaterialError("Calendly credential oauth_client_secret has an invalid type")
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
-        raise ValueError("Calendly credential refresh_token has an invalid type")
+        raise CredentialMaterialError("Calendly credential refresh_token has an invalid type")
     selected_method = material.get('auth_method')
     if selected_method is None:
         selected_method = ''
     if not isinstance(selected_method, str):
-        raise ValueError("Calendly credential auth_method is invalid")
+        raise CredentialMaterialError("Calendly credential auth_method is invalid")
     method = selected_method or "personal-access-token"
     values: dict[str, Any] = {'auth_method_id': method}
     if method == "personal-access-token":
         if not access_token:
-            raise ValueError("Calendly credential access_token is required")
+            raise CredentialMaterialError("Calendly credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         values["webhook_signing_key"] = SecretString(webhook_signing_key or '')
     elif method == "calendly-oauth":
         if not oauth_client_id:
-            raise ValueError("Calendly credential oauth_client_id is required")
+            raise CredentialMaterialError("Calendly credential oauth_client_id is required")
         if oauth_client_id:
             values["oauth_client_id"] = oauth_client_id
         if not oauth_client_secret and not is_shared:
-            raise ValueError("Calendly credential oauth_client_secret is required")
+            raise CredentialMaterialError("Calendly credential oauth_client_secret is required")
         if oauth_client_secret:
             values["oauth_client_secret"] = SecretString(oauth_client_secret)
         if not access_token:
-            raise ValueError("Calendly credential access_token is required")
+            raise CredentialMaterialError("Calendly credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         if not refresh_token and not is_shared:
-            raise ValueError("Calendly credential refresh_token is required")
+            raise CredentialMaterialError("Calendly credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
         values["webhook_signing_key"] = SecretString(webhook_signing_key or '')
     else:
-        raise ValueError("Calendly credential auth_method is invalid")
+        raise CredentialMaterialError("Calendly credential auth_method is invalid")
     return Credentials(**values)
 
 

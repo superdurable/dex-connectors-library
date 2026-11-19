@@ -21,6 +21,11 @@ from dex_connectors.sdk import (
     Receipt,
 )
 from dex_connectors.sdk.pollingtrigger import MAXIMUM_CHANGES_PER_PAGE
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -37,6 +42,22 @@ if TYPE_CHECKING:
     from .operations import FindRowOperation, GetValuesOperation, UpsertRowOperation
 
 _PATH_SAFE = "-._~$&+=:@"
+# Resolve failures that only reconnection repairs; any other resolve failure is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
+
 
 MAXIMUM_ROW_ADDED_POLL_PAGE_SIZE: Final = MAXIMUM_CHANGES_PER_PAGE
 """The largest `Config.poll_page_size`, which keeps one rowAdded poll page within the poll kit's bound."""
@@ -64,10 +85,12 @@ class ProviderResponse:
 class RequestError(Exception):
     """Classified transport or local request failure without secret details."""
 
-    def __init__(self, kind: FailureKind, message: str, *, not_sent: bool = False) -> None:
+    def __init__(self, kind: FailureKind, message: str, *, not_sent: bool = False, status: int = 0) -> None:
         super().__init__(message)
         self.kind = kind
         self.not_sent = not_sent
+        # The HTTP status when the response headers arrived before the body failed; otherwise 0.
+        self.status = status
 
 
 class Client:
@@ -133,20 +156,23 @@ class Client:
 
     async def resolve(self, call: Call, operation: str) -> tuple[Credentials | None, Failure | None, bool]:
         """Resolve generated OAuth credentials and classify terminal revocation."""
+        terminal = False
         try:
             credential = await self.credentials.resolve(call)
-            if not isinstance(credential, Credentials) or not credential.access_token.reveal():
-                raise ValueError("missing access token")
-            return credential, None, False
         except Exception as error:
-            terminal = isinstance(error, ReauthorizationRequiredError)
-            kind = FailureKind.AUTHENTICATION if terminal else FailureKind.AVAILABILITY
-            message = (
-                "connection credentials are unavailable; reconnect the connection"
-                if terminal
-                else "credential resolution is temporarily unavailable"
-            )
-            return None, failure(operation, kind, message), terminal
+            terminal = is_terminal_credential_error(error)
+        else:
+            if isinstance(credential, Credentials) and credential.access_token.reveal():
+                return credential, None, False
+            # Resolved material that fails local checks is terminal.
+            terminal = True
+        kind = FailureKind.AUTHENTICATION if terminal else FailureKind.AVAILABILITY
+        message = (
+            "connection credentials are unavailable; reconnect the connection"
+            if terminal
+            else "credential resolution is temporarily unavailable"
+        )
+        return None, failure(operation, kind, message), terminal
 
     async def refresh_after_rejection(
         self, call: Call, rejected: Credentials
@@ -163,7 +189,7 @@ class Client:
                 return None, True
             return credential, False
         except Exception as error:
-            return None, isinstance(error, ReauthorizationRequiredError)
+            return None, is_terminal_credential_error(error)
 
     async def request(
         self,
@@ -177,8 +203,13 @@ class Client:
         *,
         refresh: bool = True,
         write: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> tuple[ProviderResponse, Credentials]:
-        """Send one request, with one rejection refresh only for repeatable reads."""
+        """Send one request, with one rejection refresh only for repeatable reads.
+
+        `observed_statuses` receives each response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Google answered.
+        """
         target = f"{self.endpoint}/spreadsheets/{escape_path(spreadsheet_id)}{suffix}"
         if query:
             target += "?" + encode_query(query)
@@ -202,6 +233,8 @@ class Client:
             try:
                 response, trace = await send_traced(self.http_client, request)
                 status, response_headers = response.status_code, response.headers
+                if observed_statuses is not None:
+                    observed_statuses.append(status)
                 try:
                     body = await read_bounded_body(response, self.config.max_response_bytes)
                     result = ProviderResponse(status, response_headers, body)
@@ -209,7 +242,10 @@ class Client:
                     result = ProviderResponse(status, response_headers, too_large=True)
             except ProviderTransportError as error:
                 raise RequestError(
-                    FailureKind.TRANSPORT, "provider request failed", not_sent=error.provably_not_sent
+                    FailureKind.TRANSPORT,
+                    "provider request failed",
+                    not_sent=error.provably_not_sent,
+                    status=error.status_code or 0,
                 ) from error
             if (
                 result.status == 401

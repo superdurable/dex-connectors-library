@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, type Call, type CredentialProvider, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials, Response } from './generated/models.js';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { isCredentialMaterialError, type Config, type Credentials, type Response } from './generated/models.js';
 import { CreateResponseOperation, RetrieveResponseOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.openai.com/v1';
@@ -56,7 +57,10 @@ export class OpenAIClient {
   async prepareRequest(call: Call, method: string, path: string, payload?: unknown, onResponseChunk?: ProviderRequest['onResponseChunk'], timeoutMs = 120_000): Promise<ProviderRequest> {
     let resolved: Credentials;
     try { resolved = await this.credentials.resolve(call, call.context.cancellationSignal); }
-    catch { throw new CredentialFailure('connection credentials are unavailable'); }
+    catch (error) {
+      if (error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error)) throw new CredentialFailure('connection credentials are missing or need reauthorization');
+      throw new CredentialFailure('connection credentials are unavailable');
+    }
     if (!(resolved.apiKey instanceof SecretString) || !isHeaderSafeCredential(resolved.apiKey.reveal())) throw new CredentialFailure('connection credentials are invalid');
     let body: Uint8Array | undefined;
     if (payload !== undefined) {
@@ -71,7 +75,8 @@ export class OpenAIClient {
       url: this.endpoint + path, method,
       headers: { Authorization: `Bearer ${resolved.apiKey.reveal()}`, 'Content-Type': 'application/json', ...(method === 'POST' ? { 'X-Client-Request-Id': call.id } : {}) },
       ...(body ? { body } : {}), maxResponseBytes: this.maxResponseBytes,
-      maxErrorResponseBytes: 0, ignoreErrorBodyReadFailure: true,
+      // A create reads one byte past the error limit, so an oversized or broken error body proves no refusal.
+      ...(method === 'POST' ? { maxErrorResponseBytes: MaxErrorBodyBytes + 1 } : { maxErrorResponseBytes: 0, ignoreErrorBodyReadFailure: true }),
       addressPolicy: 'unrestricted', timeoutMs, signal: call.context.cancellationSignal,
       ...(onResponseChunk ? { onResponseChunk } : {}),
     };

@@ -59,6 +59,8 @@ from .models import (
 )
 
 T = TypeVar("T")
+# Only these statuses prove Graph refused a write; every other answer is an unknown outcome.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 WELL_KNOWN_FOLDERS = frozenset(
     (
         "archive",
@@ -156,6 +158,9 @@ def update_outcome(
     assert result.problem is not None
     empty = MovedMessage() if result.problem.operation == "moveMessage" else MessageFlags(flag_status="")
     if result.outcome in ("retry", "ambiguous", "invalid"):
+        return MutationAttempt.retry(result.problem, result.retry_after)
+    # Only a definite refusal status ends the write; any other provider answer is an unknown outcome.
+    if result.status_code != 0 and result.status_code not in DEFINITE_REFUSAL_STATUSES:
         return MutationAttempt.retry(result.problem, result.retry_after)
     return MutationAttempt.branch_result(
         "defect"

@@ -3,9 +3,11 @@
 
 import { generateKeyPairSync, createPublicKey, verify } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SnowflakeClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const handle = '00000000-0000-4000-8000-000000000003';
 const call = { id: '00000000-0000-4000-8000-000000000004', idempotencyKey: '00000000-0000-4000-8000-000000000004', context: { cancellationSignal: new AbortController().signal }, operation: { connectorId: 'snowflake', operationId: 'submitStatement' }, connection: { provider: 'snowflake', name: 'warehouse' } } as Call;
@@ -49,6 +51,55 @@ describe('Snowflake SQL API adapter', () => {
     const result = await client.getStatementResult().invoke(call, { statementHandle: handle });
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('invalidResponse');
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed credential material', new CredentialMaterialError('credential user is required'), true],
+    ['SDK provider decoding failure', new TypeError('project credential decoding failed'), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure without sending', async (_name, credentialFailure, isTerminal) => {
+    let requests = 0;
+    const client = new SnowflakeClient({ accountIdentifier: 'myorg-analytics' }, { resolve: async () => { throw credentialFailure; } }, {
+      localProviderUrl: 'http://127.0.0.1', send: async () => { requests++; throw new Error('unexpected request'); },
+    });
+    const expected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await client.submitStatement().invoke(call, { statement: 'SELECT 1' })).toMatchObject(expected);
+    expect(await client.cancelStatement().invoke(call, { statementHandle: handle })).toMatchObject(expected);
+    expect(await client.getStatementResult().invoke(call, { statementHandle: handle })).toMatchObject(expected);
+    expect(requests).toBe(0);
+  });
+
+  function answering(status: number, body: unknown): SnowflakeClient {
+    return new SnowflakeClient({ accountIdentifier: 'myorg-analytics' }, {
+      resolve: async () => ({ authMethodId: 'programmatic-access-token', programmaticAccessToken: new SecretString('pat-secret-value-0123456789') }),
+    }, { localProviderUrl: 'http://127.0.0.1', send: async () => ({ status, headers: {}, body: Buffer.from(JSON.stringify(body)) }) });
+  }
+
+  it.each([405, 408, 409, 307])('retries a write answered with unlisted HTTP %i', async status => {
+    const client = answering(status, {});
+    expect(await client.submitStatement().invoke(call, { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry' });
+    expect(await client.cancelStatement().invoke(call, { statementHandle: handle })).toMatchObject({ kind: 'retry' });
+  });
+
+  it('retries a write refusal whose error body is over 1 MiB', async () => {
+    const client = answering(422, { code: '002003', message: 'x'.repeat(1 << 20) });
+    expect(await client.submitStatement().invoke(call, { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry' });
+    expect(await client.cancelStatement().invoke(call, { statementHandle: handle })).toMatchObject({ kind: 'retry' });
+  });
+
+  it('selects canceled when a repeated cancel is refused for a known handle', async () => {
+    const repeated = { ...call, context: { ...call.context, attempt: 2 } } as Call;
+    const refused = answering(422, { code: '000605', sqlState: '01000', statementHandle: handle });
+    expect(await refused.cancelStatement().invoke(repeated, { statementHandle: handle })).toMatchObject({ kind: 'branch', branch: 'canceled' });
+    expect(await refused.cancelStatement().invoke(call, { statementHandle: handle })).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    const unknown = answering(422, { code: '000709', sqlState: '02000' });
+    expect(await unknown.cancelStatement().invoke(repeated, { statementHandle: handle })).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
   });
 
   it('rejects a credential without an authentication method before sending', async () => {

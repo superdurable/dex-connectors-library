@@ -45,6 +45,34 @@ func TestConformanceOptionalInputFieldsReusesLoadedPackage(t *testing.T) {
 	require.Same(t, firstLoad, goPackage.loaded)
 }
 
+func TestConformanceOperationsMarksOnlySafeMutations(t *testing.T) {
+	var output bytes.Buffer
+	require.NoError(t, conformanceOperationsCommand(filepath.Join("..", "..", "connectors", "slack", "connector.yaml"), &output))
+	var decoded map[string]map[string]any
+	require.NoError(t, json.Unmarshal(output.Bytes(), &decoded))
+	require.NotContains(t, decoded["listChannels"], "isSafeToRepeat", "a Query carries no Mutation tier")
+	require.NotContains(t, decoded["postChannelMessage"], "isSafeToRepeat", "a limited Mutation keeps full branch coverage")
+
+	output.Reset()
+	require.NoError(t, conformanceOperationsCommand(filepath.Join("..", "..", "connectors", "stripe", "connector.yaml"), &output))
+	require.NoError(t, json.Unmarshal(output.Bytes(), &decoded))
+	require.Equal(t, true, decoded["createRefund"]["isSafeToRepeat"])
+}
+
+func TestConformanceOperationsListsRetiredBranchesAndKeepsThemDeclared(t *testing.T) {
+	var output bytes.Buffer
+	require.NoError(t, conformanceOperationsCommand(filepath.Join("..", "..", "connectors", "intercom", "connector.yaml"), &output))
+	var decoded map[string]struct {
+		Branches        []string `json:"branches"`
+		RetiredBranches []string `json:"retiredBranches"`
+	}
+	require.NoError(t, json.Unmarshal(output.Bytes(), &decoded))
+	require.Equal(t, []string{"invalidResponse"}, decoded["replyToConversation"].RetiredBranches)
+	require.Contains(t, decoded["replyToConversation"].Branches, "invalidResponse", "a retired branch stays declared")
+	require.Empty(t, decoded["getConversation"].RetiredBranches)
+	require.NotContains(t, output.String(), `"retiredBranches":null`)
+}
+
 func TestConformanceOperationsCommandMatchesPerOperationPackageLoads(t *testing.T) {
 	for _, connector := range []string{"stripe", "newsapi", filepath.Join("microsoft", "entra-id")} {
 		t.Run(connector, func(t *testing.T) {

@@ -72,11 +72,11 @@ export interface SendMessageStepConfig<StepInput, OperationInput = SendMessageIn
   connection: Connection<{ sendMessage(): Mutation<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
-  /** The SMTP server accepted the message for delivery. */
+  /** The SMTP server accepted the message for delivery, in this attempt or, with a blank sentAt, in an earlier one. */
   sent: StepTarget<MutationResult<OperationOutput>>;
-  /** The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent. */
+  /** The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again. */
+  /** Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -100,15 +100,15 @@ export interface ReplyToMessageStepConfig<StepInput, OperationInput = ReplyToMes
   connection: Connection<{ replyToMessage(): Mutation<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
-  /** The SMTP server accepted the reply for delivery. */
+  /** The SMTP server accepted the reply for delivery, in this attempt or, with a blank sentAt, in an earlier one. */
   sent: StepTarget<MutationResult<OperationOutput>>;
-  /** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent. */
+  /** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent. */
+  /** The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The source message has no usable reply address or could not be parsed, so nothing was sent. */
+  /** The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again. */
+  /** Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit the reply again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -142,11 +142,14 @@ export interface MoveMessageStepConfig<StepInput, OperationInput = MoveMessageIn
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the moveMessage Step from a named connection. */
 export function newMoveMessageStep<StepInput, OperationInput = MoveMessageInput, OperationOutput = MovedMessage>(configuration: MoveMessageStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, moved, notFound, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, moved, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.moveMessage(), connection: connection.reference, branches: [
     goToBranch("moved", moved),
@@ -170,11 +173,14 @@ export interface SetFlagsStepConfig<StepInput, OperationInput = SetFlagsInput, O
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the setFlags Step from a named connection. */
 export function newSetFlagsStep<StepInput, OperationInput = SetFlagsInput, OperationOutput = MessageFlags>(configuration: SetFlagsStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.setFlags(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

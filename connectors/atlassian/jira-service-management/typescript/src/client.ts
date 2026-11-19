@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateTicketOperation, FindCustomerByEmailOperation, GetTicketOperation, SearchTicketsOperation, TransitionTicketOperation, UpdateTicketOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.atlassian.com';
@@ -15,8 +16,12 @@ const siteScopeMarkers = new Set(['read:servicedesk-request', 'write:servicedesk
 type API = 'platform' | 'desk' | 'gateway';
 export interface JiraRequest { method: string; api: API; path: string; query?: Record<string, string>; payload?: unknown; experimental?: boolean; }
 export interface JiraResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; reflectedSecret: boolean; }
-export interface JiraResult { response?: JiraResponse; error?: unknown; isProvablyNotSent?: boolean; }
-export type Classification = { kind: 'success' | 'retry' | 'notFound' | 'rejected' | 'invalidResponse' | 'defect' | 'uncertain'; failure?: Failure; retryAfterMs: number; receipt: ReceiptDraft; };
+/** A failed result keeps `acceptedStatus` when 2xx headers arrived before its body broke. */
+export interface JiraResult { response?: JiraResponse; error?: unknown; isProvablyNotSent?: boolean; acceptedStatus?: number; }
+/** `acceptedUnreadable` is a 2xx write whose body cannot be used: it happened and is never resent. */
+export type Classification = { kind: 'success' | 'retry' | 'notFound' | 'rejected' | 'invalidResponse' | 'defect' | 'uncertain' | 'acceptedUnreadable'; failure?: Failure; retryAfterMs: number; receipt: ReceiptDraft; };
+/** Statuses proving the provider refused a write; any other status leaves its outcome unknown. */
+export const definiteWriteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 export interface JiraClientOptions { send?: (request: ProviderRequest) => Promise<ProviderResponse>; now?: () => Date; }
 
 /** OAuth-backed Atlassian client shared by all seven ticket operations. */
@@ -51,14 +56,17 @@ export class JiraServiceManagementClient {
 
   /** Resolve a credential and select one accessible site. */
   async start(call: Call, operation: string): Promise<{ token: string; cloudID: string } | Classification> {
-    let token: string;
+    let credential: Credentials;
     try {
-      const credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      token = credential.accessToken.reveal();
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid credential');
-    } catch {
-      return this.classification('defect', operation, 'AUTHENTICATION', 'Jira Service Management connection credentials are unavailable; reconnect the connection', {});
+      credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+    } catch (error) {
+      if (isTerminalCredentialError(error)) return this.unusableCredential(operation);
+      // A credential store or broker outage is transient; a later attempt resolves again.
+      return this.classification('retry', operation, 'AVAILABILITY', 'Jira Service Management credential lookup is temporarily unavailable', {});
     }
+    let token = '';
+    try { token = credential.accessToken.reveal(); } catch { /* A wrongly typed token is invalid material. */ }
+    if (!token || !isHeaderSafeCredential(token)) return this.unusableCredential(operation);
     if (this.configuredCloudID || this.resolvedCloudID) return { token, cloudID: this.configuredCloudID || this.resolvedCloudID };
     const result = await this.exchange(call, { token, cloudID: '' }, { method: 'GET', api: 'gateway', path: '/oauth/token/accessible-resources' });
     if (result.error) return this.classification('retry', operation, 'TRANSPORT', 'Atlassian accessible resources are temporarily unavailable', {});
@@ -81,19 +89,19 @@ export class JiraServiceManagementClient {
   }
 
   /** Send a provider request, refreshing once after a 401 when the host supports it. */
-  async exchange(call: Call, session: { token: string; cloudID: string }, request: JiraRequest): Promise<JiraResult> {
-    let result = await this.sendOnce(call, session.token, session.cloudID, request);
+  async exchange(call: Call, session: { token: string; cloudID: string }, request: JiraRequest, signal?: AbortSignal): Promise<JiraResult> {
+    let result = await this.sendOnce(call, session.token, session.cloudID, request, signal);
     if (result.response?.status !== 401 || !('resolveAfterRejection' in this.credentials)) return result;
     try {
       const credential = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       session.token = credential.accessToken.reveal();
       if (!session.token) return result;
-      result = await this.sendOnce(call, session.token, session.cloudID, request);
+      result = await this.sendOnce(call, session.token, session.cloudID, request, signal);
     } catch { /* An unavailable replacement leaves the original 401 for classification. */ }
     return result;
   }
 
-  private async sendOnce(call: Call, token: string, cloudID: string, request: JiraRequest): Promise<JiraResult> {
+  private async sendOnce(call: Call, token: string, cloudID: string, request: JiraRequest, signal?: AbortSignal): Promise<JiraResult> {
     const prefix = request.api === 'gateway' ? '' : `/ex/jira/${pathEscape(cloudID)}${request.api === 'desk' ? '/rest/servicedeskapi' : '/rest/api/3'}`;
     const query = request.query ? '?' + encodeGoQuery(request.query) : '';
     let body: Uint8Array | undefined;
@@ -103,7 +111,8 @@ export class JiraServiceManagementClient {
       url: this.endpoint + prefix + request.path + query, method: request.method,
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}), ...(request.experimental ? { 'X-ExperimentalApi': 'opt-in' } : {}) },
       ...(body ? { body } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes),
-      timeoutMs: 20_000, addressPolicy: this.endpoint === defaultEndpoint ? 'publicHTTPS' : 'privateNetworkHTTP', signal: call.context.cancellationSignal,
+      timeoutMs: 20_000, addressPolicy: this.endpoint === defaultEndpoint ? 'publicHTTPS' : 'privateNetworkHTTP',
+      signal: signal ? AbortSignal.any([signal, call.context.cancellationSignal]) : call.context.cancellationSignal,
     };
     try {
       const response = await this.send(providerRequest);
@@ -111,7 +120,8 @@ export class JiraServiceManagementClient {
       return { response: { ...response, body: isSuccess && response.body.byteLength > this.maxResponseBytes ? new Uint8Array() : response.body, isTooLarge: isSuccess && response.body.byteLength > this.maxResponseBytes, reflectedSecret: Buffer.from(response.body).includes(Buffer.from(token)) } };
     } catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array(), isTooLarge: true, reflectedSecret: false } };
-      return { error, isProvablyNotSent: error instanceof ProviderTransportError ? error.isProvablyNotSent : error instanceof AddressRefusal };
+      const status = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      return { error, isProvablyNotSent: error instanceof ProviderTransportError ? error.isProvablyNotSent : error instanceof AddressRefusal, ...(status !== undefined && status >= 200 && status < 300 ? { acceptedStatus: status } : {}) };
     }
   }
 
@@ -132,17 +142,31 @@ export class JiraServiceManagementClient {
   /** Classify an unkeyed write, distinguishing a proven pre-send failure. */
   write(call: Call, operation: string, subject: string, result: JiraResult, objectID = ''): Classification {
     const receipt = this.receipt(call, result.response, objectID);
+    if (result.error && result.acceptedStatus !== undefined) return this.classification('acceptedUnreadable', operation, 'TRANSPORT', `Jira Service Management accepted the ${subject} but its response was interrupted`, receipt);
     if (result.error) return this.classification(result.isProvablyNotSent ? 'retry' : 'uncertain', operation, 'TRANSPORT', `Jira Service Management ${subject} outcome is unknown`, receipt);
     const response = result.response!;
     if (response.status >= 200 && response.status < 300) {
-      if (response.isTooLarge || response.reflectedSecret) return this.classification('uncertain', operation, response.isTooLarge ? 'RESPONSE_TOO_LARGE' : 'PROTOCOL', `Jira Service Management accepted the ${subject} but its response is unusable`, receipt);
+      if (response.isTooLarge || response.reflectedSecret) return this.classification('acceptedUnreadable', operation, response.isTooLarge ? 'RESPONSE_TOO_LARGE' : 'PROTOCOL', `Jira Service Management accepted the ${subject} but its response is unusable`, receipt);
       return { kind: 'success', retryAfterMs: 0, receipt };
     }
     if (response.status === 429 || response.status === 503) return this.classification('retry', operation, response.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', `Jira Service Management did not write the ${subject}`, receipt, this.retryAfter(response));
     if (response.status === 409) return this.classification('uncertain', operation, 'CONFLICT', `Jira Service Management ${subject} outcome requires read-back after HTTP 409`, receipt);
+    // A refusal status proves nothing when its body could not be read in full.
+    if (!isCompleteResponse(result)) return this.classification('uncertain', operation, 'TRANSPORT', `Jira Service Management ${subject} outcome is unknown after HTTP ${response.status} with an unreadable body`, receipt);
     if (response.status === 404) return this.classification('notFound', operation, 'NOT_FOUND', `Jira Service Management ${subject} was not found`, receipt);
-    if (response.status >= 400 && response.status < 500 && response.status !== 408) return this.classification('rejected', operation, statusFailureKind(response.status), `Jira Service Management rejected the ${subject} with HTTP ${response.status}`, receipt);
+    if (definiteWriteRefusalStatuses.has(response.status)) return this.classification('rejected', operation, statusFailureKind(response.status), `Jira Service Management rejected the ${subject} with HTTP ${response.status}`, receipt);
     return this.classification('uncertain', operation, 'AVAILABILITY', `Jira Service Management ${subject} outcome is unknown after HTTP ${response.status}`, receipt);
+  }
+
+  /** Classify an edit, or the read before it, that the next attempt repeats: only a readable definite refusal is terminal. */
+  repeatableWrite(call: Call, operation: string, subject: string, result: JiraResult, objectID = ''): Classification {
+    const classification = this.read(call, operation, subject, result, objectID);
+    const status = result.response?.status ?? 0;
+    const isRefusal = classification.kind === 'rejected' || classification.kind === 'notFound';
+    if (classification.kind === 'invalidResponse' || (classification.kind === 'rejected' && !definiteWriteRefusalStatuses.has(status)) || (isRefusal && !isCompleteResponse(result))) {
+      return this.classification('retry', operation, 'AVAILABILITY', `Jira Service Management ${subject} outcome is unknown after HTTP ${status}; the next attempt rereads the request first`, classification.receipt, result.response ? this.retryAfter(result.response) : 0);
+    }
+    return classification;
   }
 
   /** Construct one secret-safe result receipt. */
@@ -157,7 +181,23 @@ export class JiraServiceManagementClient {
     return { kind, failure: { kind: failureKind, provider: 'jira-service-management', operation, message }, retryAfterMs, receipt };
   }
 
-  private retryAfter(response: JiraResponse): number { return parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now()); }
+  private unusableCredential(operation: string): Classification {
+    return this.classification('defect', operation, 'AUTHENTICATION', 'Jira Service Management connection credentials are unavailable; reconnect the connection', {});
+  }
+
+  /** Return the provider's Retry-After delay in milliseconds, or 0 when the header is absent or invalid. */
+  retryAfter(response: JiraResponse): number { return parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now()); }
+}
+
+/** Report a credential failure no retry fixes; a store or broker outage may pass. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
+}
+
+/** Report a response whose body was read in full; only then can it prove a refusal. */
+export function isCompleteResponse(result: JiraResult): boolean {
+  return !!result.response && !result.error && !result.response.isTooLarge && !result.response.reflectedSecret;
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }

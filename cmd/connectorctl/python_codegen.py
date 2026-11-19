@@ -789,9 +789,15 @@ def render_steps():
         )
         lines.append("    step_options_override: dex.StepOptions | None = None,")
         tier = repeat_on_unknown_tier(operation)
-        # Only a limited Mutation accepts a send cap, so other factories reject the keyword.
+        # Only a limited Mutation forwards a send cap; a safe one keeps the keyword for compatibility.
         has_max_sends_override = bool(tier) and tier["repeatOnUnknown"] == "limited"
+        has_ignored_max_sends = bool(tier) and tier["repeatOnUnknown"] == "safe"
         if has_max_sends_override:
+            lines.append("    max_sends_override: int | None = None,")
+        elif has_ignored_max_sends:
+            lines.append(
+                "    # Accepted for compatibility; ignored because the operation is safe to repeat."
+            )
             lines.append("    max_sends_override: int | None = None,")
         lines.append(f") -> {kind}Step[StepInput, {input_type}, {output_type}]:")
         lines += [
@@ -1029,6 +1035,24 @@ def render_connection():
     ]
     credential_fields = auth_fields()
     if credential_fields:
+        lines += [
+            "",
+            "class CredentialMaterialError(ValueError):",
+            f"    {quoted('Stored ' + connection_label + ' credential material fails the connector credential checks, so no retry can succeed.')}",
+            "",
+            "",
+            "def is_credential_material_error(error: BaseException) -> bool:",
+            "    \"\"\"Report malformed stored credential material, also behind the SDK provider's decoding ValueError.\"\"\"",
+            "    if isinstance(error, CredentialMaterialError):",
+            "        return True",
+            "    # Only the SDK decoding wrapper qualifies; other errors may be transient.",
+            "    return (",
+            "        type(error) is ValueError",
+            "        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}",
+            "        and isinstance(error.__context__, CredentialMaterialError)",
+            "    )",
+            "",
+        ]
         decoder_start = len(lines)
         lines += [
             "",
@@ -1154,6 +1178,9 @@ def render_connection():
                 else:
                     values.append(f"{{key: item or '' for key, item in ({name} or {{}}).items()}}")
             lines += ["        return Credentials(" + ", ".join(values) + ")", ""]
+        lines[decoder_body_start:] = [
+            line.replace("raise ValueError(", "raise CredentialMaterialError(") for line in lines[decoder_body_start:]
+        ]
         if has_refresh:
             decoder = lines[decoder_body_start:]
             decoder = [line.removeprefix("    ") for line in decoder]

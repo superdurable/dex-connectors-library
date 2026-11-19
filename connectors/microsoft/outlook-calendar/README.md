@@ -30,7 +30,7 @@ This release has no Triggers; see [Triggers](#triggers).
 `@superdurable/connector-microsoft-outlook-calendar` implements all five operations with Connector SDK `0.7.0`. Its [runnable read-event Flow](typescript/examples/read-event) binds the static Dex Web connection name `outlook-calendar-scheduler`; the package's generated OAuth grant supports delegated and app-only token renewal. Run `npm ci` and `npm run check` in `typescript/`, then use the example Worker with a configured Dex Web Connection. The example's integration test runs against a real local Dex Worker and Client with a controlled Graph transport. Live Microsoft authorization for this package remains unverified.
 ## Python package
 
-The `dex-connector-microsoft-outlook-calendar` Python package implements all five operations at version `v0.1.0`, with no Triggers. It uses generated connector models, Step factories, connection bindings, and manifest OAuth grants. See the [Python package README](python/README.md) for its runnable `ReadOutlookEventFlow`, real Dex integration test, and local conformance commands. Microsoft authorization and Graph calls remain unverified for this language port.
+The `dex-connector-microsoft-outlook-calendar` Python package implements all five operations at version `v0.2.0`, with no Triggers. It uses generated connector models, Step factories, connection bindings, and manifest OAuth grants. See the [Python package README](python/README.md) for its runnable `ReadOutlookEventFlow`, real Dex integration test, and local conformance commands. Microsoft authorization and Graph calls remain unverified for this language port.
 
 ## Authorization
 
@@ -73,8 +73,10 @@ reauthorization, and so does a refreshed grant whose `scope` lacks
 `https://graph.microsoft.com/` form). The check never requires
 `offline_access`. After a 401 from Graph the connector asks once for a refresh,
 which the project connection performs only when the stored expiry has passed,
-and then retries once; otherwise the 401 selects `providerRejected`. There is
-never a refresh loop.
+and then retries once; otherwise the 401 selects `providerRejected`. When that
+refresh fails transiently, such as an unavailable credential broker, the
+attempt retries instead, because Graph did not process the rejected request.
+There is never a refresh loop.
 
 ### App-only for one mailbox (`app-only`)
 
@@ -158,17 +160,32 @@ offer and does not rely on any undocumented behavior:
   Microsoft documents as "a custom identifier specified by a client app for
   the server to avoid redundant POST operations in case of client retries",
   and stamps the same key as that extended property.
-- A lost response, 429, or 5xx is retried, and the retry finds its own event
-  through the lookup. A 400 or 409 is checked the same way before it is
-  reported; a 409 without the event is retried, because a concurrent attempt
-  may still be committing it.
+- The POST runs under a single-dispatch Fence capped at the Step's send limit
+  (`maxSends`, default 3). A lost response, a 5xx, or any status other than a
+  definite refusal is an unknown outcome: the next attempt looks the key up
+  first and resends only while the cap allows another send, and at the cap it
+  selects `uncertain`. 429 and 503 prove Graph did not process the POST, so
+  they retry without counting against the cap.
+- A 400 or 409 is checked through the lookup before it is reported. Only `400`,
+  `401`, `403`, `404`, `411`, `413`, `414`, `415`, or `422` whose body names no
+  created item ID selects `providerRejected`, and only when no earlier attempt
+  may have sent; after a possible earlier send it selects `uncertain`.
+- A 2xx is never resent. An unusable 2xx body, including one that breaks or is
+  cut by the write deadline after the status arrived, records acceptance, reads
+  the key back, and later attempts only read back, selecting `uncertain` when
+  the event still cannot be found. A write deadline that passes before any
+  status arrived is an unknown outcome. `invalidResponse` now means only that the lookup
+  before any send was unusable, so nothing was sent.
+- A credential failure after a possible earlier send retries when transient and
+  selects `uncertain` when terminal. Malformed stored credential material is
+  terminal like a reauthorization.
 
 Microsoft does not document what a repeated `transactionId` returns: whether
 the existing event, a 201, a 409, or another error, or for how long it is
 remembered. Extended-property indexing can lag, so a sequential retry may
-miss the first event and send another POST. `createEvent` therefore uses five
-attempts within two minutes. If both were ever created, a later lookup lists
-the extra IDs in `duplicateEventIds`. The operation has no `uncertain` branch.
+miss the first event and send another POST, at most up to the send cap.
+`createEvent` uses five attempts within two minutes. If both were ever
+created, a later lookup lists the extra IDs in `duplicateEventIds`.
 
 `updateEvent` reads the event, returns it with `wasAlreadyApplied: true` when it
 already holds every requested value, and otherwise PATCHes only the requested
@@ -177,8 +194,12 @@ attendees by lowercase address and type, and bodies after Outlook's line-ending
 and edge-whitespace conversion. A retry after a lost response therefore finds
 its own change and sends no second PATCH and no second meeting update. A 412 or
 409 from a concurrent edit, a transport failure, a 429, or a 5xx is retried from
-the read. `start` and `end` change together and always send `isAllDay`. A
-cancelled meeting selects `notFound`.
+the read. The manifest declares `updateEvent` `repeatOnUnknown: safe`: only an
+allowlisted refusal with a body that names no item selects `providerRejected`,
+and any other status or an unusable read or answer retries from the read, so
+`invalidResponse` is no longer selected. A credential failure on a later
+attempt retries. `start` and `end` change together and always send
+`isAllDay`. A cancelled meeting selects `notFound`.
 
 Creating an event with attendees makes Outlook send invitations, which cannot be
 turned off, and a PATCH that changes attendees sends an update to the changed
@@ -187,8 +208,11 @@ attendees, so the example places an uninvited hold first.
 ## Branches
 
 Every operation uses `defect` for invalid local input, connection
-configuration, or connector contract violations, before any provider request;
-an app-only connection without its mailbox is one. A conclusive Graph refusal
+configuration, a terminal credential failure (reauthorization required, a
+missing or unselected connection, a broker refusal, or a token that fails local
+checks), or connector contract violations, before any provider request; an
+app-only connection without its mailbox is one. Every other credential
+failure, such as a broker outage, returns Retry before any request. A conclusive Graph refusal
 uses `providerRejected` with a safe failure naming only the HTTP status and a
 word-shaped `error.code`, never `error.message`. A malformed or oversized
 response, or a `@odata.nextLink` outside `https://graph.microsoft.com/v1.0`,
@@ -332,4 +356,4 @@ mock := outlookcalendarmock.New(t, ConnectionName)
 flow, harness := newBookMeetingHarness(t, mock.Connection(), CalendarSelection{CalendarID: "team-calendar", CalendarName: "Ops Team"})
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go@v0.24.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go@v0.25.0`.

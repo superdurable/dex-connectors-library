@@ -1344,7 +1344,10 @@
         "branch": "appended",
         "failureKind": "",
         "heartbeat": {
-          "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "alreadyPresentKeys": [],
@@ -1816,7 +1819,9 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "canResend"
         },
         "output": {
           "alreadyPresentKeys": [],
@@ -1920,7 +1925,10 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 3,
         "retry": true,
@@ -2022,7 +2030,9 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "canResend"
         },
         "requestCount": 3,
         "retry": true,
@@ -2120,7 +2130,10 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 3,
         "retry": true,
@@ -2393,6 +2406,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2442,6 +2460,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2489,6 +2512,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "notSent"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2690,7 +2718,10 @@
           "exchangeCount": 3,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
+            "attempt": 1,
+            "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+            "sendCount": 1,
+            "state": "claimed"
           },
           "retryAfterMs": 10000
         }
@@ -2847,7 +2878,10 @@
         "branch": "appended",
         "failureKind": "",
         "heartbeat": {
-          "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
+          "attempt": 2,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "alreadyPresentKeys": [],
@@ -2878,7 +2912,9 @@
           "exchangeCount": 3,
           "failureKind": "RATE_LIMIT",
           "heartbeat": {
-            "cleared": true
+            "attempt": 1,
+            "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+            "state": "canResend"
           },
           "retryAfterMs": 3000
         }
@@ -3159,7 +3195,10 @@
         "branch": "appended",
         "failureKind": "",
         "heartbeat": {
-          "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "alreadyPresentKeys": [],
@@ -3265,7 +3304,9 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "canResend"
         },
         "output": {
           "alreadyPresentKeys": [],
@@ -3552,6 +3593,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -3620,6 +3666,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "notSent"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -3716,7 +3767,10 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 2,
         "retry": true,
@@ -3814,7 +3868,10 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 3,
         "retry": true,
@@ -3914,7 +3971,9 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "canResend"
         },
         "requestCount": 3,
         "retry": true,
@@ -4014,7 +4073,9 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "state": "canResend"
         },
         "requestCount": 3,
         "retry": true,
@@ -4119,6 +4180,848 @@
           "microsoftExcelDispatchedCallId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280"
         }
       }
+    },
+    {
+      "attempts": 2,
+      "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"col-key\",\"index\":0,\"name\":\"RequestId\"},{\"id\":\"col-amount\",\"index\":1,\"name\":\"Amount\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Decisions!A2:A1\",\"rowCount\":0,\"columnCount\":1,\"values\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns/col-key/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"badGateway\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/rows/add",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"value\":[{\"id\":\"col-key\",\"index\":0,\"name\":\"RequestId\"},{\"id\":\"col-amount\",\"index\":1,\"name\":\"Amount\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Decisions!A2:A1\",\"rowCount\":0,\"columnCount\":1,\"values\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns/col-key/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"index\":0,\"values\":[[\"REQ-1\",42]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/rows/add",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "appended",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "alreadyPresentKeys": [],
+          "appendedKeys": [
+            "REQ-1"
+          ]
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "keyColumn": "RequestId",
+        "rows": [
+          {
+            "Amount": 42,
+            "RequestId": "REQ-1"
+          }
+        ],
+        "table": "Decisions",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 10000
+        }
+      ],
+      "name": "appendTableRows-resend-after-unknown-outcome",
+      "operation": "appendTableRows"
+    },
+    {
+      "attempts": 4,
+      "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"col-key\",\"index\":0,\"name\":\"RequestId\"},{\"id\":\"col-amount\",\"index\":1,\"name\":\"Amount\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Decisions!A2:A1\",\"rowCount\":0,\"columnCount\":1,\"values\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns/col-key/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"internalServerError\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/rows/add",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"value\":[{\"id\":\"col-key\",\"index\":0,\"name\":\"RequestId\"},{\"id\":\"col-amount\",\"index\":1,\"name\":\"Amount\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Decisions!A2:A1\",\"rowCount\":0,\"columnCount\":1,\"values\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns/col-key/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"conflict\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/rows/add",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"value\":[{\"id\":\"col-key\",\"index\":0,\"name\":\"RequestId\"},{\"id\":\"col-amount\",\"index\":1,\"name\":\"Amount\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Decisions!A2:A1\",\"rowCount\":0,\"columnCount\":1,\"values\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns/col-key/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"gatewayTimeout\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/rows/add",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 504
+        },
+        {
+          "body": "{\"value\":[{\"id\":\"col-key\",\"index\":0,\"name\":\"RequestId\"},{\"id\":\"col-amount\",\"index\":1,\"name\":\"Amount\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Decisions!A2:A1\",\"rowCount\":0,\"columnCount\":1,\"values\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns/col-key/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "alreadyPresentKeys": [],
+          "appendedKeys": []
+        },
+        "requestCount": 11,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "keyColumn": "RequestId",
+        "rows": [
+          {
+            "Amount": 42,
+            "RequestId": "REQ-1"
+          }
+        ],
+        "table": "Decisions",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 10000
+        },
+        {
+          "exchangeCount": 6,
+          "failureKind": "CONFLICT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 10000
+        },
+        {
+          "exchangeCount": 9,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 10000
+        }
+      ],
+      "name": "appendTableRows-send-cap-reached-uncertain",
+      "operation": "appendTableRows"
+    },
+    {
+      "attempts": 2,
+      "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"col-key\",\"index\":0,\"name\":\"RequestId\"},{\"id\":\"col-amount\",\"index\":1,\"name\":\"Amount\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Decisions!A2:A1\",\"rowCount\":0,\"columnCount\":1,\"values\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns/col-key/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"internalServerError\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/rows/add",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"value\":[{\"id\":\"col-key\",\"index\":0,\"name\":\"RequestId\"},{\"id\":\"col-amount\",\"index\":1,\"name\":\"Amount\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns",
+          "query": {
+            "$select": [
+              "id,index,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"address\":\"Decisions!A2:A1\",\"rowCount\":0,\"columnCount\":1,\"values\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/columns/col-key/dataBodyRange",
+          "query": {
+            "$select": [
+              "address,rowCount,columnCount,values"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"accessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/tables/Decisions/rows/add",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+          "sendCount": 1,
+          "state": "canResend"
+        },
+        "output": {
+          "alreadyPresentKeys": [],
+          "appendedKeys": []
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "keyColumn": "RequestId",
+        "rows": [
+          {
+            "Amount": 42,
+            "RequestId": "REQ-1"
+          }
+        ],
+        "table": "Decisions",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 10000
+        }
+      ],
+      "name": "appendTableRows-refusal-after-unknown-outcome-uncertain",
+      "operation": "appendTableRows"
+    },
+    {
+      "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+      "input": {
+        "driveId": "b!driveKey-123_abc",
+        "keyColumn": "RequestId",
+        "rows": [
+          {
+            "Amount": 42,
+            "RequestId": "REQ-1"
+          }
+        ],
+        "table": "Decisions",
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+      },
+      "name": "appendTableRows-invalid-checkpoint-retries",
+      "operation": "appendTableRows",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "2294c9bc-d794-5e00-a16c-1eb2f7da2280",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "337ece0c-92d5-5346-9d3b-ec705be2b0df",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"conflict\",\"innerError\":{\"code\":\"insertDeleteConflict\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Summary/range(address='A1:B1')",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "337ece0c-92d5-5346-9d3b-ec705be2b0df",
+      "input": {
+        "address": "A1:B1",
+        "driveId": "b!driveKey-123_abc",
+        "values": [
+          [
+            "REQ-1",
+            42
+          ]
+        ],
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+        "worksheet": "Summary"
+      },
+      "name": "updateValues-unknown-conflict-retries",
+      "operation": "updateValues"
+    },
+    {
+      "callId": "337ece0c-92d5-5346-9d3b-ec705be2b0df",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"internalServerError\",\"innerError\":{\"code\":\"internalServerErrorUncategorized\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1.0/drives/b!driveKey-123_abc/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/workbook/worksheets/Summary/range(address='A1:B1')",
+          "requestBody": {
+            "values": [
+              [
+                "'REQ-1",
+                42
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer excel-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "337ece0c-92d5-5346-9d3b-ec705be2b0df",
+      "input": {
+        "address": "A1:B1",
+        "driveId": "b!driveKey-123_abc",
+        "values": [
+          [
+            "REQ-1",
+            42
+          ]
+        ],
+        "workbookId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+        "worksheet": "Summary"
+      },
+      "name": "updateValues-unknown-server-error-retries",
+      "operation": "updateValues"
     }
   ],
   "schemaVersion": 1

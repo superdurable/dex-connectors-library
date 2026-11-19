@@ -50,7 +50,44 @@ export interface ExecuteStatementStepConfig<StepInput, OperationInput = ExecuteS
   limitExceeded?: StepTarget<MutationResult<OperationOutput>>;
   /** The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The connection failed after COMMIT was sent, so whether the server committed the write is unknown. */
+  /** Retained for identity stability and never selected: a COMMIT with an unknown outcome is retried, because execute statements must be repeat-safe. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
+  /** The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written. */
+  invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
+  defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
+}
+
+/** Build the execute Step from a named connection. */
+export function newExecuteStatementStep<StepInput, OperationInput = ExecuteStatementInput, OperationOutput = StatementExecution>(configuration: ExecuteStatementStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, completed, limitExceeded, providerRejected, uncertain, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.execute(), connection: connection.reference, branches: [
+    goToBranch("completed", completed),
+    ...(limitExceeded ? [goToBranch("limitExceeded", limitExceeded)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the executeNonIdempotent connector Step. */
+export interface ExecuteStatementNonIdempotentStepConfig<StepInput, OperationInput = ExecuteStatementInput, OperationOutput = StatementExecution> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ executeNonIdempotent(): Mutation<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** The server committed the statement's transaction; the Result holds the rows affected and any OUTPUT rows. */
+  completed: StepTarget<MutationResult<OperationOutput>>;
+  /** The statement affected more rows than maxRowsAffected, or its OUTPUT rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written. */
+  limitExceeded?: StepTarget<MutationResult<OperationOutput>>;
+  /** The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written. */
+  providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** COMMIT may have reached the server, in this or an earlier attempt, and its outcome is unknown; the connector never runs the statement again, so inspect the database before writing again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
@@ -58,11 +95,11 @@ export interface ExecuteStatementStepConfig<StepInput, OperationInput = ExecuteS
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
-/** Build the execute Step from a named connection. */
-export function newExecuteStatementStep<StepInput, OperationInput = ExecuteStatementInput, OperationOutput = StatementExecution>(configuration: ExecuteStatementStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+/** Build the executeNonIdempotent Step from a named connection. */
+export function newExecuteStatementNonIdempotentStep<StepInput, OperationInput = ExecuteStatementInput, OperationOutput = StatementExecution>(configuration: ExecuteStatementNonIdempotentStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
   const { connection, connectionName, completed, limitExceeded, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
-  return newMutationStep({ ...stepConfiguration, operation: connection.operations.execute(), connection: connection.reference, branches: [
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.executeNonIdempotent(), connection: connection.reference, branches: [
     goToBranch("completed", completed),
     ...(limitExceeded ? [goToBranch("limitExceeded", limitExceeded)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),

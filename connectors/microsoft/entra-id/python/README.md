@@ -1,6 +1,6 @@
 # Microsoft Entra ID Python connector
 
-`dex-connector-microsoft-entra-id==0.1.0` provides eight Dex operations for Microsoft Graph: `getUser`, `listUsers`, `createUser`, `disableUser`, `enableUser`, `revokeSignInSessions`, `addUserToGroup`, and `removeUserFromGroup`. It requires `dex-connectors-sdk==0.6.0`. No Triggers are declared.
+`dex-connector-microsoft-entra-id==0.1.1` provides eight Dex operations for Microsoft Graph: `getUser`, `listUsers`, `createUser`, `disableUser`, `enableUser`, `revokeSignInSessions`, `addUserToGroup`, and `removeUserFromGroup`. It requires `dex-connectors-sdk==0.6.0`. No Triggers are declared.
 
 The [account lookup example](examples/user_lookup/flow.py) uses the static `entra-directory` connection name and the generated `new_get_user_step` factory. Start its Worker with `uv run python -m examples.user_lookup.start` after configuring that connection in Dex Web and setting `DEX_FLOW_SERVICE_ADDRESS` for your Dex server. The [integration test](examples/user_lookup/integration_test.py) runs the same Flow through a real Dex Worker and Client, with a local Microsoft Graph stand-in.
 

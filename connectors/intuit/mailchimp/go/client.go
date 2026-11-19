@@ -4,8 +4,9 @@
 // Package mailchimp implements Mailchimp Marketing API audience and campaign operations as Dex
 // connector Steps: getMember and listMembers read audience contacts, upsertMember and
 // updateMemberTags write a contact so that a repeated attempt writes the same values, and
-// sendCampaign sends an existing draft campaign at most once per Step execution, because a send is
-// irreversible and Mailchimp documents no idempotency key.
+// sendCampaign sends an existing draft campaign under a single-dispatch fence: Mailchimp documents no
+// idempotency key, so a send whose outcome is unknown is resent only after the campaign reads as a
+// draft again and only while the possible sends stay below the Step's send cap.
 //
 // The connector authenticates with a Mailchimp API key sent as a Bearer token. A key ends with a
 // hyphen and the account's data center, such as -us6, and the connector derives the API host
@@ -31,7 +32,9 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -110,6 +113,8 @@ type mailchimpRequest struct {
 	path    string
 	query   url.Values
 	payload any
+	// isFencedWrite stops the HTTP transport from replaying a single-dispatch send.
+	isFencedWrite bool
 }
 
 type mailchimpResponse struct {
@@ -142,6 +147,8 @@ type mailchimpExchange struct {
 	response   mailchimpResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// isErrorBodyTooLarge means a non-2xx body exceeded maxResponseBytes, so it proves no refusal.
+	isErrorBodyTooLarge bool
 }
 
 // mailchimpErrorSummary holds only the problem title and field names; detail and messages are text and never read.
@@ -218,19 +225,27 @@ func (client *Client) SendCampaign() SendCampaignOperation {
 
 // resolveConnection returns a header-safe API key and its API base URL, or a safe defect Failure.
 func (client *Client) resolveConnection(call sdkgo.Call, operation string) (resolvedConnection, *sdkgo.Failure) {
+	connection, failure, _ := client.resolveClassifiedConnection(call, operation)
+	return connection, failure
+}
+
+// resolveClassifiedConnection also reports whether a failure may succeed on a later attempt: only a
+// lookup error outside isTerminalCredentialError is transient.
+func (client *Client) resolveClassifiedConnection(call sdkgo.Call, operation string) (resolvedConnection, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
-		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+		isTransient := !isTerminalCredentialError(err)
+		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), isTransient
 	}
 	dataCenter, err := validateResolvedCredentials(credentials)
 	if err != nil {
-		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, err.Error())
+		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, err.Error()), false
 	}
 	apiBaseURL := client.apiBaseURL
 	if apiBaseURL == "" {
 		apiBaseURL = "https://" + dataCenter + ".api.mailchimp.com/3.0"
 	}
-	return resolvedConnection{credentials: credentials, apiBaseURL: apiBaseURL}, nil
+	return resolvedConnection{credentials: credentials, apiBaseURL: apiBaseURL}, nil, false
 }
 
 // exchange sends one authenticated request under the Step context of call.
@@ -270,7 +285,9 @@ func (client *Client) exchangeWithContext(ctx context.Context, connection resolv
 		}
 		return mailchimpExchange{outcome: exchangeSucceeded, response: response}
 	}
-	return client.classifyFailureStatus(response, connection.credentials, operation)
+	result := client.classifyFailureStatus(response, connection.credentials, operation)
+	result.isErrorBodyTooLarge = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
+	return result
 }
 
 func (client *Client) buildRequest(ctx context.Context, connection resolvedConnection, request mailchimpRequest) (*http.Request, error) {
@@ -296,6 +313,11 @@ func (client *Client) buildRequest(ctx context.Context, connection resolvedConne
 	httpRequest.Header.Set("Accept", "application/json")
 	if request.payload != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
+	}
+	if request.isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return nil, errMailchimpRequestNotBuilt
+		}
 	}
 	return httpRequest, nil
 }
@@ -406,6 +428,13 @@ func safeRequestID(header http.Header) string {
 		return requestID
 	}
 	return ""
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // validateResolvedCredentials checks the API key and returns the data center its suffix names.

@@ -288,8 +288,8 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTaskContent"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateTaskBranchUpdated, Description: "Todoist confirmed every specified field and returned the task."},
-		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", Optional: true},
-		{ID: UpdateTaskBranchProviderRejected, Description: "Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.", Optional: true},
+		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist. An accepted update whose read-back finds no active task repeats instead.", Optional: true},
+		{ID: UpdateTaskBranchProviderRejected, Description: "Todoist conclusively rejected the update. An accepted update whose read-back is rejected repeats instead.", Optional: true},
 		{ID: UpdateTaskBranchDefect, Description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -297,6 +297,7 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateTaskResult = sdkgo.MutationResult[Task]
@@ -316,6 +317,8 @@ type UpdateTaskStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateTaskResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Task]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateTaskStep[IN any](config UpdateTaskStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTaskInput, Task] {
@@ -431,7 +434,7 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTaskBranchCreated, Description: "Todoist confirmed creation and returned the task ID."},
 		{ID: CreateTaskBranchProviderRejected, Description: "Todoist conclusively rejected creation.", Optional: true},
-		{ID: CreateTaskBranchUncertain, Description: "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "The send cap is reached, or Todoist accepted the creation with an unreadable answer or a task ID that could not be read back, so the task may exist; the connector does not send it again.", Optional: true},
 		{ID: CreateTaskBranchDefect, Description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -439,6 +442,8 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateTaskResult = sdkgo.MutationResult[Task]
@@ -458,6 +463,8 @@ type CreateTaskStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateTaskResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Task]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateTaskStep[IN any](config CreateTaskStepConfig[IN]) sdkgo.MutationStep[IN, CreateTaskInput, Task] {
@@ -489,6 +496,7 @@ func NewCreateTaskStep[IN any](config CreateTaskStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -510,6 +518,7 @@ var DeleteTaskDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteTaskResult = sdkgo.MutationResult[DeleteTaskOutcome]
@@ -529,6 +538,8 @@ type DeleteTaskStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[DeleteTaskResult]                          `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteTaskOutcome]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewDeleteTaskStep[IN any](config DeleteTaskStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTaskInput, DeleteTaskOutcome] {

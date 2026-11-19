@@ -3,7 +3,7 @@
 
 import { SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import { ConfigSchema, type Config, type Credentials } from './generated/models.js';
+import { ConfigSchema, CredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { newProjectConnection as newGeneratedProjectConnection } from './generated/connection.js';
 import { SQLServerClient } from './client.js';
 
@@ -16,7 +16,7 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     const credentials: CredentialProvider<Credentials> = {
       async resolve(_call: Call, signal?: AbortSignal): Promise<Credentials> {
         const fields = await loadedProject.resolveCredential('microsoft-sql-server', name, signal);
-        if (typeof fields.password !== 'string' || !fields.password) throw new TypeError('SQL Server password is unavailable');
+        if (typeof fields.password !== 'string' || !fields.password) throw new CredentialMaterialError('SQL Server password is unavailable');
         return { password: new SecretString(fields.password) };
       },
     };

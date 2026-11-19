@@ -10,6 +10,10 @@ The connector signs each GET request with [CTYun EOP authentication](https://www
 
 The [runnable Dex Flow](go/examples/knowledge-base-directory/README.md) uses the static `ctyun` connection and a synthetic mock. Live provider authorization and tenant access require user-controlled CTYun credentials and have not been verified here.
 
+## Python
+
+The [Python package](python/README.md) implements the same read-only `listKnowledgeBases` operation and includes a [runnable Dex Flow](python/examples/knowledge_base_directory/README.md). Its 15 provider scenarios replay Go-recorded requests, outputs, and retry decisions. No live CTYun account has been authorized for this port.
+
 ## TypeScript
 
 The [TypeScript package](typescript/README.md) implements the same signed `listKnowledgeBases` request. Its 15 Go-recorded provider scenarios and runnable Flow verify retry and persisted output through a real Dex Worker and Client.

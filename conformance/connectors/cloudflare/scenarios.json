@@ -413,16 +413,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "result": {
-            "id": ""
-          },
-          "success": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -433,7 +427,7 @@
         ],
         "zoneId": "zone-meridian"
       },
-      "name": "purgeCacheByURLs-invalidResponse",
+      "name": "purgeCacheByURLs-invalidResponse-retries",
       "operation": "purgeCacheByURLs"
     },
     {

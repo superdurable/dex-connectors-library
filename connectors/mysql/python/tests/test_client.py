@@ -83,6 +83,8 @@ def test_commit_classification_matches_definite_rollback_and_unknown_commit() ->
     assert (uncertain.branch, uncertain.kind) == ("uncertain", FailureKind.AVAILABILITY)
     network = _classify(ConnectionResetError(), "commit")
     assert (network.branch, network.kind) == ("uncertain", FailureKind.TRANSPORT)
+    unreadable = _classify(ValueError("unreadable COMMIT reply"), "commit")
+    assert (unreadable.branch, unreadable.kind) == ("uncertain", FailureKind.TRANSPORT)
 
 
 def test_local_refusal_retries_and_unknown_dns_is_terminal() -> None:

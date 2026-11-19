@@ -204,12 +204,12 @@ func GetMessageRejectedReadLogin() connectormock.Case[email.Message] {
 // GetMessageDefault is the manifest default, customerRefundRequest, which New installs.
 func GetMessageDefault() connectormock.Case[email.Message] { return GetMessageCustomerRefundRequest() }
 
-// SendMessageSent selects the sent branch: The SMTP server accepted the message for delivery.
+// SendMessageSent selects the sent branch: The SMTP server accepted the message for delivery, in this attempt or, with a blank sentAt, in an earlier one.
 func SendMessageSent(value email.SentMessage, failure *sdkgo.Failure) connectormock.Case[email.SentMessage] {
 	return connectormock.Branch(email.SendMessageBranchSent, value, failure)
 }
 
-// SendMessageProviderRejected selects the providerRejected branch: The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent.
+// SendMessageProviderRejected selects the providerRejected branch: The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent.
 func SendMessageProviderRejected(value email.SentMessage, failure *sdkgo.Failure) connectormock.Case[email.SentMessage] {
 	return connectormock.Branch(email.SendMessageBranchProviderRejected, value, failure)
 }
@@ -246,22 +246,22 @@ func SendMessageDefault() connectormock.Case[email.SentMessage] {
 	return SendMessageNewCustomerMessage()
 }
 
-// ReplyToMessageSent selects the sent branch: The SMTP server accepted the reply for delivery.
+// ReplyToMessageSent selects the sent branch: The SMTP server accepted the reply for delivery, in this attempt or, with a blank sentAt, in an earlier one.
 func ReplyToMessageSent(value email.SentMessage, failure *sdkgo.Failure) connectormock.Case[email.SentMessage] {
 	return connectormock.Branch(email.ReplyToMessageBranchSent, value, failure)
 }
 
-// ReplyToMessageNotFound selects the notFound branch: The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent.
+// ReplyToMessageNotFound selects the notFound branch: The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent.
 func ReplyToMessageNotFound(value email.SentMessage, failure *sdkgo.Failure) connectormock.Case[email.SentMessage] {
 	return connectormock.Branch(email.ReplyToMessageBranchNotFound, value, failure)
 }
 
-// ReplyToMessageProviderRejected selects the providerRejected branch: The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent.
+// ReplyToMessageProviderRejected selects the providerRejected branch: The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent.
 func ReplyToMessageProviderRejected(value email.SentMessage, failure *sdkgo.Failure) connectormock.Case[email.SentMessage] {
 	return connectormock.Branch(email.ReplyToMessageBranchProviderRejected, value, failure)
 }
 
-// ReplyToMessageInvalidResponse selects the invalidResponse branch: The source message has no usable reply address or could not be parsed, so nothing was sent.
+// ReplyToMessageInvalidResponse selects the invalidResponse branch: The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent.
 func ReplyToMessageInvalidResponse(value email.SentMessage, failure *sdkgo.Failure) connectormock.Case[email.SentMessage] {
 	return connectormock.Branch(email.ReplyToMessageBranchInvalidResponse, value, failure)
 }

@@ -29,6 +29,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -139,7 +141,16 @@ class Client:
         Failure means defect, and any other Failure means invalidResponse."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return (
+                    _failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        "Algolia credentials are temporarily unavailable; nothing was sent",
+                    ),
+                    0.0,
+                )
             credentials = None
         application_id = "" if credentials is None else credentials.application_id
         api_key = "" if credentials is None else credentials.api_key.reveal()
@@ -295,9 +306,19 @@ class SaveObjectOperation:
         if isinstance(reply, tuple):
             return MutationAttempt.retry(reply[0], reply[1])
         if isinstance(reply, Failure):
-            branch = DEFECT if _is_local_failure(reply) else INVALID_RESPONSE
-            return MutationAttempt.branch_result(branch, SavedObject(), Receipt(), reply)
+            if _is_local_failure(reply):
+                return MutationAttempt.branch_result(DEFECT, SavedObject(), Receipt(), reply)
+            # A repeated replacement of the same objectID converges, so an oversized answer retries.
+            return MutationAttempt.retry(reply)
         if reply.status != 200:
+            if reply.status not in (400, 401, 403, 404, 411, 413, 414, 415, 422):
+                return MutationAttempt.retry(
+                    _failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        f"Algolia answered record replacement with HTTP {reply.status}; outcome unknown",
+                    )
+                )
             return _mutation_branch(
                 PROVIDER_REJECTED,
                 _rejection_kind(reply.status),
@@ -308,8 +329,8 @@ class SaveObjectOperation:
         except (ValueError, TypeError, UnicodeDecodeError):
             saved = None
         if saved is None or saved.object_id != input.object_id or saved.task_id <= 0:
-            return _mutation_branch(
-                INVALID_RESPONSE, FailureKind.PROTOCOL, "Algolia returned an invalid indexing task"
+            return MutationAttempt.retry(
+                _failure(operation, FailureKind.PROTOCOL, "Algolia returned an invalid indexing task")
             )
         return MutationAttempt.branch_result(SAVED, saved, Receipt())
 
@@ -360,6 +381,22 @@ def _rejection_kind(status: int) -> FailureKind:
     if status == 403:
         return FailureKind.AUTHORIZATION
     return FailureKind.PROVIDER_REJECTION
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:

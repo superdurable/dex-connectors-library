@@ -1,9 +1,9 @@
 # Airtable Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.24.1`.
 
 The [TypeScript package](typescript/) is `@superdurable/connector-airtable`
-v0.2.0. It implements the four record operations and the `recordChanged`
+v0.2.1. It implements the four record operations and the `recordChanged`
 Trigger, and provides generated operation-specific Step factories and mocks.
 Its [runnable list example](typescript/examples/list-records/) uses a static
 `airtable-policies` Dex connection, and its
@@ -146,8 +146,8 @@ share merge values.
 
 Airtable has no idempotency key. The merge fields make the write repeat-safe:
 a retry finds the record the first attempt created and updates it with the
-same values, so the operation retries every ambiguous outcome and declares no
-`uncertain` branch. `UpsertedRecords.CreatedRecordIDs` describes the answered
+same values, so the operation declares `repeatOnUnknown: safe`, retries every
+ambiguous outcome, and declares no `uncertain` branch. `UpsertedRecords.CreatedRecordIDs` describes the answered
 request; after a lost response, the record the first attempt created appears
 in `UpdatedRecordIDs`.
 
@@ -169,7 +169,7 @@ append-only log a stable key field, such as a case or event ID, and upsert it.
 `UpdateRecordsInput` sets the named fields of up to 10 records by record ID
 and leaves every other field unchanged. Each value replaces the whole field,
 including every link of a linked record field, so repeating an update is safe;
-the operation keeps async durability, and a real-Dex test proves a slow update
+the operation declares `repeatOnUnknown: safe`, keeps async durability, and a real-Dex test proves a slow update
 dispatched twice converges. The request never sets `performUpsert`, so an
 unknown record ID is never created; a `404` selects `notFound`.
 
@@ -185,9 +185,12 @@ unknown record ID is never created; a `404` selects `notFound`.
 | `400`, `413`, other `422` | `providerRejected` | `VALIDATION` |
 | `429` | Retry after at least 30 seconds | `RATE_LIMIT` |
 | `408`, `5xx` except `501`, a dropped connection | Retry, honoring `Retry-After` | `AVAILABILITY` or `TRANSPORT` |
-| `3xx`, `501`, other `4xx` | `providerRejected` | `PROTOCOL` or `PROVIDER_REJECTION` |
-| Malformed, inconsistent, or oversized `2xx` | `invalidResponse` | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
-| Invalid input or connection | `defect`, with no request | `VALIDATION` or `AUTHENTICATION` |
+| `3xx`, `501`, other `4xx` | `providerRejected` on reads; Retry on `upsertRecords` and `updateRecords`, which only `400`, `401`, `403`, `404`, `411`, `413`, `414`, `415`, and `422` refuse | `PROTOCOL` or `PROVIDER_REJECTION` |
+| Malformed, inconsistent, or oversized `2xx` | `invalidResponse` on reads; Retry on `upsertRecords` and `updateRecords`, which may have applied and are safe to repeat | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
+| Oversized non-`2xx` | `invalidResponse` on reads; Retry on the writes | `RESPONSE_TOO_LARGE` |
+| Invalid input; an absent, unselected, or broker-refused connection; an unusable token | `defect`, with no request | `VALIDATION` or `AUTHENTICATION` |
+| Reauthorization required | `providerRejected`, with no request | `AUTHENTICATION` |
+| Any other credential read failure, such as a broker outage or a missing static connection | Retry, with no request | `AVAILABILITY` |
 
 A Failure names only the HTTP status and Airtable's uppercase error type, such
 as `INVALID_VALUE_FOR_COLUMN`, never Airtable's message text or the token. A
@@ -232,7 +235,7 @@ whatever the connection's `endpoint`.
 | Connection field | Default | Purpose |
 | --- | --- | --- |
 | `endpoint` | `https://api.airtable.com` | Airtable Web API base URL for operations. |
-| `maxResponseBytes` | `4194304` | Largest complete response; larger ones select `invalidResponse`. |
+| `maxResponseBytes` | `4194304` | Largest complete response; larger ones select `invalidResponse` on reads and retry the writes. |
 | `pollInterval` | `30s` | Delay between `recordChanged` polls of each binding, at least `1s`. |
 | `pollPageSize` | `100` | Records one `recordChanged` poll request reads, 1 to 100. |
 | `personal_access_token` | none | Secret personal access token. |

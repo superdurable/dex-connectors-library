@@ -7,10 +7,10 @@
 //
 // Microsoft Graph accepts no idempotency key or client-supplied message ID
 // for chatMessage, so every post runs with sync Execute durability and records
-// a Dex heartbeat claim through the shared single-dispatch fence. A retry
-// sends only after the immediately preceding attempt proved the write was not
-// applied. Otherwise a channel post or thread reply reads back; an unconfirmed
-// chat message selects uncertain.
+// a Dex heartbeat claim through the shared single-dispatch fence. An unknown
+// outcome is resent while possible sends stay below the send cap; a channel
+// post or thread reply is read back first. At the cap an unconfirmed post
+// selects uncertain.
 //
 // Graph allows application permissions for channel posts only for message
 // migration, so the connector posts as the signed-in user.
@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -148,11 +149,13 @@ type writeOutcome uint8
 const (
 	// writeAccepted is a 2xx whose body was read in full.
 	writeAccepted writeOutcome = iota + 1
+	// writeAcceptedUnreadable is a 2xx whose body was interrupted, oversized, or unsafe: Graph stored the message.
+	writeAcceptedUnreadable
 	// writeNotApplied is a 429 or an undispatched request: Graph cannot have stored the message.
 	writeNotApplied
-	// writeRejected is a conclusive 4xx: Graph refused before storing anything.
+	// writeRejected is a conclusive 400, 401, 403, 404, 411, 413, 414, 415, or 422: Graph refused before storing anything.
 	writeRejected
-	// writeAmbiguous may have been stored: a lost response, 3xx, 408, 5xx, or an unusable 2xx body.
+	// writeAmbiguous may have been stored: a lost response, 3xx, 408, 409, another 4xx, or 5xx.
 	writeAmbiguous
 	writeDefect
 )
@@ -240,7 +243,7 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 	validationErr := validateResolvedCredentials(credentials)
 	if err != nil || validationErr != nil {
 		cancel()
-		isReauthorizationRequired := sdkgo.IsReauthorizationRequired(err) || (err == nil && validationErr != nil)
+		isReauthorizationRequired := isTerminalCredentialError(err) || (err == nil && validationErr != nil)
 		message := "Microsoft Teams connection credentials are temporarily unavailable"
 		if isReauthorizationRequired {
 			message = "Microsoft Teams connection credentials are unavailable; reconnect the connection"
@@ -251,6 +254,13 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 		}
 	}
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // exchange refreshes and resends reads once after a 401.
@@ -396,11 +406,11 @@ func (client *Client) classifyWrite(operationID string, subject string, result e
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureTransport, "Microsoft Graph accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Microsoft Graph accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Microsoft Graph accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Microsoft Graph accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureProtocol, "Microsoft Graph accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Microsoft Graph accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
@@ -480,13 +490,15 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408, 409 and 429, or a 501: Graph refused before storing anything.
+// isConclusiveRejectionStatus reports a status that proves Graph refused the write; any other status is unknown.
 func isConclusiveRejectionStatus(statusCode int) bool {
-	if statusCode == http.StatusNotImplemented {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
 		return true
 	}
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout &&
-		statusCode != http.StatusConflict && statusCode != http.StatusTooManyRequests
+	return false
 }
 
 // isSafeProviderToken accepts a bounded printable ASCII value such as a request ID.

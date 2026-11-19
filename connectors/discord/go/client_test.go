@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/discord/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func messageJSON(id string, content string) string {
@@ -113,6 +115,45 @@ func TestInvalidInputAndCredentialsSelectDefectWithoutARequest(t *testing.T) {
 	require.Empty(t, provider.recordedRequests())
 }
 
+type failingDiscordCredentials struct{ err error }
+
+func (provider failingDiscordCredentials) Resolve(sdkgo.Call) (discord.Credentials, error) {
+	return discord.Credentials{}, provider.err
+}
+
+func TestCredentialFailuresRetryUnlessTerminal(t *testing.T) {
+	provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
+		writeJSON(t, response, http.StatusOK, `{}`)
+	})
+	for _, testCase := range []struct {
+		err    error
+		branch sdkgo.BranchID
+	}{
+		{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), discord.CreateMessageBranchProviderRejected},
+		{projectconfig.ErrReauthorizationRequired, discord.CreateMessageBranchProviderRejected},
+		{projectconfig.ErrObjectNotFound, discord.CreateMessageBranchDefect},
+		{projectconfig.ErrConnectionNotSelected, discord.CreateMessageBranchDefect},
+		{projectconfig.ErrCredentialBrokerRejected, discord.CreateMessageBranchDefect},
+		{projectconfig.ErrCredentialBrokerUnavailable, ""},
+		{errors.New("connection is not configured"), ""},
+	} {
+		t.Run(testCase.err.Error(), func(t *testing.T) {
+			client, err := discord.New(discord.Config{Endpoint: provider.URL}, failingDiscordCredentials{err: testCase.err})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newStepDexContext("create-credential"), client.CreateMessage(), discordConnection, discord.CreateMessageInput{ChannelID: testChannelID, Content: "hello"})
+			if testCase.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, testCase.branch, result.Branch)
+		})
+	}
+	require.Empty(t, provider.recordedRequests())
+}
+
 func TestListChannelMessagesReadsOneBoundedPageNewestFirst(t *testing.T) {
 	provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeJSON(t, response, http.StatusOK, `[`+messageJSON(testMessageID, "newest <b>")+`,`+messageJSON("998877665544332200", "older")+`]`)
@@ -167,6 +208,20 @@ func TestListChannelMessagesValidatesBoundsAndTheResponse(t *testing.T) {
 	result, err = sdkgo.RunQuery(newStepDexContext("list-overfull"), client.ListChannelMessages(), discordConnection, discord.ListChannelMessagesInput{ChannelID: testChannelID, Limit: 1})
 	require.NoError(t, err)
 	require.Equal(t, discord.ListChannelMessagesBranchInvalidResponse, result.Branch, "more messages than the limit is a protocol fault")
+}
+
+func TestListChannelMessagesMissingAMessageFieldSelectsInvalidResponse(t *testing.T) {
+	for _, field := range append([]string{"id"}, requiredMessageFields...) {
+		t.Run(field, func(t *testing.T) {
+			provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
+				writeJSON(t, response, http.StatusOK, `[`+messageJSONWithout(t, field)+`]`)
+			})
+			client := newTestClient(t, provider.URL, discord.Config{})
+			result, err := sdkgo.RunQuery(newStepDexContext("list-missing-"+field), client.ListChannelMessages(), discordConnection, discord.ListChannelMessagesInput{ChannelID: testChannelID, Limit: 10})
+			require.NoError(t, err)
+			require.Equal(t, discord.ListChannelMessagesBranchInvalidResponse, result.Branch)
+		})
+	}
 }
 
 func TestOversizedResponsesSelectInvalidResponse(t *testing.T) {
@@ -249,6 +304,32 @@ func TestCreateMessageValidatesContentAndClassifiesRejections(t *testing.T) {
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
 	require.Contains(t, result.Failure.Message, "code 50013")
 	requireSecretSafeFailure(t, result.Failure)
+}
+
+func TestCreateMessageRetriesUnknownAnswers(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		status     int
+		body       string
+		isRejected bool
+	}{
+		"redirect":        {status: http.StatusFound, body: `{}`},
+		"unlisted":        {status: http.StatusTooEarly, body: `{}`},
+		"not implemented": {status: http.StatusNotImplemented, body: `{}`},
+		"definite 422":    {status: http.StatusUnprocessableEntity, body: `{"code":50035}`, isRejected: true},
+	} {
+		provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
+			writeJSON(t, response, testCase.status, testCase.body)
+		})
+		client := newTestClient(t, provider.URL, discord.Config{})
+		result, err := sdkgo.RunMutation(newStepDexContext("post-"+name), client.CreateMessage(), discordConnection, discord.CreateMessageInput{ChannelID: testChannelID, Content: "hello"})
+		if testCase.isRejected {
+			require.NoError(t, err, name)
+			require.Equal(t, discord.CreateMessageBranchProviderRejected, result.Branch, name)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
 }
 
 func TestAddReactionPutsTheEscapedEmojiForTheBot(t *testing.T) {

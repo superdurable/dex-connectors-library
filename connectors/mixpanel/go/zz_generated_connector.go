@@ -221,7 +221,7 @@ var TrackEventDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: TrackEventBranchImported, Description: "Mixpanel accepted the event for ingestion."},
 		{ID: TrackEventBranchProviderRejected, Description: "Mixpanel rejected the event or credentials.", Optional: true},
-		{ID: TrackEventBranchInvalidResponse, Description: "Mixpanel returned malformed or oversized data.", Optional: true},
+		{ID: TrackEventBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: a malformed or oversized import confirmation now retries, because the $insert_id makes a resend safe.", Optional: true},
 		{ID: TrackEventBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

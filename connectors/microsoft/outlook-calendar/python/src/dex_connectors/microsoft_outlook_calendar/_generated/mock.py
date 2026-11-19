@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import CreateEventInput, CreateEventOutput, Event, EventAttendee, EventAttendeeInput, EventDateTime, EventOnlineMeeting, GetEventInput, ListEventsInput, ListEventsOutput, QueryFreeBusyInput, QueryFreeBusyOutput, ScheduleAvailability, ScheduleItem, UpdateEventInput, UpdateEventOutput
-from .definitions import CONNECTOR_ID, PROVIDER, CREATED, CREATE_EVENT_DEFINITION, DEFECT, FOUND, GET_EVENT_DEFINITION, INCOMPLETE, INVALID_RESPONSE, LISTED, LIST_EVENTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, QUERIED, QUERY_FREE_BUSY_DEFINITION, UPDATED, UPDATE_EVENT_DEFINITION
+from .definitions import CONNECTOR_ID, PROVIDER, CREATED, CREATE_EVENT_DEFINITION, DEFECT, FOUND, GET_EVENT_DEFINITION, INCOMPLETE, INVALID_RESPONSE, LISTED, LIST_EVENTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, QUERIED, QUERY_FREE_BUSY_DEFINITION, UNCERTAIN, UPDATED, UPDATE_EVENT_DEFINITION
 
 def list_events_listed(value: ListEventsOutput, failure: Failure | None = None) -> Case[ListEventsOutput]:
     return Case.branch_result(LISTED, value, failure)
@@ -120,6 +120,11 @@ def create_event_defect(value: CreateEventOutput, failure: Failure | None = None
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(create_event_defect, '__module__', "dex_connectors.microsoft_outlook_calendar.outlookcalendarmock")
+
+def create_event_uncertain(value: CreateEventOutput, failure: Failure) -> Case[CreateEventOutput]:
+    return Case.uncertain(value, failure)
+
+setattr(create_event_uncertain, '__module__', "dex_connectors.microsoft_outlook_calendar.outlookcalendarmock")
 
 def create_event_retry(failure: Failure, after_seconds: float = 0) -> Case[CreateEventOutput]:
     return Case.retry(failure, after_seconds)
@@ -278,6 +283,7 @@ __all__ = [
     "create_event_provider_rejected",
     "create_event_invalid_response",
     "create_event_defect",
+    "create_event_uncertain",
     "create_event_retry",
     "create_event_created_default_answer",
     "create_event_denied_create",

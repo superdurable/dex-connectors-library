@@ -1,6 +1,6 @@
 # Zoho CRM TypeScript connector
 
-`@superdurable/connector-zoho-crm@0.1.0` implements `findRecords`, `getRecord`, `listModifiedRecords`, `upsertRecord`, `updateRecord`, and `listModuleFields` for Dex TypeScript applications. It pins `@superdurable/connectors-sdk@0.7.0`. There are no Triggers.
+`@superdurable/connector-zoho-crm@0.1.1` implements `findRecords`, `getRecord`, `listModifiedRecords`, `upsertRecord`, `updateRecord`, and `listModuleFields` for Dex TypeScript applications. It pins `@superdurable/connectors-sdk@0.7.0`. There are no Triggers.
 
 The [record lookup Flow](examples/record-lookup/flow.ts) and [Worker entrypoint](examples/record-lookup/main.ts) open the static `zoho-crm-main` connection from Dex project configuration. Configure that connection in Dex Web and select the Zoho data center where the account lives. The [example guide](examples/record-lookup/README.md) shows how to run the Worker and its real Dex integration test.
 

@@ -73,6 +73,16 @@ def is_guid(value: str) -> bool:
     return bool(_GUID.fullmatch(value))
 
 
+def accepted_envelope_id(body: bytes) -> str:
+    """Return the lowercase envelopeId GUID a body names, which means DocuSign created it, or ""."""
+    try:
+        decoded = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    envelope_id = decoded.get("envelopeId") if isinstance(decoded, dict) else None
+    return envelope_id.lower() if isinstance(envelope_id, str) and is_guid(envelope_id) else ""
+
+
 def path_escape(value: str) -> str:
     """Apply Go url.PathEscape's segment character set."""
     return quote(value, safe="-._~$&+=:@")
@@ -90,6 +100,8 @@ class ProviderResponse:
     status: int
     headers: httpx.Headers
     body: bytes
+    # A non-2xx body that was oversized or broke mid-read proves no refusal.
+    is_error_body_incomplete: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,7 +262,26 @@ class Client:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
             from dex_connectors.sdk import ReauthorizationRequiredError
+            from dex_connectors.sdk.projectconfig import (
+                ConnectionNotSelectedError,
+                CredentialBrokerRejectedError,
+                ObjectNotFoundError,
+            )
 
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error) or isinstance(
+                error, (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError)
+            ):
+                raise SessionFailure(
+                    "defect",
+                    failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "the DocuSign connection credentials are missing or not selected for this "
+                        "project; authorize the connection in Dex Web Connections",
+                    ),
+                ) from None
             if isinstance(error, ReauthorizationRequiredError):
                 raise SessionFailure(
                     "defect",
@@ -492,11 +523,15 @@ class Client:
                 and attempt == 0
                 and hasattr(self.credentials, "resolve_after_rejection")
             ):
+                is_incomplete = False
                 try:
                     rejected_body = await read_bounded_body(response, MAX_ERROR_BODY_BYTES)
-                except BodyTooLargeError:
-                    rejected_body = b""
-                rejected = ProviderResponse(401, response.headers, rejected_body)
+                except (BodyTooLargeError, ProviderTransportError):
+                    rejected_body, is_incomplete = b"", True
+                rejected = ProviderResponse(401, response.headers, rejected_body, is_incomplete)
+                if method == "POST" and (is_incomplete or accepted_envelope_id(rejected_body)):
+                    # An incomplete or envelope-naming 401 body proves no refusal, so no second POST.
+                    return rejected, credentials
                 try:
                     replacement = await self.credentials.resolve_after_rejection(call)
                 except Exception:
@@ -505,19 +540,19 @@ class Client:
                     credentials = replacement
                     continue
                 return rejected, credentials
+            is_incomplete = False
             try:
                 bounded = await read_bounded_body(
                     response, maximum_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
                 )
-            except BodyTooLargeError:
+            except (BodyTooLargeError, ProviderTransportError):
                 if 200 <= response.status_code < 300:
                     raise
-                bounded = b""
-            except ProviderTransportError:
-                if 200 <= response.status_code < 300:
-                    raise
-                bounded = b""
-            return ProviderResponse(response.status_code, response.headers, bounded), credentials
+                bounded, is_incomplete = b"", True
+            return (
+                ProviderResponse(response.status_code, response.headers, bounded, is_incomplete),
+                credentials,
+            )
         raise RuntimeError("DocuSign authenticated request retry was exhausted")
 
     def classify(self, operation: str, response: ProviderResponse) -> ProviderOutcome:

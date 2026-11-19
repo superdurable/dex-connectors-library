@@ -619,7 +619,7 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UploadFileBranchUploaded, Description: "Dropbox stored the replacement file content."},
 		{ID: UploadFileBranchProviderRejected, Description: "Dropbox conclusively rejected the upload.", Optional: true},
-		{ID: UploadFileBranchInvalidResponse, Description: "Dropbox returned malformed or oversized upload metadata.", Optional: true},
+		{ID: UploadFileBranchInvalidResponse, Description: "Retained for compatibility and no longer selected: malformed or oversized upload metadata now retries the overwrite.", Optional: true},
 		{ID: UploadFileBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

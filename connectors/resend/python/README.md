@@ -1,6 +1,6 @@
 # Resend connector for Python
 
-Install with `pip install dex-connector-resend==0.1.0`. The package requires
+Install with `pip install dex-connector-resend==0.2.0`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `sendEmail` (Mutation) and `getEmail` (Query) with the same
 branches, defaults, and failure classification as the Go module.
@@ -14,10 +14,11 @@ branches, defaults, and failure classification as the Go module.
 
 `sendEmail` sends the stable Dex call ID in `Idempotency-Key`. Resend keeps
 keys for 24 hours; the default one-hour retry budget stays within that window,
-so keep any per-Step retry override shorter than 24 hours. A 409
-`concurrent_idempotent_requests` retries with the same key, while
-`invalid_idempotent_request` selects `providerRejected`. 408, 429, 5xx, and
-transport failures retry; other 4xx responses select `providerRejected`.
+so keep any per-Step retry override shorter than 24 hours. The write is
+declared `repeatOnUnknown: safe`: every 409 retries with the same key, and only
+HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 selects `providerRejected`.
+408, 429, 5xx, any other status, a malformed or oversized answer, and transport
+failures retry.
 
 ## Authorization
 

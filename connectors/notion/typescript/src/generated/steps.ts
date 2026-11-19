@@ -110,9 +110,9 @@ export interface CreatePageStepConfig<StepInput, OperationInput = CreatePageInpu
   created: StepTarget<MutationResult<OperationOutput>>;
   /** The database or data source does not exist or is not shared with the connection; nothing was created. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created. */
+  /** Notion conclusively rejected the first send with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as a missing property, a value of the wrong type, or missing Insert content capability; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically. */
+  /** Sends up to the send cap had unknown outcomes, or Notion accepted the page without a confirmable ID; Notion has no idempotency key, so the page may exist and must not be created again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
@@ -146,15 +146,18 @@ export interface UpdatePagePropertiesStepConfig<StepInput, OperationInput = Upda
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Notion applied the update but returned an invalid or oversized page. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updatePageProperties Step from a named connection. */
 export function newUpdatePagePropertiesStep<StepInput, OperationInput = UpdatePagePropertiesInput, OperationOutput = UpdatePagePropertiesOutput>(configuration: UpdatePagePropertiesStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updatePageProperties(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

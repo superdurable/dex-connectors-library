@@ -109,15 +109,18 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied. */
+  /** Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized lookup or answer repeats the absolute change. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateConversation Step from a named connection. */
 export function newUpdateConversationStep<StepInput, OperationInput = UpdateConversationInput, OperationOutput = UpdateConversationOutput>(configuration: UpdateConversationStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateConversation(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -140,7 +143,7 @@ export interface AddNoteStepConfig<StepInput, OperationInput = AddNoteInput, Ope
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Hiver conclusively rejected the note; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again. */
+  /** The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note, or a refusal status whose body carries a note ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -171,7 +174,7 @@ export interface CreateSharedDraftStepConfig<StepInput, OperationInput = CreateS
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Hiver conclusively rejected the draft; no draft was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again. */
+  /** The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft, or a refusal status whose body carries a draft ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

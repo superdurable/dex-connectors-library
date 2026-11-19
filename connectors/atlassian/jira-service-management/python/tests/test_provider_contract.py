@@ -2,28 +2,47 @@
 # SPDX-License-Identifier: MIT
 """Check provider-specific escaping, validation, and checkpoint wire values."""
 
-import json
 import time
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
-from dex import CodecRegistry
-from dex_connectors.sdk import CallID
+from dex_connectors.sdk import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.atlassian_jira_service_management import Client, Config
+from dex_connectors.atlassian_jira_service_management._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.atlassian_jira_service_management.client import (
     _operation_deadline,
     _query_escape,
     path_escape,
 )
 from dex_connectors.atlassian_jira_service_management.operations import (
-    _DispatchMarker,
     _email_address,
     _jira_time,
     _json_object,
     _ticket,
 )
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the SDK project provider's error after the generated decoder rejects malformed material."""
+    try:
+        try:
+            decode_credentials({"unknown_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
 
 
 @pytest.mark.parametrize(
@@ -81,15 +100,6 @@ def test_jira_date_accepts_go_fraction_and_large_offset() -> None:
     assert _jira_time("2026-02-28T10:00:00,5+99:59") == datetime(2026, 2, 24, 6, 1, 0, 500000, UTC)
 
 
-def test_dispatch_checkpoint_uses_go_wire_names() -> None:
-    """Persist the same marker shape Go reads on a later attempt."""
-    marker = _DispatchMarker(CallID("ab66bfde-d934-5d47-9e00-bdf172b83392"), 1)
-    codec = CodecRegistry().resolve(_DispatchMarker)
-    encoded = json.loads(codec.encode(marker).data)
-    assert encoded == {"jiraServiceManagementDispatchedCallId": str(marker.dispatched_call_id), "attempt": 1}
-    assert codec.decode(codec.encode(marker)) == marker
-
-
 def test_wrong_typed_ticket_fields_fail_decoding() -> None:
     """Treat a provider array in the issue fields as an invalid response."""
     with pytest.raises(ValueError):
@@ -118,5 +128,43 @@ async def test_operation_deadline_retries_before_provider_access() -> None:
         response = await client.exchange(call, None, "POST", "service", "/request", payload={})
         assert response.too_little_time
         assert client.classify_write("createTicket", "customer request", response).outcome == "retry"
+    finally:
+        await client.aclose()
+
+
+class _FailingCredentials:
+    """Fail every resolution with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: object) -> object:
+        """Raise the configured error."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (ReauthorizationRequiredError(), "defect"),
+        (ObjectNotFoundError("absent"), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (CredentialMaterialError("JSM stored credential does not match"), "defect"),
+        (sdk_decoding_failure(), "defect"),
+        (CredentialBrokerUnavailableError(), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+        (LookupError("unlisted"), "retry"),
+    ],
+)
+async def test_credential_resolve_errors_use_the_shared_terminal_set(error: Exception, expected: str) -> None:
+    """Only the listed credential failures are terminal; every other one retries."""
+    client = Client(Config(cloud_id=""), _FailingCredentials(error))  # type: ignore[arg-type]
+    call = SimpleNamespace(context=SimpleNamespace(deadline=datetime.now(UTC) + timedelta(seconds=30)))
+    try:
+        credentials, outcome = await client.resolve(call, "getTicket")  # type: ignore[arg-type]
+        assert credentials is None
+        assert outcome is not None and outcome.outcome == expected
     finally:
         await client.aclose()

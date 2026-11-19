@@ -62,7 +62,10 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 	if err := validateUpdateEventInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, operationID)
+	credentials, failure, isCredentialFailureRetryable := operation.client.resolveCredentials(call, operationID)
+	if failure != nil && isCredentialFailureRetryable {
+		return sdkgo.NewMutationRetry[UpdateEventOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -72,12 +75,11 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 	case eventReadFound:
 	case eventReadMissing:
 		return sdkgo.NewMutationBranch(UpdateEventBranchNotFound, UpdateEventOutput{}, &current.failure, readReceipt)
-	case eventReadRetry:
+	case eventReadRetry, eventReadInvalid:
+		// The write is safe to repeat, so an unusable read retries instead of selecting invalidResponse.
 		return sdkgo.NewMutationRetry[UpdateEventOutput](current.failure, current.retryAfter)
 	case eventReadRejected:
 		return sdkgo.NewMutationBranch(UpdateEventBranchProviderRejected, UpdateEventOutput{}, &current.failure, readReceipt)
-	case eventReadInvalid:
-		return sdkgo.NewMutationBranch(UpdateEventBranchInvalidResponse, UpdateEventOutput{}, &current.failure, readReceipt)
 	default:
 		return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, &current.failure, sdkgo.Receipt{})
 	}
@@ -99,7 +101,7 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 		requestFailure := asProviderRequestError(err)
 		switch requestFailure.kind {
 		case sdkgo.FailureResponseTooLarge:
-			return sdkgo.NewMutationBranch(UpdateEventBranchInvalidResponse, UpdateEventOutput{}, failurePointer(requestFailure.kind, operationID, requestFailure.message), operation.client.receipt(call, response, input.EventID))
+			return sdkgo.NewMutationRetry[UpdateEventOutput](calendarFailure(requestFailure.kind, operationID, "patch response is unusable; the retry rereads the event first"), 0)
 		case sdkgo.FailureLocalDefect:
 			return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, failurePointer(requestFailure.kind, operationID, requestFailure.message), sdkgo.Receipt{})
 		default:
@@ -121,7 +123,7 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 	}
 	event, err := decodeEvent(response.body, input.CalendarID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateEventBranchInvalidResponse, UpdateEventOutput{}, failurePointer(sdkgo.FailureProtocol, operationID, "provider returned an invalid event: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[UpdateEventOutput](calendarFailure(sdkgo.FailureProtocol, operationID, "provider returned an invalid event: "+err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateEventBranchUpdated, UpdateEventOutput{Event: event}, nil, receipt)
 }

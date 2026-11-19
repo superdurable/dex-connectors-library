@@ -4,13 +4,19 @@
 
 import asyncio
 import socket
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from typing import Any
 
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.doist_todoist import (
     Client,
@@ -20,6 +26,19 @@ from dex_connectors.doist_todoist import (
     GetTaskInput,
     UpdateTaskInput,
 )
+from dex_connectors.doist_todoist._generated.connection import CredentialMaterialError
+from tests.attempt_context import AttemptContext
+
+
+def _sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("Todoist credential api_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 CONNECTION = sdk.ConnectionRef("todoist", "todoist")
 
@@ -29,16 +48,21 @@ class _UnavailableCredentials:
         raise OSError("inert credential store outage")
 
 
-class _MissingCredentials:
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
     async def resolve(self, call: sdk.Call) -> Credentials:
-        raise LookupError("inert missing connection")
+        raise self.error
 
 
-def _call(operation: str) -> sdk.Call:
+def _call(operation: str, context: AttemptContext | None = None) -> sdk.Call:
     return sdk.Call(
-        sdk.CallID("call-1"),
+        sdk.CallID("3f1d6a52-0c3e-5b8e-9a41-2f7d6c1b9e04"),
         CONNECTION,
         sdk.OperationRef("todoist", operation),
+        context=context or AttemptContext(),
+        max_sends=3,
     )
 
 
@@ -56,14 +80,63 @@ async def test_credential_store_outage_retries_before_dispatch() -> None:
 
 
 @pytest.mark.asyncio
-async def test_missing_credential_is_terminal() -> None:
-    """A missing connection cannot be repaired by retrying the same call."""
-    client = Client(Config(), _MissingCredentials())
+@pytest.mark.parametrize(
+    "error",
+    [
+        sdk.ReauthorizationRequiredError("reauthorize"),
+        ConnectionNotSelectedError(),
+        CredentialBrokerRejectedError(),
+        ObjectNotFoundError("absent"),
+        CredentialMaterialError("Todoist stored credential does not match"),
+        _sdk_decoding_failure(),
+    ],
+    ids=["reauthorization", "not selected", "broker rejected", "object not found", "malformed", "decoding"],
+)
+async def test_terminal_credential_failure_selects_defect(error: Exception) -> None:
+    """Only the listed credential failures cannot be repaired by retrying the same call."""
+    client = Client(Config(), _FailingCredentials(error))
     try:
         answer = await client.get_task().invoke(_call("getTask"), GetTaskInput("task-123"))
         assert answer.kind == "branch" and answer.branch == "defect"
         assert answer.failure is not None
         assert answer.failure.kind == sdk.FailureKind.AUTHENTICATION
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError(),
+        ValueError("connection is not configured"),
+        LookupError("unlisted"),
+        RuntimeError("unlisted"),
+    ],
+    ids=["broker unavailable", "not configured", "unlisted lookup", "unlisted runtime"],
+)
+async def test_unlisted_credential_failure_retries_creation(error: Exception) -> None:
+    """Every credential failure outside the terminal set retries without a provider request."""
+    client = Client(Config(), _FailingCredentials(error))
+    try:
+        operation, task = client.create_task(), CreateTaskInput("Disposable task")
+        call = _call("createTask")
+        call = replace(call, idempotency_key=operation.idempotency_key(call.id, task))
+        answer = await operation.invoke(call, task)
+        assert answer.kind == "retry"
+        assert answer.failure is not None
+        assert answer.failure.kind == sdk.FailureKind.AVAILABILITY
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_unconfigured_static_connection_retries() -> None:
+    """The static provider's missing connection is not a terminal credential failure."""
+    client = Client(Config(), sdk.StaticCredentialProvider({}))
+    try:
+        answer = await client.get_task().invoke(_call("getTask"), GetTaskInput("task-123"))
+        assert answer.kind == "retry"
     finally:
         await client.aclose()
 
@@ -82,7 +155,7 @@ async def test_refused_local_connection_retries_creation() -> None:
         operation = client.create_task()
         input = CreateTaskInput("Disposable task")
         call = _call("createTask")
-        call = sdk.Call(call.id, call.connection, call.operation, operation.idempotency_key(call.id, input))
+        call = replace(call, idempotency_key=operation.idempotency_key(call.id, input))
         answer = await operation.invoke(call, input)
         assert answer.kind == "retry"
         assert answer.failure is not None
@@ -106,14 +179,8 @@ async def test_expired_attempt_does_not_send_creation() -> None:
         )
         operation = client.create_task()
         input = CreateTaskInput("Disposable task")
-        base_call = _call("createTask")
-        call = sdk.Call(
-            base_call.id,
-            base_call.connection,
-            base_call.operation,
-            operation.idempotency_key(base_call.id, input),
-            context=SimpleNamespace(deadline=datetime.now(UTC) - timedelta(seconds=1)),
-        )
+        base_call = _call("createTask", AttemptContext(deadline=datetime.now(UTC) - timedelta(seconds=1)))
+        call = replace(base_call, idempotency_key=operation.idempotency_key(base_call.id, input))
         answer = await operation.invoke(call, input)
         assert answer.kind == "retry"
         assert answer.failure is not None
@@ -141,23 +208,21 @@ async def test_budget_timeout_distinguishes_dispatch(headers_started: bool) -> N
         )
         operation = client.create_task()
         input = CreateTaskInput("Disposable task")
-        base_call = _call("createTask")
-        call = sdk.Call(
-            base_call.id,
-            base_call.connection,
-            base_call.operation,
-            operation.idempotency_key(base_call.id, input),
-            context=SimpleNamespace(deadline=datetime.now(UTC) + timedelta(seconds=0.25)),
-        )
+        context = AttemptContext(deadline=datetime.now(UTC) + timedelta(seconds=0.25))
+        base_call = _call("createTask", context)
+        call = replace(base_call, idempotency_key=operation.idempotency_key(base_call.id, input))
         answer = await operation.invoke(call, input)
-        assert answer.kind == ("uncertain" if headers_started else "retry")
+        # Both retry below the send cap; only an undispatched send is recorded as canResend.
+        assert answer.kind == "retry"
         assert answer.failure is not None
         assert answer.failure.kind == sdk.FailureKind.TRANSPORT
+        assert context.marker is not None
+        assert context.marker.state == ("claimed" if headers_started else "canResend")
 
 
 @pytest.mark.asyncio
-async def test_update_read_back_request_construction_defect() -> None:
-    """A local GET construction failure after an accepted write is terminal."""
+async def test_update_read_back_request_construction_failure_retries() -> None:
+    """A local GET construction failure after an accepted write retries; it never selects defect."""
 
     def answer_update(request: httpx.Request) -> httpx.Response:
         assert request.method == "POST"
@@ -189,7 +254,7 @@ async def test_update_read_back_request_construction_defect() -> None:
         answer = await client.update_task_content().invoke(
             _call("updateTaskContent"), UpdateTaskInput("task-123", content="new")
         )
-        assert answer.kind == "branch" and answer.branch == "defect"
+        assert answer.kind == "retry"
         assert answer.failure is not None
         assert answer.failure.kind == sdk.FailureKind.LOCAL_DEFECT
 
@@ -220,11 +285,8 @@ async def test_go_trim_space_accepts_ascii_information_separators(content: str) 
         create_operation = client.create_task()
         create_input = CreateTaskInput(content)
         base_call = _call("createTask")
-        create_call = sdk.Call(
-            base_call.id,
-            base_call.connection,
-            base_call.operation,
-            create_operation.idempotency_key(base_call.id, create_input),
+        create_call = replace(
+            base_call, idempotency_key=create_operation.idempotency_key(base_call.id, create_input)
         )
         created = await create_operation.invoke(create_call, create_input)
         updated = await client.update_task_content().invoke(

@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { SecretString, StaticCredentialProvider, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GmailClient, type CredentialSource, type Credentials } from '../src/index.js';
 
@@ -48,7 +49,23 @@ describe('getMessage operation', () => {
     const malformed = makeClient(async () => response(200, { id: 'one' }));
     expect(await malformed.getMessage().invoke(call, { messageId: 'one' })).toMatchObject({ branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
     const absentCredentials = makeClient(async () => response(200, {}), { resolve: async () => { throw new Error('secret must not leak'); }, resolveWithRefresh: async () => { throw new Error('secret must not leak'); } });
-    expect(await absentCredentials.getMessage().invoke(call, { messageId: 'one' })).toMatchObject({ branch: 'defect', failure: { kind: 'AUTHENTICATION', message: 'connection credentials are unavailable' } });
+    expect(await absentCredentials.getMessage().invoke(call, { messageId: 'one' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY', message: 'Gmail credentials are temporarily unavailable' } });
+  });
+
+  it('selects defect only for reconnection-only credential failures', async () => {
+    const cases: Array<[Error, boolean]> = [
+      [new ReauthorizationRequiredError(), true], [new ObjectNotFoundError(), true],
+      [new ConnectionNotSelectedError(), true], [new CredentialBrokerRejectedError(), true],
+      [new TypeError('project credential decoding failed'), true],
+      [new CredentialBrokerUnavailableError(), false], [new Error('connection is not configured'), false],
+    ];
+    for (const [error, isTerminal] of cases) {
+      const failing = makeClient(async () => response(200, {}), { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } });
+      const result = await failing.getMessage().invoke(call, { messageId: 'one' });
+      expect(result).toMatchObject(isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry' });
+    }
+    const unconfigured = makeClient(async () => response(200, {}), new StaticCredentialProvider<Credentials>([]));
+    expect(await unconfigured.getMessage().invoke(call, { messageId: 'one' })).toMatchObject({ kind: 'retry' });
   });
 
   it('retries 429 and 503 with integer Retry-After and rejects malformed delay', async () => {

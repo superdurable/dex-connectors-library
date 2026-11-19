@@ -5,6 +5,8 @@
 A job the plan selects must succeed. A job the plan does not select may be skipped, but never
 fail or be cancelled. Queue-only jobs need a Dex stack, service containers, or Docker; pull
 requests skip them by design and the merge queue, pushes to main, and manual runs require them.
+When local-verification trusts a Mac Studio verified pull request, merge group, or main push, the heavy jobs
+may skip and the single generation-check job replaces their generation checks.
 """
 
 import json
@@ -20,6 +22,7 @@ CI_JOBS = frozenset({
     "common-sdkgo",
     "common-typescript-conformance",
     "connector-conformance",
+    "connector-generation",
     "connector-plan",
     "connectors",
     "connectors-mcp",
@@ -35,6 +38,7 @@ CI_JOBS = frozenset({
     "email-language-integration",
     "email-language-plan",
     "language-connectors",
+    "local-verification",
     "python-connectors-latest-sdk",
     "react",
     "sdkpython",
@@ -77,6 +81,21 @@ PLAN_OUTPUT_JOBS = {
     "connectors_mcp": "connectors-mcp",
 }
 
+# Heavy jobs the Mac Studio connector-ci recipe reproduces, so a trusted verification skips them;
+# the CI workflow tests keep this list and ci.yml equal.
+LOCALLY_VERIFIED_SKIPPED_JOBS = frozenset({
+    "connector-conformance",
+    "connectors",
+    "dex-compat-current",
+    "dex-compat-latest-go-sdk",
+    "dex-integration-connectors",
+    "language-connectors",
+    "python-connectors-latest-sdk",
+})
+
+# Only these events can carry a Mac Studio verification; schedule and workflow_dispatch ignore a trusted output.
+LOCALLY_VERIFIABLE_EVENTS = frozenset({"pull_request", "merge_group", "push"})
+
 SCHEDULE_SKIPPED_JOBS = frozenset({
     "dex-integration-connectors",
     "dex-integration-sdk",
@@ -90,7 +109,7 @@ SCHEDULE_SKIPPED_JOBS = frozenset({
 
 def select_expected_jobs(event_name: str, plan: Mapping[str, str]) -> set[str]:
     """Returns the jobs that must succeed for this event and plan, before queue-only exclusion."""
-    expected = {"connector-plan", "database-language-plan", "email-language-plan", "common-repository-checks"}
+    expected = {"connector-plan", "database-language-plan", "email-language-plan", "common-repository-checks", "local-verification"}
     selected = {output for output in PLAN_OUTPUT_JOBS if plan.get(output) == "true"}
     connector_count = int(plan.get("count") or "0")
     expected.update(PLAN_OUTPUT_JOBS[output] for output in selected)
@@ -117,8 +136,13 @@ def select_expected_jobs(event_name: str, plan: Mapping[str, str]) -> set[str]:
     return expected
 
 
-def find_failed_jobs(results: Mapping[str, str], event_name: str, plan: Mapping[str, str]) -> dict[str, str]:
-    """Returns each job that breaks the check, mapped to the reason."""
+def find_failed_jobs(results: Mapping[str, str], event_name: str, plan: Mapping[str, str],
+                     is_locally_verified: bool = False) -> dict[str, str]:
+    """Returns each job that breaks the check, mapped to the reason.
+
+    is_locally_verified is the local-verification job's trusted output; it applies only when that
+    job succeeded on a pull_request, merge_group, or push event.
+    """
     failed = {name: f"{result}, which is not a known job result" for name, result in results.items()
               if result not in JOB_RESULT_VALUES}
     failed.update({name: "missing from JOB_RESULTS" for name in CI_JOBS - results.keys()})
@@ -133,10 +157,19 @@ def find_failed_jobs(results: Mapping[str, str], event_name: str, plan: Mapping[
         for name in sorted(QUEUE_ONLY_JOBS):
             if results[name] != "skipped":
                 failed[name] = f"{results[name]}, but queue-only jobs must be skipped on pull_request"
+    if is_locally_trusted(results, event_name, is_locally_verified):
+        expected -= LOCALLY_VERIFIED_SKIPPED_JOBS
+        if int(plan.get("count") or "0"):
+            expected.add("connector-generation")
     for name in sorted(expected):
         if results[name] != "success":
             failed[name] = results[name]
     return failed
+
+
+def is_locally_trusted(results: Mapping[str, str], event_name: str, is_locally_verified: bool) -> bool:
+    """Reports whether a successful local-verification job trusted this pull_request, merge_group, or push run."""
+    return is_locally_verified and event_name in LOCALLY_VERIFIABLE_EVENTS and results.get("local-verification") == "success"
 
 
 def plan_from_environment(environment: Mapping[str, str]) -> dict[str, str]:
@@ -148,11 +181,14 @@ def plan_from_environment(environment: Mapping[str, str]) -> dict[str, str]:
 def main() -> int:
     results = {name: job["result"] for name, job in json.loads(os.environ["JOB_RESULTS"]).items()}
     event_name = os.environ["EVENT_NAME"]
-    failed = find_failed_jobs(results, event_name, plan_from_environment(os.environ))
+    is_locally_verified = os.environ.get("LOCAL_VERIFICATION_TRUSTED") == "true"
+    failed = find_failed_jobs(results, event_name, plan_from_environment(os.environ), is_locally_verified)
     if failed:
         for name, reason in sorted(failed.items()):
             print(f"{name}: {reason}", file=sys.stderr)
         return 1
+    if is_locally_trusted(results, event_name, is_locally_verified):
+        print("A Mac Studio verification trusted this run; heavy jobs may skip: " + ", ".join(sorted(LOCALLY_VERIFIED_SKIPPED_JOBS)))
     if event_name == "pull_request":
         print("Queue-only jobs skipped on pull_request by design; the merge queue runs them: "
               + ", ".join(sorted(QUEUE_ONLY_JOBS)))

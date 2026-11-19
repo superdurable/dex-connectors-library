@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,9 +52,28 @@ func requireLiveLedger(t *testing.T) liveLedger {
 	ledger := liveLedger{client: client, config: config, password: password}
 	schema, err := os.ReadFile("../schema.sql")
 	require.NoError(t, err)
-	created := ledger.execute(t, string(schema))
-	require.Equal(t, postgresql.ExecuteStatementBranchCompleted, created.Branch, created.Failure)
+	for _, statement := range schemaStatements(string(schema)) {
+		created := ledger.execute(t, statement)
+		require.Equal(t, postgresql.ExecuteStatementBranchCompleted, created.Branch, created.Failure)
+	}
 	return ledger
+}
+
+// schemaStatements splits schema.sql into its statements, because execute runs exactly one.
+func schemaStatements(schema string) []string {
+	var code []string
+	for _, line := range strings.Split(schema, "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "--") {
+			code = append(code, line)
+		}
+	}
+	var statements []string
+	for _, statement := range strings.Split(strings.Join(code, "\n"), ";") {
+		if trimmed := strings.TrimSpace(statement); trimmed != "" {
+			statements = append(statements, trimmed)
+		}
+	}
+	return statements
 }
 
 func (ledger liveLedger) execute(t *testing.T, statement string, parameters ...any) postgresql.ExecuteStatementResult {
@@ -117,6 +137,7 @@ func TestRecordRefundExampleWithRealDexAndPostgreSQL(t *testing.T) {
 		outcome := harness.requireRecordedOutcome(t, flowID, result)
 		require.Equal(t, StatusRecorded, outcome.Status)
 		require.Equal(t, "12345678.90", outcome.Refund.AmountUSD, "numeric survives exactly")
+		require.NotEmpty(t, outcome.DailyTotalUSD, "executeNonIdempotent added the refund to the daily total")
 		rows := ledger.refundsForOrder(t, orderID)
 		require.Len(t, rows, 1)
 		require.Equal(t, outcome.Refund.IdempotencyKey, rows[0]["idempotency_key"])
@@ -178,9 +199,15 @@ func TestRecordRefundExampleWithRealDexAndPostgreSQL(t *testing.T) {
 		require.GreaterOrEqual(t, proxy.CommitMessages(), 1)
 	})
 
-	t.Run("reconciles a COMMIT whose reply was lost after PostgreSQL applied it", func(t *testing.T) {
+	t.Run("retries and reconciles a COMMIT whose reply was lost after PostgreSQL applied it", func(t *testing.T) {
+		// Session 1 is FindRecordedRefund; session 2 is the first InsertRefund dispatch.
 		proxy, err := commitfaultproxy.Start(net.JoinHostPort(ledger.config.Host, strconv.FormatInt(ledger.config.Port, 10)),
-			func(int) commitfaultproxy.Fault { return commitfaultproxy.DropAfterCommitReachesServer })
+			func(session int) commitfaultproxy.Fault {
+				if session == 2 {
+					return commitfaultproxy.DropAfterCommitReachesServer
+				}
+				return commitfaultproxy.PassThrough
+			})
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, proxy.Close()) })
 		config := ledger.config
@@ -190,7 +217,8 @@ func TestRecordRefundExampleWithRealDexAndPostgreSQL(t *testing.T) {
 		flowID, result := faulty.runRefundFlow(t, Input{OrderID: orderID, AmountUSD: "99.99"})
 		outcome := faulty.requireRecordedOutcome(t, flowID, result)
 		require.Equal(t, StatusRecorded, outcome.Status)
-		require.True(t, outcome.WasReconciled, "InsertRefund selected uncertain and the read-back found the row")
+		require.True(t, outcome.WasReconciled, "InsertRefund retried, inserted nothing, and the read-back found the row")
+		require.NotEmpty(t, outcome.DailyTotalUSD, "the reconciled refund was added to the daily total")
 		rows := ledger.refundsForOrder(t, orderID)
 		require.Len(t, rows, 1)
 		require.Equal(t, outcome.Refund.IdempotencyKey, rows[0]["idempotency_key"])

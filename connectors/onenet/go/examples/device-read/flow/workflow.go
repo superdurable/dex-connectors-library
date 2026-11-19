@@ -45,7 +45,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "OneNET", Explanation: "Read OneNET device detail."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Found:              sdkgo.GoTo(completeResult{}),
+			Found:               sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
 	}

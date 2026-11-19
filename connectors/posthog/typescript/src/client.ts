@@ -3,17 +3,19 @@
 
 import { createHash } from 'node:crypto';
 import {
-  newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry,
+  ReauthorizationRequiredError, SecretString, newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry,
   type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
   type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
 import { CaptureEventDefinition, ListInsightsDefinition } from './generated/definitions.js';
-import type {
-  CaptureEventInput, CapturedEvent, Config, Credentials, InsightMetadata, InsightsPage, ListInsightsInput,
+import {
+  isCredentialMaterialError,
+  type CaptureEventInput, type CapturedEvent, type Config, type Credentials, type InsightMetadata, type InsightsPage, type ListInsightsInput,
 } from './generated/models.js';
 
 const emptyEvent: CapturedEvent = { eventId: '', accepted: false };
@@ -61,20 +63,39 @@ export class PostHogClient {
 
   /** Resolve a project token for an individual provider attempt. */
   async projectToken(call: Call): Promise<string | undefined> {
+    const resolution = await this.resolveProjectToken(call);
+    return 'token' in resolution ? resolution.token : undefined;
+  }
+
+  /** Resolve a project token, reporting whether a failure may clear on a later attempt. */
+  async resolveProjectToken(call: Call): Promise<{ token: string } | { isTransient: boolean }> {
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      const token = credentials.projectToken.reveal();
-      return token && isHeaderSafeCredential(token) ? token : undefined;
-    } catch { return undefined; }
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      return { isTransient: !isTerminalCredentialError(error) };
+    }
+    const token = credentials.projectToken instanceof SecretString ? credentials.projectToken.reveal() : '';
+    return token && isHeaderSafeCredential(token) ? { token } : { isTransient: false };
   }
 
   /** Resolve a scoped personal API key for an individual provider attempt. */
   async personalApiKey(call: Call): Promise<string | undefined> {
+    const resolution = await this.resolvePersonalApiKey(call);
+    return 'key' in resolution ? resolution.key : undefined;
+  }
+
+  /** Resolve a personal API key, reporting whether a failure may clear on a later attempt. */
+  async resolvePersonalApiKey(call: Call): Promise<{ key: string } | { isTransient: boolean }> {
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      const key = credentials.personalApiKey?.reveal();
-      return key && isHeaderSafeCredential(key) ? key : undefined;
-    } catch { return undefined; }
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      return { isTransient: !isTerminalCredentialError(error) };
+    }
+    let key: string | undefined;
+    try { key = credentials.personalApiKey?.reveal(); } catch { /* A wrongly typed key is unusable material. */ }
+    return key && isHeaderSafeCredential(key) ? { key } : { isTransient: false };
   }
 
   /** Send one bounded provider request, preserving response status on body overflow. */
@@ -116,8 +137,12 @@ export class CaptureEventOperation implements Mutation<CaptureEventInput, Captur
       return eventFailure('defect', 'VALIDATION', 'event, distinct ID, or stable call identity is invalid');
     const timestamp = canonicalTimestamp(input.timestamp);
     if (!timestamp) return eventFailure('defect', 'VALIDATION', 'timestamp must be an RFC3339 instant');
-    const token = await this.client.projectToken(call);
-    if (!token) return eventFailure('defect', 'AUTHENTICATION', 'PostHog project token is unavailable or invalid');
+    const resolution = await this.client.resolveProjectToken(call);
+    if (!('token' in resolution)) {
+      if (resolution.isTransient) return eventRetry('AVAILABILITY', 'PostHog project token is temporarily unavailable');
+      return eventFailure('defect', 'AUTHENTICATION', 'PostHog project token is unavailable or invalid');
+    }
+    const token = resolution.token;
     let body: Uint8Array;
     try {
       body = Buffer.from(JSON.stringify({ token, event: input.event, distinct_id: input.distinctId,
@@ -131,6 +156,9 @@ export class CaptureEventOperation implements Mutation<CaptureEventInput, Captur
     const retryAfter = this.client.retryAfter(response);
     if (response.status === 429) return eventRetry('RATE_LIMIT', 'PostHog rate limited capture', retryAfter);
     if (response.status === 408 || response.status >= 500) return eventRetry('AVAILABILITY', 'PostHog capture is temporarily unavailable', retryAfter);
+    // The event uuid deduplicates a resend, so an unknown answer retries.
+    if (response.status !== 200 && !definiteRefusalStatuses.has(response.status))
+      return eventRetry('AVAILABILITY', `PostHog answered capture with HTTP ${response.status}, so its outcome is unknown`, retryAfter);
     if (response.status !== 200) return eventFailure('providerRejected', rejectionKind(response.status), `PostHog rejected capture with HTTP ${response.status}`);
     if (tooLarge || response.body.byteLength > this.client.maxResponseBytes)
       return eventRetry('RESPONSE_TOO_LARGE', 'PostHog capture confirmation exceeded the limit');
@@ -157,8 +185,12 @@ export class ListInsightsOperation implements Query<ListInsightsInput, InsightsP
       !Number.isSafeInteger(input.limit ?? 0) || (input.limit ?? 0) < 0 || (input.limit ?? 0) > 100)
       return pageFailure('defect', 'VALIDATION', 'project ID, offset, or limit is invalid');
     const limit = input.limit || 20;
-    const key = await this.client.personalApiKey(call);
-    if (!key) return pageFailure('defect', 'AUTHENTICATION', 'PostHog personal API key is unavailable or invalid');
+    const resolution = await this.client.resolvePersonalApiKey(call);
+    if (!('key' in resolution)) {
+      if (resolution.isTransient) return pageRetry('AVAILABILITY', 'PostHog personal API key is temporarily unavailable');
+      return pageFailure('defect', 'AUTHENTICATION', 'PostHog personal API key is unavailable or invalid');
+    }
+    const key = resolution.key;
     const url = `${this.client.appUrl}/api/projects/${input.projectId}/insights/?limit=${limit}&offset=${offset}`;
     const exchange = await this.client.exchange(call, 'GET', url,
       { Accept: 'application/json', Authorization: `Bearer ${key}` });
@@ -212,6 +244,15 @@ function decodePage(value: unknown, offset: number, limit: number): InsightsPage
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Report a resolve failure no later attempt clears; every other resolve error is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || isCredentialMaterialError(error);
+}
+
 function rejectionKind(status: number): Failure['kind'] {
   return status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
 }

@@ -2,13 +2,14 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.4.0 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
+Version 0.5.0 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
 the `messageReceived` and `replyReceived` Triggers at parity with Go. From
-0.4.0 a send or reply whose outcome is unknown may be sent up to three times.
+0.4.0 a send or reply whose outcome is unknown may be sent up to three times;
+from 0.5.0 one that Sent Mail cannot confirm at that cap selects `uncertain`.
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.4.0`. The package requires
+After release, install `dex-connector-google-gmail==0.5.0`. The package requires
 `dex-connectors-sdk>=0.12.0,<1` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
@@ -144,12 +145,33 @@ oversized, or unreadable; a Sent Mail miss then returns `sent` with an empty
 message ID. Both operations declare `repeatOnUnknown: limited` with
 `maxSends: 3`, and the Fence takes `Call.max_sends`. After a claimed send whose
 outcome stayed unknown, a Sent Mail miss or failed search resends with the same
-Message-ID while fewer than that many sends may have taken effect. At the cap a
-miss returns Retry without another POST, and the Flow fails when its retry
-budget is exhausted. A saved Gmail message ID and a definite 4xx are never
-resent. A definite 4xx, or a rejected or unusable reply source read, selects its
-branch only when no earlier send is possible; otherwise it returns Retry,
-because the earlier send may still be delivered. A 503 is treated like any other 5xx. A definite 429 refusal, or a
+Message-ID while fewer than that many sends may have taken effect. From 0.5.0
+both operations declare an optional `uncertain` branch: when the final send the
+cap allows stays unknown and Sent Mail finds no match, or a later attempt at the
+cap, or with a saved message ID, cannot confirm the send, the attempt selects
+`uncertain` without another POST; 0.4.x returned Retry until the retry budget
+failed the Flow. A confirmed read-back still selects `sent`. A saved Gmail
+message ID and an allowlisted 4xx refusal are never resent. An allowlisted 4xx
+refusal, or a rejected or unusable reply source read, selects its branch only
+when no earlier send is possible. Otherwise the earlier send may still be
+delivered: an allowlisted 4xx selects `uncertain`, and an unusable source read
+returns Retry while the cap permits another send and selects `uncertain` when
+this attempt's send would be the last. A POST status of 400, 401,
+403, 404, 411, 413, 414, 415, or 422 with no earlier possible send proves Gmail
+refused it before processing, unless its body is unreadable or names a Gmail
+message, so it records `canResend` and selects `providerRejected`. Any other
+4xx except 429, such as 408 or 409, a contradictory refusal body, or an
+unreadable or untrusted checkpoint, leaves the outcome unknown: below the cap it
+returns Retry and keeps the claim, so the next attempt reads back Sent Mail and
+resends; on the final send the cap allows it selects `uncertain`. After an
+earlier possible send, `defect` is never selected: invalid input selects
+`uncertain`, a transient credential failure returns Retry,
+and one that needs reconnection selects `uncertain`. From 0.5.0, a refusal body that names a Gmail message is read
+back by that ID, which is checkpointed so later attempts never resend it, and a
+transient credential failure before any send records `notSent` and returns
+Retry instead of selecting `defect`. A Step write window that cuts the POST
+body after its headers keeps the observed status for classification.
+A 503 is treated like any other 5xx. A definite 429 refusal, or a
 transport failure proven to precede dispatch, permits a later send. The
 manifest limits sends and replies to seven attempts within five minutes;
 `max_sends_override` on the generated Step factory changes one Step's cap.

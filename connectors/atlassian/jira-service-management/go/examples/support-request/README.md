@@ -18,8 +18,9 @@ every Jira Service Management operation:
    retry-safety mechanism;
 4. `CreateSupportTicket` calls `jiraservicemanagement.NewCreateTicketStep` with
    sync durability and `RaiseOnBehalfOfAccountID` set to the customer.
-   `created` records the key, and `uncertain` parks the Flow for operator
-   reconciliation before any second create;
+   An unknown outcome is resent up to the send cap of 3. `created` records
+   the key, and `uncertain` parks the Flow for operator reconciliation before
+   any further create;
 5. `ReadBackSupportTicket` calls `jiraservicemanagement.NewGetTicketStep`, and
    `VerifySupportTicket` adopts the request with its SLA names;
 6. `PlanNextSupportAction` chooses the next unfinished action:
@@ -125,12 +126,14 @@ its SLAs, labeled, noted internally, replied to publicly, and moved; the
 customer's open request reused; an unknown requester completes without a
 create; a rejected create sent once; a rate-limited create retried after
 `Retry-After`; a 503 create retried from an attempt-numbered checkpoint; a
-create timeout reconciled by confirming a missing, a
-mismatched, and then the real request key without a second create; a 5xx
-create raised again only after operator approval; a delayed create and public
+create timeout resent up to the send cap and reconciled by confirming a
+missing, a mismatched, and then a real request key without another create; a
+5xx create resent up to the send cap and raised again only after operator
+approval; a delayed create and public
 reply each sent once; label update and transition retries find the
 change already made and write nothing; a destination the workflow does not
-offer; an internal note timeout that fails without a resend; and a blank
+offer; an internal note timeout resent up to the send cap before the Flow
+fails; and a blank
 `cloudId` resolved to the only granted site.
 The mock-backed test runs the same Flow on a real Dex Worker, scripts one
 create retry, and checks literal connector inputs and call counts.

@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-zoom",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Zoom meeting operations for Dex",
   "repository": {
     "type": "git",

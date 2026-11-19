@@ -1544,18 +1544,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "item": {
-            "id": "",
-            "isFolder": false,
-            "name": "",
-            "sizeBytes": 0
-          }
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1568,7 +1560,7 @@
         "parentFolderId": "folder-1",
         "textContent": "hello!"
       },
-      "name": "uploadFile-invalid-response",
+      "name": "uploadFile-invalid-read-back-retries",
       "operation": "uploadFile"
     },
     {
@@ -2149,18 +2141,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "folder": {
-            "id": "",
-            "isFolder": false,
-            "name": "",
-            "sizeBytes": 0
-          }
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2170,7 +2154,7 @@
         "name": "Reports",
         "parentFolderId": "folder-1"
       },
-      "name": "createFolder-invalid-response",
+      "name": "createFolder-invalid-read-back-retries",
       "operation": "createFolder"
     },
     {

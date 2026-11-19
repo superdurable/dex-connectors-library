@@ -245,6 +245,8 @@ def new_update_employee_step(
     defect: dex.StepTarget[MutationResult[UpdateEmployeeOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateEmployeeOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateEmployeeInput, UpdateEmployeeOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("BambooHR Step connection name must match its connection reference")

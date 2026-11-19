@@ -10,10 +10,15 @@
 // reaction to a message.
 //
 // CreateMessage sends a nonce derived from the Step's idempotency key with
-// enforce_nonce, so Discord returns the message an earlier attempt created
-// instead of posting a duplicate. Discord enforces a nonce for only a few
-// minutes, so the operation's retry window is two minutes. AddReaction is
-// repeat-safe because Discord keeps one reaction per user and emoji.
+// enforce_nonce under a single-dispatch fence, so a resend inside Discord's
+// nonce window returns the message an earlier attempt created instead of
+// posting a duplicate. An unknown outcome resends while possible sends stay
+// below the Step's send cap, three by default, and selects Uncertain at the
+// cap. A 2xx is never resent: an answer that is not a valid message is read
+// back by its message ID, or selects Uncertain without one. Discord enforces a
+// nonce for only a few minutes, so the operation's
+// retry window is two minutes. AddReaction is repeat-safe because Discord
+// keeps one reaction per user and emoji.
 //
 // A Flow opens the connection with NewProjectConnection and adds a generated
 // factory such as NewCreateMessageStep; the runnable examples/channel-announcement
@@ -22,6 +27,7 @@ package discord
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,6 +40,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -99,6 +106,8 @@ type providerResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isErrorBodyOversized reports a non-2xx body cut at the error-body limit, so it cannot prove a refusal.
+	isErrorBodyOversized bool
 }
 
 // outcomeDisposition is the class of one unsuccessful exchange before an operation maps it to a branch.
@@ -200,13 +209,22 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 }
 
 func (client *Client) send(call sdkgo.Call, credentials Credentials, request providerRequest) (providerResponse, error) {
+	httpRequest, err := client.newHTTPRequest(call.Context, credentials, request)
+	if err != nil {
+		return providerResponse{}, err
+	}
+	return client.do(httpRequest)
+}
+
+// newHTTPRequest builds one authenticated Discord request without sending it.
+func (client *Client) newHTTPRequest(requestContext context.Context, credentials Credentials, request providerRequest) (*http.Request, error) {
 	var body io.Reader
 	if request.body != nil {
 		body = bytes.NewReader(request.body)
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, client.baseURL+request.path, body)
+	httpRequest, err := http.NewRequestWithContext(requestContext, request.method, client.baseURL+request.path, body)
 	if err != nil {
-		return providerResponse{}, errRequestNotBuilt
+		return nil, errRequestNotBuilt
 	}
 	httpRequest.Header.Set("Accept", "application/json")
 	httpRequest.Header.Set("Authorization", "Bot "+credentials.BotToken.Reveal())
@@ -214,6 +232,12 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 	if request.body != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
 	}
+	return httpRequest, nil
+}
+
+// do sends one built request and reads its bounded response. A response
+// with a status is returned even when its body could not be read.
+func (client *Client) do(httpRequest *http.Request) (providerResponse, error) {
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
 		return providerResponse{}, err
@@ -229,6 +253,7 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
 		if limit == providerhttp.MaxErrorBodyBytes {
 			// An oversized error body still classifies by status alone.
+			response.isErrorBodyOversized = true
 			return response, nil
 		}
 		return response, errResponseTooLarge
@@ -240,12 +265,22 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *providerOutcome) {
 	credentials, err := client.credentials.Resolve(call)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "the Discord connection must be authorized again", sdkgo.Receipt{})
+	case err != nil && !isTerminalCredentialError(err):
+		// Nothing reached Discord, so a transient credential failure retries.
+		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "Discord connection credentials are temporarily unavailable", sdkgo.Receipt{})
 	case err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.BotToken.Reveal()):
 		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "Discord connection credentials are unavailable or invalid", sdkgo.Receipt{})
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) outcome(disposition outcomeDisposition, operation string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) *providerOutcome {
@@ -273,7 +308,7 @@ func classifyErrorResponse(operation string, response providerResponse, now time
 			disposition: outcomeRetry, retryAfter: rateLimitDelay(response, now),
 			failure: providerFailure(operation, sdkgo.FailureRateLimit, "Discord rate limited the request"),
 		}
-	case status == http.StatusRequestTimeout || (status >= 500 && status != http.StatusNotImplemented):
+	case status == http.StatusRequestTimeout || status >= 500:
 		return providerOutcome{
 			disposition: outcomeRetry, retryAfter: providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), now),
 			failure: providerFailure(operation, sdkgo.FailureAvailability, fmt.Sprintf("Discord is temporarily unavailable (HTTP %d%s)", status, detail)),
@@ -286,10 +321,15 @@ func classifyErrorResponse(operation string, response providerResponse, now time
 		return terminalOutcome(outcomeNotFound, operation, sdkgo.FailureNotFound, fmt.Sprintf("Discord found no such channel, message, or emoji (HTTP 404%s)", detail))
 	case status == http.StatusBadRequest || status == http.StatusRequestEntityTooLarge:
 		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureValidation, fmt.Sprintf("Discord rejected the request as invalid (HTTP %d%s)", status, detail))
-	case status >= 300 && status < 400:
-		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureProtocol, fmt.Sprintf("Discord redirected the request (HTTP %d)", status))
-	default:
+	case status == http.StatusNotFound || status == http.StatusLengthRequired || status == http.StatusRequestURITooLong ||
+		status == http.StatusUnsupportedMediaType || status == http.StatusUnprocessableEntity:
 		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureProviderRejection, fmt.Sprintf("Discord rejected the request (HTTP %d%s)", status, detail))
+	default:
+		// A redirect or unlisted status proves nothing, so the request is retried.
+		return providerOutcome{
+			disposition: outcomeRetry,
+			failure:     providerFailure(operation, sdkgo.FailureAvailability, fmt.Sprintf("Discord answered with an unexpected status (HTTP %d%s)", status, detail)),
+		}
 	}
 }
 
@@ -355,10 +395,11 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 	return sdkgo.NewQueryBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
 }
 
-// mutationAttemptForOutcome maps an unsuccessful exchange to Retry or a branch; both writes are repeat-safe.
+// mutationAttemptForOutcome maps an unsuccessful exchange of the repeat-safe addReaction to Retry or a branch.
 func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	if outcome.disposition == outcomeRetry {
+	// addReaction is declared safe, so an oversized answer retries instead of selecting invalidResponse.
+	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)

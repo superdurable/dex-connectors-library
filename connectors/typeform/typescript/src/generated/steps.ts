@@ -109,7 +109,7 @@ export interface UpsertWebhookStepConfig<StepInput, OperationInput = UpsertWebho
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Typeform conclusively rejected the webhook, such as a URL that is not HTTPS, a plan without webhooks, or a token without the webhooks:write scope. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Typeform answered 2xx with a malformed or oversized body, so it may have stored the webhook without this Result describing it. */
+  /** Retained for compatibility and no longer selected: a malformed or oversized 2xx body now retries the idempotent PUT. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration such as a blank webhook_secret, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

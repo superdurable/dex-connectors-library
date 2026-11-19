@@ -44,7 +44,8 @@ func TestAddCommentOutcomes(t *testing.T) {
 		{name: "missing issue", status: http.StatusNotFound, branch: jira.AddCommentBranchNotFound, kind: sdkgo.FailureNotFound},
 		{name: "comment limit", status: http.StatusRequestEntityTooLarge, branch: jira.AddCommentBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
 		{name: "invalid body", status: http.StatusBadRequest, branch: jira.AddCommentBranchProviderRejected, kind: sdkgo.FailureValidation},
-		{name: "server error", status: http.StatusBadGateway, branch: jira.AddCommentBranchUncertain, kind: sdkgo.FailureAvailability},
+		{name: "server error", status: http.StatusBadGateway, kind: sdkgo.FailureAvailability},
+		{name: "conflict", status: http.StatusConflict, kind: sdkgo.FailureAvailability},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
@@ -57,6 +58,12 @@ func TestAddCommentOutcomes(t *testing.T) {
 			client := newJiraClient(t, provider.URL)
 			result, err := sdkgo.RunMutation(newJiraDexContext("comment-"+test.name), client.AddComment(), jiraConnection,
 				jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."})
+			if test.branch == "" {
+				// An unknown first-send outcome resends on the next attempt below the send cap.
+				requireRetry(t, err, test.kind)
+				require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, test.kind, result.Failure.Kind)

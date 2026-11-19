@@ -99,10 +99,9 @@ func (operation UpdateIssueOperation) Invoke(call sdkgo.Call, input UpdateIssueI
 
 func updateAttemptForExchange(result linearExchange, requested UpdateIssueOutput, receipt sdkgo.Receipt) sdkgo.MutationAttempt[UpdateIssueOutput] {
 	switch result.outcome {
-	case exchangeRetry:
+	case exchangeRetry, exchangeInvalid:
+		// Repeating the absolute update is safe, so an unusable answer retries.
 		return sdkgo.NewMutationRetry[UpdateIssueOutput](result.failure, result.retryAfter)
-	case exchangeInvalid:
-		return sdkgo.NewMutationBranch(UpdateIssueBranchInvalidResponse, requested, &result.failure, receipt)
 	case exchangeRejected:
 		return sdkgo.NewMutationBranch(UpdateIssueBranchProviderRejected, requested, &result.failure, receipt)
 	default:

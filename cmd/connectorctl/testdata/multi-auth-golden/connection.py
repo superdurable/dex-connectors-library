@@ -77,121 +77,137 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.multi_auth_fixture.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Multi Auth Fixture credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Multi Auth Fixture stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Multi Auth Fixture stored credential does not match the connector credential fields")
     if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'webhook_signing_key', 'service_account_key', 'delegated_user', 'session_note', 'environment', 'login_url', 'request_count', 'wait_duration', 'labels', 'headers', 'optional_count', 'optional_note', 'tenant_id', 'client_id', 'client_secret', 'auth_method')):
-        raise ValueError("Multi Auth Fixture stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Multi Auth Fixture stored credential does not match the connector credential fields")
     is_shared = shared
     oauth_client_id = material.get("oauth_client_id")
     if oauth_client_id is not None and not (isinstance(oauth_client_id, str)):
-        raise ValueError("Multi Auth Fixture credential oauth_client_id has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential oauth_client_id has an invalid type")
     oauth_client_secret = material.get("oauth_client_secret")
     if oauth_client_secret is not None and not (isinstance(oauth_client_secret, str)):
-        raise ValueError("Multi Auth Fixture credential oauth_client_secret has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential oauth_client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Multi Auth Fixture credential access_token has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential access_token has an invalid type")
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
-        raise ValueError("Multi Auth Fixture credential refresh_token has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential refresh_token has an invalid type")
     webhook_signing_key = material.get("webhook_signing_key")
     if webhook_signing_key is not None and not (isinstance(webhook_signing_key, str)):
-        raise ValueError("Multi Auth Fixture credential webhook_signing_key has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential webhook_signing_key has an invalid type")
     service_account_key = material.get("service_account_key")
     if service_account_key is not None and not (isinstance(service_account_key, str)):
-        raise ValueError("Multi Auth Fixture credential service_account_key has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential service_account_key has an invalid type")
     delegated_user = material.get("delegated_user")
     if delegated_user is not None and not (isinstance(delegated_user, str)):
-        raise ValueError("Multi Auth Fixture credential delegated_user has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential delegated_user has an invalid type")
     session_note = material.get("session_note")
     if session_note is not None and not (isinstance(session_note, str)):
-        raise ValueError("Multi Auth Fixture credential session_note has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential session_note has an invalid type")
     environment = material.get("environment")
     if environment is not None and not (isinstance(environment, str)):
-        raise ValueError("Multi Auth Fixture credential environment has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential environment has an invalid type")
     login_url = material.get("login_url")
     if login_url is not None and not (isinstance(login_url, str)):
-        raise ValueError("Multi Auth Fixture credential login_url has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential login_url has an invalid type")
     request_count = material.get("request_count")
     if request_count is not None and not (type(request_count) is int):
-        raise ValueError("Multi Auth Fixture credential request_count has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential request_count has an invalid type")
     wait_duration = material.get("wait_duration")
     if wait_duration is not None and not (type(wait_duration) is int):
-        raise ValueError("Multi Auth Fixture credential wait_duration has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential wait_duration has an invalid type")
     labels = material.get("labels")
     if labels is not None and not (isinstance(labels, list) and all(item is None or isinstance(item, str) for item in labels)):
-        raise ValueError("Multi Auth Fixture credential labels has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential labels has an invalid type")
     headers = material.get("headers")
     if headers is not None and not (isinstance(headers, dict) and all(isinstance(key, str) and (item is None or isinstance(item, str)) for key, item in headers.items())):
-        raise ValueError("Multi Auth Fixture credential headers has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential headers has an invalid type")
     optional_count = material.get("optional_count")
     if optional_count is not None and not (type(optional_count) is int):
-        raise ValueError("Multi Auth Fixture credential optional_count has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential optional_count has an invalid type")
     optional_note = material.get("optional_note")
     if optional_note is not None and not (isinstance(optional_note, str)):
-        raise ValueError("Multi Auth Fixture credential optional_note has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential optional_note has an invalid type")
     tenant_id = material.get("tenant_id")
     if tenant_id is not None and not (isinstance(tenant_id, str)):
-        raise ValueError("Multi Auth Fixture credential tenant_id has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential tenant_id has an invalid type")
     client_id = material.get("client_id")
     if client_id is not None and not (isinstance(client_id, str)):
-        raise ValueError("Multi Auth Fixture credential client_id has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential client_id has an invalid type")
     client_secret = material.get("client_secret")
     if client_secret is not None and not (isinstance(client_secret, str)):
-        raise ValueError("Multi Auth Fixture credential client_secret has an invalid type")
+        raise CredentialMaterialError("Multi Auth Fixture credential client_secret has an invalid type")
     selected_method = material.get('auth_method')
     if selected_method is None:
         selected_method = ''
     if not isinstance(selected_method, str):
-        raise ValueError("Multi Auth Fixture credential auth_method is invalid")
+        raise CredentialMaterialError("Multi Auth Fixture credential auth_method is invalid")
     method = selected_method or "google-oauth"
     values: dict[str, Any] = {'auth_method_id': method}
     if method == "google-oauth":
         if not oauth_client_id:
-            raise ValueError("Multi Auth Fixture credential oauth_client_id is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential oauth_client_id is required")
         if oauth_client_id:
             values["oauth_client_id"] = oauth_client_id
         if not oauth_client_secret and not is_shared:
-            raise ValueError("Multi Auth Fixture credential oauth_client_secret is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential oauth_client_secret is required")
         if oauth_client_secret:
             values["oauth_client_secret"] = SecretString(oauth_client_secret)
         if not access_token:
-            raise ValueError("Multi Auth Fixture credential access_token is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         if not refresh_token and not is_shared:
-            raise ValueError("Multi Auth Fixture credential refresh_token is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
         values["webhook_signing_key"] = SecretString(webhook_signing_key or '')
     elif method == "workspace-service-account":
         if not service_account_key:
-            raise ValueError("Multi Auth Fixture credential service_account_key is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential service_account_key is required")
         if service_account_key:
             values["service_account_key"] = SecretString(service_account_key)
         if not delegated_user:
-            raise ValueError("Multi Auth Fixture credential delegated_user is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential delegated_user is required")
         if delegated_user:
             values["delegated_user"] = delegated_user
         values["session_note"] = session_note or ''
         if environment and environment not in ('production', 'sandbox'):
-            raise ValueError("Multi Auth Fixture credential environment is invalid")
+            raise CredentialMaterialError("Multi Auth Fixture credential environment is invalid")
         values["environment"] = environment or ''
         if login_url and not _is_absolute_credential_url(login_url):
-            raise ValueError("Multi Auth Fixture credential login_url must be an absolute URL")
+            raise CredentialMaterialError("Multi Auth Fixture credential login_url must be an absolute URL")
         values["login_url"] = login_url or ''
     elif method == "typed":
         if (request_count is None or request_count <= 0):
-            raise ValueError("Multi Auth Fixture credential request_count must be positive")
+            raise CredentialMaterialError("Multi Auth Fixture credential request_count must be positive")
         if request_count is not None and request_count < 0:
-            raise ValueError("Multi Auth Fixture credential request_count cannot be negative")
+            raise CredentialMaterialError("Multi Auth Fixture credential request_count cannot be negative")
         if request_count:
             values["request_count"] = request_count
         if (wait_duration is None or wait_duration <= 0):
-            raise ValueError("Multi Auth Fixture credential wait_duration must be positive")
+            raise CredentialMaterialError("Multi Auth Fixture credential wait_duration must be positive")
         if wait_duration is not None and wait_duration < 0:
-            raise ValueError("Multi Auth Fixture credential wait_duration cannot be negative")
+            raise CredentialMaterialError("Multi Auth Fixture credential wait_duration cannot be negative")
         if wait_duration:
             values["wait_duration"] = wait_duration
         if labels:
@@ -199,29 +215,29 @@ def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Cre
         if headers:
             values["headers"] = {key: item or '' for key, item in headers.items()}
         if optional_count is not None and optional_count < 0:
-            raise ValueError("Multi Auth Fixture credential optional_count cannot be negative")
+            raise CredentialMaterialError("Multi Auth Fixture credential optional_count cannot be negative")
         if optional_count:
             values["optional_count"] = optional_count
     elif method == "optional-only":
         values["optional_note"] = optional_note or ''
     elif method == "app-only":
         if not tenant_id:
-            raise ValueError("Multi Auth Fixture credential tenant_id is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential tenant_id is required")
         if tenant_id:
             values["tenant_id"] = tenant_id
         if not client_id:
-            raise ValueError("Multi Auth Fixture credential client_id is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential client_id is required")
         if client_id:
             values["client_id"] = client_id
         if not client_secret and not is_shared:
-            raise ValueError("Multi Auth Fixture credential client_secret is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential client_secret is required")
         if client_secret:
             values["client_secret"] = SecretString(client_secret)
         if not access_token and is_shared:
-            raise ValueError("Multi Auth Fixture credential access_token is required")
+            raise CredentialMaterialError("Multi Auth Fixture credential access_token is required")
         values["access_token"] = SecretString(access_token or '')
     else:
-        raise ValueError("Multi Auth Fixture credential auth_method is invalid")
+        raise CredentialMaterialError("Multi Auth Fixture credential auth_method is invalid")
     return Credentials(**values)
 
 

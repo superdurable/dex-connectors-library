@@ -1,16 +1,25 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { RetryError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
+
+/** Report a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 export type GraphTransport = (request: ProviderRequest) => Promise<ProviderResponse>;
 export type GraphOutcome = 'succeeded' | 'notFound' | 'retry' | 'rejected' | 'invalid' | 'ambiguous' | 'defect';
 export interface GraphExchange { outcome: GraphOutcome; status: number; body: Uint8Array; requestId: string; errorCode: string; failure?: Failure; retryAfterMs: number }
 export interface GraphRequest { method: string; path?: string; absoluteURL?: string; query?: readonly (readonly [string,string])[]; payload?: unknown; prefersTextBody?: boolean }
+/** HTTP statuses that prove Graph refused a write; every other answer is an unknown outcome. */
+export const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 const emptyBody = new Uint8Array();
 const graphURL = 'https://graph.microsoft.com/v1.0';
 
@@ -67,9 +76,10 @@ export class GraphSession {
     let credentials: Credentials;
     try { credentials = await resolveCredential(source, call, driver, call.context.cancellationSignal); }
     catch (error) {
-      if (error && typeof error === 'object' && 'name' in error && error.name === 'ReauthorizationRequiredError') return zeroExchange('rejected', graphFailure(operation, 'AUTHENTICATION', 'Microsoft authorization must be renewed: authorize the connection again or replace the client secret'));
+      if (isCredentialMaterialError(error)) return zeroExchange('defect', graphFailure(operation, 'AUTHENTICATION', 'Outlook Mail stored connection credentials are malformed'));
+      if (isTerminalCredentialError(error)) return zeroExchange('rejected', graphFailure(operation, 'AUTHENTICATION', 'Microsoft authorization must be renewed: authorize the connection again or replace the client secret'));
       if (error instanceof RetryError) return zeroExchange('retry', graphFailure(operation, 'AVAILABILITY', 'the Microsoft token endpoint is temporarily unavailable'));
-      return zeroExchange('defect', graphFailure(operation, 'AUTHENTICATION', 'Outlook Mail connection credentials are unavailable'));
+      return zeroExchange('retry', graphFailure(operation, 'AVAILABILITY', 'Outlook Mail connection credentials are temporarily unavailable; nothing was sent'));
     }
     if (!credentials.accessToken?.reveal() || !isHeaderSafeCredential(credentials.accessToken.reveal())) return zeroExchange('defect', graphFailure(operation, 'AUTHENTICATION', 'Outlook Mail connection credentials are unavailable'));
     const method = credentials.authMethodId || 'microsoft-oauth';
@@ -111,7 +121,8 @@ export class GraphSession {
         if (status >= 200 && status < 300) return { outcome: 'invalid', status, body: emptyBody, requestId: header(responseHeaders, 'request-id'), errorCode: '', retryAfterMs: 0, failure: graphFailure(this.operation, 'RESPONSE_TOO_LARGE', 'the Microsoft Graph response exceeds the configured maxResponseBytes limit') };
         if (status) return classifyStatus(this.operation, status, '', parseRetryAfter(header(responseHeaders, 'retry-after'), this.#now()), header(responseHeaders, 'request-id'));
       }
-      if (observedStatus >= 200 && observedStatus < 300) return zeroExchange('ambiguous', graphFailure(this.operation, 'TRANSPORT', 'the Microsoft Graph response was interrupted'));
+      // The status stays, so a send whose 2xx body broke is still known as accepted.
+      if (observedStatus >= 200 && observedStatus < 300) return { ...zeroExchange('ambiguous', graphFailure(this.operation, 'TRANSPORT', 'the Microsoft Graph response was interrupted')), status: observedStatus, requestId: header(observedHeaders, 'request-id') };
       if (observedStatus && (observedStatus < 200 || observedStatus >= 300)) return classifyStatus(this.operation, observedStatus, '', parseRetryAfter(header(observedHeaders, 'retry-after'), this.#now()), header(observedHeaders, 'request-id'));
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return zeroExchange('retry', graphFailure(this.operation, 'TRANSPORT', 'Microsoft Graph could not be reached; no request was sent'));
       return zeroExchange('ambiguous', graphFailure(this.operation, 'TRANSPORT', 'the Microsoft Graph request failed before an answer arrived'));

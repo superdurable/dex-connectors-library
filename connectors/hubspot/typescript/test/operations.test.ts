@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { loadScenarios, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { HubSpotClient } from '../src/client.js';
 
@@ -65,6 +66,53 @@ it('counts Go JSON HTML escaping against the 3000-byte search limit', async () =
   const attempt = await hubspot.searchObjects().invoke(callFor('searchObjects'), { objectType: 'deals', query: '<'.repeat(550) });
   expect(attempt).toMatchObject({ kind: 'branch', branch: 'defect' });
   expect(requests).toBe(0);
+});
+
+it('selects conflict for a lasting documented CONFLICT to an upsert after one resend, and to an update', async () => {
+  let requests = 0;
+  const hubspot = client(async () => { requests++; return { status: 409, headers: {}, body: Buffer.from('{"category":"CONFLICT"}') }; });
+  const upsert = await hubspot.upsertObject().invoke(callFor('upsertObject'), { objectType: 'contacts', idProperty: 'email', idValue: 'ada@example.com' });
+  expect(upsert).toMatchObject({ kind: 'branch', branch: 'conflict' });
+  expect(requests).toBe(2);
+  const update = await hubspot.updateObject().invoke(callFor('updateObject'), { objectType: 'contacts', objectId: '501', properties: { email: 'taken@example.com' } });
+  expect(update).toMatchObject({ kind: 'branch', branch: 'conflict' });
+});
+
+it.each([501, 302, 418, 409])('retries a write answered with HTTP %i, which does not prove a refusal', async status => {
+  const hubspot = client(async () => ({ status, headers: {}, body: Buffer.from('{"category":"UNKNOWN"}') }));
+  const update = await hubspot.updateObject().invoke(callFor('updateObject'), { objectType: 'deals', objectId: '9001', properties: { dealstage: 'qualifiedtobuy' } });
+  expect(update.kind).toBe('retry');
+  const upsert = await hubspot.upsertObject().invoke(callFor('upsertObject'), { objectType: 'contacts', idProperty: 'email', idValue: 'ada@example.com' });
+  expect(upsert.kind).toBe('retry');
+});
+
+it.each([
+  ['a malformed answer', async () => ({ status: 200, headers: {}, body: Buffer.from('{"results":') })],
+  ['an oversized answer', async () => { throw new BodyTooLargeError(200, {}); }],
+])('retries a repeat-safe write for %s', async (_name, send) => {
+  const hubspot = client(send);
+  const update = await hubspot.updateObject().invoke(callFor('updateObject'), { objectType: 'deals', objectId: '9001', properties: { dealstage: 'qualifiedtobuy' } });
+  expect(update.kind).toBe('retry');
+  const upsert = await hubspot.upsertObject().invoke(callFor('upsertObject'), { objectType: 'contacts', idProperty: 'email', idValue: 'ada@example.com' });
+  expect(upsert.kind).toBe('retry');
+});
+
+it.each([
+  ['broker unavailable', new CredentialBrokerUnavailableError(), 'retry', undefined],
+  ['static not configured', new Error('connection is not configured'), 'retry', undefined],
+  ['unlisted error', new RangeError('credential store hiccup'), 'retry', undefined],
+  ['reauthorization', new ReauthorizationRequiredError(), 'branch', 'providerRejected'],
+  ['object not found', new ObjectNotFoundError(), 'branch', 'defect'],
+  ['connection not selected', new ConnectionNotSelectedError(), 'branch', 'defect'],
+  ['broker rejected', new CredentialBrokerRejectedError(), 'branch', 'defect'],
+  // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+  ['malformed stored material', new TypeError('project credential decoding failed'), 'branch', 'defect'],
+])('classifies a %s credential failure on a write', async (_name, error, kind, branch) => {
+  const failing = async () => { throw error; };
+  const hubspot = new HubSpotClient({ endpoint: 'http://127.0.0.1:44721' }, { resolve: failing, resolveWithRefresh: failing }, { send: async () => { throw new Error('unexpected request'); } });
+  const update = await hubspot.updateObject().invoke(callFor('updateObject'), { objectType: 'deals', objectId: '9001', properties: { dealstage: 'qualifiedtobuy' } });
+  expect(update.kind).toBe(kind);
+  if (update.kind === 'branch') expect(update.branch).toBe(branch);
 });
 
 it('rejects fractional rate interval milliseconds', async () => {

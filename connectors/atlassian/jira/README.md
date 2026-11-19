@@ -1,6 +1,6 @@
 # Jira Cloud Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/jira`.
 
@@ -13,7 +13,7 @@ issues through Atlassian's OAuth 2.0 (3LO) gateway,
 `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3`:
 
 The [Python package](python/README.md) implements the same five operations at
-`v0.2.0`, with generated OAuth refresh, Go-recorded conformance, and a
+`v0.2.1`, with generated OAuth refresh, Go-recorded conformance, and a
 [runnable Dex Flow](python/examples/issue_lookup/README.md), and from `v0.2.0`
 the `issueChanged` Trigger, with a
 [runnable issue-changed Flow](python/examples/issue_changed/README.md). Its
@@ -25,7 +25,7 @@ API behavior remain unverified.
 | `searchIssues` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |
 | `getIssue` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `createIssue` | Mutation | sync | `created` | `providerRejected`, `uncertain`, `defect` |
-| `transitionIssue` | Mutation | async | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `transitionIssue` | Mutation | sync | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse` (retired, never selected), `defect` |
 | `addComment` | Mutation | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 
 Status, issue type, and priority names are the site's own values and are never
@@ -55,7 +55,7 @@ It also exposes one Go Trigger:
 ## TypeScript package
 
 The `@superdurable/connector-atlassian-jira` package at `typescript/` is version
-`0.2.0` and implements all five operations in this manifest and the
+`0.2.1` and implements all five operations in this manifest and the
 `issueChanged` Trigger, with a
 [runnable issue-changed example](typescript/examples/issue-changed/README.md). Its generated
 OAuth driver and project credential source refresh rotating Atlassian tokens;
@@ -312,29 +312,37 @@ and an optional `AssigneeAccountID`. The description is converted to a minimal
 Atlassian Document Format document: blank lines separate paragraphs, other line
 breaks become `hardBreak` nodes, and the text is never read as markup.
 
-Jira has no idempotency key. The shared single-dispatch fence checkpoints each
-POST and permits a later send only after the preceding attempt recorded
-`notSent` or `canResend`:
+Jira has no idempotency key, so `createIssue` and `addComment` are `limited`
+Mutations with the default send cap of 3 possibly effective POSTs per Call ID.
+The shared single-dispatch fence counts each POST. A later attempt after a
+possible earlier POST first reads back by the Call ID property, and sends again
+only when nothing is found and the cap allows another POST:
 
 | Outcome | Result |
 | --- | --- |
 | 201 with an issue ID and key | `created` |
-| 400, 403, 404, 413, 422, or another definite 4xx except 401, 409, and 429 | `providerRejected`, with `RejectedFieldIDs` |
+| 400, 401, 403, 404, 411, 413, 414, 415, or 422 on the first POST | Checkpoint `canResend`, then `providerRejected`, with `RejectedFieldIDs` |
 | 401 with a refreshable credential | Refresh the credential, checkpoint `canResend`, then Retry |
-| 401 without a usable refresh | `providerRejected` with authentication failure |
-| 409 | Read back by the Call ID property; confirmed creation selects `created`, otherwise `uncertain` |
+| One of those refusals after an earlier possible POST | `uncertain`, because the earlier POST may have created the issue |
 | 429 | Checkpoint `canResend`, then Retry after `Retry-After` |
 | DNS, connect, or TLS failure before any connection opened | Checkpoint `canResend`, then Retry |
 | 503 | Checkpoint `canResend`, then Retry after `Retry-After` |
-| Timeout, dropped connection, 408, 3xx, or another 5xx after dispatch | Read back; confirmed creation selects `created`, otherwise `uncertain` |
-| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Read back; confirmed creation selects `created`, otherwise `uncertain` |
+| Timeout, dropped connection, 3xx, 408, 409, another 4xx, or another 5xx after dispatch | Read back; confirmed creation selects `created`, otherwise Retry and resend below the cap, or `uncertain` at the cap |
+| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Jira accepted the POST, so it is never sent again: read back; confirmed creation selects `created`, otherwise `uncertain`. A transient read-back failure retries only when the returned issue ID was checkpointed, and selects `uncertain` otherwise |
+| Unreadable or untrusted dispatch checkpoint | Retry without sending |
 
-During read-back, a transient 429, 5xx, transport error, interrupted response,
-or temporarily unavailable credential returns Retry without another POST. A
-transient credential lookup failure before a write also retries after recording
-`notSent`. Reauthorization-required or invalid credentials select `defect`
-before dispatch and `uncertain` when an earlier write requires read-back. If
-the retry budget is exhausted, the Flow fails.
+Once Jira has returned an issue ID, a later attempt reads that issue back and
+never sends again; a failed confirmation selects `uncertain`. During read-back,
+a transient 429, 5xx, transport error, interrupted response, or temporarily
+unavailable credential returns Retry without another POST. A later attempt
+reads back whenever an earlier POST may have taken effect, including after a
+429 or 503 on a resend recorded `canResend`. A transient credential lookup
+failure before the first POST retries after recording `notSent`; after an
+earlier possible POST it retries without a checkpoint, so the next attempt
+reads back again. Reauthorization-required or invalid credentials select
+`defect` before the first dispatch and `uncertain` after an earlier possible POST.
+Set the Step's `MaxSends` to 1 to forbid any resend. If the retry budget is
+exhausted, the Flow fails.
 
 On `providerRejected` and `uncertain`, the Value echoes the requested project
 and summary without an issue key.
@@ -353,18 +361,63 @@ screen's resolution. The operation:
    status;
 3. selects `transitionUnavailable` when no available transition matches, or
    several do, with the current status and up to 50 available transitions;
-4. performs the transition, and after any response other than 204, 404, or
-   429 reads the issue again. When the issue reached the destination, the
-   result is `transitioned`. Otherwise a conclusive 4xx selects
-   `providerRejected` with the field IDs, and a 409, 5xx, or dropped connection
-   retries.
+4. records a heartbeat checkpoint with the chosen transition ID, the current
+   (source) status ID, and the transition's destination status ID, and returns
+   Retry without sending when Dex cannot record it;
+5. sends the transition once in this attempt. A 2xx, even one whose body
+   breaks, is `transitioned`; a 404 with a fully read body selects `notFound`;
+   another conclusive 4xx rereads the issue and selects `transitioned` when a
+   concurrent attempt already reached the destination, or `providerRejected`
+   with the field IDs. A 401 first refreshes the access token and sends the
+   transition once more, because Jira refused the first request without
+   applying it. A 429, 503, provably unsent request, 409, other 5xx, cut body,
+   or dropped connection returns Retry.
 
-Jira refuses a transition that is not available from the issue's current
-status, so a repeated or concurrent attempt cannot move an issue twice. Set
-`DestinationStatusName` whenever the destination is known: a retried or backup
-attempt then recognizes a transition Jira already made. With only a transition
-ID or name, such an attempt finds the transition no longer offered and selects
-`transitionUnavailable` with `Status` already at the destination.
+The manifest declares `repeatOnUnknown: safe` because a transition has a fixed
+destination and a retry never selects a transition again. A later attempt of
+the same Call reads the checkpoint and the issue, then:
+
+- selects `transitioned` without sending when the issue is in the recorded
+  destination status;
+- sends the recorded transition ID again when the issue is still in the
+  recorded source status and that transition is still offered;
+- selects `transitionUnavailable` without sending when the issue is in any
+  other status, because someone else moved it, or when the recorded transition
+  is no longer offered.
+
+`transitionUnavailable` on a retry does not prove that this Call's transition
+was never applied: the first request may have moved the issue from the source
+to the destination before a person or an automation moved it on to a third
+status. Check the issue's history before you act on that branch. If someone
+moves the issue back to the recorded source status before the next attempt,
+that attempt sends the recorded transition again.
+
+It never matches `TransitionName` or `DestinationStatusName` again, because a
+workflow can offer a transition with the same name back and a second selection
+could undo the first. Dex can lose a recorded heartbeat, so a later attempt
+selects a transition only when the previous attempt recorded `notSent`, which
+every Retry before a send records. A later attempt with neither a checkpoint
+nor that record selects `transitioned` when the issue is already in
+`DestinationStatusName` or the matched transition leads to the current status,
+and otherwise returns Retry without sending until the retry budget ends. A
+`notSent` or `canResend` marker of an earlier release counts as `notSent`. Set
+`DestinationStatusName` whenever the destination is known: after a lost
+checkpoint, it is how a retried attempt recognizes a transition Jira already
+made and finishes instead of retrying until the budget ends.
+
+An unreadable checkpoint returns Retry without any request. On every attempt,
+only a definite read outcome selects a branch: a 404 with a fully read body
+selects `notFound`, and a 400, 401, 403, 411, 413, 414, 415, or 422 with a
+fully read body selects `providerRejected`. Every other read returns Retry,
+including a 409, 425, any other 4xx, a refusal whose body was cut, a 1xx or
+3xx, and a 2xx that is unparseable, oversized, or echoes the access token;
+`invalidResponse` is no longer selected. A local failure or a terminal
+credential failure after a checkpoint returns Retry instead of `defect`,
+because an earlier attempt may have moved the issue.
+
+The checkpoint is the Step's own Dex heartbeat value. Run `transitionIssue` in
+its own Step, as `NewTransitionIssueStep` does; a hand-written Step that also
+runs a fenced Mutation would overwrite one checkpoint with the other.
 
 ### addComment
 
@@ -378,22 +431,34 @@ description. The branch table matches `createIssue`, except that a 404 selects
 request is usually fast. Sync persists a result before the Flow advances;
 async may replay one lost before its batched commit. Both modes use the same
 attempt and retry rules. The create test records one request and one issue;
-the timeout and lost-Worker tests check uncertain outcomes without a second
-write. Keep these Steps sync to reduce replay risk.
+the timeout tests check that an unconfirmed write is resent at most up to the
+send cap before `uncertain`. Keep these Steps sync to reduce replay risk.
 
-`transitionIssue` keeps the async default. A lost Worker after Jira applies
-the transition causes another Execute; it reads the destination status and
-does not send the transition again. The integration test checks one POST.
+`transitionIssue` is also sync, because its transition checkpoint must be
+visible to the next attempt. A lost Worker after Jira applies the transition
+causes another Execute; it finds the issue in the recorded destination and does
+not send the transition again. The integration test checks one POST.
+
+In Python, the fence's write window cancels a dispatch whose body is still
+being read. Each write records the HTTP status when headers arrive, so a 2xx
+cut off by the write deadline counts as accepted: creates and comments are
+read back by their Call ID property and otherwise select `uncertain`. A
+transition answered with 2xx is `transitioned` even when its body breaks. A
+refusal status whose body could not be read in full is an unknown outcome in
+every language.
 
 Each create and comment includes a non-secret hash of the stable Call ID in a
 Jira entity property. The released `sdkgo/singledispatch` fence owns the Dex
-heartbeat claim and send window. A missing, foreign, stale, or unreadable
-checkpoint never permits another POST. When a response supplies a resource ID,
-the fence saves it for direct read-back; otherwise the connector searches a
+heartbeat claim, send count, and send window. A missing or stale checkpoint
+counts each earlier attempt as a possible POST, so another POST follows only
+an empty read-back below the send cap; a foreign or unreadable checkpoint
+returns Retry without sending. When a response supplies a resource ID, the
+fence saves it for direct read-back; otherwise the connector searches a
 bounded page for the property. A transient lookup retries without sending.
-The property is not an Atlassian idempotency key. Dex does not acknowledge
-heartbeat persistence before the POST, so a crash may still leave a write that
-the bounded read-back cannot confirm. That outcome selects `uncertain`.
+The property is not an Atlassian idempotency key, and the bounded search can
+miss a write Jira has not indexed yet, so a resend may duplicate an issue or
+comment; at most the send cap of them exist. When the cap is reached and
+read-back cannot confirm the write, the Step selects `uncertain`.
 
 A traced DNS, connect, or TLS failure before any connection is obtained, HTTP
 429, and HTTP 503 select Retry after the fence records permission for the next

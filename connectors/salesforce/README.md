@@ -1,6 +1,6 @@
 # Salesforce Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/salesforce/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/salesforce/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/salesforce`.
 
@@ -257,14 +257,17 @@ keeps the message text, which can repeat record values.
 | 401, `INVALID_SESSION_ID`, after one refresh and resend only when the stored session has expired | `providerRejected` (authentication) |
 | `INSUFFICIENT_ACCESS`, `INSUFFICIENT_ACCESS_OR_READONLY`, `API_DISABLED_FOR_ORG`, 403 | `providerRejected` (authorization) |
 | `NOT_FOUND`, `ENTITY_IS_DELETED`, 404 | `notFound` on `getRecord` and `updateRecord`; `providerRejected` on `queryRecords` and upsert, where it means an unknown path, object, or external ID field |
-| Other 400, 409, 412, 422, such as `MALFORMED_QUERY`, `INVALID_FIELD`, `REQUIRED_FIELD_MISSING`, `FIELD_CUSTOM_VALIDATION_EXCEPTION`, `DUPLICATES_DETECTED`, `ENTITY_IS_LOCKED` | `queryRejected`, `recordRejected`, or `providerRejected` on `getRecord` |
+| Other 400, 422, such as `MALFORMED_QUERY`, `INVALID_FIELD`, `REQUIRED_FIELD_MISSING`, `FIELD_CUSTOM_VALIDATION_EXCEPTION`, `DUPLICATES_DETECTED`, `ENTITY_IS_LOCKED`, and 409 or 412 on a read | `queryRejected`, `recordRejected`, or `providerRejected` on `getRecord` |
+| A write's 409, 412, 3xx other than the upsert's 300 (including a 300 to `updateRecord`, which Salesforce defines only for external ID paths), or a 4xx other than 400, 401, 403, 404, 411, 413, 414, 415, and 422 | Retry, because both writes are repeat-safe (`repeatOnUnknown: safe`) |
 
 `REQUEST_LIMIT_EXCEEDED` covers both the concurrent long-request limit, which
 clears in seconds, and the org's 24-hour API allocation, which does not; the
 second may exhaust the remaining one-hour default retry budget and fail the Step. Applications
 that expect to reach the daily allocation can widen the window with
-`StepOptionsOverride` or add `ProceedToOnExecuteFailure`. Invalid input and
-credentials that cannot be used select `defect` before any request. Only each
+`StepOptionsOverride` or add `ProceedToOnExecuteFailure`. Invalid input,
+unusable credentials, and an absent, unselected, or broker-refused connection
+select `defect` before any request; any other credential read failure
+Retries. Only each
 operation's happy-path branch is required; every other branch is optional and
 fails the Flow when unwired.
 
@@ -376,7 +379,7 @@ Flow, which reads the record back, or records that it was deleted first.
 
 The [Python record changes](python/examples/record_changes) example ports
 `record-changes` to the Python package, which implements `recordModifiedPolled`
-from `dex-connector-salesforce==0.2.0` with cursor documents and event IDs
+from `dex-connector-salesforce==0.2.1` with cursor documents and event IDs
 that match Go's byte for byte. Its real Dex integration tests cover the
 baseline, one Flow per change, `Id` paging of a bulk load, a
 `REQUEST_LIMIT_EXCEEDED` pause, a record deleted before the read-back, restart
@@ -395,7 +398,7 @@ org API access have not been verified for the Python port.
 
 ### TypeScript port
 
-The TypeScript package `@superdurable/connector-salesforce@0.2.0` implements
+The TypeScript package `@superdurable/connector-salesforce@0.2.1` implements
 all four operations and the `recordModifiedPolled` Trigger through the
 Connector SDK 0.12.0 and uses generated Salesforce OAuth and JWT bearer refresh
 declarations. Its Trigger cursor documents and event IDs match Go's byte for

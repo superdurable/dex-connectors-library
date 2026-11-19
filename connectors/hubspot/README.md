@@ -1,6 +1,6 @@
 # HubSpot Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/hubspot`.
 
@@ -114,10 +114,16 @@ a duplicate. `UpsertedObject.Created` reports what the answered dispatch did,
 so it can be false after a retry even though an earlier dispatch created the
 record.
 
-If HubSpot answers `409 CONFLICT`, the connector resends the same upsert once.
+Both Mutations declare `repeatOnUnknown: safe`. If HubSpot answers
+`409 CONFLICT`, the connector resends the same upsert once in the same attempt.
 A concurrent dispatch of the same upsert may have created the record first, and
-the resend updates it. A second conflict selects `conflict`, for example when
-the properties contain an email that another contact already owns.
+the resend updates it. A second `409 CONFLICT`, or a conflict in HubSpot's 2xx
+batch answer, is a definite business outcome, such as an email another contact
+owns, and selects `conflict`. `updateObject` selects `conflict` for
+`409 CONFLICT` too. Repeating our own write sets the same values on the same
+record, so a documented conflict stays definite after an earlier attempt. A
+`409` without the documented `CONFLICT` or `OBJECT_ALREADY_EXISTS` category does
+not prove a refusal, so both writes return Retry for it.
 
 ### updateObject
 
@@ -130,19 +136,21 @@ as any last-write-wins retry does.
 
 | HubSpot response | Result |
 | --- | --- |
-| `400`/`422` or `VALIDATION_ERROR` | `providerRejected`, `VALIDATION` |
+| `400`/`422`, or `VALIDATION_ERROR` on a read | `providerRejected`, `VALIDATION` |
+| a Mutation's `3xx`, `501`, `409` without a documented conflict category, or `4xx` other than `400`, `401`, `403`, `404`, `409`, `411`, `413`, `414`, `415`, `422`, or a `429` `DAILY` | Retry |
 | `401` | `providerRejected`, `AUTHENTICATION`, after one OAuth refresh and resend only when the stored token has expired |
 | `403` `MISSING_SCOPES` or other `403` | `providerRejected`, `AUTHORIZATION` |
 | `404` `OBJECT_NOT_FOUND` | `notFound` on `getObject` and `updateObject`; `providerRejected` otherwise |
-| `409` `CONFLICT` | `conflict` on both Mutations, after one resend for `upsertObject` |
+| `409` `CONFLICT` or `OBJECT_ALREADY_EXISTS` | `conflict` on `upsertObject` after one resend and on `updateObject`; `providerRejected` on reads |
+| a 2xx batch upsert error with a conflict | `conflict`, after one resend |
 | `429` with policy `DAILY` | `providerRejected`, `QUOTA_EXHAUSTED` |
 | other `429` (`RATE_LIMITS`) | Retry after `Retry-After`, or HubSpot's rate-limit interval up to 10 seconds |
 | `423` Locked | Retry after at least 2 seconds |
 | `408`, `477`, `5xx` except `501`, dropped connection | Retry, honoring `Retry-After` up to one hour |
-| oversized, malformed, or ID-less response | `invalidResponse` |
+| oversized, malformed, or ID-less response | `invalidResponse` on reads; Retry on `upsertObject` and `updateObject`, which may have applied and are safe to repeat |
 | OAuth refresh rejected, or connection marked `reauthorization_required` | `providerRejected`, `AUTHENTICATION`, no request |
-| OAuth token endpoint temporarily unavailable | Retry, no request |
-| invalid input, or missing or malformed credentials | `defect`, no request |
+| any other credential read failure, such as a token endpoint or broker outage or a missing static connection | Retry, no request |
+| invalid input; an absent, unselected, or broker-refused connection; or malformed credentials | `defect`, no request |
 
 Failure messages name only an allowlisted HubSpot category and an uppercase
 error code, such as `(VALIDATION_ERROR, PROPERTY_DOESNT_EXIST)`. Receipts carry

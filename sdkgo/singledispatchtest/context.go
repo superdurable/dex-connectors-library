@@ -7,6 +7,7 @@ package singledispatchtest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"time"
 
@@ -92,6 +93,30 @@ func (ctx *Context) SetPersistedCheckpoint(value any) error {
 	defer ctx.mu.Unlock()
 	ctx.lastHeartbeat = encoded
 	return nil
+}
+
+// SetPersistedMarkers seeds the heartbeat a Fence records for the given singledispatch
+// Markers, keyed by each Marker's callId, as visible to the current attempt. It returns an
+// error for a value that does not encode to a JSON object with a string callId.
+func (ctx *Context) SetPersistedMarkers(markers ...any) error {
+	markersByCallID := make(map[string]json.RawMessage, len(markers))
+	for _, marker := range markers {
+		encoded, err := json.Marshal(marker)
+		if err != nil {
+			return err
+		}
+		var identity struct {
+			CallID string `json:"callId"`
+		}
+		if err := json.Unmarshal(encoded, &identity); err != nil {
+			return err
+		}
+		if identity.CallID == "" {
+			return errors.New("single-dispatch marker has no callId")
+		}
+		markersByCallID[identity.CallID] = encoded
+	}
+	return ctx.SetPersistedCheckpoint(map[string]any{"singleDispatchMarkers": markersByCallID})
 }
 
 // AdvanceAttempt makes the last persisted heartbeat visible to the next attempt.

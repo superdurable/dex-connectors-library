@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Airtable Web API base URL; leave blank for Airtable's public API host. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server. The base and table pickers always call Airtable's public API host. */
   endpoint?: string;
-  /** Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized responses select invalidResponse. */
+  /** Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized read responses select invalidResponse; an oversized write response retries the repeat-safe write. */
   maxResponseBytes?: number;
   /** Delay between recordChanged Trigger polls of each picked table, as a Go duration of at least 1s such as 15s or 2m; leave blank for the shown interval, and lengthen it when many bindings share one base. Each poll normally makes one Airtable list request, and Airtable allows 5 requests per second per base and 50 per second per personal access token across every binding and Step. Runtime value in milliseconds. */
   pollIntervalMs?: number;
@@ -66,15 +66,34 @@ export interface Credentials {
   personalAccessToken: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["personal_access_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["personal_access_token"] != null && !(typeof fields["personal_access_token"] === 'string')) throw new TypeError("credential personal_access_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["personal_access_token"] != null && !(typeof fields["personal_access_token"] === 'string')) throw new CredentialMaterialError("credential personal_access_token has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["personal_access_token"]) throw new TypeError("credential personal_access_token is required");
+  if (!fields["personal_access_token"]) throw new CredentialMaterialError("credential personal_access_token is required");
   credentials.personalAccessToken = new SecretString((fields["personal_access_token"] ?? '') as string);
   return credentials;
 }

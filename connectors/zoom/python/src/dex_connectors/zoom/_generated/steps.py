@@ -190,6 +190,8 @@ def new_update_meeting_step(
     defect: dex.StepTarget[MutationResult[UpdatedMeeting]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdatedMeeting]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateMeetingInput, UpdatedMeeting]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Zoom Step connection name must match its connection reference")

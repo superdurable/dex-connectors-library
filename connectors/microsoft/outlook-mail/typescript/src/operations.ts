@@ -4,7 +4,7 @@
 import { newMutationBranch,newMutationRetry,newQueryBranch,newQueryRetry,zeroReceipt,type Call,type CredentialProvider, type CredentialRefreshDriver,type Mutation,type MutationAttempt,type Query,type QueryAttempt,type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { SearchMessagesDefinition,SearchMessagesBranch,GetMessageDefinition,GetMessageBranch,MoveMessageDefinition,MoveMessageBranch,SetMessageFlagsDefinition,SetMessageFlagsBranch } from './generated/definitions.js';
 import type { Config,Credentials,GetMessageInput,Message,MessageFlags,MoveMessageInput,MovedMessage,SearchMessagesInput,SearchMessagesOutput,SetMessageFlagsInput } from './generated/models.js';
-import { GraphSession,escapePathSegment,graphFailure,isGraphExchange,type GraphExchange,type GraphTransport } from './http.js';
+import { GraphSession,definiteRefusalStatuses,escapePathSegment,graphFailure,isGraphExchange,type GraphExchange,type GraphTransport } from './http.js';
 import { decodeAttachments,decodeFullMessage,graphTimestampUTC,parseGraphMessage,parseJSON,resolveFolder,summarizeMessage,summaryProperties,validateAddress,validateGraphID,validateSingleLine,type GraphMessageWire } from './message.js';
 
 export interface ClientDependencies { config: Config; source: CredentialProvider<Credentials>; driver: CredentialRefreshDriver<Credentials>; transport: GraphTransport; now: () => Date; timeoutMs: number }
@@ -17,6 +17,8 @@ function queryFailed<T>(exchange: GraphExchange, receipt: ReceiptDraft, branches
 }
 function updateFailed<T>(exchange: GraphExchange, receipt: ReceiptDraft, branches:{NotFound:string;ProviderRejected:string;Defect:string}, empty:T): MutationAttempt<T> {
   if(['retry','ambiguous','invalid'].includes(exchange.outcome)) return newMutationRetry(exchange.failure!,exchange.retryAfterMs);
+  // Only a definite refusal status ends the write; any other provider answer is an unknown outcome.
+  if(exchange.status!==0&&!definiteRefusalStatuses.has(exchange.status)) return newMutationRetry(exchange.failure!,exchange.retryAfterMs);
   if(exchange.outcome==='notFound') return newMutationBranch(branches.NotFound,empty,receipt,exchange.failure);
   if(exchange.outcome==='defect') return newMutationBranch(branches.Defect,empty,receipt,exchange.failure);
   return newMutationBranch(branches.ProviderRejected,empty,receipt,exchange.failure);

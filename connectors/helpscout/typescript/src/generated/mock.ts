@@ -179,7 +179,7 @@ export function replyToConversationNotFoundFailure(): Case<ConversationReply> {
 /** Manifest scenario providerRejectedFailure for replyToConversation. */
 export function replyToConversationProviderRejectedFailure(): Case<ConversationReply> {
   const value = emptyConversationReply;
-  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "replyToConversation", message: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added." });
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "replyToConversation", message: "Help Scout conclusively rejected the thread, such as invalid text or an unknown customer; nothing was added." });
 }
 
 /** Script the updated branch. */
@@ -209,12 +209,12 @@ export function updateConversationNotFoundFailure(): Case<UpdateConversationOutp
 /** Manifest scenario providerRejectedFailure for updateConversation. */
 export function updateConversationProviderRejectedFailure(): Case<UpdateConversationOutput> {
   const value = emptyUpdateConversationOutput;
-  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "updateConversation", message: "Help Scout refused to change the locked conversation (HTTP 412)." });
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "updateConversation", message: "Help Scout rejected the assignee (HTTP 422)." });
 }
 /** Manifest scenario invalidResponseFailure for updateConversation. */
 export function updateConversationInvalidResponseFailure(): Case<UpdateConversationOutput> {
   const value = emptyUpdateConversationOutput;
-  return branchCase("invalidResponse", value, { kind: "RESPONSE_TOO_LARGE", provider: ConnectorID, operation: "updateConversation", message: "Help Scout returned an oversized conversation read-back." });
+  return branchCase("invalidResponse", value, { kind: "RESPONSE_TOO_LARGE", provider: ConnectorID, operation: "updateConversation", message: "Help Scout returned an oversized conversation before the change." });
 }
 
 /** Script the found branch. */

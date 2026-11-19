@@ -64,6 +64,7 @@ const (
 	dispositionUncertain
 	dispositionInvalidResponse
 	dispositionDefect
+	dispositionLimitExceeded
 )
 
 // classifiedFailure is a secret-free description of one failed call.

@@ -17,7 +17,7 @@ export interface CreateEnvelopeFromTemplateStepConfig<StepInput, OperationInput 
   created: StepTarget<MutationResult<OperationOutput>>;
   /** DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically. */
+  /** The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, or DocuSign refused a resend after an earlier attempt may have sent, or a terminal credential failure followed a possible send, or an accepted create, including an error answer that named an envelope, could not be found within the attempts or recorded as accepted, so an envelope may exist that this Result does not name; do not create another automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -111,15 +111,18 @@ export interface VoidEnvelopeStepConfig<StepInput, OperationInput = VoidEnvelope
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** DocuSign conclusively rejected the void, such as a user who is not the sender or lacks permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** DocuSign returned a malformed or oversized response. */
+  /** DocuSign returned malformed or oversized account information before the void was sent; an unreadable answer after the void retries, since voiding again is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the voidEnvelope Step from a named connection. */
 export function newVoidEnvelopeStep<StepInput, OperationInput = VoidEnvelopeInput, OperationOutput = VoidedEnvelope>(configuration: VoidEnvelopeStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, voided, notVoidable, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, voided, notVoidable, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.voidEnvelope(), connection: connection.reference, branches: [
     goToBranch("voided", voided),

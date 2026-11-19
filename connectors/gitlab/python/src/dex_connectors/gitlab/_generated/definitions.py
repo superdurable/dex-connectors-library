@@ -65,7 +65,7 @@ UPDATE_ISSUE_LABELS_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Replace one GitLab issue's complete label set; repeating the request is safe.", False),
         BranchDefinition(NOT_FOUND, "The requested resource does not exist or is inaccessible.", True),
         BranchDefinition(PROVIDER_REJECTED, "The provider rejected the request.", True),
-        BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because replacing the complete label set again is safe.", True),
         BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
     ),
     StepDefaults(

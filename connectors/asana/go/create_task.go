@@ -103,72 +103,40 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, requested, failurePointer(createTaskOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	previous, hasPrevious, checkpointErr := previousUnkeyedWriteCheckpoint(call, createTaskOperationID)
-	if checkpointErr != nil {
-		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureLocalDefect, "Asana task dispatch checkpoint is unavailable"), client.receiptForCall(call, ""))
-	}
-	attempt := call.Context.Attempt()
-	hasReadBackID := hasPrevious && previous.ObjectID != ""
-	canSend := !hasPrevious && attempt == 1 || hasPrevious && previous.CanResend && previous.Attempt == attempt-1
-	switch {
-	case hasReadBackID:
-		if !gidPattern.MatchString(previous.ObjectID) {
-			return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureProtocol, "Asana task checkpoint has an invalid task ID"), client.receiptForCall(call, ""))
-		}
-	case canSend:
-	case !hasPrevious:
-		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureTransport, "Asana task dispatch checkpoint is missing; the task may exist"), client.receiptForCall(call, ""))
-	default:
-		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureTransport, "Asana task dispatch checkpoint does not permit another create"), client.receiptForCall(call, ""))
+	write, savedTaskID, attempt, isFinal := startFencedWrite(client, call, CreateTaskDefinition, createTaskOperationID, requested, CreateTaskBranchDefect)
+	if isFinal {
+		return attempt
 	}
 	session, cancel, startFailure := client.startSession(call, createTaskOperationID)
 	if startFailure != nil {
-		if hasReadBackID {
-			return sdkgo.NewMutationRetry[CreateTaskOutput](*startFailure, 0)
-		}
-		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, requested, startFailure, sdkgo.Receipt{})
+		return sessionFailureAttempt(write, createTaskOperationID, startFailure, requested, CreateTaskBranchDefect)
 	}
 	defer cancel()
-	heartbeat := newUnkeyedWriteHeartbeat(call, createTaskOperationID)
-	defer heartbeat.stop()
-	if hasReadBackID {
-		_ = heartbeat.begin(previous.ObjectID)
-		return operation.readBackCreatedTask(session, heartbeat, requested, previous.ObjectID)
+	if savedTaskID != "" {
+		return operation.readBackCreatedTask(session, requested, savedTaskID)
 	}
-	if err := heartbeat.begin(""); err != nil {
-		_ = heartbeat.recordCanResend()
-		return sdkgo.NewMutationRetry[CreateTaskOutput](newFailure(createTaskOperationID, sdkgo.FailureAvailability, "Asana task dispatch checkpoint could not be recorded"), 0)
-	}
-	if !client.canStartRequest(session) {
-		_ = heartbeat.recordCanResend()
-		return sdkgo.NewMutationRetry[CreateTaskOutput](newFailure(createTaskOperationID, sdkgo.FailureTransport, "Asana task attempt deadline is too close to send"), 0)
-	}
-	result := client.exchange(session, asanaRequest{
+	result, attempt, isFinal := dispatchFencedWrite(write, client, session, asanaRequest{
 		method: http.MethodPost, path: "/tasks", query: url.Values{"opt_fields": {strings.Join(createdTaskFields, ",")}},
 		payload: dataEnvelope[createTaskFields]{Data: fields},
-	})
+	}, createTaskOperationID, requested, CreateTaskBranchDefect)
+	if isFinal {
+		return attempt
+	}
 	classification := client.classifyUnkeyedWrite(createTaskOperationID, createTaskFailureSubject, result)
 	receipt := client.receipt(session, "")
-	switch classification.outcome {
-	case writeAccepted:
-	case writeRetry:
-		_ = heartbeat.recordCanResend()
-		return sdkgo.NewMutationRetry[CreateTaskOutput](classification.failure, classification.retryAfter)
-	case writeDefect:
-		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, requested, &classification.failure, receipt)
-	case writeUncertain:
-		return sdkgo.NewMutationUncertain(requested, classification.failure, receipt)
-	default:
-		return sdkgo.NewMutationBranch(CreateTaskBranchProviderRejected, requested, &classification.failure, receipt)
+	if attempt, isFinal := attemptForWrite(write, createTaskOperationID, classification, requested, receipt,
+		CreateTaskBranchProviderRejected, CreateTaskBranchProviderRejected, CreateTaskBranchDefect); isFinal {
+		return attempt
 	}
 	created, err := decodeData[createdTaskResource](result.response.body)
 	if err != nil || !gidPattern.MatchString(created.GID) {
-		return sdkgo.NewMutationUncertain(requested, newFailure(createTaskOperationID, sdkgo.FailureProtocol, "Asana accepted the task but returned an unusable task reference"), receipt)
+		return retryAcceptedReadBackOrSelectUncertain(write, createTaskOperationID, acceptedObjectID(result.response.body), requested,
+			"Asana accepted the task but returned an unusable task reference", receipt)
 	}
 	output := requested
 	output.TaskID, output.PermalinkURL = created.GID, created.PermalinkURL
-	// A lost ID checkpoint makes a later attempt uncertain; it never sends a second task.
-	_ = heartbeat.recordObjectID(created.GID)
+	// A saved ID makes a replayed attempt read the task back instead of sending a second one.
+	recordAcceptedWrite(write, created.GID)
 	// The task exists either way; an unparseable timestamp only leaves CreatedAt nil.
 	if createdAt, err := parseOptionalAsanaTime(&created.CreatedAt); err == nil {
 		output.CreatedAt = createdAt
@@ -177,7 +145,7 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	return sdkgo.NewMutationBranch(CreateTaskBranchCreated, output, nil, receipt)
 }
 
-func (operation CreateTaskOperation) readBackCreatedTask(session *operationSession, heartbeat *unkeyedWriteHeartbeat, requested CreateTaskOutput, taskID string) sdkgo.MutationAttempt[CreateTaskOutput] {
+func (operation CreateTaskOperation) readBackCreatedTask(session *operationSession, requested CreateTaskOutput, taskID string) sdkgo.MutationAttempt[CreateTaskOutput] {
 	client := operation.client
 	if !client.canStartRequest(session) {
 		return sdkgo.NewMutationRetry[CreateTaskOutput](newFailure(createTaskOperationID, sdkgo.FailureTransport, "Asana task read-back attempt deadline is too close"), 0)
@@ -202,7 +170,6 @@ func (operation CreateTaskOperation) readBackCreatedTask(session *operationSessi
 	if createdAt, err := parseOptionalAsanaTime(&created.CreatedAt); err == nil {
 		output.CreatedAt = createdAt
 	}
-	_ = heartbeat.recordObjectID(taskID)
 	return sdkgo.NewMutationBranch(CreateTaskBranchCreated, output, nil, client.receipt(session, taskID))
 }
 

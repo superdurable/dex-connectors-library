@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -144,7 +145,7 @@ func TestSendApplicationMessageSelectsUncertainForARetryPastTheDuplicateCheckWin
 	}{
 		{name: "retry just inside the cutoff", attempt: 2, elapsed: 3*time.Hour + 49*time.Minute + 59*time.Second},
 		{name: "retry at the cutoff", attempt: 2, elapsed: 3*time.Hour + 50*time.Minute, isUncertain: true},
-		{name: "retry after the window", attempt: 9, elapsed: 5 * time.Hour, isUncertain: true},
+		{name: "retry after the window", attempt: 3, elapsed: 5 * time.Hour, isUncertain: true},
 		{name: "first attempt", attempt: 1, elapsed: 5 * time.Hour},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -347,6 +348,7 @@ func TestSendApplicationMessageClassifiesTokenExchangeFailures(t *testing.T) {
 		{name: "invalid corp ID", reply: fakeReply{body: `{"errcode":40013,"errmsg":"invalid corpid"}`}, kind: sdkgo.FailureAuthentication, message: "40013"},
 		{name: "untrusted IP", reply: fakeReply{body: `{"errcode":60020,"errmsg":"not allow to access from your ip"}`}, kind: sdkgo.FailureAuthorization, message: "企业可信IP"},
 		{name: "unexpected HTTP status", reply: fakeReply{status: http.StatusForbidden}, kind: sdkgo.FailureProviderRejection, message: "HTTP"},
+		{name: "unlisted HTTP status", reply: fakeReply{status: http.StatusConflict}, isRetryable: true, kind: sdkgo.FailureAvailability},
 		{name: "system busy", reply: fakeReply{body: `{"errcode":-1,"errmsg":"system busy"}`}, isRetryable: true, kind: sdkgo.FailureAvailability},
 		{name: "frequency limit", reply: fakeReply{body: `{"errcode":45009,"errmsg":"api freq out of limit"}`}, isRetryable: true, kind: sdkgo.FailureRateLimit},
 		{name: "HTTP 502", reply: fakeReply{status: http.StatusBadGateway}, isRetryable: true, kind: sdkgo.FailureAvailability},
@@ -466,4 +468,276 @@ func TestSendApplicationMessageRequiresValidApplicationCredentials(t *testing.T)
 		requireSecretFree(t, defect.Failure.Message)
 	}
 	require.Zero(t, fake.tokenCallCount())
+}
+
+// newWindowedTestClient keeps every retry inside WeCom's duplicate check window.
+func newWindowedTestClient(t *testing.T, baseURL string, credentials CredentialSource) *Client {
+	t.Helper()
+	client, err := New(Config{BaseURL: baseURL}, credentials)
+	require.NoError(t, err)
+	firstAttemptAt := singledispatchtest.NewContext("window-flow", "send-step").FirstAttemptAt()
+	client.now = func() time.Time { return firstAttemptAt.Add(time.Minute) }
+	return client
+}
+
+func TestSendApplicationMessageRetriesAnUnlistedHTTPStatus(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusConflict}, {body: `{"errcode":0,"errmsg":"ok","msgid":"fake-msgid-1"}`}}
+	client := newWindowedTestClient(t, fake.server.URL, testCredentials())
+	ctx := singledispatchtest.NewContext("unlisted-status-flow", "send-step")
+	_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	failure, _ := requireRetry(t, err)
+	require.Equal(t, sdkgo.FailureAvailability, failure.Kind)
+	ctx.AdvanceAttempt()
+	sent, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchSent, sent.Branch)
+	require.Equal(t, fake.sendBodies[0], fake.sendBodies[1])
+}
+
+func TestSendApplicationMessageNeverSelectsDefectAfterAPossibleSend(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	client := newTestClient(t, fake.server.URL)
+	ctx := singledispatchtest.NewContext("defect-after-send-flow", "send-step")
+	_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	noCredentials := newWindowedTestClient(t, fake.server.URL, sdkgo.StaticCredentialProvider[Credentials]{})
+	_, err = sdkgo.RunMutation(ctx, noCredentials.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	failure, _ := requireRetry(t, err)
+	require.Equal(t, sdkgo.FailureAuthentication, failure.Kind)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendApplicationMessageSelectsUncertainForARefusalAfterAPossibleSend(t *testing.T) {
+	for _, refusal := range []fakeReply{
+		{body: `{"errcode":81013,"errmsg":"user, department, and tag are all invalid"}`},
+		{status: http.StatusBadRequest},
+	} {
+		t.Run(fmt.Sprintf("%d %s", refusal.status, refusal.body), func(t *testing.T) {
+			fake := newFakeWeCom(t)
+			fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}, refusal}
+			client := newWindowedTestClient(t, fake.server.URL, testCredentials())
+			ctx := singledispatchtest.NewContext("refusal-after-send-flow", "send-step")
+			_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+			requireRetry(t, err)
+			ctx.AdvanceAttempt()
+			uncertain, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+			require.NoError(t, err)
+			require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch, "a refusal of a repeat cannot prove the first send failed")
+			requireSecretFree(t, uncertain.Failure.Message)
+			require.Equal(t, 2, fake.sendCount())
+		})
+	}
+}
+
+func TestSendApplicationMessageSelectsUncertainForInvalidCredentialsAfterAPossibleSend(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	client := newTestClient(t, fake.server.URL)
+	ctx := singledispatchtest.NewContext("invalid-credentials-after-send-flow", "send-step")
+	_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	invalidAgent := newWindowedTestClient(t, fake.server.URL, sdkgo.StaticCredentialProvider[Credentials]{
+		testApplicationConnection: {AuthMethodID: applicationAuthMethodID, CorpID: testCorpID, AgentID: "not-a-number", CorpSecret: sdkgo.NewSecretString(testCorpSecret)},
+	})
+	uncertain, err := sdkgo.RunMutation(ctx, invalidAgent.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendApplicationMessageSelectsUncertainForATokenRefusalAfterAPossibleSend(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	client := newTestClient(t, fake.server.URL)
+	ctx := singledispatchtest.NewContext("token-after-send-flow", "send-step")
+	_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	refusingFake := newFakeWeCom(t)
+	refusingFake.tokenReplies = []fakeReply{{body: `{"errcode":40001,"errmsg":"invalid credential"}`}}
+	uncertain, err := sdkgo.RunMutation(ctx, newWindowedTestClient(t, refusingFake.server.URL, testCredentials()).SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err, "a refused secret is never retried, because repeats can block the caller IP")
+	require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch)
+	requireSecretFree(t, uncertain.Failure.Message)
+	require.Zero(t, refusingFake.sendCount())
+}
+
+func TestSendApplicationMessageSelectsUncertainAtTheSendCap(t *testing.T) {
+	for _, testCase := range []struct {
+		name  string
+		reply fakeReply
+	}{
+		{name: "HTTP 500", reply: fakeReply{status: http.StatusInternalServerError}},
+		{name: "connection dropped after the request", reply: fakeReply{dropConnection: true}},
+		{name: "malformed JSON", reply: fakeReply{body: `{"errcode":`}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			fake := newFakeWeCom(t)
+			fake.sendReplies = []fakeReply{testCase.reply, testCase.reply, testCase.reply, {body: `{"errcode":0,"errmsg":"ok","msgid":"fake-msgid-4"}`}}
+			client := newWindowedTestClient(t, fake.server.URL, testCredentials())
+			ctx := singledispatchtest.NewContext("application-cap-flow", "send-step")
+			for attempt := 1; attempt < 3; attempt++ {
+				_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+				requireRetry(t, err)
+				ctx.AdvanceAttempt()
+			}
+			uncertain, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+			require.NoError(t, err)
+			require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch)
+			requireSecretFree(t, uncertain.Failure.Message)
+			ctx.AdvanceAttempt()
+			repeated, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+			require.NoError(t, err)
+			require.Equal(t, SendApplicationMessageBranchUncertain, repeated.Branch)
+			require.Equal(t, 3, fake.sendCount(), "no send goes past the send cap")
+		})
+	}
+}
+
+func TestSendApplicationMessageHonorsAnApplicationSendCapOfOne(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	client := newTestClient(t, fake.server.URL)
+	uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("application-cap-one-flow", "send-step"), client.SendApplicationMessage(), testApplicationConnection, testApplicationText, sdkgo.WithMaxSends(1))
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendApplicationMessageSelectsUncertainWhenTheSuccessBodyBreaks(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusAccepted} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			fake := newFakeWeCom(t)
+			fake.sendReplies = []fakeReply{{status: status, body: `{"errcode":0,"msgid":"fake`, breakBody: true}}
+			uncertain, err := runApplicationSend(t, newTestClient(t, fake.server.URL), testApplicationText)
+			require.NoError(t, err)
+			require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch, "WeCom answered 2xx, so the message may be delivered")
+			requireSecretFree(t, uncertain.Failure.Message)
+			require.Equal(t, 1, fake.sendCount())
+		})
+	}
+}
+
+func TestSendApplicationMessageSelectsUncertainForAnAcceptedSendWithMalformedFields(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{body: `{"errcode":0,"errmsg":"ok","msgid":42}`}}
+	uncertain, err := runApplicationSend(t, newTestClient(t, fake.server.URL), testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendApplicationMessageConfirmsAnAcceptedSendFromTheCheckpoint(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{body: `{"errcode":0,"errmsg":"ok","invaliduser":"wangwu","msgid":"fake-msgid-5"}`}}
+	client := newWindowedTestClient(t, fake.server.URL, testCredentials())
+	ctx := singledispatchtest.NewContext("application-checkpoint-flow", "send-step")
+	sent, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, []string{"wangwu"}, sent.Value.InvalidUserIDs)
+
+	// A later attempt of the same call reads the accepted checkpoint and never sends again.
+	ctx.AdvanceAttempt()
+	repeated, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchSent, repeated.Branch)
+	require.Equal(t, SentApplicationMessage{
+		MessageID: "fake-msgid-5", InvalidUserIDs: []string{}, InvalidDepartmentIDs: []string{}, InvalidTagIDs: []string{}, UnlicensedUserIDs: []string{},
+	}, repeated.Value)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendApplicationMessageRecordsCanResendBeforeADefiniteRefusal(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{body: `{"errcode":81013,"errmsg":"user, department, and tag are all invalid"}`}}
+	ctx := singledispatchtest.NewContext("application-refusal-checkpoint-flow", "send-step")
+	rejected, err := sdkgo.RunMutation(ctx, newTestClient(t, fake.server.URL).SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchProviderRejected, rejected.Branch)
+	requireLastCheckpointState(t, ctx.Heartbeats(), "canResend")
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendApplicationMessageResendsARefusalStatusThatCannotProveARefusal(t *testing.T) {
+	for _, testCase := range []struct {
+		name  string
+		reply fakeReply
+	}{
+		{name: "broken body", reply: fakeReply{status: http.StatusBadRequest, body: `{"errcode":81013`, breakBody: true}},
+		{name: "oversized body", reply: fakeReply{status: http.StatusForbidden, body: strings.Repeat("x", 300000)}},
+		{name: "body reports a msgid", reply: fakeReply{status: http.StatusBadRequest, body: `{"errcode":0,"msgid":"fake-msgid-6"}`}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			fake := newFakeWeCom(t)
+			fake.sendReplies = []fakeReply{testCase.reply, {body: `{"errcode":0,"errmsg":"ok","msgid":"fake-msgid-7"}`}}
+			client := newWindowedTestClient(t, fake.server.URL, testCredentials())
+			ctx := singledispatchtest.NewContext("application-unproven-refusal-flow", "send-step")
+			_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+			requireRetry(t, err)
+			ctx.AdvanceAttempt()
+			sent, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+			require.NoError(t, err)
+			require.Equal(t, SendApplicationMessageBranchSent, sent.Branch)
+			require.Equal(t, 2, fake.sendCount())
+		})
+	}
+}
+
+// After an unknown outcome, a 429 records canResend, so the next attempt still counts the first send.
+func TestSendApplicationMessageSelectsUncertainForARefusalAfterAnUnprocessedResend(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}, {status: http.StatusTooManyRequests}, {body: `{"errcode":81013,"errmsg":"user, department, and tag are all invalid"}`}}
+	client := newWindowedTestClient(t, fake.server.URL, testCredentials())
+	ctx := singledispatchtest.NewContext("application-unprocessed-resend-flow", "send-step")
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+		requireRetry(t, err)
+		ctx.AdvanceAttempt()
+	}
+	uncertain, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 3, fake.sendCount())
+}
+
+func TestSendApplicationMessageRetriesATransientCredentialFailureBeforeSending(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{body: `{"errcode":81013,"errmsg":"user, department, and tag are all invalid"}`}}
+	unavailable := newWindowedTestClient(t, fake.server.URL, failingCredentials{err: projectconfig.ErrCredentialBrokerUnavailable})
+	ctx := singledispatchtest.NewContext("application-transient-credential-flow", "send-step")
+	_, err := sdkgo.RunMutation(ctx, unavailable.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	failure, _ := requireRetry(t, err)
+	require.Equal(t, sdkgo.FailureAuthentication, failure.Kind)
+	requireLastCheckpointState(t, ctx.Heartbeats(), "notSent")
+	require.Zero(t, fake.tokenCallCount())
+
+	// notSent proves nothing was sent, so a refusal of the next attempt's first send is definite.
+	ctx.AdvanceAttempt()
+	rejected, err := sdkgo.RunMutation(ctx, newWindowedTestClient(t, fake.server.URL, testCredentials()).SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchProviderRejected, rejected.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendApplicationMessageClassifiesATerminalCredentialFailure(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	reauthorize := newWindowedTestClient(t, fake.server.URL, failingCredentials{err: sdkgo.ErrReauthorizationRequired})
+	defect, err := runApplicationSend(t, reauthorize, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchDefect, defect.Branch)
+	require.Zero(t, fake.sendCount())
+
+	ctx := singledispatchtest.NewContext("application-terminal-credential-flow", "send-step")
+	_, err = sdkgo.RunMutation(ctx, newTestClient(t, fake.server.URL).SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	uncertain, err := sdkgo.RunMutation(ctx, reauthorize.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch, "an earlier attempt may have delivered the message")
+	require.Equal(t, 1, fake.sendCount())
 }

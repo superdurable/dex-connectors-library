@@ -10,6 +10,10 @@ metadata:
 spec:
   provider: ctyun
   languages:
+    python:
+      version: v0.1.0
+      operations: [listKnowledgeBases]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-ctyun"

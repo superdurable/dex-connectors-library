@@ -72,7 +72,7 @@ mkdir -p /tmp/zoho-crm-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/zoho/crm/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go \
-  --version v0.24.0 --tag connectors/zoho/crm/go/v0.24.0 \
+  --version v0.24.1 --tag connectors/zoho/crm/go/v0.24.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/zoho-crm-release/connector-release.json \
   --digest-output /tmp/zoho-crm-release/connector-release.json.sha256

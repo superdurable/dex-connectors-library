@@ -8,11 +8,13 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/pipedrive/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 // Custom field keys are built at run time, so no token-shaped 40-character literal is checked in.
@@ -56,16 +58,60 @@ func TestCreateObjectRecordsTheCheckpointThenSendsOneCreate(t *testing.T) {
 	require.Equal(t, http.MethodGet, provider.recordedRequests()[1].method)
 }
 
-func TestCreateObjectSelectsUncertainWhenTheOutcomeIsUnknown(t *testing.T) {
-	for name, status := range map[string]int{"conflict needs read-back": http.StatusConflict, "server error": http.StatusInternalServerError, "gateway timeout": http.StatusGatewayTimeout} {
-		provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) { writeError(t, response, status) })
-		client := newAPITokenClient(t, provider.URL)
-		result, err := sdkgo.RunMutation(newStepDexContext("create-unknown"), client.CreateObject(), pipedriveConnection, dealInput())
-		require.NoError(t, err, name)
-		require.Equal(t, sdkgo.UncertainBranchID, result.Branch, name)
-		require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind, name)
-		require.NotContains(t, result.Failure.Message, providerMessageSentinel)
+func TestCreateObjectResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
+	for name, status := range map[string]int{
+		"conflict": http.StatusConflict, "server error": http.StatusInternalServerError, "gateway timeout": http.StatusGatewayTimeout,
+		"payment required": http.StatusPaymentRequired, "redirect": http.StatusFound, "unlisted 4xx": http.StatusTeapot,
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) { writeError(t, response, status) })
+			client := newAPITokenClient(t, provider.URL)
+			ctx := singledispatchtest.NewContext("deal-intake", "create-unknown-"+name)
+			var retry *sdkgo.RetryError
+			for attempt := 1; attempt < 3; attempt++ {
+				_, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
+				require.ErrorAs(t, err, &retry, "attempt %d is below the send cap", attempt)
+				ctx.AdvanceAttempt()
+			}
+			result, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "the third possible send reaches the cap")
+			require.NotContains(t, result.Failure.Message, providerMessageSentinel)
+			require.Len(t, provider.recordedRequests(), 3)
+		})
 	}
+}
+
+func TestCreateObjectSelectsBranchForADefiniteFirstSendRefusalOnly(t *testing.T) {
+	provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) { writeError(t, response, http.StatusBadRequest) })
+	client := newAPITokenClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("deal-intake", "create-refused")
+	refused, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
+	require.NoError(t, err)
+	require.Equal(t, pipedrive.CreateObjectBranchProviderRejected, refused.Branch)
+	require.Len(t, ctx.Heartbeats(), 2, "the claim, then canResend before the refusal branch")
+
+	var sends atomic.Int32
+	afterUnknown := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) {
+		if sends.Add(1) == 1 {
+			writeError(t, response, http.StatusBadGateway)
+			return
+		}
+		writeError(t, response, http.StatusBadRequest)
+	})
+	client = newAPITokenClient(t, afterUnknown.URL)
+	ctx = singledispatchtest.NewContext("deal-intake", "create-refused-after-send")
+	_, err = sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateObject(), pipedriveConnection, dealInput())
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "the first send may have created the deal")
+	require.Len(t, afterUnknown.recordedRequests(), 2)
+}
+
+func TestCreateObjectSelectsUncertainForAnAcceptedButUnreadableCreate(t *testing.T) {
 	provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"id":"x"}}`)
 	})
@@ -175,7 +221,32 @@ func TestUpdateObjectRetriesAnUnconfirmedUpdateBecauseItIsSafeToRepeat(t *testin
 		require.ErrorAs(t, err, &retry)
 		require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 	}
+	// A status outside the definite refusals does not prove the update was refused.
+	for _, status := range []int{http.StatusPaymentRequired, http.StatusFound, http.StatusTeapot} {
+		provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) { writeError(t, response, status) })
+		_, err := sdkgo.RunMutation(newStepDexContext("update-retry-status"), newAPITokenClient(t, provider.URL).UpdateObject(), pipedriveConnection, pipedrive.UpdateObjectInput{
+			ObjectType: pipedrive.ObjectTypeDeals, ObjectID: "42", Fields: map[string]json.RawMessage{"stage_id": pipedrive.IDValue("3")},
+		})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "HTTP %d", status)
+	}
 	for _, branch := range pipedrive.UpdateObjectDefinition.Branches {
 		require.NotEqual(t, sdkgo.UncertainBranchID, branch.ID)
+	}
+}
+
+func TestUpdateObjectRetriesAnAcceptedUpdateWithAnUnusableBody(t *testing.T) {
+	bodies := map[string]string{
+		"malformed":      `{"success":true,"data":`,
+		"another record": `{"success":true,"data":{"id":43,"title":"Other"}}`,
+		"no success":     `{"success":false}`,
+	}
+	for name, body := range bodies {
+		provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) { writeJSON(t, response, http.StatusOK, body) })
+		_, err := sdkgo.RunMutation(newStepDexContext("update-unusable"), newAPITokenClient(t, provider.URL).UpdateObject(), pipedriveConnection, pipedrive.UpdateObjectInput{
+			ObjectType: pipedrive.ObjectTypeDeals, ObjectID: "42", Fields: map[string]json.RawMessage{"stage_id": pipedrive.IDValue("3")},
+		})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
 	}
 }

@@ -1,0 +1,335 @@
+{
+  "connector": "upyun",
+  "scenarios": [
+    {
+      "callId": "90d13761-348f-5839-ad27-0ec58eb36391",
+      "exchanges": [
+        {
+          "body": "2048",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bucket/",
+          "query": {
+            "usage": [
+              ""
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "UPYUN upyun:fIcB4q0qfCY7X03/yTyngNquwGQ="
+            ],
+            "Date": [
+              "Thu, 02 Jan 2025 03:04:05 GMT"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "bytes": 2048
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-read",
+      "operation": "getServiceUsage"
+    },
+    {
+      "callId": "3c867c9c-1d42-5e57-8886-38f3fca0cdbf",
+      "exchanges": [
+        {
+          "body": "0",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bucket/",
+          "query": {
+            "usage": [
+              ""
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "UPYUN upyun:fIcB4q0qfCY7X03/yTyngNquwGQ="
+            ],
+            "Date": [
+              "Thu, 02 Jan 2025 03:04:05 GMT"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "bytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-zero",
+      "operation": "getServiceUsage"
+    },
+    {
+      "callId": "6ce303ca-7128-528d-8132-5d1d9d1853e1",
+      "exchanges": [
+        {
+          "body": "denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bucket/",
+          "query": {
+            "usage": [
+              ""
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "UPYUN upyun:fIcB4q0qfCY7X03/yTyngNquwGQ="
+            ],
+            "Date": [
+              "Thu, 02 Jan 2025 03:04:05 GMT"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "bytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-providerRejected",
+      "operation": "getServiceUsage"
+    },
+    {
+      "callId": "c960540d-18f3-5a73-829a-e29f219ceb4c",
+      "exchanges": [
+        {
+          "body": "-1",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bucket/",
+          "query": {
+            "usage": [
+              ""
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "UPYUN upyun:fIcB4q0qfCY7X03/yTyngNquwGQ="
+            ],
+            "Date": [
+              "Thu, 02 Jan 2025 03:04:05 GMT"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "bytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-invalidResponse",
+      "operation": "getServiceUsage"
+    },
+    {
+      "callId": "1066b3f3-2821-5681-913a-2b0e4022c94c",
+      "exchanges": [
+        {
+          "body": "12345",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bucket/",
+          "query": {
+            "usage": [
+              ""
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "UPYUN upyun:fIcB4q0qfCY7X03/yTyngNquwGQ="
+            ],
+            "Date": [
+              "Thu, 02 Jan 2025 03:04:05 GMT"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "bytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-oversized",
+      "operation": "getServiceUsage"
+    },
+    {
+      "callId": "496804d2-3138-58ad-88c7-3e3bba87ef64",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "bytes": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-defect",
+      "operation": "getServiceUsage"
+    },
+    {
+      "callId": "c429e6a3-40e1-5574-9c1d-13038694643a",
+      "exchanges": [
+        {
+          "body": "rate",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bucket/",
+          "query": {
+            "usage": [
+              ""
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "UPYUN upyun:fIcB4q0qfCY7X03/yTyngNquwGQ="
+            ],
+            "Date": [
+              "Thu, 02 Jan 2025 03:04:05 GMT"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-rateLimited",
+      "operation": "getServiceUsage"
+    },
+    {
+      "callId": "eb8343d8-4daa-5ec6-86d3-0239b9093fcb",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bucket/",
+          "query": {
+            "usage": [
+              ""
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "UPYUN upyun:fIcB4q0qfCY7X03/yTyngNquwGQ="
+            ],
+            "Date": [
+              "Thu, 02 Jan 2025 03:04:05 GMT"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-unavailable",
+      "operation": "getServiceUsage"
+    },
+    {
+      "callId": "361f6a3d-f4dd-5261-a395-0c57528ed7e1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bucket/",
+          "query": {
+            "usage": [
+              ""
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "UPYUN upyun:fIcB4q0qfCY7X03/yTyngNquwGQ="
+            ],
+            "Date": [
+              "Thu, 02 Jan 2025 03:04:05 GMT"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getServiceUsage-transportFailure",
+      "operation": "getServiceUsage"
+    }
+  ],
+  "schemaVersion": 1
+}

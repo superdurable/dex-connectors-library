@@ -12,12 +12,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.brevo import (
     CREATE_OR_UPDATE_CONTACT_DEFINITION,
@@ -34,6 +41,7 @@ from dex_connectors.brevo import (
     Credentials,
     GetContactInput,
 )
+from dex_connectors.brevo._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("brevo", "brevo")
 KEY = "xkeysib-test"
@@ -94,21 +102,31 @@ async def test_updated_contact_has_no_id() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("response", "branch"),
+    "response",
     [
-        (httpx.Response(201, json={"id": 0}), INVALID_RESPONSE),
-        (httpx.Response(201, content=b"x" * 400), INVALID_RESPONSE),
-        (httpx.Response(200), PROVIDER_REJECTED),
-        (httpx.Response(400), PROVIDER_REJECTED),
+        httpx.Response(201, json={"id": 0}),
+        httpx.Response(201, content=b"x" * 400),
+        httpx.Response(200),
+        httpx.Response(405),
     ],
 )
-async def test_upsert_branches(response: httpx.Response, branch: str) -> None:
+async def test_upsert_retries_unknown_outcomes(response: httpx.Response) -> None:
+    with pytest.raises(RetryError):
+        await run_mutation(
+            make_client(response).create_or_update_contact(),
+            upsert_call(),
+            CreateOrUpdateContactInput("a@example.test"),
+        )
+
+
+@pytest.mark.asyncio
+async def test_upsert_rejects_a_definite_refusal() -> None:
     result = await run_mutation(
-        make_client(response).create_or_update_contact(),
+        make_client(httpx.Response(400)).create_or_update_contact(),
         upsert_call(),
         CreateOrUpdateContactInput("a@example.test"),
     )
-    assert result.branch == branch
+    assert result.branch == PROVIDER_REJECTED
 
 
 @pytest.mark.asyncio
@@ -170,3 +188,54 @@ async def test_invalid_upsert_is_defect_without_request(value: CreateOrUpdateCon
     )
     assert result.branch == DEFECT
     assert requests == []
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Brevo credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: object) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_transient"),
+    [
+        (CredentialBrokerUnavailableError(), True),
+        (ValueError("connection is not configured"), True),
+        (RuntimeError("unlisted"), True),
+        (ReauthorizationRequiredError(), False),
+        (ObjectNotFoundError(), False),
+        (ConnectionNotSelectedError(), False),
+        (CredentialBrokerRejectedError(), False),
+        (CredentialMaterialError("Brevo credential api_key is required"), False),
+        (_sdk_wrapped_material_error(), False),
+    ],
+)
+async def test_upsert_classifies_credential_resolve_failures(error: Exception, is_transient: bool) -> None:
+    client = Client(
+        Config(base_url="http://localhost:8848/v3"),
+        _FailingCredentials(error),  # type: ignore[arg-type]
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda request: pytest.fail("sent"))),
+    )
+    upsert = CreateOrUpdateContactInput("a@x.test")
+    if is_transient:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.create_or_update_contact(), upsert_call(), upsert)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+        return
+    result = await run_mutation(client.create_or_update_contact(), upsert_call(), upsert)
+    assert result.branch == DEFECT

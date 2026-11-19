@@ -3,7 +3,8 @@
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { GetRecordOperation, ListRecordsOperation, UpdateRecordsOperation, UpsertRecordsOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.airtable.com';
@@ -41,6 +42,8 @@ export interface ExchangeFailure {
   retryAfterMs: number;
   /** Correlation receipt after a provider attempt. */
   receipt: ReceiptDraft;
+  /** HTTP status of the provider answer, or undefined when no status arrived. */
+  status?: number;
 }
 
 /** Successful bounded response or classified failure. */
@@ -104,16 +107,17 @@ export class AirtableClient {
       try { await waitForSlot(slot, call.context.cancellationSignal); }
       catch { return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'the Step ended while waiting for an Airtable request slot') }; }
     }
-    let token: string;
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.personalAccessToken instanceof SecretString)) throw new TypeError('invalid Airtable token');
-      token = credentials.personalAccessToken.reveal();
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid Airtable token');
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'the Airtable connection must be authorized again') };
-      return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Airtable connection credentials are unavailable') };
+      if (isTerminalCredentialError(error)) return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Airtable connection credentials are unavailable') };
+      // A write may have applied in an earlier attempt, so a passing outage must not select defect.
+      return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Airtable connection credentials are temporarily unavailable') };
     }
+    const token = credentials.personalAccessToken instanceof SecretString ? credentials.personalAccessToken.reveal() : '';
+    if (!token || !isHeaderSafeCredential(token)) return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Airtable connection credentials are unavailable') };
     let encoded: Uint8Array | undefined;
     try { if (body !== undefined) encoded = Buffer.from(JSON.stringify(body), 'utf8'); }
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', `${operation} request could not be encoded`) }; }
@@ -128,11 +132,11 @@ export class AirtableClient {
         timeoutMs: requestTimeoutMs, signal: call.context.cancellationSignal,
       });
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return { outcome: this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'Airtable response exceeds the configured size limit', receipt) };
+      if (error instanceof BodyTooLargeError) return { outcome: { ...this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'Airtable response exceeds the configured size limit', receipt), ...(error.status !== undefined ? { status: error.status } : {}) } };
       return { outcome: this.failure('retry', operation, 'TRANSPORT', 'Airtable did not return a complete response', receipt) };
     }
     if (response.status >= 200 && response.status < 300) return { response };
-    return { outcome: this.classifyResponse(operation, baseId, response, receipt) };
+    return { outcome: { ...this.classifyResponse(operation, baseId, response, receipt), status: response.status } };
   }
 
   private reserveRequestSlot(baseId: string): number {
@@ -164,6 +168,13 @@ export class AirtableClient {
   private failure(disposition: ExchangeFailure['disposition'], operation: string, kind: Failure['kind'], message: string, receipt: ReceiptDraft = {}, retryAfterMs = 0): ExchangeFailure {
     return { disposition, failure: { kind, provider: 'airtable', operation, message }, receipt, retryAfterMs };
   }
+}
+
+/** Reports a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || isCredentialMaterialError(error);
 }
 
 function header(response: ProviderResponse, name: string): string {

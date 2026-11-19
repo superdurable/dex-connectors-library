@@ -22,6 +22,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/mysql/go/internal/testcertificates"
 	"github.com/superdurable/dex-connectors-library/connectors/mysql/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -71,6 +72,35 @@ func startScriptedDatabase(t *testing.T, database *scriptedDatabase, options scr
 	}, mysql.WithClock(func() time.Time { return time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC) }))
 	require.NoError(t, err)
 	return server, client
+}
+
+// unavailableBrokerCredentials fails every Resolve as a temporarily unavailable credential broker.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (mysql.Credentials, error) {
+	return mysql.Credentials{}, fmt.Errorf("read password: %w", projectconfig.ErrCredentialBrokerUnavailable)
+}
+
+func newClientWithCredentials(t *testing.T, server *scriptedmysql.Server, credentials sdkgo.CredentialProvider[mysql.Credentials]) *mysql.Client {
+	t.Helper()
+	config := mysql.Config{Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", SSLMode: mysql.SSLModeDisabled}
+	client, err := mysql.New(config, credentials)
+	require.NoError(t, err)
+	return client
+}
+
+func TestQueryAndExecuteRetryAnUnavailableCredentialBroker(t *testing.T) {
+	database := newBalanceDatabase(scriptedmysql.Execution{AffectedRows: 1}, scriptedmysql.CommitAndReply)
+	server, _ := startScriptedDatabase(t, database, scriptedmysql.Options{}, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	var retry *sdkgo.RetryError
+	_, err := query(t, client, mysql.QueryRowsInput{Statement: "SELECT 1"})
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	_, err = execute(t, client, newStep(), addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Empty(t, server.EventsOfKind(scriptedmysql.EventHandshake))
 }
 
 var stepSequence atomic.Int64
@@ -332,7 +362,7 @@ func TestQueryRowsSelectsDefectBeforeContactingTheServer(t *testing.T) {
 	require.Empty(t, server.EventsOfKind(scriptedmysql.EventExecute), "a placeholder mismatch is caught after COM_STMT_PREPARE")
 
 	withoutCredentials, err := mysql.New(mysql.Config{Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", SSLMode: mysql.SSLModeDisabled},
-		sdkgo.StaticCredentialProvider[mysql.Credentials]{})
+		sdkgo.StaticCredentialProvider[mysql.Credentials]{scriptedConnection: {}})
 	require.NoError(t, err)
 	missing, err := query(t, withoutCredentials, mysql.QueryRowsInput{Statement: "SELECT 1"})
 	require.NoError(t, err)
@@ -465,7 +495,7 @@ func TestExecuteStatementReturnsMariaDBReturningRows(t *testing.T) {
 	require.Equal(t, "7", result.Value.LastInsertID)
 }
 
-func TestExecuteStatementReportsUncertainOnlyAfterCommitIsSent(t *testing.T) {
+func TestExecuteStatementRetriesACommitWithAnUnknownOutcome(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		commit        scriptedmysql.CommitAction
 		wantCommitted bool
@@ -477,12 +507,12 @@ func TestExecuteStatementReportsUncertainOnlyAfterCommitIsSent(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			database := &scriptedDatabase{shape: scriptedmysql.Shape{ParameterCount: 1}, execution: scriptedmysql.Execution{AffectedRows: 1}, commit: testCase.commit}
 			_, client := startScriptedDatabase(t, database, scriptedmysql.Options{}, nil)
-			result, err := execute(t, client, newStep(), mysql.ExecuteStatementInput{Statement: "UPDATE t SET note = ?", Parameters: []any{secretLookingText}})
-			require.NoError(t, err, "uncertainty is a branch, never a retry")
-			require.Equal(t, mysql.ExecuteStatementBranchUncertain, result.Branch)
-			require.NotEmpty(t, result.Receipt.IdempotencyKey, "the Receipt carries the key for reconciliation")
+			_, err := execute(t, client, newStep(), mysql.ExecuteStatementInput{Statement: "UPDATE t SET note = ?", Parameters: []any{secretLookingText}})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "execute is repeat-safe, so an unknown COMMIT runs again instead of selecting uncertain")
+			require.Contains(t, retry.Failure.Message, "whether the transaction committed is unknown")
+			require.NotContains(t, retry.Failure.Message, secretLookingText)
 			require.Equal(t, testCase.wantCommitted, database.hasCommitted.Load())
-			requireSecretFree(t, result)
 		})
 	}
 

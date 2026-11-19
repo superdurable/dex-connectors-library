@@ -19,16 +19,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := salesforce.New(salesforce.Config{}, sdkgo.StaticCredentialProvider[salesforce.Credentials]{
 		salesforceConnection: {
 			AuthMethodID: salesforce.ProductionOAuthAuthMethodID,
-			AccessToken: sdkgo.NewSecretString(salesforceTestToken),
-			InstanceURL: endpoint,
+			AccessToken:  sdkgo.NewSecretString(salesforceTestToken),
+			InstanceURL:  endpoint,
 		},
 	}, salesforce.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := newDexContext("conformance")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"queryRecords": newConformanceQueryInvocation(t, scenario.Input, context, client.QueryRecords(), salesforceConnection),
-		"getRecord": newConformanceQueryInvocation(t, scenario.Input, context, client.GetRecord(), salesforceConnection),
+		"queryRecords":             newConformanceQueryInvocation(t, scenario.Input, context, client.QueryRecords(), salesforceConnection),
+		"getRecord":                newConformanceQueryInvocation(t, scenario.Input, context, client.GetRecord(), salesforceConnection),
 		"upsertRecordByExternalId": newConformanceMutationInvocation(t, scenario.Input, context, client.UpsertRecordByExternalID(), salesforceConnection, scenario.CallID),
-		"updateRecord": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateRecord(), salesforceConnection, scenario.CallID),
+		"updateRecord":             newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateRecord(), salesforceConnection, scenario.CallID),
 	}}
 }

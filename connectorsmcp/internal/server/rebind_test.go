@@ -115,7 +115,7 @@ func TestRefreshingTheSameTargetKeepsARunningKey(t *testing.T) {
 	require.Equal(t, 1, harness.provider.AppliedRecordWrites(saveRecordIdempotencyKey("flow/turn/refresh")))
 }
 
-func TestARetargetedKeyWithNotSentProofIsRejected(t *testing.T) {
+func TestARetargetedKeyThatNeverInvokedTheOperationIsRejected(t *testing.T) {
 	store, err := callstate.Open(filepath.Join(t.TempDir(), "state"), time.Now)
 	require.NoError(t, err)
 	executor := newToolCallExecutor(store, newFakeClock(), executorConfig{serverVersion: "test", callTimeBudget: time.Minute, callStateRetention: 720 * time.Hour, maxResultBytes: 65536, maximumInlineAttempts: 3},
@@ -131,9 +131,9 @@ func TestARetargetedKeyWithNotSentProofIsRejected(t *testing.T) {
 		call := &toolCall{executor: executor, stateKey: callstate.StateKey("flow/turn/retarget/" + testCase.expectedOutcome)}
 		lock, err := store.Lock(t.Context(), call.stateKey)
 		require.NoError(t, err)
-		record := notSentRecord(call.stateKey, testCase.isPossiblyApplied)
+		record := runningRecord(call.stateKey, testCase.isPossiblyApplied)
 		require.NoError(t, lock.Write(&record))
-		answer := call.finalizeFromCheckpoint(lock, &record, connectionRetargetedReason)
+		answer := call.finalizeWithoutOutcome(lock, &record, connectionRetargetedReason)
 		require.NoError(t, lock.Release())
 		require.Equal(t, testCase.expectedOutcome, answer.result.Meta[metaKeyOutcome])
 		require.Equal(t, testCase.expectedText, answer.result.Content[0].Text)

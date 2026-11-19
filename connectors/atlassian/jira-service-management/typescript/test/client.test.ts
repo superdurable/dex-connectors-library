@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { JiraServiceManagementClient, pathEscape, queryEscape } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const connection = { provider: 'atlassian', name: 'jsm-test' };
 const credentials = new StaticCredentialProvider([[connection, { accessToken: new SecretString('inert-access-token'), oauthClientId: 'inert-client-id', oauthClientSecret: new SecretString('inert-secret'), refreshToken: new SecretString('inert-refresh') }]]);
@@ -40,5 +42,22 @@ describe('Atlassian request boundary', () => {
     const client = new JiraServiceManagementClient({ cloudId: '11223344-a1b2-4b33-8c44-def123456789' }, credentials);
     const result = { response: { status: 429, headers: {}, body: new Uint8Array(), isTooLarge: true, reflectedSecret: false } };
     expect(client.read(call as never, 'getTicket', 'request', result).kind).toBe('retry');
+  });
+
+  it.each([
+    ['reauthorization', () => new ReauthorizationRequiredError(), 'defect'],
+    ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
+    ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+    ['object not found', () => new ObjectNotFoundError(), 'defect'],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
+    ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['not configured', () => new Error('connection is not configured'), 'retry'],
+    ['unlisted type error', () => new TypeError('unlisted'), 'retry'],
+  ])('classifies a credential resolve failure (%s) with the shared terminal set', async (_name, newError, expected) => {
+    const error = newError();
+    const client = new JiraServiceManagementClient({ cloudId: '11223344-a1b2-4b33-8c44-def123456789' },
+      { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } } as never);
+    expect(await client.start(call as never, 'getTicket')).toMatchObject({ kind: expected });
   });
 });

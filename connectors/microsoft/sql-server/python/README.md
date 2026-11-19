@@ -1,13 +1,13 @@
 # Microsoft SQL Server Python connector
 
-The Python package exposes the manifest's `query` and `execute` operations through native
+The Python package exposes the manifest's `query`, `execute`, and `executeNonIdempotent` operations through native
 `python-tds` sessions. Each attempt resolves the current private password, opens one SQL
 Server connection, pins session settings, and closes it. It never persists the password in
 Flow input, output, a receipt, or an Attribute.
 
 ## Install and configure
 
-Install `dex-connector-microsoft-sql-server==0.1.0`. Create a Dex Web connection named
+Install `dex-connector-microsoft-sql-server==0.2.0`. Create a Dex Web connection named
 `sqlserver-refunds` for the [runnable example](examples/record_refund/README.md), following
 the authorization guide in the [connector README](../README.md#connection-setup).
 The connection needs a host, database, SQL authentication user and secret password. Port,
@@ -46,9 +46,21 @@ failures retry.
 `new_execute_step` runs one parameterized `INSERT`, `UPDATE`, `DELETE`, `MERGE`, or `WITH`
 statement in its own transaction. The optional final `@pN` idempotency-key placeholder
 binds Dex's stable Call ID. A write that exceeds `maxRowsAffected` or an OUTPUT bound
-rolls back and selects `limitExceeded`. A failed COMMIT whose outcome is unknown selects
-`uncertain`; a COMMIT failure retries only when no bytes were sent. Failures before COMMIT
-retry only when safe. Make every write statement idempotent across retries and Worker replacement.
+rolls back and selects `limitExceeded`. `execute` is `repeatOnUnknown: safe`: a failed
+COMMIT whose outcome is unknown returns Retry and the statement runs again, so it never
+selects `uncertain`. Failures before COMMIT retry only when safe. Make every `execute`
+statement repeat-safe across retries and Worker replacement.
+
+`new_execute_non_idempotent_step` takes the same input for a statement that must not run
+twice, such as a relative balance update. `executeNonIdempotent` is `repeatOnUnknown:
+unsafe`: it records a single-dispatch claim in the sync Step heartbeat before COMMIT,
+selects `uncertain` when COMMIT bytes may have reached the server, and selects `uncertain`
+without connecting on a later attempt after such a COMMIT or a lost Worker. A COMMIT that
+sent no bytes, or a proven rollback such as a deadlock victim, returns Retry; an unreadable
+checkpoint returns Retry without connecting. `new_connection_with_operations` keeps its
+`(query, execute, reference)` order and accepts the new operation as the keyword-only
+`execute_non_idempotent`; a connection built without it raises `ValueError` when an
+`executeNonIdempotent` Step is constructed.
 `rowsAffected` sums all SQL Server DONE counts, including trigger statements. If the server
 supplies no count, `maxRowsAffected` fails `invalidResponse` before COMMIT. Receipts include
 the session process ID and server version; server errors add number, state, and severity.
@@ -67,7 +79,7 @@ the exact application call pattern.
 ## Verification
 
 The package unit tests cover routing, driver error numbers, input validation, row bounds,
-and commit uncertainty. The example integration test runs its Worker and Client against a
+commit retries, and executeNonIdempotent fencing. The example integration test runs its Worker and Client against a
 real `dexcli dev` server with scripted connector operations. The SQL Server service-container
 workflow runs `tests/integration/test_database.py`; its mandatory TLS pass depends on the
 separate CI workflow change in PR #518. No live

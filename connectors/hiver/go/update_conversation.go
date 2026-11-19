@@ -103,8 +103,12 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	if err := validateUpdateConversationInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, UpdateConversationOutput{}, hiverFailurePointer(sdkgo.FailureValidation, updateConversationOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, updateConversationOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, updateConversationOperation)
 	if failure != nil {
+		// defect would hide an earlier attempt's possible PATCH, and repeating the absolute change is harmless.
+		if !isTerminal || call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[UpdateConversationOutput](*failure, 0)
+		}
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, UpdateConversationOutput{}, failure, sdkgo.Receipt{})
 	}
 	output := UpdateConversationOutput{}
@@ -126,20 +130,22 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 		method: http.MethodPatch, path: conversationPath(input.InboxID, input.ConversationID), jsonPayload: buildConversationChange(input, output),
 	})
 	receipt := operation.client.receipt(call, writeResult.response, input.ConversationID)
-	if attempt, isTerminal := updateConversationAttemptForExchange(writeResult, receipt); isTerminal {
+	if attempt, isTerminal := updateConversationWriteAttemptForExchange(writeResult, receipt); isTerminal {
 		return attempt
 	}
 	readResult := operation.client.exchange(call, credentials, updateConversationOperation, hiverRequest{
 		method: http.MethodGet, path: conversationPath(input.InboxID, input.ConversationID),
 	})
-	receipt = operation.client.receipt(call, readResult.response, input.ConversationID)
-	if attempt, isTerminal := readBackAttemptForExchange(readResult, receipt); isTerminal {
-		return attempt
+	if readResult.outcome != exchangeSucceeded {
+		// Hiver accepted the absolute change, so an unconfirmed read-back repeats it.
+		failure := readResult.failure
+		failure.Message = "Hiver accepted the change but the read-back failed: " + failure.Message
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](failure, readResult.retryAfter)
 	}
 	details, err := decodeConversationBody(readResult.response.body, input.InboxID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, hiverFailurePointer(sdkgo.FailureProtocol, updateConversationOperation,
-			"Hiver accepted the change but returned an invalid conversation: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](hiverFailure(sdkgo.FailureProtocol, updateConversationOperation,
+			"Hiver accepted the change but returned an invalid conversation: "+err.Error()), 0)
 	}
 	output.Conversation = details.Conversation
 	if missing := describeUnappliedChange(input, output); missing != "" {
@@ -155,20 +161,18 @@ func (operation UpdateConversationOperation) resolveAssignee(call sdkgo.Call, cr
 		method: http.MethodGet, path: inboxPath(input.InboxID) + "/users/search", query: url.Values{"email": {input.AssigneeEmail}},
 	})
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
-	if attempt, isTerminal := updateConversationAttemptForExchange(result, receipt); isTerminal {
+	if attempt, isTerminal := updateConversationWriteAttemptForExchange(result, receipt); isTerminal {
 		return "", attempt, true
 	}
 	results, _, err := decodeListPage(result.response.body)
 	if err != nil {
-		return "", sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, hiverFailurePointer(sdkgo.FailureProtocol, updateConversationOperation,
-			"Hiver returned an invalid user search page: "+err.Error()), receipt), true
+		return "", retryUnknownLookup("Hiver returned an invalid user search page: " + err.Error()), true
 	}
 	var userIDs []string
 	for _, raw := range results {
 		var user inboxUserWire
 		if json.Unmarshal(raw, &user) != nil || !hiverIDPattern.MatchString(string(user.ID)) {
-			return "", sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, hiverFailurePointer(sdkgo.FailureProtocol, updateConversationOperation,
-				"Hiver returned an invalid inbox user"), receipt), true
+			return "", retryUnknownLookup("Hiver returned an invalid inbox user"), true
 		}
 		if strings.EqualFold(strings.TrimSpace(user.Email), input.AssigneeEmail) && !slices.Contains(userIDs, string(user.ID)) {
 			userIDs = append(userIDs, string(user.ID))
@@ -192,19 +196,17 @@ func (operation UpdateConversationOperation) resolveTags(call sdkgo.Call, creden
 			method: http.MethodGet, path: inboxPath(input.InboxID) + "/tags", query: pageQuery(pageToken, MaximumPageSize),
 		})
 		receipt = operation.client.receipt(call, result.response, input.ConversationID)
-		if attempt, isTerminal := updateConversationAttemptForExchange(result, receipt); isTerminal {
+		if attempt, isTerminal := updateConversationWriteAttemptForExchange(result, receipt); isTerminal {
 			return nil, nil, attempt, true
 		}
 		results, nextPageToken, err := decodeListPage(result.response.body)
 		if err != nil {
-			return nil, nil, sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, hiverFailurePointer(sdkgo.FailureProtocol, updateConversationOperation,
-				"Hiver returned an invalid tag page: "+err.Error()), receipt), true
+			return nil, nil, retryUnknownLookup("Hiver returned an invalid tag page: " + err.Error()), true
 		}
 		for _, raw := range results {
 			tag, err := decodeTag(raw)
 			if err != nil {
-				return nil, nil, sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, hiverFailurePointer(sdkgo.FailureProtocol, updateConversationOperation,
-					"Hiver returned an invalid tag: "+err.Error()), receipt), true
+				return nil, nil, retryUnknownLookup("Hiver returned an invalid tag: " + err.Error()), true
 			}
 			tags = append(tags, tag)
 		}
@@ -227,17 +229,31 @@ func (operation UpdateConversationOperation) resolveTags(call sdkgo.Call, creden
 	return applied, removed, sdkgo.MutationAttempt[UpdateConversationOutput]{}, false
 }
 
-// readBackAttemptForExchange selects invalidResponse for a rejected read-back, because Hiver already accepted the change.
-func readBackAttemptForExchange(result hiverExchange, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
-	if result.outcome != exchangeRejected {
-		return updateConversationAttemptForExchange(result, receipt)
-	}
-	failure := result.failure
-	failure.Message = "Hiver accepted the change but rejected the read-back: " + failure.Message
-	return sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{}, &failure, receipt), true
+// retryUnknownLookup retries an invalid pre-write lookup answer: an earlier attempt's PATCH may have applied,
+// so only a definite answer selects a branch; invalidResponse stays declared.
+func retryUnknownLookup(message string) sdkgo.MutationAttempt[UpdateConversationOutput] {
+	return sdkgo.NewMutationRetry[UpdateConversationOutput](hiverFailure(sdkgo.FailureProtocol, updateConversationOperation, message), 0)
 }
 
-// updateConversationAttemptForExchange retries every unconfirmed outcome, because the change is absolute.
+// updateConversationWriteAttemptForExchange repeats the absolute change on every outcome of a pre-write lookup
+// or the PATCH except a definite refusal with a trusted body.
+func updateConversationWriteAttemptForExchange(result hiverExchange, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
+	if result.isErrorBodyUnreadable {
+		// An unreadable refusal body may hide an applied change, so the absolute PATCH repeats.
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter), true
+	}
+	switch result.outcome {
+	case exchangeSucceeded, exchangeNotFound, exchangeDefect:
+		return updateConversationAttemptForExchange(result, receipt)
+	case exchangeRejected:
+		if isDefiniteRefusalStatus(result.response.statusCode) {
+			return updateConversationAttemptForExchange(result, receipt)
+		}
+	}
+	return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter), true
+}
+
+// updateConversationAttemptForExchange maps a definite outcome to its branch; it retries every unconfirmed outcome.
 func updateConversationAttemptForExchange(result hiverExchange, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
 	switch result.outcome {
 	case exchangeSucceeded:

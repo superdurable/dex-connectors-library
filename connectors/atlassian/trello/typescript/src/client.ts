@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateCardOperation, GetCardOperation, ListCardsOperation, UpdateCardOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.trello.com/1';
@@ -34,6 +35,26 @@ export type TrelloExchange =
 export class TrelloCredentialReflectionError extends Error {
   /** Prevent secret-bearing response content from entering the error. */
   constructor() { super('Trello response contains credential material'); }
+}
+
+/** Trello credentials could not be resolved, so nothing was sent. */
+export class TrelloCredentialUnavailableError extends Error {
+  /**
+   * Record whether the failure is terminal.
+   * @param isTerminal True when no retry fixes it, such as a missing connection or reauthorization; false for a transient broker or store outage.
+   */
+  constructor(readonly isTerminal: boolean) { super('Trello connection credentials are unavailable'); }
+}
+
+/** Report a credential failure that no retry fixes; others, such as broker outages, may pass. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof InvalidTrelloCredentialsError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError ||
+    error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error);
+}
+
+/** Resolved Trello credential material that fails the local header checks. */
+class InvalidTrelloCredentialsError extends TypeError {
+  constructor() { super('invalid Trello credentials'); this.name = 'InvalidTrelloCredentialsError'; }
 }
 
 /** Authenticated Trello REST client for one Dex connection. */
@@ -91,11 +112,11 @@ export class TrelloClient {
     let token: string;
     try {
       const credentials = await this.credentials.resolve(call, signal ?? call.context.cancellationSignal);
-      if (!(credentials.apiKey instanceof SecretString) || !(credentials.token instanceof SecretString)) throw new TypeError('invalid Trello credentials');
+      if (!(credentials.apiKey instanceof SecretString) || !(credentials.token instanceof SecretString)) throw new InvalidTrelloCredentialsError();
       apiKey = credentials.apiKey.reveal(); token = credentials.token.reveal();
-      if (![apiKey, token].every(value => quotedCredentialPattern.test(value) && !/["\\,]/.test(value))) throw new TypeError('invalid Trello credentials');
-    } catch {
-      return { error: new TypeError('Trello connection credentials are unavailable'), receipt: {}, isProvablyNotSent: true };
+      if (![apiKey, token].every(value => quotedCredentialPattern.test(value) && !/["\\,]/.test(value))) throw new InvalidTrelloCredentialsError();
+    } catch (error) {
+      return { error: new TrelloCredentialUnavailableError(isTerminalCredentialError(error)), receipt: {}, isProvablyNotSent: true };
     }
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload), 'utf8'); }
@@ -111,7 +132,8 @@ export class TrelloClient {
     try {
       const response = await this.send(request);
       const receipt = this.receipt(call, '', response.headers);
-      if (response.status >= 200 && response.status < 300 && response.body.length > this.maxResponseBytes) {
+      const isSuccess = response.status >= 200 && response.status < 300;
+      if (response.body.length > (isSuccess ? this.maxResponseBytes : MaxErrorBodyBytes)) {
         return { error: new BodyTooLargeError(response.status, response.headers), receipt, status: response.status, headers: response.headers, isProvablyNotSent: false };
       }
       if (Buffer.from(response.body).includes(Buffer.from(apiKey)) || Buffer.from(response.body).includes(Buffer.from(token))) {
@@ -120,8 +142,10 @@ export class TrelloClient {
       return { response, receipt };
     } catch (error) {
       const transportError = error instanceof Error ? error : new Error('Trello transport failed');
-      const status = error instanceof BodyTooLargeError ? error.status : undefined;
-      const headers = error instanceof BodyTooLargeError ? error.headers : undefined;
+      // Keep a status that arrived before the body failed, so an accepted write is never resent.
+      const hasStatus = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError;
+      const status = hasStatus ? error.status : undefined;
+      const headers = hasStatus ? error.headers : undefined;
       return {
         error: transportError, receipt: this.receipt(call, '', headers),
         ...(status !== undefined ? { status } : {}), ...(headers ? { headers } : {}),

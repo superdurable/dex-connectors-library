@@ -34,8 +34,10 @@ const (
 	// healthyChannelID, flakyChannelID, and unknownChannelID select the fake's behavior.
 	healthyChannelID = "100000000000000001"
 	flakyChannelID   = "100000000000000002"
-	unknownChannelID = "100000000000000404"
-	botUserID        = "200000000000000001"
+	// incompleteChannelID answers the post with only the message ID and fails the first read-back.
+	incompleteChannelID = "100000000000000003"
+	unknownChannelID    = "100000000000000404"
+	botUserID           = "200000000000000001"
 )
 
 func TestChannelAnnouncementExampleRunsEveryDiscordOperationWithRealDex(t *testing.T) {
@@ -73,8 +75,20 @@ func TestChannelAnnouncementExampleRunsEveryDiscordOperationWithRealDex(t *testi
 	t.Run("a post whose response was lost is retried with the same nonce and creates one message", func(t *testing.T) {
 		result := harness.runFlow(t, ctx, flow, "discord-announcement-flaky-"+testRunID, AnnouncementRequest{ChannelID: flakyChannelID, Text: "Flaky " + testRunID})
 		require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-		require.Equal(t, 2, provider.postAttempts(flakyChannelID), "the first post was applied but answered 503")
+		require.Equal(t, 2, provider.postAttempts(flakyChannelID), "the first post was applied but answered 502")
 		require.Len(t, provider.messagesIn(flakyChannelID), 1, "the enforced nonce returned the first message")
+	})
+
+	t.Run("an accepted post with an incomplete answer is read back by message ID and never resent", func(t *testing.T) {
+		result := harness.runFlow(t, ctx, flow, "discord-announcement-incomplete-"+testRunID, AnnouncementRequest{ChannelID: incompleteChannelID, Text: "Incomplete " + testRunID})
+		require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+		var outcome AnnouncementOutcome
+		require.NoError(t, result.DecodeSingleOutput(&outcome))
+		messages := provider.messagesIn(incompleteChannelID)
+		require.Len(t, messages, 1)
+		require.Equal(t, messages[0].ID, outcome.MessageID)
+		require.Equal(t, 1, provider.postAttempts(incompleteChannelID), "a 2xx is never resent")
+		require.Equal(t, 2, provider.messageReadBacks(incompleteChannelID), "the failed read-back retried with the saved message ID")
 	})
 
 	t.Run("an unknown channel fails the Flow on the unwired notFound branch before posting", func(t *testing.T) {
@@ -105,13 +119,14 @@ type discordProvider struct {
 	nextMessageID int64
 	messages      map[string][]fakeMessage
 	posts         map[string]int
+	readBacks     map[string]int
 	reactions     map[string][]string
 }
 
 func newDiscordProvider(t *testing.T) *discordProvider {
 	t.Helper()
 	provider := &discordProvider{
-		nextMessageID: 300000000000000000, messages: map[string][]fakeMessage{}, posts: map[string]int{}, reactions: map[string][]string{},
+		nextMessageID: 300000000000000000, messages: map[string][]fakeMessage{}, posts: map[string]int{}, readBacks: map[string]int{}, reactions: map[string][]string{},
 	}
 	provider.Server = httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
 	t.Cleanup(provider.Close)
@@ -128,7 +143,7 @@ func (provider *discordProvider) serveHTTP(response http.ResponseWriter, request
 	}
 	segments := strings.Split(strings.TrimPrefix(request.URL.EscapedPath(), "/api/v10/channels/"), "/")
 	channelID := segments[0]
-	if channelID != healthyChannelID && channelID != flakyChannelID {
+	if channelID != healthyChannelID && channelID != flakyChannelID && channelID != incompleteChannelID {
 		writeProviderResponse(response, http.StatusNotFound, `{"message":"Unknown Channel","code":10003}`)
 		return
 	}
@@ -154,6 +169,8 @@ func (provider *discordProvider) serveHTTP(response http.ResponseWriter, request
 			encoded = append(encoded, messageResponse(channelID, messages[index]))
 		}
 		writeProviderResponse(response, http.StatusOK, "["+strings.Join(encoded, ",")+"]")
+	case request.Method == http.MethodGet && len(segments) == 3 && segments[1] == "messages":
+		provider.readMessage(response, channelID, segments[2])
 	default:
 		writeProviderResponse(response, http.StatusNotFound, `{"message":"404: Not Found","code":0}`)
 	}
@@ -180,10 +197,37 @@ func (provider *discordProvider) createMessage(response http.ResponseWriter, req
 	message := fakeMessage{ID: strconv.FormatInt(provider.nextMessageID, 10), Content: body.Content, Nonce: body.Nonce}
 	provider.messages[channelID] = append(provider.messages[channelID], message)
 	if channelID == flakyChannelID && provider.posts[channelID] == 1 {
-		writeProviderResponse(response, http.StatusServiceUnavailable, `{"message":"upstream","code":0}`)
+		// A 502 after the write is an unknown outcome, so the connector resends with the same nonce.
+		writeProviderResponse(response, http.StatusBadGateway, `{"message":"upstream","code":0}`)
+		return
+	}
+	if channelID == incompleteChannelID {
+		// A 2xx proves the write, so the connector reads this message ID back instead of resending.
+		writeProviderResponse(response, http.StatusOK, fmt.Sprintf(`{"id":%q,"channel_id":%q}`, message.ID, channelID))
 		return
 	}
 	writeProviderResponse(response, http.StatusOK, messageResponse(channelID, message))
+}
+
+func (provider *discordProvider) readMessage(response http.ResponseWriter, channelID string, messageID string) {
+	provider.readBacks[channelID]++
+	if channelID == incompleteChannelID && provider.readBacks[channelID] == 1 {
+		writeProviderResponse(response, http.StatusInternalServerError, `{"message":"upstream","code":0}`)
+		return
+	}
+	for _, message := range provider.messages[channelID] {
+		if message.ID == messageID {
+			writeProviderResponse(response, http.StatusOK, messageResponse(channelID, message))
+			return
+		}
+	}
+	writeProviderResponse(response, http.StatusNotFound, `{"message":"Unknown Message","code":10008}`)
+}
+
+func (provider *discordProvider) messageReadBacks(channelID string) int {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return provider.readBacks[channelID]
 }
 
 func messageResponse(channelID string, message fakeMessage) string {

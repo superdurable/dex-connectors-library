@@ -98,8 +98,11 @@ func (operation ListCardsOperation) Invoke(call sdkgo.Call, input ListCardsInput
 		return sdkgo.NewQueryBranch(ListCardsBranchDefect, ListCardsOutput{}, failurePointer(listCardsOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
 	session, cancel, startFailure := client.startSession(call, listCardsOperationID)
+	if startFailure != nil && startFailure.isTransient {
+		return sdkgo.NewQueryRetry[ListCardsOutput](startFailure.failure, 0)
+	}
 	if startFailure != nil {
-		return sdkgo.NewQueryBranch(ListCardsBranchDefect, ListCardsOutput{}, startFailure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(ListCardsBranchDefect, ListCardsOutput{}, &startFailure.failure, sdkgo.Receipt{})
 	}
 	defer cancel()
 	result := client.exchange(session, trelloRequest{method: http.MethodGet, path: request.path, query: request.query})

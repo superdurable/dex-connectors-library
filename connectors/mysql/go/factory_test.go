@@ -43,6 +43,8 @@ func TestDefinitionsDeclareOneHappyPathAndTheStandardBranches(t *testing.T) {
 	require.Equal(t, sdkgo.OperationRef{ConnectorID: "mysql", OperationID: "execute"}, mysql.ExecuteStatementDefinition.Operation)
 	requireOneRequiredBranch(t, mysql.QueryRowsDefinition.Branches, mysql.QueryRowsBranchCompleted)
 	requireOneRequiredBranch(t, mysql.ExecuteStatementDefinition.Branches, mysql.ExecuteStatementBranchCompleted)
+	require.Equal(t, sdkgo.OperationRef{ConnectorID: "mysql", OperationID: "executeNonIdempotent"}, mysql.ExecuteStatementNonIdempotentDefinition.Operation)
+	requireOneRequiredBranch(t, mysql.ExecuteStatementNonIdempotentDefinition.Branches, mysql.ExecuteStatementNonIdempotentBranchCompleted)
 	require.Equal(t, sdkgo.UncertainBranchID, mysql.ExecuteStatementBranchUncertain)
 	for _, defaults := range []sdkgo.StepDefaults{mysql.QueryRowsDefinition.StepDefaults, mysql.ExecuteStatementDefinition.StepDefaults} {
 		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability)

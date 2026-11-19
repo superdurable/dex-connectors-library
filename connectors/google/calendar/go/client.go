@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const providerName = "google-calendar"
@@ -193,12 +194,24 @@ func (client *Client) QueryFreeBusy() QueryFreeBusyOperation {
 	return QueryFreeBusyOperation{client: client}
 }
 
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+// resolveCredentials resolves the call's credentials. isRetryable reports a transient failure that
+// needs no reconnection.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (credentials Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are temporarily unavailable"), true
 	}
-	return credentials, nil
+	if err != nil || validateResolvedCredentials(credentials) != nil {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), false
+	}
+	return credentials, nil, false
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // readEvent performs one events.get request and classifies it without choosing an operation branch.
@@ -320,9 +333,25 @@ func classifyFailureStatus(response providerResponse) statusClassification {
 		return statusClassification{isRetryable: true, retryAfter: delay, kind: sdkgo.FailureAvailability, message: describeStatus("provider is temporarily unavailable", reason)}
 	case reason == "quotaExceeded" || reason == "dailyLimitExceeded":
 		return statusClassification{kind: sdkgo.FailureQuotaExhausted, message: describeStatus("provider quota is exhausted", reason)}
-	default:
+	case isDefiniteRefusalStatus(response.statusCode):
 		return statusClassification{kind: statusFailureKind(response.statusCode), message: describeStatus(fmt.Sprintf("provider rejected the request with HTTP %d", response.statusCode), reason)}
+	default:
+		delay, err := retryAfterDelay(response.header)
+		if err != nil {
+			return statusClassification{isRetryable: true, kind: sdkgo.FailureProtocol, message: "provider returned an invalid Retry-After header"}
+		}
+		return statusClassification{isRetryable: true, retryAfter: delay, kind: sdkgo.FailureAvailability, message: describeStatus(fmt.Sprintf("provider answered HTTP %d, which leaves the outcome unknown", response.statusCode), reason)}
 	}
+}
+
+// isDefiniteRefusalStatus reports the statuses that prove Google refused the request; any other one is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func googleErrorReason(body []byte) string {

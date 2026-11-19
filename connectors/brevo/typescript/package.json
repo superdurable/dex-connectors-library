@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-brevo",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Brevo contact operations for Dex Flows",
   "repository": {
     "type": "git",

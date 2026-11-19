@@ -78,7 +78,10 @@ func (operation HeadObjectOperation) Invoke(call sdkgo.Call, input HeadObjectInp
 	if err != nil {
 		return sdkgo.NewQueryBranch(HeadObjectBranchDefect, ObjectMetadata{}, defectFailure(headObjectOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, failure := client.startSession(call, headObjectOperationID)
+	session, cancel, failure, shouldRetry := client.startSession(call, headObjectOperationID)
+	if shouldRetry {
+		return sdkgo.NewQueryRetry[ObjectMetadata](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(HeadObjectBranchDefect, ObjectMetadata{}, failure, sdkgo.Receipt{})
 	}

@@ -30,6 +30,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -133,10 +135,18 @@ class Client:
         """Build one authenticated JSON:API request, or return the defect Failure."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                # AVAILABILITY tells callers to Retry; nothing was sent.
+                return _failure(
+                    operation, FailureKind.AVAILABILITY, "Klaviyo credentials are temporarily unavailable"
+                )
             credentials = None
-        key = "" if credentials is None else credentials.private_api_key.reveal()
-        if not key or not is_header_safe_credential(key):
+        try:
+            key = "" if credentials is None else credentials.private_api_key.reveal()
+        except AttributeError:
+            key = ""
+        if not isinstance(key, str) or not key or not is_header_safe_credential(key):
             return _failure(
                 operation, FailureKind.AUTHENTICATION, "Klaviyo credentials are unavailable or invalid"
             )
@@ -181,6 +191,8 @@ class GetProfileOperation:
         request = await self.client.build_request(
             call, operation, "GET", "/profiles/" + quote(input.id, safe=""), None
         )
+        if isinstance(request, Failure) and request.kind == FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(request)
         if isinstance(request, Failure):
             return QueryAttempt.branch_result(DEFECT, Profile(), Receipt(), request)
         try:
@@ -267,6 +279,8 @@ class CreateEventOperation:
         if not body or len(body) > _MAX_EVENT_PAYLOAD_BYTES:
             return _mutation_branch(DEFECT, FailureKind.VALIDATION, "event payload is invalid or too large")
         request = await self.client.build_request(call, operation, "POST", "/events", body)
+        if isinstance(request, Failure) and request.kind == FailureKind.AVAILABILITY:
+            return MutationAttempt.retry(request)
         if isinstance(request, Failure):
             return MutationAttempt.branch_result(DEFECT, EventAcceptance(), Receipt(), request)
         try:
@@ -286,15 +300,43 @@ class CreateEventOperation:
                     ),
                     _retry_after_seconds(response),
                 )
-            if status != 202:
-                return _mutation_branch(
-                    PROVIDER_REJECTED,
-                    _rejection_kind(status),
-                    f"Klaviyo rejected event submission with HTTP {status}",
+            if status == 202:
+                return MutationAttempt.branch_result(ACCEPTED, EventAcceptance(True), Receipt())
+            if status not in _DEFINITE_REFUSAL_STATUSES:
+                # The unique_id deduplicates a resend, so an unknown answer retries.
+                return MutationAttempt.retry(
+                    _failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        f"Klaviyo answered event submission with HTTP {status}, so its outcome is unknown",
+                    )
                 )
-            return MutationAttempt.branch_result(ACCEPTED, EventAcceptance(True), Receipt())
+            return _mutation_branch(
+                PROVIDER_REJECTED,
+                _rejection_kind(status),
+                f"Klaviyo rejected event submission with HTTP {status}",
+            )
         finally:
             await response.aclose()
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure no later attempt clears; every other resolve error is transient."""
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _event_document(input: CreateEventInput, unique_id: str) -> dict[str, Any]:

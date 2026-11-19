@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 import { createHash } from 'node:crypto';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { CheckpointError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { CreateIssueCommentDefinition, CreateIssueDefinition, ListIssuesDefinition, ReplaceIssueLabelsDefinition, SetIssueStateDefinition } from './generated/definitions.js';
 import type { CreateIssueCommentInput, CreateIssueInput, CreatedIssue, CreatedIssueComment, Issue, IssuePage, ListIssuesInput, ReplaceIssueLabelsInput, ReplacedIssueLabels, SetIssueStateInput, UpdatedIssueState } from './generated/models.js';
 import { failure, hasAuthMethodScopes, pathEscape, rateLimitDelayMs, requestReceipt, RepositoryAuthMethodID, type GitHubAccess, type GitHubClient, type GitHubExchange } from './client.js';
 import { bounded, decode, integerField, invalid, invalidResponse, loginPattern, nextPage, page, providerTime, record, repositoryPattern, safeURL, stringField, timestamp, truncateCharacters } from './operations.js';
 
+/** Statuses that prove GitHub refused a write; any other failure leaves the write unknown. */
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 const listIssuesOperationId = 'listIssues';
 const createIssueOperationId = 'createIssue';
 const setIssueStateOperationId = 'setIssueState';
@@ -127,25 +129,35 @@ export class CreateIssueOperation implements Mutation<CreateIssueInput, CreatedI
     const request = buildCreateIssueRequest(input, writer);
     if (typeof request === 'string') return newMutationBranch('defect', writer.requested, {}, failure(createIssueOperationId, 'VALIDATION', request));
     let fence: Fence;
-    try { fence = newFence(call, CreateIssueDefinition.stepDefaults.executeMethodTimeoutMs ?? 0, { maxSends: CreateIssueDefinition.maxSends ?? 1 }); }
+    try { fence = newFence(call, CreateIssueDefinition.stepDefaults.executeMethodTimeoutMs ?? 0, { maxSends: definitionMaxSends(CreateIssueDefinition) }); }
     catch { return writer.branch('defect', 'LOCAL_DEFECT', 'GitHub dispatch fence could not be constructed', {}); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return writer.uncertain('PROTOCOL', 'GitHub dispatch checkpoint cannot be trusted', {});
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(createIssueOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint could not be read; nothing was sent'));
     const access = await this.client.resolveAccess(call, createIssueOperationId);
     let accessFailure = 'failure' in access ? access.failure : undefined;
     if (!accessFailure && 'token' in access && access.authMethodId !== RepositoryAuthMethodID) {
       accessFailure = failure(createIssueOperationId, 'AUTHORIZATION', 'createIssue requires a connection authorized with the github-oauth-repository method');
     }
+    const hasPossibleEarlierSend = decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0;
+    if ('failure' in access && access.isTransientCredentialFailure) {
+      // A transient failure sent nothing; notSent would hide an earlier possible send.
+      if (!hasPossibleEarlierSend) {
+        try { await fence.recordNotSent(); }
+        catch { return newMutationRetry(failure(createIssueOperationId, 'AVAILABILITY', 'GitHub credentials and the not-sent checkpoint are unavailable')); }
+      }
+      return newMutationRetry(access.failure);
+    }
     if (accessFailure || !('token' in access)) {
       const selected = accessFailure ?? failure(createIssueOperationId, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked');
       // An earlier attempt may have created the issue, and this connection cannot read it back.
-      if (decision.kind !== 'sendAllowed') return newMutationUncertain(writer.requested, selected, {});
+      if (hasPossibleEarlierSend) return newMutationUncertain(writer.requested, selected, {});
       // The branch ends the Step; the marker only lets a repeated Execute send without read-back.
       try { await fence.recordNotSent(); } catch { /* The branch is final without the marker. */ }
       return newMutationBranch(selected.kind === 'AUTHORIZATION' ? 'insufficientScope' : 'defect', writer.requested, {}, selected);
     }
     writer.access = access;
-    if (decision.kind === 'readBackRequired' || decision.kind === 'readBackThenResendAllowed') {
+    // After a 429 or 503 recorded canResend, sendAllowed still carries the earlier possible send.
+    if (hasPossibleEarlierSend) {
       const providerId = decision.marker?.callId === call.id ? decision.marker.providerId ?? '' : '';
       const readBack = await writer.findCreatedIssue(providerId);
       if (readBack.status === 'found') return writer.created(readBack.issue!, readBack.receipt, true);
@@ -153,7 +165,7 @@ export class CreateIssueOperation implements Mutation<CreateIssueInput, CreatedI
       // A saved issue number proves an accepted send, so a missing issue is never sent again.
       if (readBack.status === 'unverifiable' || decision.kind === 'readBackRequired' || providerId) return writer.uncertain('AVAILABILITY', 'GitHub issue creation outcome is unknown', readBack.receipt);
     }
-    return writer.dispatch(fence, request, (decision.priorSendUpperBound ?? 0) + 1);
+    return writer.dispatch(fence, request, (decision.priorSendUpperBound ?? 0) + 1, hasPossibleEarlierSend);
   }
 }
 
@@ -166,12 +178,14 @@ class IssueWriter {
   constructor(readonly client: GitHubClient, readonly call: Call, readonly marker: string, readonly requested: CreatedIssue) {}
 
   /** Send the issue once and classify the answer; claimSendCount counts this send. */
-  async dispatch(fence: Fence, request: { title: string; body: string; labels?: string[]; assignees?: string[] }, claimSendCount: number): Promise<MutationAttempt<CreatedIssue>> {
+  async dispatch(fence: Fence, request: { title: string; body: string; labels?: string[]; assignees?: string[] }, claimSendCount: number, hasPossibleEarlierSend: boolean): Promise<MutationAttempt<CreatedIssue>> {
     const payload = encoder.encode(JSON.stringify(request));
     let result;
     try { result = await fence.dispatch(signal => this.client.postFencedWrite(this.access!.token, issuesPath(this.owner, this.repository), payload, signal)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof AggregateError) return newMutationRetry(failure(createIssueOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint or request budget is unavailable'));
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(createIssueOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint or request budget is unavailable'));
+      // An earlier send may have created the issue, so a local refusal now is never final.
+      if (hasPossibleEarlierSend) return this.uncertain('LOCAL_DEFECT', 'GitHub dispatch was not allowed after an earlier possible send', {});
       return this.branch('defect', 'LOCAL_DEFECT', 'GitHub dispatch was not allowed', {});
     }
     const isBelowSendCap = claimSendCount < this.maxSends();
@@ -191,14 +205,25 @@ class IssueWriter {
     const delay = rateLimitDelayMs(response, this.client.now());
     if (delay !== undefined) return this.retryUnprocessed(fence, failure(createIssueOperationId, 'RATE_LIMIT', 'GitHub rate limit was reached'), delay);
     if (status === 503) return this.retryUnprocessed(fence, failure(createIssueOperationId, 'AVAILABILITY', 'GitHub is unavailable'), 0);
+    // An oversized or interrupted refusal body cannot prove GitHub refused the issue.
+    if (result.hasUnusableBody && status >= 400) return this.reconcileUnknownSend(failure(createIssueOperationId, 'AVAILABILITY', `GitHub issue creation outcome is unknown after an unreadable HTTP ${status} body`), isBelowSendCap, receipt);
     if (status === 401) {
       if (await this.client.hasReplacementCredential(this.call)) return this.retryUnprocessed(fence, failure(createIssueOperationId, 'AUTHENTICATION', 'GitHub access token was refreshed for retry'), 0);
-      return this.branch('authorizationRevoked', 'AUTHENTICATION', 'GitHub authorization is invalid or revoked', receipt);
+      return this.refuse(fence, claimSendCount, 'authorizationRevoked', 'AUTHENTICATION', 'GitHub authorization is invalid or revoked', receipt);
     }
-    if (status === 403) return this.branch('insufficientScope', 'AUTHORIZATION', 'GitHub authorization is forbidden or lacks scope', receipt);
-    if (status === 404) return this.branch('notFound', 'NOT_FOUND', 'GitHub repository was not found', receipt);
-    if (status >= 500) return this.reconcileUnknownSend(failure(createIssueOperationId, 'AVAILABILITY', `GitHub issue creation outcome is unknown after HTTP ${status}`), isBelowSendCap, receipt);
-    return this.branch('providerRejected', status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION', `GitHub rejected the issue with HTTP ${status}`, receipt);
+    if (status === 403) return this.refuse(fence, claimSendCount, 'insufficientScope', 'AUTHORIZATION', 'GitHub authorization is forbidden or lacks scope', receipt);
+    if (status === 404) return this.refuse(fence, claimSendCount, 'notFound', 'NOT_FOUND', 'GitHub repository was not found', receipt);
+    if (definiteRefusalStatuses.has(status)) return this.refuse(fence, claimSendCount, 'providerRejected', status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION', `GitHub rejected the issue with HTTP ${status}`, receipt);
+    // A 5xx, 408, 409, redirect, or other status does not prove whether GitHub created the issue.
+    return this.reconcileUnknownSend(failure(createIssueOperationId, 'AVAILABILITY', `GitHub issue creation outcome is unknown after HTTP ${status}`), isBelowSendCap, receipt);
+  }
+
+  /** Select a definite refusal of the first send after recording canResend; after a possible send, select uncertain. */
+  async refuse(fence: Fence, claimSendCount: number, branch: string, kind: Failure['kind'], message: string, receipt: ReceiptDraft): Promise<MutationAttempt<CreatedIssue>> {
+    if (claimSendCount > 1) return this.uncertain(kind, message, receipt);
+    try { await fence.recordCanResend(); }
+    catch { return newMutationRetry(failure(createIssueOperationId, 'AVAILABILITY', 'GitHub refusal checkpoint could not be recorded')); }
+    return this.branch(branch, kind, message, receipt);
   }
 
   /** Record positive evidence that GitHub did not process the send, then return Retry. */
@@ -319,6 +344,7 @@ export class SetIssueStateOperation implements Mutation<SetIssueStateInput, Upda
     const request = buildSetIssueStateRequest(input);
     if (!('body' in request)) return newMutationBranch('defect', requested, {}, request);
     const access = await this.client.resolveAccess(call, operation);
+    if ('failure' in access && access.isTransientCredentialFailure) return newMutationRetry(access.failure);
     if ('failure' in access) return newMutationBranch('defect', requested, access.receipt, access.failure);
     if (access.authMethodId !== RepositoryAuthMethodID) {
       return newMutationBranch('insufficientScope', requested, {}, failure(operation, 'AUTHORIZATION', 'setIssueState requires a connection authorized with the github-oauth-repository method'));
@@ -329,12 +355,11 @@ export class SetIssueStateOperation implements Mutation<SetIssueStateInput, Upda
       if (exchange.branch === undefined) return newMutationRetry(exchange.failure, exchange.retryAfterMs ?? 0);
       return newMutationBranch(exchange.branch, requested, exchange.receipt, exchange.failure);
     }
+    // The absolute state is repeat-safe, so an unusable answer retries.
     let updated: GitHubIssue;
     try { updated = decodeGitHubIssue(decode(exchange.response.body)); }
-    catch { return newMutationBranch('invalidResponse', requested, exchange.receipt, failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue')); }
-    if (!isValidUpdatedIssue(updated, input.issueNumber, request.body.state)) {
-      return newMutationBranch('invalidResponse', requested, exchange.receipt, failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue'));
-    }
+    catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue')); }
+    if (!isValidUpdatedIssue(updated, input.issueNumber, request.body.state)) return newMutationRetry(failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue'));
     const output: UpdatedIssueState = { number: updated.number };
     const url = safeURL(updated.htmlUrl); if (url) output.url = url;
     output.state = updated.state;
@@ -384,6 +409,7 @@ export class ReplaceIssueLabelsOperation implements Mutation<ReplaceIssueLabelsI
     const request = buildReplaceIssueLabelsRequest(input);
     if (!('body' in request)) return newMutationBranch('defect', requested, {}, request);
     const access = await this.client.resolveAccess(call, operation);
+    if ('failure' in access && access.isTransientCredentialFailure) return newMutationRetry(access.failure);
     if ('failure' in access) return newMutationBranch('defect', requested, access.receipt, access.failure);
     if (access.authMethodId !== RepositoryAuthMethodID) {
       return newMutationBranch('insufficientScope', requested, {}, failure(operation, 'AUTHORIZATION', 'replaceIssueLabels requires a connection authorized with the github-oauth-repository method'));
@@ -399,7 +425,7 @@ export class ReplaceIssueLabelsOperation implements Mutation<ReplaceIssueLabelsI
       const source = decode(exchange.response.body);
       if (!Array.isArray(source) || source.length > maximumIssueLabels) throw new TypeError('invalid label list');
       names = source.map(label => stringField(record(label), 'name'));
-    } catch { return newMutationBranch('invalidResponse', requested, exchange.receipt, failure(operation, 'PROTOCOL', 'GitHub returned an invalid label list')); }
+    } catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'GitHub returned an invalid label list')); } // The full set is repeat-safe.
     const output: ReplacedIssueLabels = { number: input.issueNumber, labels: boundedValues(names, maximumLabels, maximumLabelBytes) };
     const url = issueWebUrl(this.client.baseUrl, request.owner, request.repository, input.issueNumber); if (url) output.url = url;
     return newMutationBranch('replaced', output, exchange.receipt);
@@ -461,22 +487,32 @@ export class CreateIssueCommentOperation implements Mutation<CreateIssueCommentI
     try { fence = newFence(call, CreateIssueCommentDefinition.stepDefaults.executeMethodTimeoutMs ?? 0, { maxSends: writer.maxSends() }); }
     catch { return writer.branch('defect', 'LOCAL_DEFECT', 'GitHub dispatch fence could not be constructed', {}); }
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return writer.uncertain('PROTOCOL', 'GitHub dispatch checkpoint cannot be trusted', {});
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint could not be read; nothing was sent'));
     const access = await this.client.resolveAccess(call, createIssueCommentOperationId);
     let accessFailure = 'failure' in access ? access.failure : undefined;
     if (!accessFailure && 'token' in access && access.authMethodId !== RepositoryAuthMethodID) {
       accessFailure = failure(createIssueCommentOperationId, 'AUTHORIZATION', 'createIssueComment requires a connection authorized with the github-oauth-repository method');
     }
+    const hasPossibleEarlierSend = decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0;
+    if ('failure' in access && access.isTransientCredentialFailure) {
+      // A transient failure sent nothing; notSent would hide an earlier possible send.
+      if (!hasPossibleEarlierSend) {
+        try { await fence.recordNotSent(); }
+        catch { return newMutationRetry(failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub credentials and the not-sent checkpoint are unavailable')); }
+      }
+      return newMutationRetry(access.failure);
+    }
     if (accessFailure || !('token' in access)) {
       const selected = accessFailure ?? failure(createIssueCommentOperationId, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked');
       // An earlier attempt may have created the comment, and this connection cannot read it back.
-      if (decision.kind !== 'sendAllowed') return newMutationUncertain(writer.requested, selected, {});
+      if (hasPossibleEarlierSend) return newMutationUncertain(writer.requested, selected, {});
       // The branch ends the Step; the marker only lets a repeated Execute send without read-back.
       try { await fence.recordNotSent(); } catch { /* The branch is final without the marker. */ }
       return newMutationBranch(selected.kind === 'AUTHORIZATION' ? 'insufficientScope' : 'defect', writer.requested, {}, selected);
     }
     writer.access = access;
-    if (decision.kind === 'readBackRequired' || decision.kind === 'readBackThenResendAllowed') {
+    // After a 429 or 503 recorded canResend, sendAllowed still carries the earlier possible send.
+    if (hasPossibleEarlierSend) {
       const providerId = decision.marker?.callId === call.id ? decision.marker.providerId ?? '' : '';
       const readBack = await writer.findCreatedComment(providerId);
       if (readBack.status === 'found') return writer.created(readBack.comment!, readBack.receipt, true);
@@ -484,7 +520,7 @@ export class CreateIssueCommentOperation implements Mutation<CreateIssueCommentI
       // A saved comment ID proves an accepted send, so a missing comment is never sent again.
       if (readBack.status === 'unverifiable' || decision.kind === 'readBackRequired' || providerId) return writer.uncertain('AVAILABILITY', 'GitHub comment creation outcome is unknown', readBack.receipt);
     }
-    return writer.dispatch(fence, request, (decision.priorSendUpperBound ?? 0) + 1);
+    return writer.dispatch(fence, request, (decision.priorSendUpperBound ?? 0) + 1, hasPossibleEarlierSend);
   }
 }
 
@@ -497,12 +533,14 @@ class CommentWriter {
   constructor(readonly client: GitHubClient, readonly call: Call, readonly marker: string, readonly requested: CreatedIssueComment) {}
 
   /** Send the comment once and classify the answer; claimSendCount counts this send. */
-  async dispatch(fence: Fence, request: { body: string }, claimSendCount: number): Promise<MutationAttempt<CreatedIssueComment>> {
+  async dispatch(fence: Fence, request: { body: string }, claimSendCount: number, hasPossibleEarlierSend: boolean): Promise<MutationAttempt<CreatedIssueComment>> {
     const payload = encoder.encode(JSON.stringify(request));
     let result;
     try { result = await fence.dispatch(signal => this.client.postFencedWrite(this.access!.token, this.commentsPath(), payload, signal)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof AggregateError) return newMutationRetry(failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint or request budget is unavailable'));
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint or request budget is unavailable'));
+      // An earlier send may have created the comment, so a local refusal now is never final.
+      if (hasPossibleEarlierSend) return this.uncertain('LOCAL_DEFECT', 'GitHub dispatch was not allowed after an earlier possible send', {});
       return this.branch('defect', 'LOCAL_DEFECT', 'GitHub dispatch was not allowed', {});
     }
     const isBelowSendCap = claimSendCount < this.maxSends();
@@ -522,14 +560,25 @@ class CommentWriter {
     const delay = rateLimitDelayMs(response, this.client.now());
     if (delay !== undefined) return this.retryUnprocessed(fence, failure(createIssueCommentOperationId, 'RATE_LIMIT', 'GitHub rate limit was reached'), delay);
     if (status === 503) return this.retryUnprocessed(fence, failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub is unavailable'), 0);
+    // An oversized or interrupted refusal body cannot prove GitHub refused the comment.
+    if (result.hasUnusableBody && status >= 400) return this.reconcileUnknownSend(failure(createIssueCommentOperationId, 'AVAILABILITY', `GitHub comment creation outcome is unknown after an unreadable HTTP ${status} body`), isBelowSendCap, receipt);
     if (status === 401) {
       if (await this.client.hasReplacementCredential(this.call)) return this.retryUnprocessed(fence, failure(createIssueCommentOperationId, 'AUTHENTICATION', 'GitHub access token was refreshed for retry'), 0);
-      return this.branch('authorizationRevoked', 'AUTHENTICATION', 'GitHub authorization is invalid or revoked', receipt);
+      return this.refuse(fence, claimSendCount, 'authorizationRevoked', 'AUTHENTICATION', 'GitHub authorization is invalid or revoked', receipt);
     }
-    if (status === 403) return this.branch('insufficientScope', 'AUTHORIZATION', 'GitHub authorization is forbidden or lacks scope', receipt);
-    if (status === 404) return this.branch('notFound', 'NOT_FOUND', 'GitHub repository or issue was not found', receipt);
-    if (status >= 500) return this.reconcileUnknownSend(failure(createIssueCommentOperationId, 'AVAILABILITY', `GitHub comment creation outcome is unknown after HTTP ${status}`), isBelowSendCap, receipt);
-    return this.branch('providerRejected', status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION', `GitHub rejected the comment with HTTP ${status}`, receipt);
+    if (status === 403) return this.refuse(fence, claimSendCount, 'insufficientScope', 'AUTHORIZATION', 'GitHub authorization is forbidden or lacks scope', receipt);
+    if (status === 404) return this.refuse(fence, claimSendCount, 'notFound', 'NOT_FOUND', 'GitHub repository or issue was not found', receipt);
+    if (definiteRefusalStatuses.has(status)) return this.refuse(fence, claimSendCount, 'providerRejected', status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION', `GitHub rejected the comment with HTTP ${status}`, receipt);
+    // A 5xx, 408, 409, redirect, or other status does not prove whether GitHub created the comment.
+    return this.reconcileUnknownSend(failure(createIssueCommentOperationId, 'AVAILABILITY', `GitHub comment creation outcome is unknown after HTTP ${status}`), isBelowSendCap, receipt);
+  }
+
+  /** Select a definite refusal of the first send after recording canResend; after a possible send, select uncertain. */
+  async refuse(fence: Fence, claimSendCount: number, branch: string, kind: Failure['kind'], message: string, receipt: ReceiptDraft): Promise<MutationAttempt<CreatedIssueComment>> {
+    if (claimSendCount > 1) return this.uncertain(kind, message, receipt);
+    try { await fence.recordCanResend(); }
+    catch { return newMutationRetry(failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub refusal checkpoint could not be recorded')); }
+    return this.branch(branch, kind, message, receipt);
   }
 
   /** Record positive evidence that GitHub did not process the send, then return Retry. */
@@ -807,3 +856,8 @@ function isSingleLineText(value: string): boolean { return isWellFormedText(valu
 
 // In Unicode mode a surrogate class matches only an unpaired surrogate, which is not valid UTF-8.
 function isWellFormedText(value: string): boolean { return !/\p{Cs}/u.test(value); }
+
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}

@@ -5,7 +5,6 @@ package caiyun
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -13,6 +12,7 @@ import (
 	"errors"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"math"
 	"net/http"
 	"strconv"
@@ -58,11 +58,11 @@ func (operation GetCurrentWeatherOperation) Invoke(call sdkgo.Call, input GetCur
 		return currentWeatherBranch(GetCurrentWeatherBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	nonceBytes := make([]byte, 16)
-	if _, err := rand.Read(nonceBytes); err != nil {
+	if _, err := io.ReadFull(operation.client.nonceSource, nonceBytes); err != nil {
 		return currentWeatherRetry(sdkgo.FailureAvailability, "Caiyun request nonce could not be generated", 0)
 	}
 	nonce := hex.EncodeToString(nonceBytes)
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.clock().Unix(), 10)
 	appKey := credentials.AppKey.Reveal()
 	// Caiyun v2.6 requires the App Key in the path: https://docs.caiyunapp.com/weather-api/v2/v2.6/auth.html
 	path := "/v2.6/" + appKey + "/" + strconv.FormatFloat(input.Longitude, 'f', -1, 64) + "," + strconv.FormatFloat(input.Latitude, 'f', -1, 64) + "/realtime"
@@ -79,7 +79,7 @@ func (operation GetCurrentWeatherOperation) Invoke(call sdkgo.Call, input GetCur
 		return currentWeatherRetry(sdkgo.FailureAvailability, "Caiyun request failed; a prior attempt may consume another plan call", 0)
 	}
 	defer func() { _ = response.Body.Close() }()
-	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), operation.client.clock())
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= http.StatusInternalServerError {
 		return currentWeatherRetry(sdkgo.FailureAvailability, "Caiyun is temporarily unavailable", retryAfter)
 	}

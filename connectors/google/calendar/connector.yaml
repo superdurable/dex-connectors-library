@@ -6,17 +6,17 @@ metadata:
   description: List and read events in a bounded window, create and update events idempotently, query free/busy intervals, and receive created, updated, and cancelled events in Google Calendar.
   company: Google
   categories: [productivity]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: google
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-google-calendar'
       operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
       triggers: [eventChanged]
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-google-calendar
       operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
       triggers: [eventChanged]

@@ -42,6 +42,10 @@ const (
 	recipientUnconfirmed = "+14155550106"
 	recipientSlow        = "+14155550107"
 	recipientUnavailable = "+14155550108"
+	recipientServerBlip  = "+14155550109"
+
+	// integrationSendCap is sendMessage's manifest execution.maxSends.
+	integrationSendCap = 3
 
 	integrationMaximumChecks = 3
 	shortRequestTimeout      = 500 * time.Millisecond
@@ -97,7 +101,7 @@ func TestUnavailableTextIsRetriedOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, delivery.SendAttempts, "Dex retried the same send Step execution")
 }
 
-func TestTimeoutAfterDispatchIsReconciledWithoutResendingWithRealDex(t *testing.T) {
+func TestTimeoutAfterDispatchIsResentUpToTheSendCapThenReconciledWithRealDex(t *testing.T) {
 	provider, flow, harness := newTwilioIntegrationHarness(t)
 	ctx := integrationContext(t)
 	flowID := startTextMessageFlow(t, ctx, harness, flow, "timeout", Input{To: recipientTimeout, Body: "Your code is ready."})
@@ -107,7 +111,7 @@ func TestTimeoutAfterDispatchIsReconciledWithoutResendingWithRealDex(t *testing.
 	require.Equal(t, sdkgo.FailureTransport, uncertain.UncertainSend.FailureKind)
 	require.NotEmpty(t, uncertain.UncertainSend.CallID)
 	require.Empty(t, uncertain.Message.SID)
-	require.Equal(t, 1, provider.createCount(recipientTimeout), "a timeout after dispatch is never retried")
+	require.Equal(t, integrationSendCap, provider.createCount(recipientTimeout), "a timeout after dispatch resends only up to the send cap")
 
 	unknownSID := "SM" + strings.Repeat("0", 32)
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.ConfirmSentTextMessage, ConfirmSentTextMessageInput{MessageSID: unknownSID}, nil))
@@ -127,35 +131,46 @@ func TestTimeoutAfterDispatchIsReconciledWithoutResendingWithRealDex(t *testing.
 	require.Equal(t, messaging.MessageStatusDelivered, delivery.Message.Status)
 	require.Nil(t, delivery.UncertainSend)
 	require.Equal(t, 1, delivery.SendAttempts)
-	require.Equal(t, 1, provider.createCount(recipientTimeout), "reconciliation adopted the existing message")
+	require.Equal(t, integrationSendCap, provider.createCount(recipientTimeout), "reconciliation adopted an existing message")
 }
 
-// TestSlowDispatchIsSentOnceWithRealDex guards sync durability; an async fallback attempt re-sends slow requests.
-func TestSlowDispatchIsSentOnceWithRealDex(t *testing.T) {
+// TestSlowDispatchIsSentOncePerAttemptWithRealDex guards sync durability; an async fallback attempt re-sends slow requests.
+func TestSlowDispatchIsSentOncePerAttemptWithRealDex(t *testing.T) {
 	provider, flow, harness := newTwilioIntegrationHarnessWithRequestTimeout(t, slowRequestTimeout)
 	ctx := integrationContext(t)
 	flowID := startTextMessageFlow(t, ctx, harness, flow, "slow", Input{To: recipientSlow, Body: "Your code is ready."})
 
 	uncertain := waitForPhase(t, ctx, harness, flow, flowID, PhaseNeedsReconciliation)
 	require.Equal(t, sdkgo.FailureTransport, uncertain.UncertainSend.FailureKind)
-	require.Equal(t, 1, provider.createCount(recipientSlow), "one Step execution dispatches one create request")
+	require.Equal(t, integrationSendCap, provider.createCount(recipientSlow), "each Step attempt dispatches at most one create request, up to the send cap")
 }
 
-func TestServerErrorIsResentOnlyAfterOperatorApprovalWithRealDex(t *testing.T) {
+func TestServerErrorIsResentBelowTheSendCapWithRealDex(t *testing.T) {
+	provider, flow, harness := newTwilioIntegrationHarness(t)
+	ctx := integrationContext(t)
+
+	delivery := runTextMessageFlow(t, ctx, harness, flow, "server-blip", Input{To: recipientServerBlip, Body: "Your order shipped."})
+	require.Equal(t, PhaseFinished, delivery.Phase)
+	require.Equal(t, 1, delivery.SendAttempts, "Dex retried the same send Step execution")
+	require.Equal(t, provider.messageSID(recipientServerBlip, 2), delivery.Message.SID)
+	require.Equal(t, 2, provider.createCount(recipientServerBlip))
+}
+
+func TestServerErrorAtTheSendCapIsResentOnlyAfterOperatorApprovalWithRealDex(t *testing.T) {
 	provider, flow, harness := newTwilioIntegrationHarness(t)
 	ctx := integrationContext(t)
 	flowID := startTextMessageFlow(t, ctx, harness, flow, "server-error", Input{To: recipientServerError, Body: "Your order shipped."})
 
 	uncertain := waitForPhase(t, ctx, harness, flow, flowID, PhaseNeedsReconciliation)
 	require.Equal(t, sdkgo.FailureAvailability, uncertain.UncertainSend.FailureKind)
-	require.Equal(t, 1, provider.createCount(recipientServerError))
+	require.Equal(t, integrationSendCap, provider.createCount(recipientServerError))
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.ApproveTextMessageResend, nil, nil))
 	delivery := waitForFlowOutput(t, ctx, harness, flowID)
 	require.Equal(t, PhaseFinished, delivery.Phase)
 	require.Equal(t, 2, delivery.SendAttempts)
-	require.Equal(t, provider.messageSID(recipientServerError, 2), delivery.Message.SID)
-	require.Equal(t, 2, provider.createCount(recipientServerError), "only the approved resend created a second request")
+	require.Equal(t, provider.messageSID(recipientServerError, integrationSendCap+1), delivery.Message.SID)
+	require.Equal(t, integrationSendCap+1, provider.createCount(recipientServerError), "only the approved resend went past the send cap")
 }
 
 func TestUnconfirmedDeliveryStopsAfterTheLastStatusReadWithRealDex(t *testing.T) {
@@ -218,7 +233,7 @@ func waitForDelivery(
 	require.Eventually(t, func() bool {
 		delivery = TextMessageDelivery{}
 		return harness.client.InvokeRPC(ctx, flowID, flow.GetTextMessageDelivery, nil, &delivery) == nil && isExpected(delivery)
-	}, 30*time.Second, 100*time.Millisecond, "Flow %s last delivery %+v", flowID, delivery)
+	}, 90*time.Second, 100*time.Millisecond, "Flow %s last delivery %+v", flowID, delivery)
 	return delivery
 }
 
@@ -288,7 +303,7 @@ func (provider *fakeTwilio) createMessage(response http.ResponseWriter, request 
 	switch {
 	case recipient == recipientRejected:
 		provider.writeJSON(response, http.StatusBadRequest, `{"code":21608,"message":"SENTINEL unverified trial recipient","status":400}`)
-	case recipient == recipientServerError && attempt == 1:
+	case (recipient == recipientServerError && attempt <= integrationSendCap) || (recipient == recipientServerBlip && attempt == 1):
 		provider.writeJSON(response, http.StatusInternalServerError, `{"code":20500,"message":"SENTINEL internal error","status":500}`)
 	case recipient == recipientRateLimited && attempt == 1:
 		response.Header().Set("Retry-After", "1")

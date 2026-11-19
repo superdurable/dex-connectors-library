@@ -273,7 +273,12 @@ func TestPostMessageRejectedCredentialRefreshesAcrossFencedAttempts(t *testing.T
 			require.False(t, provider.refreshDeadline.IsZero())
 			require.LessOrEqual(t, time.Until(provider.refreshDeadline), 27*time.Second)
 			require.Len(t, messageIDs, 1)
-			require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			if testCase.name == "unauthorized_malformed_body" {
+				// An unreadable rejection cannot prove nothing was posted, so the send still counts.
+				require.Contains(t, string(ctx.heartbeat), `"state":"claimed"`)
+			} else {
+				require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			}
 			ctx.attempt = 2
 			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
 			require.NoError(t, err)
@@ -293,7 +298,6 @@ func TestPostMessageRejectedCredentialWithoutRefreshSelectsProviderRejected(t *t
 		wantsReconnect   bool
 	}{
 		{name: "not_refreshed", refreshError: projectconfig.ErrRejectedCredentialNotRefreshed},
-		{name: "broker_unavailable", refreshError: errors.New("credential broker unavailable")},
 		{name: "reauthorization_required", refreshError: sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked")), wantsReconnect: true},
 		{name: "unchanged_token", unchangedRefresh: true, wantsReconnect: true},
 	} {
@@ -318,6 +322,41 @@ func TestPostMessageRejectedCredentialWithoutRefreshSelectsProviderRejected(t *t
 			}
 			require.Equal(t, 1, requests)
 			require.Equal(t, 1, provider.forcedRefreshes)
+		})
+	}
+}
+
+func TestPostMessageDefiniteRejectionWithTransientRefreshFailureRetries(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "unauthorized", statusCode: http.StatusUnauthorized, body: `{"ok":false,"error":"not_authed"}`},
+		{name: "token_expired", statusCode: http.StatusOK, body: `{"ok":false,"error":"token_expired"}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				requests++
+				if requests == 1 {
+					response.WriteHeader(testCase.statusCode)
+					_, _ = response.Write([]byte(testCase.body))
+					return
+				}
+				_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+			}))
+			t.Cleanup(server.Close)
+			provider := &rejectionRefreshingCredentialProvider{refreshError: projectconfig.ErrCredentialBrokerUnavailable}
+			client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			ctx := newSlackDexContext("post-refresh-transient-" + testCase.name)
+			input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
+			_, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "a definite rejection posted nothing, so a transient refresh failure retries")
+			require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			require.Equal(t, 1, requests)
 		})
 	}
 }
@@ -451,11 +490,17 @@ func TestPostMessageMissingCheckpointResendsBelowSendCapOnly(t *testing.T) {
 		attempt      int32
 		heartbeat    []byte
 		wantsResend  bool
+		wantsRetry   bool
 		wantsMessage string
 	}{
 		{name: "missing_below_cap", attempt: 2, wantsResend: true},
 		{name: "missing_at_cap", attempt: 4, wantsMessage: "cannot be identified"},
-		{name: "foreign", attempt: 3, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsMessage: "may have posted"},
+		// A foreign checkpoint fails closed with Retry on every attempt; the retry budget bounds it.
+		{name: "foreign_first_attempt", attempt: 1, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
+		{name: "foreign_below_cap", attempt: 2, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
+		{name: "foreign", attempt: 3, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
+		{name: "foreign_past_cap", attempt: 9, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
+		{name: "invalid_below_cap", attempt: 2, heartbeat: []byte(`{"callId":"post-checkpoint-invalid_below_cap","attempt":0,"state":"claimed"}`), wantsRetry: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			requests := 0
@@ -469,6 +514,12 @@ func TestPostMessageMissingCheckpointResendsBelowSendCapOnly(t *testing.T) {
 			ctx.attempt = testCase.attempt
 			ctx.heartbeat = testCase.heartbeat
 			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			if testCase.wantsRetry {
+				var retryError *sdkgo.RetryError
+				require.ErrorAs(t, err, &retryError)
+				require.Equal(t, 0, requests)
+				return
+			}
 			require.NoError(t, err)
 			if testCase.wantsResend {
 				require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)

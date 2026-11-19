@@ -5,6 +5,7 @@
 import ipaddress
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -21,14 +22,24 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     QueryAttempt,
+    ReauthorizationRequiredError,
     Receipt,
     RejectedCredentialRefreshingProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     is_header_safe_credential,
     parse_retry_after,
     read_error_tokens,
     validate_base_url,
+)
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
 )
 
 from ._generated.config import Config, Credentials
@@ -331,6 +342,15 @@ class GraphResponse:
     body: bytes = b""
 
 
+# Only these credential failures need a person; every other one retries.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
+
 class RequestFailure(Exception):
     def __init__(self, kind: FailureKind, message: str, response: GraphResponse | None = None) -> None:
         self.kind, self.response = kind, response or GraphResponse()
@@ -420,9 +440,30 @@ class Client:
         return QueryFreeBusyOperation(self)
 
     async def resolve_credentials(self, call: Call, operation: str) -> tuple[Credentials, str]:
-        """Resolve a current credential and the selected mailbox path."""
+        """Resolve a current credential and the selected mailbox path.
+
+        A credential failure that is not terminal raises an AVAILABILITY RequestFailure, which the
+        caller retries.
+        """
         try:
             material = await self.credentials.resolve(call)
+        except _TERMINAL_CREDENTIAL_ERRORS as error:
+            raise RequestFailure(
+                FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+            ) from error
+        except Exception as error:
+            # The generated connection module imports this one, so import its predicate lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                raise RequestFailure(
+                    FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+                ) from error
+            raise RequestFailure(
+                FailureKind.AVAILABILITY,
+                "connection credentials are temporarily unavailable; nothing was sent",
+            ) from error
+        try:
             token = material.access_token.reveal() if material.access_token is not None else ""
             if not is_header_safe_credential(token) or material.auth_method_id not in (
                 "microsoft-oauth",
@@ -451,8 +492,14 @@ class Client:
         payload: Any = None,
         if_match: str = "",
         next_link: str = "",
+        on_response_status: Callable[[int], None] | None = None,
     ) -> GraphResponse:
-        """Send one bounded Graph request, retrying one rejected credential once."""
+        """Send one bounded Graph request, retrying one rejected credential once.
+
+        on_response_status, when set, receives each response status as soon as its headers arrive.
+        A body that breaks raises a TRANSPORT RequestFailure that keeps the status. After a 401, a
+        transient refresh failure raises an AVAILABILITY RequestFailure that keeps the 401.
+        """
         target = self.base_url + path + (("?" + _query(query)) if query else "")
         if next_link:
             target = (
@@ -479,11 +526,14 @@ class Client:
                 headers.append(("Content-Type", "application/json"))
             if if_match:
                 headers.append(("If-Match", if_match))
+            metadata: GraphResponse | None = None
             try:
                 async with self.http_client.stream(
                     method, target, headers=headers, content=encoded, timeout=20, follow_redirects=False
                 ) as response:
                     metadata = GraphResponse(response.status_code, response.headers.copy())
+                    if on_response_status is not None:
+                        on_response_status(response.status_code)
                     body = b""
                     async for chunk in response.aiter_bytes():
                         body += chunk
@@ -497,13 +547,28 @@ class Client:
             except RequestFailure:
                 raise
             except (httpx.HTTPError, OSError) as error:
-                raise RequestFailure(FailureKind.TRANSPORT, "provider request failed") from error
+                # The status stays, so a caller can tell an accepted write whose body broke.
+                raise RequestFailure(FailureKind.TRANSPORT, "provider request failed", metadata) from error
             if result.status != 401 or attempt:
                 return result
             if not isinstance(self.credentials, RejectedCredentialRefreshingProvider):
                 return result
             try:
                 credentials = await self.credentials.resolve_after_rejection(call, None)  # type: ignore[arg-type]
+            except _TERMINAL_CREDENTIAL_ERRORS:
+                return result
+            except Exception as error:
+                from ._generated.connection import is_credential_material_error
+
+                if is_credential_material_error(error):
+                    return result
+                # Graph did not process the rejected request; a later attempt refreshes again.
+                raise RequestFailure(
+                    FailureKind.AVAILABILITY,
+                    "credential refresh after a rejection is temporarily unavailable",
+                    result,
+                ) from error
+            try:
                 token = credentials.access_token.reveal() if credentials.access_token is not None else ""
                 if not is_header_safe_credential(token):
                     return result
@@ -553,20 +618,6 @@ def _request_error_query(
             "defect", empty, Receipt(), _failure(operation, failure.kind, str(failure))
         )
     return QueryAttempt.retry(_failure(operation, FailureKind.AVAILABILITY, "provider is unavailable"))
-
-
-def _request_error_mutation(
-    operation: str, failure: RequestFailure, empty: Any, receipt: Receipt, unknown_message: str
-) -> MutationAttempt[Any]:
-    if failure.kind == FailureKind.RESPONSE_TOO_LARGE:
-        return MutationAttempt.branch_result(
-            "invalidResponse", empty, receipt, _failure(operation, failure.kind, str(failure))
-        )
-    if failure.kind == FailureKind.LOCAL_DEFECT:
-        return MutationAttempt.branch_result(
-            "defect", empty, Receipt(), _failure(operation, failure.kind, str(failure))
-        )
-    return MutationAttempt.retry(_failure(operation, FailureKind.TRANSPORT, unknown_message))
 
 
 def _read_classification(
@@ -751,6 +802,8 @@ class ListEventsOperation:
                 raise ValueError("pageSize must be between 1 and 250, or zero for the default")
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            if error.kind is FailureKind.AVAILABILITY:
+                return QueryAttempt.retry(_failure(operation, error.kind, str(error)))
             return QueryAttempt.branch_result(
                 "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
             )
@@ -838,6 +891,8 @@ class GetEventOperation:
             display = _display(input.time_zone)
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            if error.kind is FailureKind.AVAILABILITY:
+                return QueryAttempt.retry(_failure(operation, error.kind, str(error)))
             return QueryAttempt.branch_result(
                 "defect", Event(), Receipt(), _failure(operation, error.kind, str(error))
             )
@@ -933,6 +988,8 @@ class QueryFreeBusyOperation:
             first, last, interval, display = _validate_schedules(input)
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            if error.kind is FailureKind.AVAILABILITY:
+                return QueryAttempt.retry(_failure(operation, error.kind, str(error)))
             return QueryAttempt.branch_result(
                 "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
             )
@@ -1074,32 +1131,6 @@ class CreateEventOperation:
         """Use a caller transaction ID or the stable Dex Call ID."""
         return IdempotencyKey(input.transaction_id or call_id)
 
-    def _existing(
-        self,
-        call: Call,
-        outcome: str,
-        event: Event,
-        duplicates: tuple[str, ...],
-        response: GraphResponse,
-        failure: Failure | None,
-        delay: float,
-    ) -> MutationAttempt[CreateEventOutput]:
-        operation = "createEvent"
-        receipt = self.client.receipt(call, response, event.id)
-        if outcome == "found":
-            return MutationAttempt.branch_result(
-                "created", CreateEventOutput(event, True, duplicates), receipt
-            )
-        if outcome == "retry":
-            return MutationAttempt.retry(
-                failure or _failure(operation, FailureKind.AVAILABILITY, "provider is unavailable"), delay
-            )
-        if outcome == "invalidResponse":
-            return MutationAttempt.branch_result("invalidResponse", CreateEventOutput(), receipt, failure)
-        if outcome == "defect":
-            return MutationAttempt.branch_result("defect", CreateEventOutput(), Receipt(), failure)
-        return MutationAttempt.branch_result("providerRejected", CreateEventOutput(), receipt, failure)
-
     async def invoke(self, call: Call, input: CreateEventInput) -> MutationAttempt[CreateEventOutput]:
         """Read by marker before POST and after ambiguous rejection."""
         operation, empty = "createEvent", CreateEventOutput()
@@ -1125,74 +1156,314 @@ class CreateEventOperation:
             _event_times(input.start, input.end, input.is_all_day)
             _validate_attendees(input.attendees)
             display = _display(input.start.time_zone)
-            credentials, root = await self.client.resolve_credentials(call, operation)
-        except RequestFailure as error:
-            return MutationAttempt.branch_result(
-                "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
-            )
         except ValueError as error:
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), _failure(operation, FailureKind.VALIDATION, str(error))
             )
-        lookup = await _lookup(
-            self.client, call, credentials, operation, root, key, input.calendar_id, display
-        )
-        if lookup[0] != "missing":
-            return self._existing(call, *lookup)
         try:
-            response = await self.client.send(
-                call,
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
+        except ValueError:
+            return MutationAttempt.branch_result(
+                "defect",
+                empty,
+                Receipt(),
+                _failure(operation, FailureKind.LOCAL_DEFECT, "createEvent dispatch fence is unavailable"),
+            )
+        decision = await fence.decide()
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            # An unreadable checkpoint is an unknown outcome; the retry budget bounds these attempts.
+            return MutationAttempt.retry(
+                _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "an earlier attempt may have created the event, and its dispatch checkpoint is "
+                    "unreadable",
+                )
+            )
+        provider_id = decision.marker.provider_id if decision.marker is not None else ""
+        attempt = _CreateEventAttempt(
+            self.client,
+            call,
+            fence,
+            input,
+            key,
+            display,
+            has_possible_earlier_send=(
+                decision.kind != DecisionKind.SEND_ALLOWED
+                or decision.prior_send_upper_bound > 0
+                or bool(provider_id)
+            ),
+            can_resend_unknown_outcome=decision.prior_send_upper_bound + 1 < call.max_sends,
+            is_send_forbidden=decision.kind == DecisionKind.READ_BACK_REQUIRED or bool(provider_id),
+        )
+        return await attempt.run()
+
+
+# A 2xx whose event ID could not be read is recorded so that no later attempt POSTs again.
+_ACCEPTED_EVENT_PROVIDER_ID = "accepted"
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_definite_graph_refusal(response: GraphResponse) -> bool:
+    """Report an allowlisted refusal status whose body carries no created item ID."""
+    if response.status not in _DEFINITE_REFUSAL_STATUSES:
+        return False
+    try:
+        document = json.loads(response.body)
+    except (ValueError, UnicodeDecodeError):
+        return True
+    return not (isinstance(document, dict) and document.get("id") not in (None, ""))
+
+
+class _CreateEventAttempt:
+    """One createEvent attempt's Fence decision and resolved connection."""
+
+    def __init__(
+        self,
+        client: Client,
+        call: Call,
+        fence: Fence,
+        input: CreateEventInput,
+        key: str,
+        display: tuple[ZoneInfo, str],
+        *,
+        has_possible_earlier_send: bool,
+        can_resend_unknown_outcome: bool,
+        is_send_forbidden: bool,
+    ) -> None:
+        self.client, self.call, self.fence, self.input, self.key, self.display = (
+            client, call, fence, input, key, display,
+        )
+        self.has_possible_earlier_send = has_possible_earlier_send
+        self.can_resend_unknown_outcome = can_resend_unknown_outcome
+        self.is_send_forbidden = is_send_forbidden
+        self.credentials: Credentials | None = None
+        self.root = ""
+
+    async def run(self) -> MutationAttempt[CreateEventOutput]:
+        """Resolve credentials, read the marker back, and POST only when the cap allows."""
+        try:
+            self.credentials, self.root = await self.client.resolve_credentials(self.call, "createEvent")
+        except RequestFailure as error:
+            return await self._credential_failure(error)
+        decided = await self._look_up()
+        if decided is not None:
+            return decided
+        if self.is_send_forbidden:
+            return self._uncertain(
+                _failure(
+                    "createEvent",
+                    FailureKind.TRANSPORT,
+                    "an earlier attempt may have created the event, and the marker lookup cannot confirm it",
+                ),
+                GraphResponse(),
+            )
+        return await self._send()
+
+    async def _credential_failure(self, error: RequestFailure) -> MutationAttempt[CreateEventOutput]:
+        failure = _failure("createEvent", error.kind, str(error))
+        is_retryable = error.kind is FailureKind.AVAILABILITY
+        if self.has_possible_earlier_send:
+            if is_retryable:
+                return MutationAttempt.retry(failure)
+            return self._uncertain(
+                _failure(
+                    "createEvent",
+                    error.kind,
+                    "an earlier attempt may have created the event, and the connection credentials are "
+                    "unavailable to confirm it",
+                ),
+                GraphResponse(),
+            )
+        try:
+            await self.fence.record_not_sent()
+        except Exception:
+            return MutationAttempt.retry(
+                _failure(
+                    "createEvent",
+                    FailureKind.AVAILABILITY,
+                    "credentials and the no-send checkpoint are unavailable",
+                )
+            )
+        if is_retryable:
+            return MutationAttempt.retry(failure)
+        return MutationAttempt.branch_result("defect", CreateEventOutput(), Receipt(), failure)
+
+    async def _record_provider_id(self, provider_id: str) -> bool:
+        try:
+            await self.fence.record_provider_id(provider_id)
+        except Exception:
+            return False
+        return True
+
+    async def _record_best_effort(self, record: Any) -> None:
+        # A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
+        try:
+            await record()
+        except Exception:
+            pass
+
+    def _created(
+        self, event: Event, duplicates: tuple[str, ...], response: GraphResponse, *, existing: bool
+    ) -> MutationAttempt[CreateEventOutput]:
+        receipt = self.client.receipt(self.call, response, event.id)
+        output = CreateEventOutput(event, existing, duplicates)
+        return MutationAttempt.branch_result("created", output, receipt)
+
+    async def _lookup(self) -> tuple[str, Event, tuple[str, ...], GraphResponse, Failure | None, float]:
+        assert self.credentials is not None
+        return await _lookup(
+            self.client,
+            self.call,
+            self.credentials,
+            "createEvent",
+            self.root,
+            self.key,
+            self.input.calendar_id,
+            self.display,
+        )
+
+    async def _look_up(self) -> MutationAttempt[CreateEventOutput] | None:
+        outcome, event, duplicates, response, failure, delay = await self._lookup()
+        failure = failure or _failure("createEvent", FailureKind.AVAILABILITY, "provider is unavailable")
+        if outcome == "missing":
+            return None
+        if outcome == "found":
+            await self._record_provider_id(event.id)
+            return self._created(event, duplicates, response, existing=True)
+        if outcome in ("providerRejected", "notFound") and _is_definite_graph_refusal(response):
+            if self.has_possible_earlier_send:
+                return self._uncertain(failure, response)
+            await self._record_best_effort(self.fence.record_not_sent)
+            return MutationAttempt.branch_result(
+                "providerRejected", CreateEventOutput(), self.client.receipt(self.call, response), failure
+            )
+        if outcome == "invalidResponse" and not self.has_possible_earlier_send:
+            # Nothing was sent yet, so an unusable lookup answer can end the Step without a duplicate.
+            await self._record_best_effort(self.fence.record_not_sent)
+            return MutationAttempt.branch_result(
+                "invalidResponse", CreateEventOutput(), self.client.receipt(self.call, response), failure
+            )
+        if outcome == "defect":
+            if self.has_possible_earlier_send:
+                return self._uncertain(failure, GraphResponse())
+            await self._record_best_effort(self.fence.record_not_sent)
+            return MutationAttempt.branch_result("defect", CreateEventOutput(), Receipt(), failure)
+        # A transient, unlisted, or unreadable lookup answer leaves the outcome unknown.
+        return MutationAttempt.retry(failure, delay)
+
+    async def _send(self) -> MutationAttempt[CreateEventOutput]:
+        operation = "createEvent"
+        credentials = self.credentials
+        assert credentials is not None
+        observed_statuses: list[int] = []
+
+        async def post(_write_deadline: datetime) -> GraphResponse:
+            return await self.client.send(
+                self.call,
                 credentials,
                 "POST",
-                _calendar_path(root, input.calendar_id) + "/events",
-                payload=_create_payload(input, key),
+                _calendar_path(self.root, self.input.calendar_id) + "/events",
+                payload=_create_payload(self.input, self.key),
+                on_response_status=observed_statuses.append,
+            )
+
+        try:
+            response = await self.fence.dispatch(post)
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            return MutationAttempt.retry(
+                _failure(operation, FailureKind.AVAILABILITY, "the event POST was not sent in this attempt")
+            )
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The write window cut an accepted body, so the event is only read back.
+                return await self._accepted_without_event(GraphResponse(observed_statuses[-1]))
+            return self._resend_or_uncertain(
+                _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "create outcome is unknown; the retry looks the idempotency key up first",
+                ),
+                0,
+                GraphResponse(),
             )
         except RequestFailure as error:
-            return _request_error_mutation(
-                operation,
-                error,
-                empty,
-                self.client.receipt(call, error.response),
-                "create outcome is unknown; the retry looks the idempotency key up first",
+            if 200 <= error.response.status < 300:
+                # A 2xx whose body broke or overflowed was accepted, so it is only read back.
+                return await self._accepted_without_event(error.response)
+            if error.kind == FailureKind.AVAILABILITY and error.response.status == 401:
+                # Graph refused the POST, and the credential refresh failed transiently.
+                await self._record_best_effort(self.fence.record_can_resend)
+                return MutationAttempt.retry(_failure(operation, error.kind, str(error)))
+            if error.kind == FailureKind.LOCAL_DEFECT and not self.has_possible_earlier_send:
+                return MutationAttempt.branch_result(
+                    "defect", CreateEventOutput(), Receipt(), _failure(operation, error.kind, str(error))
+                )
+            return self._resend_or_uncertain(
+                _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "create outcome is unknown; the retry looks the idempotency key up first",
+                ),
+                0,
+                error.response,
             )
-        receipt = self.client.receipt(call, response)
+        if response.status in (429, 503):
+            _, kind, message, delay = _classification(response.status, response.body, response.headers)
+            # Graph did not process the POST, so it does not count against the cap.
+            await self._record_best_effort(self.fence.record_can_resend)
+            return MutationAttempt.retry(_failure(operation, kind, message), delay)
         if 200 <= response.status < 300:
             try:
-                event = _event(_response_json(response), input.calendar_id, display)
-                if event.transaction_id and event.transaction_id != key:
+                event = _event(_response_json(response), self.input.calendar_id, self.display)
+                if event.transaction_id and event.transaction_id != self.key:
                     raise ValueError("another transactionId")
-            except (ValueError, TypeError, KeyError, AttributeError) as error:
-                message = (
-                    "provider returned an event with another transactionId"
-                    if str(error) == "another transactionId"
-                    else "provider returned an invalid event: " + str(error)
-                )
-                return MutationAttempt.branch_result(
-                    "invalidResponse", empty, receipt, _failure(operation, FailureKind.PROTOCOL, message)
-                )
-            return MutationAttempt.branch_result(
-                "created", CreateEventOutput(event), self.client.receipt(call, response, event.id)
-            )
+            except (ValueError, TypeError, KeyError, AttributeError):
+                return await self._accepted_without_event(response)
+            await self._record_provider_id(event.id)
+            return self._created(event, (), response, existing=False)
+        _, kind, message, delay = _classification(response.status, response.body, response.headers)
+        failure = _failure(operation, kind, message)
         if response.status in (400, 409):
-            lookup = await _lookup(
-                self.client, call, credentials, operation, root, key, input.calendar_id, display
-            )
-            if lookup[0] != "missing":
-                return self._existing(call, *lookup)
-            retry, kind, message, delay = _classification(response.status, response.body, response.headers)
-            if response.status == 409:
-                return MutationAttempt.retry(_failure(operation, kind, message), delay)
-            return MutationAttempt.branch_result(
-                "providerRejected", empty, receipt, _failure(operation, kind, message)
-            )
-        retry, kind, message, delay = _classification(response.status, response.body, response.headers)
-        return (
-            MutationAttempt.retry(_failure(operation, kind, message), delay)
-            if retry
-            else MutationAttempt.branch_result(
-                "providerRejected", empty, receipt, _failure(operation, kind, message)
-            )
+            outcome, event, duplicates, read_response, _, _ = await self._lookup()
+            if outcome == "found":
+                await self._record_provider_id(event.id)
+                return self._created(event, duplicates, read_response, existing=True)
+            if outcome != "missing":
+                return self._resend_or_uncertain(failure, delay, response)
+        if not _is_definite_graph_refusal(response):
+            # Only an allowlisted refusal proves nothing was created; any other answer is unknown.
+            return self._resend_or_uncertain(failure, delay, response)
+        if self.has_possible_earlier_send:
+            return self._uncertain(failure, response)
+        await self._record_best_effort(self.fence.record_can_resend)
+        return MutationAttempt.branch_result(
+            "providerRejected", CreateEventOutput(), self.client.receipt(self.call, response), failure
         )
+
+    async def _accepted_without_event(self, response: GraphResponse) -> MutationAttempt[CreateEventOutput]:
+        failure = _failure(
+            "createEvent", FailureKind.PROTOCOL, "Graph accepted the event, but its response is unusable"
+        )
+        if not await self._record_provider_id(_ACCEPTED_EVENT_PROVIDER_ID):
+            return self._uncertain(failure, response)
+        outcome, event, duplicates, read_response, _, _ = await self._lookup()
+        if outcome == "found":
+            await self._record_provider_id(event.id)
+            return self._created(event, duplicates, read_response, existing=False)
+        # The marker index may lag the create; the next attempt only reads back.
+        return MutationAttempt.retry(failure)
+
+    def _resend_or_uncertain(
+        self, failure: Failure, delay: float, response: GraphResponse
+    ) -> MutationAttempt[CreateEventOutput]:
+        if self.can_resend_unknown_outcome:
+            return MutationAttempt.retry(failure, delay)
+        return self._uncertain(failure, response)
+
+    def _uncertain(self, failure: Failure, response: GraphResponse) -> MutationAttempt[CreateEventOutput]:
+        receipt = self.client.receipt(self.call, response)
+        return MutationAttempt.uncertain(CreateEventOutput(), failure, receipt)
 
 
 def _update_applied(current: Event, input: UpdateEventInput) -> bool:
@@ -1294,6 +1565,12 @@ class UpdateEventOperation:
             display = _display(input.time_zone or (input.start.time_zone if input.start else ""))
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            is_later_attempt = call.context is not None and call.context.attempt > 1
+            # A later attempt may follow an applied PATCH, so defect would misreport it.
+            if error.kind is FailureKind.AVAILABILITY or (
+                is_later_attempt and error.kind is FailureKind.AUTHENTICATION
+            ):
+                return MutationAttempt.retry(_failure(operation, error.kind, str(error)))
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
             )
@@ -1305,18 +1582,17 @@ class UpdateEventOperation:
             self.client, call, credentials, operation, root, input.event_id, display
         )
         read_receipt = self.client.receipt(call, response, input.event_id)
-        if outcome == "retry":
+        is_later_attempt = call.context is not None and call.context.attempt > 1
+        if outcome == "notFound":
+            return MutationAttempt.branch_result("notFound", empty, read_receipt, failure)
+        if outcome == "providerRejected" and _is_definite_graph_refusal(response):
+            return MutationAttempt.branch_result("providerRejected", empty, read_receipt, failure)
+        if outcome == "defect" and not is_later_attempt:
+            return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
+        if outcome != "found":
+            # A transient, unlisted, or unusable pre-write read is unknown, and the update is safe to repeat.
             return MutationAttempt.retry(
                 failure or _failure(operation, FailureKind.AVAILABILITY, "provider is unavailable"), delay
-            )
-        if outcome != "found":
-            route = {
-                "notFound": "notFound",
-                "providerRejected": "providerRejected",
-                "invalidResponse": "invalidResponse",
-            }.get(outcome, "defect")
-            return MutationAttempt.branch_result(
-                route, empty, read_receipt if route != "defect" else Receipt(), failure
             )
         if current.is_cancelled:
             return MutationAttempt.branch_result(
@@ -1337,12 +1613,16 @@ class UpdateEventOperation:
                 if_match=current.etag,
             )
         except RequestFailure as error:
-            return _request_error_mutation(
-                operation,
-                error,
-                empty,
-                self.client.receipt(call, error.response, input.event_id),
-                "update outcome is unknown; the retry rereads the event first",
+            if error.kind == FailureKind.LOCAL_DEFECT:
+                return MutationAttempt.branch_result(
+                    "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
+                )
+            return MutationAttempt.retry(
+                _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "update outcome is unknown; the retry rereads the event first",
+                )
             )
         receipt = self.client.receipt(call, response, input.event_id)
         if response.status in (409, 412):
@@ -1359,7 +1639,7 @@ class UpdateEventOperation:
             retry, kind, message, delay = _classification(response.status, response.body, response.headers)
             return (
                 MutationAttempt.retry(_failure(operation, kind, message), delay)
-                if retry
+                if retry or not _is_definite_graph_refusal(response)
                 else MutationAttempt.branch_result(
                     "providerRejected", empty, receipt, _failure(operation, kind, message)
                 )
@@ -1367,13 +1647,11 @@ class UpdateEventOperation:
         try:
             event = _event(_response_json(response), "", display)
         except (ValueError, TypeError, KeyError, AttributeError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                receipt,
+            # The PATCH is absolute, so the retry rereads the event and finds the change if it applied.
+            return MutationAttempt.retry(
                 _failure(
                     operation, FailureKind.PROTOCOL, "provider returned an invalid event: " + str(error)
-                ),
+                )
             )
         return MutationAttempt.branch_result("updated", UpdateEventOutput(event), receipt)
 

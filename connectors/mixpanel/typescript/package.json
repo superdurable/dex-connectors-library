@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-mixpanel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Mixpanel event import and raw export operations for Dex Flows",
   "repository": {

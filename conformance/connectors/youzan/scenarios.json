@@ -1,0 +1,576 @@
+{
+  "connector": "youzan",
+  "scenarios": [
+    {
+      "callId": "a9bfe5ac-b1ae-52dd-9c37-19f7c2743fa9",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"message\":\"successful\",\"data\":{\"sid\":59931296,\"name\":\"Sample Shop\",\"role\":1,\"line_of_business\":70000,\"url\":\"https://h5.youzan.com/v2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "lineOfBusiness": 70000,
+          "name": "Sample Shop",
+          "role": 1,
+          "shopID": 59931296,
+          "url": "https://h5.youzan.com/v2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-found",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "3edacc77-2183-5e14-9f5a-f59866aece32",
+      "exchanges": [
+        {
+          "body": "{\"code\":160100100,\"success\":false,\"message\":\"rejected\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-providerRejectedBusiness",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "18f0b146-a6d7-5122-a085-03f72aa4bc2a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-providerRejectedHTTP",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "7fb2175f-3c22-5bb7-8f11-6073a52ac6ab",
+      "exchanges": [
+        {
+          "body": "{\"code\":161400100,\"success\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-systemException",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "fc8c1cda-d813-5f0d-998c-f4fadab64c2b",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"sid\":1,\"name\":\"S\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-missingSuccess",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "227542d8-911a-57ef-a842-543c76c8e1cf",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-missingData",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "5ae68fbc-bd0f-5cd8-8672-2cf1f004d1b6",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"data\":{\"name\":\"S\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-missingShopID",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "64efd09e-df1d-560f-8ad0-2cb3eb89d291",
+      "exchanges": [
+        {
+          "body": "{\"success\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-malformed",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "9f6bf112-9821-53e9-a806-cdaf1bd2b567",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"data\":{\"sid\":1,\"name\":\"S\"}} {}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-trailing",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "e48d2cec-a8b9-522b-bccc-58b71429c1a4",
+      "exchanges": [
+        {
+          "body": "{\"more_than_sixteen_bytes\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-oversized",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "5b3bd5e6-0c4e-5afb-b081-80762cb0f555",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "lineOfBusiness": 0,
+          "name": "",
+          "role": 0,
+          "shopID": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-defect",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "f3f8424a-4a7c-5b0a-a009-e0d28d962a0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-rateLimit429",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "5ef00bbf-e9d5-53ea-abb7-dd91265eab7e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-availability503",
+      "operation": "getShopBasic"
+    },
+    {
+      "callId": "3ec65b1a-2302-5256-b2ab-ade337b6e2e8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/youzan.shop.basic.get/3.0.0",
+          "query": {
+            "access_token": [
+              "sample-test-token"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShopBasic-transportFailure",
+      "operation": "getShopBasic"
+    }
+  ],
+  "schemaVersion": 1
+}

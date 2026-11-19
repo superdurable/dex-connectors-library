@@ -4,6 +4,7 @@
 package stripe_test
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/stripe/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -140,26 +142,50 @@ func TestStripeKeyedWritesRetryUnreadableResponsesAndServerFailures(t *testing.T
 	}
 }
 
-func TestStripeCheckoutServerFailureHeaders(t *testing.T) {
+func TestStripeCheckoutServerFailuresRetryUnderSameKey(t *testing.T) {
 	testCases := []struct {
 		name    string
 		status  int
 		headers http.Header
-		isRetry bool
 	}{
 		{name: "500", status: 500},
-		{name: "500 with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}}, isRetry: true},
-		{name: "500 replayed with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}, "Idempotent-Replayed": {"true"}}},
-		{name: "503", status: 503, isRetry: true},
-		{name: "503 with retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"true"}}, isRetry: true},
+		{name: "500 with retry hint", status: 500, headers: http.Header{"Stripe-Should-Retry": {"true"}}},
+		{name: "503", status: 503},
+		{name: "503 with retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"true"}}},
 		{name: "503 with no retry hint", status: 503, headers: http.Header{"Stripe-Should-Retry": {"false"}}},
-		{name: "503 replayed", status: 503, headers: http.Header{"Idempotent-Replayed": {"true"}}},
 	}
 	for _, write := range stripeWriteCases()[:2] {
+		// Stripe replays a cached failure unchanged for every resend under the key, so it is uncertain at once.
+		for _, replayed := range []http.Header{
+			{"Stripe-Should-Retry": {"true"}, "Idempotent-Replayed": {"true"}}, {"Idempotent-Replayed": {"true"}},
+		} {
+			t.Run(write.name+" replayed", func(t *testing.T) {
+				posts := 0
+				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+					posts++
+					for name, values := range replayed {
+						response.Header().Set(name, values[0])
+					}
+					response.WriteHeader(http.StatusInternalServerError)
+				}))
+				defer server.Close()
+				outcome, err := write.invoke(newStripeClient(t, server.URL, stripe.Config{}), newStripeDexContext("replayed"))
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
+				require.Equal(t, 1, posts)
+			})
+		}
 		for _, testCase := range testCases {
 			t.Run(write.name+" "+testCase.name, func(t *testing.T) {
+				var keys []string
 				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 					require.Equal(t, write.path, request.URL.Path)
+					keys = append(keys, request.Header.Get("Idempotency-Key"))
+					if len(keys) > 1 {
+						_, writeErr := io.WriteString(response, write.responseBody)
+						require.NoError(t, writeErr)
+						return
+					}
 					for name, values := range testCase.headers {
 						response.Header().Set(name, values[0])
 					}
@@ -167,14 +193,121 @@ func TestStripeCheckoutServerFailureHeaders(t *testing.T) {
 				}))
 				defer server.Close()
 				client := newStripeClient(t, server.URL, stripe.Config{})
-				outcome, err := write.invoke(client, newStripeDexContext("server-headers"))
-				if testCase.isRetry {
-					requireStripeRetry(t, err, sdkgo.FailureAvailability)
+				ctx := newStripeDexContext("server-headers")
+				_, err := write.invoke(client, ctx)
+				requireStripeRetry(t, err, sdkgo.FailureAvailability)
+				ctx.attempt = 2
+				outcome, err := write.invoke(client, ctx)
+				require.NoError(t, err)
+				require.Equal(t, write.successBranch, outcome.branch)
+				require.Len(t, keys, 2)
+				require.Equal(t, keys[0], keys[1])
+			})
+		}
+	}
+}
+
+func TestStripeKeyedWritesRetryUnknownStatusesAndRejectDefiniteOnes(t *testing.T) {
+	testCases := []struct {
+		name       string
+		status     int
+		body       string
+		wantKind   sdkgo.FailureKind
+		isRejected bool
+	}{
+		{name: "302", status: http.StatusFound, wantKind: sdkgo.FailureProtocol},
+		{name: "402 without Stripe error", status: http.StatusPaymentRequired, wantKind: sdkgo.FailureProtocol},
+		{name: "402 card error", status: http.StatusPaymentRequired, body: `{"error":{"type":"card_error","code":"card_declined"}}`, wantKind: sdkgo.FailureProviderRejection, isRejected: true},
+		{name: "408", status: http.StatusRequestTimeout, wantKind: sdkgo.FailureProtocol},
+		{name: "410", status: http.StatusGone, wantKind: sdkgo.FailureProtocol},
+		{name: "425", status: http.StatusTooEarly, wantKind: sdkgo.FailureProtocol},
+		{name: "422", status: http.StatusUnprocessableEntity, body: `{"error":{"type":"invalid_request_error"}}`, wantKind: sdkgo.FailureProviderRejection, isRejected: true},
+		{name: "403", status: http.StatusForbidden, wantKind: sdkgo.FailureAuthorization, isRejected: true},
+		{name: "404", status: http.StatusNotFound, wantKind: sdkgo.FailureNotFound, isRejected: true},
+	}
+	for _, write := range stripeWriteCases() {
+		for _, testCase := range testCases {
+			t.Run(write.name+" "+testCase.name, func(t *testing.T) {
+				posts := 0
+				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+					if request.Method == http.MethodGet {
+						_, writeErr := io.WriteString(response, `{"object":"list","data":[],"has_more":false}`)
+						require.NoError(t, writeErr)
+						return
+					}
+					posts++
+					response.WriteHeader(testCase.status)
+					_, writeErr := io.WriteString(response, testCase.body)
+					require.NoError(t, writeErr)
+				}))
+				defer server.Close()
+				client := newStripeClient(t, server.URL, stripe.Config{})
+				outcome, err := write.invoke(client, newStripeDexContext("unknown-status"))
+				require.Equal(t, 1, posts)
+				if !testCase.isRejected {
+					requireStripeRetry(t, err, testCase.wantKind)
 					return
 				}
 				require.NoError(t, err)
-				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
-				require.Equal(t, sdkgo.FailureAvailability, outcome.failure.Kind)
+				require.Equal(t, write.providerRejectedBranch, outcome.branch)
+				require.Equal(t, testCase.wantKind, outcome.failure.Kind)
+			})
+		}
+	}
+}
+
+func TestStripeKeyedWritesSelectUncertainForTerminalCredentialsAfterFirstAttempt(t *testing.T) {
+	terminal := map[string]sdkgo.CredentialProvider[stripe.Credentials]{
+		"blank key":               sdkgo.StaticCredentialProvider[stripe.Credentials]{stripeConnection: {}},
+		"sdk reauthorization":     failingResolveCredentials{sdkgo.NewReauthorizationRequiredError(nil)},
+		"project reauthorization": failingResolveCredentials{projectconfig.ErrReauthorizationRequired},
+		"object not found":        failingResolveCredentials{projectconfig.ErrObjectNotFound},
+		"not selected":            failingResolveCredentials{projectconfig.ErrConnectionNotSelected},
+		"broker rejected":         failingResolveCredentials{projectconfig.ErrCredentialBrokerRejected},
+	}
+	for _, write := range stripeWriteCases() {
+		for name, credentials := range terminal {
+			t.Run(write.name+" "+name, func(t *testing.T) {
+				client, err := stripe.New(stripe.Config{Endpoint: "http://127.0.0.1:1"}, credentials)
+				require.NoError(t, err)
+				outcome, err := write.invoke(client, newStripeDexContext("credentials"))
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.BranchID("defect"), outcome.branch)
+				ctx := newStripeDexContext("credentials")
+				ctx.attempt = 2
+				outcome, err = write.invoke(client, ctx)
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.BranchID("uncertain"), outcome.branch, "an earlier attempt may have created the object")
+				require.Equal(t, sdkgo.FailureAuthentication, outcome.failure.Kind)
+			})
+		}
+	}
+}
+
+// failingResolveCredentials fails every resolve with resolveErr.
+type failingResolveCredentials struct{ resolveErr error }
+
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (stripe.Credentials, error) {
+	return stripe.Credentials{}, credentials.resolveErr
+}
+
+func TestStripeKeyedWritesRetryATransientCredentialFailureOnEveryAttempt(t *testing.T) {
+	transient := map[string]sdkgo.CredentialProvider[stripe.Credentials]{
+		"broker unavailable": failingResolveCredentials{fmt.Errorf("%w: HTTP 503", projectconfig.ErrCredentialBrokerUnavailable)},
+		"not configured":     sdkgo.StaticCredentialProvider[stripe.Credentials]{},
+		"unlisted":           failingResolveCredentials{errors.New("unlisted resolve failure")},
+	}
+	for _, write := range stripeWriteCases() {
+		for name, credentials := range transient {
+			t.Run(write.name+" "+name, func(t *testing.T) {
+				client, err := stripe.New(stripe.Config{Endpoint: "http://127.0.0.1:1"}, credentials)
+				require.NoError(t, err)
+				for _, attempt := range []int32{1, 2} {
+					ctx := newStripeDexContext("broker")
+					ctx.attempt = attempt
+					_, err = write.invoke(client, ctx)
+					requireStripeRetry(t, err, sdkgo.FailureAvailability)
+				}
 			})
 		}
 	}
@@ -198,6 +331,7 @@ func TestCreateRefundReadsBackIndeterminateServerFailure(t *testing.T) {
 		{name: "503 explicit retry", status: 503, headerName: "Stripe-Should-Retry", headerValue: "true", isRetry: true},
 		{name: "503 no retry", status: 503, headerName: "Stripe-Should-Retry", headerValue: "false", found: true},
 		{name: "503 replayed", status: 503, headerName: "Idempotent-Replayed", headerValue: "true", found: true},
+		{name: "500 replayed absent", status: 500, replayed: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var callID string
@@ -238,14 +372,17 @@ func TestCreateRefundReadsBackIndeterminateServerFailure(t *testing.T) {
 				require.Zero(t, readCount)
 				return
 			}
-			require.NoError(t, err)
 			require.Equal(t, 1, readCount)
 			if testCase.found {
+				require.NoError(t, err)
 				require.Equal(t, stripe.CreateRefundBranchRefunded, outcome.branch)
 				require.Equal(t, "re_found", outcome.objectID)
-			} else {
+			} else if testCase.replayed {
+				// Stripe replays the cached failure for every resend, so a miss cannot be retried away.
+				require.NoError(t, err)
 				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
-				require.Equal(t, sdkgo.FailureAvailability, outcome.failure.Kind)
+			} else {
+				requireStripeRetry(t, err, sdkgo.FailureAvailability)
 			}
 		})
 	}
@@ -253,13 +390,13 @@ func TestCreateRefundReadsBackIndeterminateServerFailure(t *testing.T) {
 
 func TestCreateRefundReadbackPaginationIsBounded(t *testing.T) {
 	for _, testCase := range []struct {
-		name       string
-		findPage   int
-		wantReads  int
-		wantBranch sdkgo.BranchID
+		name      string
+		findPage  int
+		wantReads int
+		isFound   bool
 	}{
-		{name: "found on second page", findPage: 2, wantReads: 2, wantBranch: stripe.CreateRefundBranchRefunded},
-		{name: "still more after bound", findPage: 0, wantReads: 3, wantBranch: sdkgo.UncertainBranchID},
+		{name: "found on second page", findPage: 2, wantReads: 2, isFound: true},
+		{name: "still more after bound", findPage: 0, wantReads: 3},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			readCount := 0
@@ -286,9 +423,13 @@ func TestCreateRefundReadbackPaginationIsBounded(t *testing.T) {
 			defer server.Close()
 			client := newStripeClient(t, server.URL, stripe.Config{})
 			outcome, err := stripeWriteCases()[2].invoke(client, newStripeDexContext("refund-pages"))
-			require.NoError(t, err)
 			require.Equal(t, testCase.wantReads, readCount)
-			require.Equal(t, testCase.wantBranch, outcome.branch)
+			if !testCase.isFound {
+				requireStripeRetry(t, err, sdkgo.FailureAvailability)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, stripe.CreateRefundBranchRefunded, outcome.branch)
 		})
 	}
 }
@@ -299,13 +440,12 @@ func TestCreateRefundReadbackFailure(t *testing.T) {
 		readStatus  int
 		readBody    string
 		maxBytes    int64
-		shouldRetry bool
 		wantKind    sdkgo.FailureKind
 		wantMessage string
 	}{
-		{name: "temporary unavailability", readStatus: http.StatusServiceUnavailable, shouldRetry: true},
+		{name: "temporary unavailability", readStatus: http.StatusServiceUnavailable, wantKind: sdkgo.FailureAvailability, wantMessage: "Stripe refund read-back is temporarily unavailable"},
 		{name: "oversized list", readStatus: http.StatusOK, readBody: strings.Repeat("x", 65), maxBytes: 64, wantKind: sdkgo.FailureAvailability, wantMessage: "Stripe refund outcome cannot be confirmed after a server error"},
-		{name: "oversized temporary unavailability", readStatus: http.StatusServiceUnavailable, readBody: strings.Repeat("x", 65), maxBytes: 64, shouldRetry: true},
+		{name: "oversized temporary unavailability", readStatus: http.StatusServiceUnavailable, readBody: strings.Repeat("x", 65), maxBytes: 64, wantKind: sdkgo.FailureAvailability, wantMessage: "Stripe refund read-back is temporarily unavailable"},
 		{name: "read-back forbidden", readStatus: http.StatusForbidden, readBody: `{"error":{"type":"invalid_request_error","message":"rk_test_secret"}}`, wantKind: sdkgo.FailureAuthorization, wantMessage: stripeForbiddenReadbackMessage},
 		{name: "read-back unauthenticated", readStatus: http.StatusUnauthorized, readBody: `{"error":{"type":"invalid_request_error","message":"rk_test_secret"}}`, wantKind: sdkgo.FailureAuthentication, wantMessage: stripeUnauthenticatedReadbackMessage},
 	} {
@@ -321,15 +461,11 @@ func TestCreateRefundReadbackFailure(t *testing.T) {
 			}))
 			defer server.Close()
 			client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: testCase.maxBytes})
-			outcome, err := stripeWriteCases()[2].invoke(client, newStripeDexContext("refund-readback-error"))
-			if testCase.shouldRetry {
-				requireStripeRetry(t, err, sdkgo.FailureAvailability)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
-			require.Equal(t, testCase.wantKind, outcome.failure.Kind)
-			require.Equal(t, testCase.wantMessage, outcome.failure.Message)
+			_, err := stripeWriteCases()[2].invoke(client, newStripeDexContext("refund-readback-error"))
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, testCase.wantKind, retry.Failure.Kind)
+			require.Equal(t, testCase.wantMessage, retry.Failure.Message)
 		})
 	}
 }
@@ -347,13 +483,13 @@ func TestStripeKeyedWritesClassifyOversizedFailuresByStatus(t *testing.T) {
 		headers  http.Header
 		wantKind sdkgo.FailureKind
 		isRetry  bool
-		isReject bool
 	}{
 		{name: "409", status: http.StatusConflict, wantKind: sdkgo.FailureConflict, isRetry: true},
-		{name: "409 with no-retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"false"}}, wantKind: sdkgo.FailureConflict, isReject: true},
+		{name: "409 with no-retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"false"}}, wantKind: sdkgo.FailureConflict, isRetry: true},
 		{name: "503", status: http.StatusServiceUnavailable, wantKind: sdkgo.FailureAvailability, isRetry: true},
-		{name: "500", status: http.StatusInternalServerError, wantKind: sdkgo.FailureAvailability},
-		{name: "400", status: http.StatusBadRequest, wantKind: sdkgo.FailureProviderRejection, isReject: true},
+		{name: "500", status: http.StatusInternalServerError, wantKind: sdkgo.FailureAvailability, isRetry: true},
+		// An unread 400 body may carry the created object, so the outcome is unknown and resent under the key.
+		{name: "400", status: http.StatusBadRequest, wantKind: sdkgo.FailureProtocol, isRetry: true},
 	}
 	for _, write := range stripeWriteCases() {
 		for _, testCase := range testCases {
@@ -379,32 +515,39 @@ func TestStripeKeyedWritesClassifyOversizedFailuresByStatus(t *testing.T) {
 					return
 				}
 				require.NoError(t, err)
-				wantBranch := sdkgo.UncertainBranchID
-				if testCase.isReject {
-					wantBranch = write.providerRejectedBranch
-				}
-				require.Equal(t, wantBranch, outcome.branch)
+				require.Equal(t, write.providerRejectedBranch, outcome.branch)
 				require.Equal(t, testCase.wantKind, outcome.failure.Kind)
 			})
 		}
 	}
 }
 
-func TestStripeKeyedWritesRejectOversizedResponses(t *testing.T) {
+// Stripe accepted the write and replays an unusable 2xx body unchanged under the key, so it selects
+// uncertain instead of a futile retry or a failed invalidResponse.
+func TestStripeKeyedWritesSelectUncertainForUnusableSuccessBodies(t *testing.T) {
 	for _, write := range stripeWriteCases() {
-		t.Run(write.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-				if _, err := io.WriteString(response, strings.Repeat("x", 65)); err != nil {
-					panic(err)
-				}
-			}))
-			defer server.Close()
-			client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: 64})
-			outcome, err := write.invoke(client, newStripeDexContext("oversized-response"))
-			require.NoError(t, err)
-			require.Equal(t, write.invalidResponseBranch, outcome.branch)
-			require.Equal(t, sdkgo.FailureResponseTooLarge, outcome.failure.Kind)
-		})
+		for _, testCase := range []struct {
+			name     string
+			body     string
+			wantKind sdkgo.FailureKind
+		}{
+			{name: "oversized", body: strings.Repeat("x", 65), wantKind: sdkgo.FailureResponseTooLarge},
+			{name: "malformed", body: `{"id":"x"}`, wantKind: sdkgo.FailureProtocol},
+		} {
+			t.Run(write.name+" "+testCase.name, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+					if _, err := io.WriteString(response, testCase.body); err != nil {
+						panic(err)
+					}
+				}))
+				defer server.Close()
+				client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: 64})
+				outcome, err := write.invoke(client, newStripeDexContext("oversized-response"))
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
+				require.Equal(t, testCase.wantKind, outcome.failure.Kind)
+			})
+		}
 	}
 }
 
@@ -479,16 +622,20 @@ func TestStripeKeyedWritesClassifyConflicts(t *testing.T) {
 		{name: "409 with retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"true"}}, body: `{"error":{"type":"invalid_request_error"}}`, isRetry: true},
 		{name: "409 without body", status: http.StatusConflict, isRetry: true},
 		{name: "409 other code", status: http.StatusConflict, body: `{"error":{"type":"invalid_request_error","code":"resource_conflict"}}`, isRetry: true},
-		{name: "409 with no-retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"false"}}, body: stripeKeyInUseBody},
-		{name: "409 idempotency mismatch", status: http.StatusConflict, body: `{"error":{"type":"idempotency_error","message":"Keys for idempotent requests can only be used with the same parameters they were first used with."}}`},
+		{name: "409 with no-retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"false"}}, body: stripeKeyInUseBody, isRetry: true},
+		{name: "409 idempotency mismatch", status: http.StatusConflict, body: `{"error":{"type":"idempotency_error","message":"Keys for idempotent requests can only be used with the same parameters they were first used with."}}`, isRetry: true},
 		{name: "400 idempotency mismatch", status: http.StatusBadRequest, body: `{"error":{"type":"idempotency_error","message":"Keys for idempotent requests can only be used with the same parameters they were first used with."}}`},
 	}
 	for _, write := range stripeWriteCases() {
 		for _, testCase := range testCases {
 			t.Run(write.name+" "+testCase.name, func(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-					require.Equal(t, http.MethodPost, request.Method)
 					require.Equal(t, write.path, request.URL.Path)
+					if request.Method == http.MethodGet {
+						_, writeErr := io.WriteString(response, `{"object":"list","data":[],"has_more":false}`)
+						require.NoError(t, writeErr)
+						return
+					}
 					for name, values := range testCase.headers {
 						response.Header().Set(name, values[0])
 					}
@@ -505,11 +652,7 @@ func TestStripeKeyedWritesClassifyConflicts(t *testing.T) {
 				}
 				require.NoError(t, err)
 				require.Equal(t, write.providerRejectedBranch, outcome.branch)
-				wantKind := sdkgo.FailureProviderRejection
-				if testCase.status == http.StatusConflict {
-					wantKind = sdkgo.FailureConflict
-				}
-				require.Equal(t, wantKind, outcome.failure.Kind)
+				require.Equal(t, sdkgo.FailureProviderRejection, outcome.failure.Kind)
 			})
 		}
 	}

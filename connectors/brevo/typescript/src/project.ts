@@ -23,8 +23,9 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     const credentials: CredentialProvider<Credentials> = {
       async resolve(_call, signal) {
         const privateFields = await loadedProject.resolveCredential('brevo', name, signal);
-        if (typeof privateFields.api_key !== 'string') throw new TypeError('Brevo API key is unavailable');
-        return { apiKey: new SecretString(privateFields.api_key) };
+        // A ZodError marks unusable stored material, which the client treats as terminal.
+        const decoded = z.object({ api_key: z.string() }).parse(privateFields);
+        return { apiKey: new SecretString(decoded.api_key) };
       },
     };
     return new BrevoClient(config, credentials);

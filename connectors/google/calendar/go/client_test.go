@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -143,15 +145,48 @@ func TestOversizedResponseSelectsInvalidResponse(t *testing.T) {
 	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 }
 
-func TestUnavailableCredentialsSelectDefectWithoutProviderRequest(t *testing.T) {
-	provider := newRecordingProvider(t, func(http.ResponseWriter, *http.Request, int) {})
-	client, err := calendar.New(calendar.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[calendar.Credentials]{})
-	require.NoError(t, err)
-	result, err := sdkgo.RunQuery(newCalendarDexContext("no-credentials"), client.GetEvent(), calendarConnection, calendar.GetEventInput{CalendarID: "primary", EventID: "event12345"})
-	require.NoError(t, err)
-	require.Equal(t, calendar.GetEventBranchDefect, result.Branch)
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
-	require.Zero(t, provider.requestCount())
+// resolveErrorCredentials fails every resolution with one error.
+type resolveErrorCredentials struct{ err error }
+
+func (credentials resolveErrorCredentials) Resolve(sdkgo.Call) (calendar.Credentials, error) {
+	return calendar.Credentials{}, credentials.err
+}
+
+func (credentials resolveErrorCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[calendar.Credentials]) (calendar.Credentials, error) {
+	return calendar.Credentials{}, credentials.err
+}
+
+func TestCredentialResolveFailuresRetryUnlessTerminal(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		source     calendar.CredentialSource
+		isTerminal bool
+	}{
+		{name: "unconfigured static connection", source: sdkgo.StaticCredentialProvider[calendar.Credentials]{}},
+		{name: "broker unavailable", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerUnavailable}},
+		{name: "unlisted", source: resolveErrorCredentials{err: errors.New("unlisted resolve failure")}},
+		{name: "reauthorization", source: resolveErrorCredentials{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))}, isTerminal: true},
+		{name: "project reauthorization", source: resolveErrorCredentials{err: projectconfig.ErrReauthorizationRequired}, isTerminal: true},
+		{name: "object not found", source: resolveErrorCredentials{err: projectconfig.ErrObjectNotFound}, isTerminal: true},
+		{name: "connection not selected", source: resolveErrorCredentials{err: projectconfig.ErrConnectionNotSelected}, isTerminal: true},
+		{name: "broker rejected", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerRejected}, isTerminal: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(http.ResponseWriter, *http.Request, int) {})
+			client, err := calendar.New(calendar.Config{Endpoint: provider.URL}, test.source)
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(newCalendarDexContext("credentials-"+test.name), client.GetEvent(), calendarConnection, calendar.GetEventInput{CalendarID: "primary", EventID: "event12345"})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, calendar.GetEventBranchDefect, result.Branch)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Zero(t, provider.requestCount())
+		})
+	}
 }
 
 type rejectionRefreshingCredentialProvider struct {
@@ -276,11 +311,12 @@ func newCalendarClient(t *testing.T, endpoint string) *calendar.Client {
 
 type calendarDexContext struct {
 	context.Context
-	step string
+	step    string
+	attempt int32
 }
 
 func newCalendarDexContext(step string) *calendarDexContext {
-	return &calendarDexContext{Context: context.Background(), step: step}
+	return &calendarDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 func (*calendarDexContext) FlowID() string                                  { return "calendar-flow" }
 func (*calendarDexContext) RunID() string                                   { return "run" }
@@ -289,7 +325,7 @@ func (context *calendarDexContext) StepExecutionID() string                 { re
 func (*calendarDexContext) FromStepExecutionID() string                     { return "" }
 func (*calendarDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (*calendarDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*calendarDexContext) Attempt() int32                                  { return 1 }
+func (context *calendarDexContext) Attempt() int32                          { return context.attempt }
 func (*calendarDexContext) HasTimerFired() bool                             { return false }
 func (*calendarDexContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*calendarDexContext) WaitForMethodFailed() bool                       { return false }

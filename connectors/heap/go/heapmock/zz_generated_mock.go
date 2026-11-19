@@ -61,7 +61,7 @@ func SetUserPropertiesProviderRejected(value heap.UserPropertiesResult, failure 
 	return connectormock.Branch(heap.SetUserPropertiesBranchProviderRejected, value, failure)
 }
 
-// SetUserPropertiesInvalidResponse selects the invalidResponse branch: Heap returned an oversized or unreadable confirmation.
+// SetUserPropertiesInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an oversized or unreadable confirmation now retries, because repeating the overwrite is safe.
 func SetUserPropertiesInvalidResponse(value heap.UserPropertiesResult, failure *sdkgo.Failure) connectormock.Case[heap.UserPropertiesResult] {
 	return connectormock.Branch(heap.SetUserPropertiesBranchInvalidResponse, value, failure)
 }

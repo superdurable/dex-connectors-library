@@ -6,16 +6,16 @@ metadata:
   description: Pinecone REST connector with two bounded operations.
   company: Pinecone
   categories: [ai, databases-storage]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: pinecone
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [upsertVectors, queryVectors]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-pinecone'
       operations: [upsertVectors, queryVectors]
       triggers: []
@@ -82,7 +82,7 @@ spec:
       optional: true
     - id: invalidResponse
       goName: InvalidResponse
-      description: The provider returned malformed or oversized JSON.
+      description: Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.
       optional: true
     - id: defect
       goName: Defect
@@ -91,6 +91,8 @@ spec:
     execution:
       executeMethodTimeout: 30s
       durability: async
+      # A repeated upsert replaces the same vector IDs with the same values.
+      repeatOnUnknown: safe
     mocks:
     - name: defaultUpsertVectors
       branch: upserted

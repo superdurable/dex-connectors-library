@@ -41,10 +41,11 @@ func (PostThreadReplyOperation) IdempotencyKey(callID sdkgo.CallID, _ PostThread
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /teams/{team-id}/channels/{channel-id}/messages/{message-id}/replies at most once per
-// Step execution. An attempt that finds an earlier attempt's fence claim reads the thread's 50 newest replies
-// and reports the one with the same text, created by a person after the first send, as sent; otherwise it
-// selects uncertain. Reading back needs ChannelMessage.Read.All.
+// Invoke sends POST /teams/{team-id}/channels/{channel-id}/messages/{message-id}/replies. An attempt that
+// finds an earlier attempt's fence claim reads the thread's 50 newest replies and reports the one with the
+// same text, created by a person after the first send, as sent. Without a match it resends while possible
+// sends stay below the send cap (call.MaxSends()) and selects uncertain at the cap or when several replies
+// match. Reading back needs ChannelMessage.Read.All.
 func (operation PostThreadReplyOperation) Invoke(call sdkgo.Call, input PostThreadReplyInput) sdkgo.MutationAttempt[PostMessageOutput] {
 	client := operation.client
 	teamID, channelID, messageID := strings.TrimSpace(input.TeamID), strings.TrimSpace(input.ChannelID), strings.TrimSpace(input.MessageID)

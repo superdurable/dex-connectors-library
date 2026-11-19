@@ -90,101 +90,117 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.salesforce.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Salesforce credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Salesforce stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Salesforce stored credential does not match the connector credential fields")
     if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'instance_url', 'jwt_username', 'jwt_private_key', 'jwt_login_environment', 'auth_method')):
-        raise ValueError("Salesforce stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Salesforce stored credential does not match the connector credential fields")
     is_shared = shared
     oauth_client_id = material.get("oauth_client_id")
     if oauth_client_id is not None and not (isinstance(oauth_client_id, str)):
-        raise ValueError("Salesforce credential oauth_client_id has an invalid type")
+        raise CredentialMaterialError("Salesforce credential oauth_client_id has an invalid type")
     oauth_client_secret = material.get("oauth_client_secret")
     if oauth_client_secret is not None and not (isinstance(oauth_client_secret, str)):
-        raise ValueError("Salesforce credential oauth_client_secret has an invalid type")
+        raise CredentialMaterialError("Salesforce credential oauth_client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Salesforce credential access_token has an invalid type")
+        raise CredentialMaterialError("Salesforce credential access_token has an invalid type")
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
-        raise ValueError("Salesforce credential refresh_token has an invalid type")
+        raise CredentialMaterialError("Salesforce credential refresh_token has an invalid type")
     instance_url = material.get("instance_url")
     if instance_url is not None and not (isinstance(instance_url, str)):
-        raise ValueError("Salesforce credential instance_url has an invalid type")
+        raise CredentialMaterialError("Salesforce credential instance_url has an invalid type")
     jwt_username = material.get("jwt_username")
     if jwt_username is not None and not (isinstance(jwt_username, str)):
-        raise ValueError("Salesforce credential jwt_username has an invalid type")
+        raise CredentialMaterialError("Salesforce credential jwt_username has an invalid type")
     jwt_private_key = material.get("jwt_private_key")
     if jwt_private_key is not None and not (isinstance(jwt_private_key, str)):
-        raise ValueError("Salesforce credential jwt_private_key has an invalid type")
+        raise CredentialMaterialError("Salesforce credential jwt_private_key has an invalid type")
     jwt_login_environment = material.get("jwt_login_environment")
     if jwt_login_environment is not None and not (isinstance(jwt_login_environment, str)):
-        raise ValueError("Salesforce credential jwt_login_environment has an invalid type")
+        raise CredentialMaterialError("Salesforce credential jwt_login_environment has an invalid type")
     selected_method = material.get('auth_method')
     if selected_method is None:
         selected_method = ''
     if not isinstance(selected_method, str):
-        raise ValueError("Salesforce credential auth_method is invalid")
+        raise CredentialMaterialError("Salesforce credential auth_method is invalid")
     method = selected_method or "salesforce-oauth"
     values: dict[str, Any] = {'auth_method_id': method}
     if method == "salesforce-oauth":
         if not oauth_client_id:
-            raise ValueError("Salesforce credential oauth_client_id is required")
+            raise CredentialMaterialError("Salesforce credential oauth_client_id is required")
         if oauth_client_id:
             values["oauth_client_id"] = oauth_client_id
         if not oauth_client_secret and not is_shared:
-            raise ValueError("Salesforce credential oauth_client_secret is required")
+            raise CredentialMaterialError("Salesforce credential oauth_client_secret is required")
         if oauth_client_secret:
             values["oauth_client_secret"] = SecretString(oauth_client_secret)
         if not access_token:
-            raise ValueError("Salesforce credential access_token is required")
+            raise CredentialMaterialError("Salesforce credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         if not refresh_token and not is_shared:
-            raise ValueError("Salesforce credential refresh_token is required")
+            raise CredentialMaterialError("Salesforce credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
         values["instance_url"] = instance_url or ''
     elif method == "salesforce-sandbox-oauth":
         if not oauth_client_id:
-            raise ValueError("Salesforce credential oauth_client_id is required")
+            raise CredentialMaterialError("Salesforce credential oauth_client_id is required")
         if oauth_client_id:
             values["oauth_client_id"] = oauth_client_id
         if not oauth_client_secret and not is_shared:
-            raise ValueError("Salesforce credential oauth_client_secret is required")
+            raise CredentialMaterialError("Salesforce credential oauth_client_secret is required")
         if oauth_client_secret:
             values["oauth_client_secret"] = SecretString(oauth_client_secret)
         if not access_token:
-            raise ValueError("Salesforce credential access_token is required")
+            raise CredentialMaterialError("Salesforce credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         if not refresh_token and not is_shared:
-            raise ValueError("Salesforce credential refresh_token is required")
+            raise CredentialMaterialError("Salesforce credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
         values["instance_url"] = instance_url or ''
     elif method == "salesforce-jwt-bearer":
         if not oauth_client_id:
-            raise ValueError("Salesforce credential oauth_client_id is required")
+            raise CredentialMaterialError("Salesforce credential oauth_client_id is required")
         if oauth_client_id:
             values["oauth_client_id"] = oauth_client_id
         if not jwt_username:
-            raise ValueError("Salesforce credential jwt_username is required")
+            raise CredentialMaterialError("Salesforce credential jwt_username is required")
         if jwt_username:
             values["jwt_username"] = jwt_username
         if not jwt_private_key and not is_shared:
-            raise ValueError("Salesforce credential jwt_private_key is required")
+            raise CredentialMaterialError("Salesforce credential jwt_private_key is required")
         if jwt_private_key:
             values["jwt_private_key"] = SecretString(jwt_private_key)
         if jwt_login_environment and jwt_login_environment not in ('production', 'sandbox'):
-            raise ValueError("Salesforce credential jwt_login_environment is invalid")
+            raise CredentialMaterialError("Salesforce credential jwt_login_environment is invalid")
         values["jwt_login_environment"] = jwt_login_environment or ''
         if not access_token and is_shared:
-            raise ValueError("Salesforce credential access_token is required")
+            raise CredentialMaterialError("Salesforce credential access_token is required")
         values["access_token"] = SecretString(access_token or '')
         values["instance_url"] = instance_url or ''
     else:
-        raise ValueError("Salesforce credential auth_method is invalid")
+        raise CredentialMaterialError("Salesforce credential auth_method is invalid")
     return Credentials(**values)
 
 

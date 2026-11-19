@@ -1,6 +1,6 @@
 # Typeform Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/typeform/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/typeform/go@v0.23.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/typeform`.
 
@@ -122,9 +122,23 @@ Mutation uses async durability: a lost answer, `408`, `429`, or `5xx` returns
 Retry, and a Dex re-dispatch repeats the same `PUT`. The real-Dex test in
 `mutation_dispatch_integration_test.go` forces a second Execute after the
 first accepted PUT, and observes two identical `PUT`s and one webhook.
-`isDisabled` stores the webhook without delivering to it. A blank
-`webhook_secret` selects `defect` before any request, and Typeform's
-`webhook_url_https_required` selects `providerRejected` with `VALIDATION`.
+`isDisabled` stores the webhook without delivering to it. A connection that
+needs reauthorization, is missing or no longer selected, or that the credential
+broker refuses selects `defect` before any request for every operation, except
+that a later `upsertWebhook` attempt retries, because an earlier attempt may
+have sent the `PUT`; any other credential failure, such as a broker outage or a
+connection the static provider does not configure, retries. Stored credential
+material that fails the generated credential checks is terminal like a
+reauthorization. A blank `webhook_secret` selects `defect` before any request,
+and Typeform's `webhook_url_https_required` selects `providerRejected` with
+`VALIDATION`. The manifest declares `repeatOnUnknown: safe`: only `400`,
+`401`, `402` (Typeform's documented plan without the feature), `403`, `404`,
+`411`, `413`, `414`, `415`, or `422` with a fully read body that carries no
+webhook `id` select `notFound` or `providerRejected`, and such a refusal is
+never repeated. Every other status, such as `405` or `409`, an oversized or unreadable error body, and
+a malformed, oversized, or mismatched `2xx` body return Retry, so the PUT
+repeats; `invalidResponse` stays declared for compatibility but is no longer
+selected.
 
 ## Trigger
 

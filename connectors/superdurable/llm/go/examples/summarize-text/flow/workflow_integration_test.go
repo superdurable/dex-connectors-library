@@ -71,6 +71,47 @@ func TestSummarizeTextExampleRunsOnTheConnectionsProviderWithRealDex(t *testing.
 		requireOnlyKeyInItsSlot(t, provider)
 	})
 
+	t.Run("a configured Anthropic-compatible gateway generates the summary", func(t *testing.T) {
+		provider := textgentest.NewFakeProvider(t, claudeIntegrationDialect.CredentialHeader, integrationAPIKey)
+		provider.EnqueueReplies(messagestest.StreamReply(textgentest.GeneratedReply{
+			Text: "The Messages gateway summarized it.", ServedModel: "gateway-model", ResponseID: "msg_gateway_example", Usage: usage,
+		}, "end_turn"))
+		flow, client := startSummaryWorker(t, provider, map[string]any{
+			"provider": "anthropic-compatible", "baseUrl": provider.BaseURL() + "/anthropic", "model": "gateway-model",
+			"models": []any{"gateway-model"}, "modelContextWindowTokens": []any{"gateway-model=200000"},
+		}, SummaryModelConfiguration{})
+		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-anthropic-gateway-%d", time.Now().UnixNano()))
+		require.Equal(t, llm.GenerateTextBranchGenerated, outcome.Branch)
+		require.Equal(t, "anthropic-compatible", outcome.Provider)
+		require.Equal(t, "gateway-model", outcome.Model)
+		require.Equal(t, "The Messages gateway summarized it.", outcome.Summary)
+		require.Len(t, provider.Requests(), 1)
+		require.Equal(t, "/anthropic/v1/messages", provider.Requests()[0].Path)
+		require.Equal(t, "2023-06-01", provider.Requests()[0].Header.Get("anthropic-version"))
+		requireOnlyKeyInItsSlot(t, provider)
+	})
+
+	t.Run("an OpenAI-compatible gateway on the Responses API generates the summary", func(t *testing.T) {
+		provider := textgentest.NewFakeProvider(t, compatibleIntegrationDialect.CredentialHeader, integrationAPIKey)
+		provider.EnqueueReplies(textgentest.FakeReply{
+			Header: http.Header{"Content-Type": {"application/json"}},
+			Body: `{"id":"resp_gateway_example","model":"gateway-model","status":"completed",` +
+				`"output":[{"type":"message","content":[{"type":"output_text","text":"The Responses gateway summarized it."}]}],` +
+				`"usage":{"input_tokens":30,"output_tokens":12,"total_tokens":42}}`,
+		})
+		flow, client := startSummaryWorker(t, provider, map[string]any{
+			"provider": "openai-compatible", "baseUrl": provider.BaseURL() + "/v1", "model": "gateway-model",
+			"openaiCompatibleApi": "responses",
+		}, SummaryModelConfiguration{})
+		outcome := runSummaryFlowToCompletion(t, client, flow, fmt.Sprintf("llm-summary-responses-gateway-%d", time.Now().UnixNano()))
+		require.Equal(t, llm.GenerateTextBranchGenerated, outcome.Branch)
+		require.Equal(t, "openai-compatible", outcome.Provider)
+		require.Equal(t, "The Responses gateway summarized it.", outcome.Summary)
+		require.Len(t, provider.Requests(), 1)
+		require.Equal(t, "/v1/responses", provider.Requests()[0].Path)
+		requireOnlyKeyInItsSlot(t, provider)
+	})
+
 	t.Run("the provider's default model generates and streams the summary", func(t *testing.T) {
 		provider := textgentest.NewFakeProvider(t, deepSeekIntegrationDialect.CredentialHeader, integrationAPIKey)
 		provider.EnqueueReplies(deepSeekIntegrationDialect.GeneratedReply(textgentest.GeneratedReply{
@@ -181,7 +222,7 @@ func startSummaryWorker(
 	}}, nil)
 	var llmConnection llm.Connection
 	var err error
-	if configuration["provider"] == "openai-compatible" {
+	if configuration["provider"] == "openai-compatible" || configuration["provider"] == "anthropic-compatible" {
 		llmConnection, err = llm.NewProjectConnection(project, ConnectionName)
 	} else {
 		llmConnection, err = llm.NewProjectConnection(project, ConnectionName, llm.WithBaseURLForTest(provider.BaseURL()))

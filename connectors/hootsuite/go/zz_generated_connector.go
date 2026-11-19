@@ -412,14 +412,16 @@ var SchedulePostDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SchedulePostBranchScheduled, Description: "Hootsuite accepted the scheduled message and returned its ID."},
 		{ID: SchedulePostBranchProviderRejected, Description: "Hootsuite definitively rejected the schedule request.", Optional: true},
-		{ID: SchedulePostBranchUncertain, Description: "The request may have reached Hootsuite but no message ID was confirmed; inspect Planner before resending.", Optional: true},
-		{ID: SchedulePostBranchDefect, Description: "Local post input, credentials, or dispatch checkpoint is invalid.", Optional: true},
+		{ID: SchedulePostBranchUncertain, Description: "Hootsuite may have scheduled the message, but the send cap was reached or Hootsuite returned a message ID without a complete confirmation; inspect Planner before resending.", Optional: true},
+		{ID: SchedulePostBranchDefect, Description: "Local post input, credentials, or dispatch fence is invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SchedulePostResult = sdkgo.MutationResult[ScheduledPostReceipt]
@@ -439,6 +441,8 @@ type SchedulePostStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SchedulePostResult]                           `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ScheduledPostReceipt]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSchedulePostStep[IN any](config SchedulePostStepConfig[IN]) sdkgo.MutationStep[IN, SchedulePostInput, ScheduledPostReceipt] {
@@ -470,5 +474,6 @@ func NewSchedulePostStep[IN any](config SchedulePostStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

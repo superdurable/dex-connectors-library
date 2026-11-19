@@ -98,6 +98,28 @@ func TestAppendTextReportsAnotherWritersChange(t *testing.T) {
 	require.Zero(t, provider.Count(fakegoogledocs.CountBatchUpdatesReceived))
 }
 
+func TestAppendTextRetriesATransientCredentialFailure(t *testing.T) {
+	server := newRecordingServer(t, func(http.ResponseWriter, recordedRequest) { t.Fatal("no request is expected") })
+	client, err := docs.New(docs.Config{DocsEndpoint: server.URL, DriveEndpoint: server.URL}, sdkgo.StaticCredentialProvider[docs.Credentials]{})
+	require.NoError(t, err)
+	input := docs.AppendTextInput{DocumentID: draftDocumentID, RequiredRevisionID: "rev-1", Text: publicationStamp}
+	_, err = sdkgo.RunMutation(newDexContext("append-transient-credentials"), client.AppendText(), docsConnection, input)
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+}
+
+func TestAppendTextRetriesMissingCredentialsAfterAPossibleWrite(t *testing.T) {
+	server := newRecordingServer(t, func(http.ResponseWriter, recordedRequest) { t.Fatal("no request is expected") })
+	client, err := docs.New(docs.Config{DocsEndpoint: server.URL, DriveEndpoint: server.URL}, reauthorizationCredentials{})
+	require.NoError(t, err)
+	input := docs.AppendTextInput{DocumentID: draftDocumentID, RequiredRevisionID: "rev-1", Text: publicationStamp}
+	result, err := sdkgo.RunMutation(newDexContext("append-credentials"), client.AppendText(), docsConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, docs.AppendTextBranchDefect, result.Branch)
+	// A later attempt may follow a write that applied, so defect could hide it.
+	_, err = sdkgo.RunMutation(newDexContext("append-credentials").nextAttempt(), client.AppendText(), docsConnection, input)
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+}
+
 func TestAppendTextRejectsInvalidInputWithoutARequest(t *testing.T) {
 	server := newRecordingServer(t, func(http.ResponseWriter, recordedRequest) { t.Fatal("no request is expected") })
 	for name, input := range map[string]docs.AppendTextInput{

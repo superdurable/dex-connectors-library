@@ -51,6 +51,21 @@ func TestMoveMessageLostMoveAnswerIsRetriedAndFindsTheMessageMoved(t *testing.T)
 	require.Equal(t, 1, fake.RequestCount(graphtest.EndpointMoveMessage))
 }
 
+func TestOrganizeWritesRetryAnUnknownOutcomeInsteadOfRejecting(t *testing.T) {
+	fake := newGraphFake(t)
+	id := seedCustomerMessage(fake, "Refund", searchBase)
+	fake.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointMoveMessage, Status: http.StatusNotImplemented})
+	fake.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointUpdateMessage, Status: http.StatusMethodNotAllowed})
+	client, _ := delegatedClient(t, fake)
+	_, err := sdkgo.RunMutation(newOutlookDexContext("move-501"), client.MoveMessage(), outlookConnection, outlookmail.MoveMessageInput{MessageID: id, DestinationFolder: "archive"})
+	requireRetry(t, err, sdkgo.FailureProviderRejection)
+	isRead := true
+	_, err = sdkgo.RunMutation(newOutlookDexContext("flags-405"), client.SetMessageFlags(), outlookConnection, outlookmail.SetMessageFlagsInput{MessageID: id, IsRead: &isRead})
+	requireRetry(t, err, sdkgo.FailureProviderRejection)
+	require.Equal(t, outlookmail.MoveMessageDefinition.RepeatOnUnknown, sdkgo.RepeatOnUnknownSafe)
+	require.Equal(t, outlookmail.SetMessageFlagsDefinition.RepeatOnUnknown, sdkgo.RepeatOnUnknownSafe)
+}
+
 func TestMoveMessageMissingDestinationOrMessage(t *testing.T) {
 	fake := newGraphFake(t)
 	id := seedCustomerMessage(fake, "Refund", searchBase)

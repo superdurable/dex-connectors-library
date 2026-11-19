@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
@@ -64,6 +65,7 @@ var (
 
 	errDocuSignReauthorizationRequired = errors.New("the DocuSign connection needs reauthorization; authorize it again in Dex Web Connections")
 	errDocuSignCredentialsUnavailable  = errors.New("the DocuSign access token could not be loaded or refreshed yet")
+	errDocuSignCredentialsMissing      = errors.New("the DocuSign connection credentials are missing or not selected for this project; authorize the connection in Dex Web Connections")
 	errDocuSignAccessTokenUnusable     = errors.New("the DocuSign access token is blank or contains characters a header cannot carry")
 	errDocuSignAuthMethodUnknown       = errors.New("the DocuSign connection names no known environment; authorize it again in Dex Web Connections")
 )
@@ -169,6 +171,8 @@ type docusignResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isErrorBodyIncomplete marks a non-2xx body that was oversized or broke mid-read, so it proves no refusal.
+	isErrorBodyIncomplete bool
 }
 
 // docusignOutcome classifies a non-2xx answer: a Retry, or a conclusive failure the caller maps to a branch.
@@ -263,8 +267,11 @@ func (client *Client) openSession(call sdkgo.Call, operationID string) (docusign
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, errDocuSignReauthorizationRequired
+	case errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected):
+		return Credentials{}, errDocuSignCredentialsMissing
 	case err != nil:
 		return Credentials{}, errDocuSignCredentialsUnavailable
 	case !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()):
@@ -370,6 +377,10 @@ func (client *Client) sendWithRejectionRefresh(
 		if err != nil {
 			return rejected, err
 		}
+		if isDispatched != nil && (rejected.isErrorBodyIncomplete || hasEnvelopeID(rejected.body)) {
+			// An incomplete or envelope-naming 401 body proves no refusal, so the create is not sent again.
+			return rejected, nil
+		}
 		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(requestContext, client.credentials, call, client.refreshDriver)
 		if refreshErr != nil || !providerhttp.IsHeaderSafeCredential(replacement.AccessToken.Reveal()) {
 			return rejected, nil
@@ -440,8 +451,10 @@ func (client *Client) readResponse(response *http.Response, maxBodyBytes int64) 
 	defer response.Body.Close()
 	result := docusignResponse{statusCode: response.StatusCode, header: response.Header.Clone()}
 	if response.StatusCode < 200 || response.StatusCode >= 300 || maxBodyBytes <= 0 {
-		// Only the errorCode is read, so a truncated or unreadable error body keeps its status.
-		result.body, _ = io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes))
+		// The status survives a truncated or unreadable error body, which is marked incomplete.
+		body, err := io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes+1))
+		result.isErrorBodyIncomplete = err != nil || int64(len(body)) > providerhttp.MaxErrorBodyBytes
+		result.body = body[:min(int64(len(body)), providerhttp.MaxErrorBodyBytes)]
 		return result, nil
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, maxBodyBytes)

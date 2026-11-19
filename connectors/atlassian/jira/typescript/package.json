@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-atlassian-jira",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Atlassian Jira Cloud operations and issueChanged poll Triggers for Dex",
   "repository": {
     "type": "git",

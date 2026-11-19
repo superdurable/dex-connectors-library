@@ -98,62 +98,78 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.microsoft_outlook_calendar.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Microsoft Outlook Calendar credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Microsoft Outlook Calendar stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Microsoft Outlook Calendar stored credential does not match the connector credential fields")
     if set(material) - set(('client_id', 'client_secret', 'access_token', 'refresh_token', 'auth_method')):
-        raise ValueError("Microsoft Outlook Calendar stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Microsoft Outlook Calendar stored credential does not match the connector credential fields")
     is_shared = shared
     client_id = material.get("client_id")
     if client_id is not None and not (isinstance(client_id, str)):
-        raise ValueError("Microsoft Outlook Calendar credential client_id has an invalid type")
+        raise CredentialMaterialError("Microsoft Outlook Calendar credential client_id has an invalid type")
     client_secret = material.get("client_secret")
     if client_secret is not None and not (isinstance(client_secret, str)):
-        raise ValueError("Microsoft Outlook Calendar credential client_secret has an invalid type")
+        raise CredentialMaterialError("Microsoft Outlook Calendar credential client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Microsoft Outlook Calendar credential access_token has an invalid type")
+        raise CredentialMaterialError("Microsoft Outlook Calendar credential access_token has an invalid type")
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
-        raise ValueError("Microsoft Outlook Calendar credential refresh_token has an invalid type")
+        raise CredentialMaterialError("Microsoft Outlook Calendar credential refresh_token has an invalid type")
     selected_method = material.get('auth_method')
     if selected_method is None:
         selected_method = ''
     if not isinstance(selected_method, str):
-        raise ValueError("Microsoft Outlook Calendar credential auth_method is invalid")
+        raise CredentialMaterialError("Microsoft Outlook Calendar credential auth_method is invalid")
     method = selected_method or "microsoft-oauth"
     values: dict[str, Any] = {'auth_method_id': method}
     if method == "microsoft-oauth":
         if not client_id:
-            raise ValueError("Microsoft Outlook Calendar credential client_id is required")
+            raise CredentialMaterialError("Microsoft Outlook Calendar credential client_id is required")
         if client_id:
             values["client_id"] = client_id
         if not client_secret and not is_shared:
-            raise ValueError("Microsoft Outlook Calendar credential client_secret is required")
+            raise CredentialMaterialError("Microsoft Outlook Calendar credential client_secret is required")
         if client_secret:
             values["client_secret"] = SecretString(client_secret)
         if not access_token:
-            raise ValueError("Microsoft Outlook Calendar credential access_token is required")
+            raise CredentialMaterialError("Microsoft Outlook Calendar credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         if not refresh_token and not is_shared:
-            raise ValueError("Microsoft Outlook Calendar credential refresh_token is required")
+            raise CredentialMaterialError("Microsoft Outlook Calendar credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
     elif method == "app-only":
         if not client_id:
-            raise ValueError("Microsoft Outlook Calendar credential client_id is required")
+            raise CredentialMaterialError("Microsoft Outlook Calendar credential client_id is required")
         if client_id:
             values["client_id"] = client_id
         if not client_secret and not is_shared:
-            raise ValueError("Microsoft Outlook Calendar credential client_secret is required")
+            raise CredentialMaterialError("Microsoft Outlook Calendar credential client_secret is required")
         if client_secret:
             values["client_secret"] = SecretString(client_secret)
         if not access_token and is_shared:
-            raise ValueError("Microsoft Outlook Calendar credential access_token is required")
+            raise CredentialMaterialError("Microsoft Outlook Calendar credential access_token is required")
         values["access_token"] = SecretString(access_token or '')
     else:
-        raise ValueError("Microsoft Outlook Calendar credential auth_method is invalid")
+        raise CredentialMaterialError("Microsoft Outlook Calendar credential auth_method is invalid")
     return Credentials(**values)
 
 

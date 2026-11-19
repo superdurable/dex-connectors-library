@@ -10,8 +10,9 @@
 //
 // Graph has no idempotency key for mail. SendMessage and ReplyToMessage therefore create a draft that
 // carries a marker derived from the Step's idempotency key, record a Dex heartbeat checkpoint, and send
-// that draft. A retry finds its own draft by the marker instead of creating another, never sends a
-// dispatched draft again, and confirms a lost answer by reading the draft's Sent Items copy. Both run
+// that draft. A retry finds its own draft by the marker instead of creating another and confirms a lost
+// answer by reading the draft's Sent Items copy. A draft still unsent after a lost answer is sent again
+// while the possible sends stay below the Step's send cap; at the cap it selects uncertain. Both run
 // with sync durability, so Dex never runs two attempts at once.
 //
 // A connection authenticates with delegated Microsoft OAuth, whose rotating refresh token
@@ -34,6 +35,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -242,13 +244,16 @@ type graphExchange struct {
 func (client *Client) openSession(call sdkgo.Call, operation string) (*graphSession, *graphExchange) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		return nil, &graphExchange{outcome: graphRejected, failure: graphFailure(sdkgo.FailureAuthentication, operation,
 			"Microsoft authorization must be renewed: authorize the connection again or replace the client secret")}
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return nil, &graphExchange{outcome: graphRetry, failure: graphFailure(sdkgo.FailureAvailability, operation,
 			"the Microsoft token endpoint is temporarily unavailable")}
-	case err != nil || validateResolvedCredentials(credentials) != nil:
+	case err != nil:
+		return nil, &graphExchange{outcome: graphRetry, failure: graphFailure(sdkgo.FailureAvailability, operation,
+			"Outlook Mail connection credentials are temporarily unavailable; nothing was sent")}
+	case validateResolvedCredentials(credentials) != nil:
 		return nil, &graphExchange{outcome: graphDefect, failure: graphFailure(sdkgo.FailureAuthentication, operation,
 			"Outlook Mail connection credentials are unavailable")}
 	}
@@ -257,6 +262,13 @@ func (client *Client) openSession(call sdkgo.Call, operation string) (*graphSess
 		return nil, &graphExchange{outcome: graphDefect, failure: graphFailure(sdkgo.FailureValidation, operation, err.Error())}
 	}
 	return &graphSession{client: client, call: call, operation: operation, credentials: credentials, mailboxRoot: mailboxRoot}, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // resolveMailboxRoot is /me for a delegated connection and /users/<mailbox> for an app-only one.
@@ -519,6 +531,12 @@ func updateAttemptForExchange[OUT any](result graphExchange, receipt sdkgo.Recei
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case graphRetry, graphAmbiguous, graphInvalid:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+	}
+	// Only a definite refusal status ends the write; any other provider answer is an unknown outcome.
+	if result.statusCode != 0 && !isDefiniteRefusalStatus(result.statusCode) {
+		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+	}
+	switch result.outcome {
 	case graphNotFound:
 		return sdkgo.NewMutationBranch(branches.notFound, empty, &result.failure, receipt), true
 	case graphDefect:
@@ -526,6 +544,17 @@ func updateAttemptForExchange[OUT any](result graphExchange, receipt sdkgo.Recei
 	default:
 		return sdkgo.NewMutationBranch(branches.providerRejected, empty, &result.failure, receipt), true
 	}
+}
+
+// isDefiniteRefusalStatus reports a status that proves Graph refused a write without applying it.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 // validateMailbox accepts an SMTP address or user principal name, or an Entra object ID.

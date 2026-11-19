@@ -15,7 +15,9 @@
 //
 // Every mutation sends the requestid query parameter derived from the Dex Call ID, so a retried
 // or re-dispatched attempt of one Step execution requests QuickBooks's original response.
-// Key retention and replay on the invoice-send endpoint remain unverified.
+// Key retention and replay on the invoice-send endpoint remain unverified, so every mutation also
+// runs under a single-dispatch fence: an unknown outcome is resent only while the possible sends
+// stay below the Step's send cap, and selects uncertain at the cap.
 //
 // A connection authorizes one QuickBooks company through Intuit's OAuth 2.0 consent. The
 // connector reads the company's realm ID from the realmid claim of the ID token Intuit returns
@@ -39,7 +41,9 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -259,22 +263,32 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, string, *quickbooksExchange) {
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
-		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRejected,
+	case sdkgo.IsReauthorizationRequired(err), errors.Is(err, projectconfig.ErrReauthorizationRequired):
+		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRejected, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAuthentication, operation, "QuickBooks authorization must be renewed: connect the company again")}
 	case errors.Is(err, errCredentialRefreshUnavailable):
-		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRetry,
+		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAvailability, operation, "Intuit access token refresh is temporarily unavailable")}
+	case err != nil && !isTerminalCredentialError(err):
+		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true,
+			failure: quickbooksFailure(sdkgo.FailureAvailability, operation, "the Dex credential broker is temporarily unavailable; nothing was sent")}
 	case err != nil || validateResolvedCredentials(credentials) != nil:
-		return Credentials{}, "", &quickbooksExchange{outcome: exchangeDefect,
+		return Credentials{}, "", &quickbooksExchange{outcome: exchangeDefect, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAuthentication, operation, "QuickBooks connection credentials are unavailable")}
 	}
 	realmID, err := resolveRealmID(credentials, client.configuredRealmID)
 	if err != nil {
-		return Credentials{}, "", &quickbooksExchange{outcome: exchangeDefect,
+		return Credentials{}, "", &quickbooksExchange{outcome: exchangeDefect, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAuthentication, operation, err.Error())}
 	}
 	return credentials, realmID, nil
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) canRefreshAfterRejection() bool {
@@ -286,22 +300,22 @@ func (client *Client) canRefreshAfterRejection() bool {
 func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Credentials, realmID string, operation string, request quickbooksRequest) quickbooksExchange {
 	httpRequest, err := client.buildRequest(ctx, call, credentials, realmID, request)
 	if err != nil {
-		return quickbooksExchange{outcome: exchangeDefect, failure: quickbooksFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
+		return quickbooksExchange{outcome: exchangeDefect, isProvablyUnsent: true, failure: quickbooksFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
 	deadline, hasDeadline := ctx.Deadline()
 	if request.isMutation {
 		if request.attemptBudget.minimumWriteTime <= 0 || request.attemptBudget.deadline.Sub(client.now()) < request.attemptBudget.minimumWriteTime {
-			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks write was not sent because too little attempt time remains")}
+			return quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks write was not sent because too little attempt time remains")}
 		}
 		deadline, hasDeadline = request.attemptBudget.deadline, true
 	}
 	if ctx.Err() != nil {
-		return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
+		return quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
 	}
 	if hasDeadline {
 		requestDeadline := deadline.Add(-requestDeadlineMargin)
 		if requestDeadline.Sub(client.now()) <= 0 {
-			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
+			return quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
 		}
 		requestContext, cancel := context.WithDeadline(httpRequest.Context(), requestDeadline)
 		defer cancel()
@@ -310,7 +324,7 @@ func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Cre
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
 		if isConnectionNeverEstablished(err) {
-			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks could not be reached; no request was sent")}
+			return quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks could not be reached; no request was sent")}
 		}
 		return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks request failed before a response arrived")}
 	}
@@ -361,6 +375,12 @@ func (client *Client) buildRequest(ctx context.Context, call sdkgo.Call, credent
 	httpRequest.Header.Set("Accept", "application/json")
 	if contentType != "" {
 		httpRequest.Header.Set("Content-Type", contentType)
+	}
+	if request.isMutation {
+		// A fenced write must not be replayed by the HTTP transport outside the send count.
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return nil, errRequestNotBuilt
+		}
 	}
 	return httpRequest, nil
 }

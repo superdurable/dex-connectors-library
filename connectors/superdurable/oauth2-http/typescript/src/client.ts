@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { resolveCredential, resolveCredentialAfterRejection, type Call } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials, SendRequestInput } from './generated/models.js';
-import { SendRequestOperation } from './operations.js';
+import { PostNonIdempotentOperation, SendRequestOperation } from './operations.js';
 
 /** One HTTP answer, including a bounded partial body. */
 export interface APIResponse {
@@ -56,11 +56,15 @@ export class OAuth2HTTPClient {
     this.refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'OAuth 2.0 HTTP', auth: Authorization, credentialFields: CredentialFields, settings: {
       authorizationEndpoint: config.authorizationEndpoint, tokenEndpoint: config.tokenEndpoint, scopes: config.scopes.join(' '),
       tokenEndpointAuthMethod: config.tokenEndpointAuthMethod || 'client_secret_post', apiBaseUrl: config.apiBaseUrl,
+      requestTimeout: `${this.requestTimeoutMs}ms`,
     } });
   }
 
   /** Bind the sendRequest Mutation. */
   sendRequest(): SendRequestOperation { return new SendRequestOperation(this); }
+
+  /** Bind the postNonIdempotent Mutation. */
+  postNonIdempotent(): PostNonIdempotentOperation { return new PostNonIdempotentOperation(this); }
 
   /** Resolve current OAuth material through manifest generated renewal. */
   resolveCredentials(call: Call, signal: AbortSignal = call.context.cancellationSignal): Promise<Credentials> {
@@ -112,52 +116,51 @@ export interface RequestPlan {
   /** Validated caller headers. */ headers: Record<string, string>;
   /** Text request body. */ body: string;
   /** Optional deduplication header name. */ idempotencyKeyHeader: string;
-  /** Whether replay is safe after dispatch. */ isSafe: boolean;
 }
 
-/** Validate the request and keep the token on the configured origin. */
-export function planRequest(client: OAuth2HTTPClient, input: SendRequestInput): RequestPlan {
+/** Validate the request for operation, such as sendRequest, and keep the token on the configured origin. */
+export function planRequest(client: OAuth2HTTPClient, input: SendRequestInput, operation = 'sendRequest'): RequestPlan {
   const method = (input.method ?? '').trim().toUpperCase() || 'GET';
-  if (!['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) throw new TypeError('sendRequest method must be GET, HEAD, OPTIONS, POST, PUT, PATCH, or DELETE');
-  if (Boolean(input.path) === Boolean(input.url)) throw new TypeError('sendRequest needs exactly one of path and url');
+  if (!['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) throw new TypeError(`${operation} method must be GET, HEAD, OPTIONS, POST, PUT, PATCH, or DELETE`);
+  if (Boolean(input.path) === Boolean(input.url)) throw new TypeError(`${operation} needs exactly one of path and url`);
   let url: URL;
   let requestURL: string;
   if (input.path) {
     const path = input.path;
-    if (!/^\/[\x21-\x7e]*$/.test(path) || path.startsWith('//')) throw new TypeError('sendRequest path must start with a single slash and be printable ASCII without spaces');
-    if (/[?#\\]/.test(path)) throw new TypeError('sendRequest path cannot contain ?, #, or a backslash; use query for parameters');
-    if (/%(?![\da-fA-F]{2})/.test(path)) throw new TypeError('sendRequest path has invalid percent-encoding');
+    if (!/^\/[\x21-\x7e]*$/.test(path) || path.startsWith('//')) throw new TypeError(`${operation} path must start with a single slash and be printable ASCII without spaces`);
+    if (/[?#\\]/.test(path)) throw new TypeError(`${operation} path cannot contain ?, #, or a backslash; use query for parameters`);
+    if (/%(?![\da-fA-F]{2})/.test(path)) throw new TypeError(`${operation} path has invalid percent-encoding`);
     const decoded = path.replace(/%2e/gi, '.').replace(/%2f/gi, '/');
-    if (decoded.split('/').includes('..')) throw new TypeError('sendRequest path cannot contain a .. segment');
+    if (decoded.split('/').includes('..')) throw new TypeError(`${operation} path cannot contain a .. segment`);
     requestURL = client.apiBaseUrl + path.replace(/\|/g, '%7C');
     url = parseHTTPURL(requestURL);
   } else {
     requestURL = (input.url ?? '').replace(/\|/g, '%7C');
     url = parseHTTPURL(requestURL);
   }
-  if (url.origin !== new URL(client.apiBaseUrl).origin) throw new TypeError("sendRequest url must have the scheme, host, and port of the connection's apiBaseUrl");
+  if (url.origin !== new URL(client.apiBaseUrl).origin) throw new TypeError(`${operation} url must have the scheme, host, and port of the connection's apiBaseUrl`);
   if (input.query && Object.keys(input.query).length) {
     const query = parseGoQuery(url.search);
     for (const key of Object.keys(input.query).sort()) {
-      if (!key) throw new TypeError('sendRequest query parameter names cannot be empty');
+      if (!key) throw new TypeError(`${operation} query parameter names cannot be empty`);
       for (const value of input.query[key] ?? []) query.append(key, value);
     }
     requestURL = requestURL.split('?')[0] + '?' + encodeGoQuery(query);
   }
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(input.headers ?? {})) {
-    validateHeaderName(name);
-    if (Object.keys(headers).some(existing => existing.toLowerCase() === name.toLowerCase())) throw new TypeError('sendRequest header names must be unique ignoring case');
+    validateHeaderName(name, operation);
+    if (Object.keys(headers).some(existing => existing.toLowerCase() === name.toLowerCase())) throw new TypeError(`${operation} header names must be unique ignoring case`);
     // eslint-disable-next-line no-control-regex -- HTTP header values reject control bytes.
-    if (Buffer.byteLength(value) > 8192 || /[\x00-\x08\x0a-\x1f\x7f]/.test(value)) throw new TypeError('sendRequest header values cannot contain control characters');
+    if (Buffer.byteLength(value) > 8192 || /[\x00-\x08\x0a-\x1f\x7f]/.test(value)) throw new TypeError(`${operation} header values cannot contain control characters`);
     headers[name] = value;
   }
-  if (input.idempotencyKeyHeader) validateHeaderName(input.idempotencyKeyHeader);
+  if (input.idempotencyKeyHeader) validateHeaderName(input.idempotencyKeyHeader, operation);
   const body = input.body ?? '';
-  if (body && ['GET', 'HEAD'].includes(method)) throw new TypeError('sendRequest body is not allowed with GET or HEAD');
-  if (Buffer.byteLength(body) > client.maxBodyBytes) throw new TypeError("sendRequest body exceeds the connection's maxBodyBytes");
+  if (body && ['GET', 'HEAD'].includes(method)) throw new TypeError(`${operation} body is not allowed with GET or HEAD`);
+  if (Buffer.byteLength(body) > client.maxBodyBytes) throw new TypeError(`${operation} body exceeds the connection's maxBodyBytes`);
   if (body && !Object.keys(headers).some(key => key.toLowerCase() === 'content-type' && headers[key])) headers['Content-Type'] = 'application/json';
-  return { method, url: requestURL, headers, body, idempotencyKeyHeader: input.idempotencyKeyHeader ?? '', isSafe: ['GET', 'HEAD', 'OPTIONS'].includes(method) };
+  return { method, url: requestURL, headers, body, idempotencyKeyHeader: input.idempotencyKeyHeader ?? '' };
 }
 
 function parseHTTPURL(value: string): URL {
@@ -169,10 +172,10 @@ function parseHTTPURL(value: string): URL {
   return url;
 }
 
-function validateHeaderName(name: string): void {
-  if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name)) throw new TypeError('sendRequest header names must be RFC 7230 tokens');
+function validateHeaderName(name: string, operation: string): void {
+  if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name)) throw new TypeError(`${operation} header names must be RFC 7230 tokens`);
   if (['authorization', 'proxy-authorization', 'host', 'content-length', 'transfer-encoding', 'connection', 'keep-alive', 'te', 'trailer', 'upgrade', 'cookie'].includes(name.toLowerCase()) || name.toLowerCase().startsWith('proxy-')) {
-    throw new TypeError('sendRequest headers cannot name Authorization or a header the transport owns');
+    throw new TypeError(`${operation} headers cannot name Authorization or a header the transport owns`);
   }
 }
 

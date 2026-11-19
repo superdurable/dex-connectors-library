@@ -80,13 +80,13 @@ export interface UpsertRowStepConfig<StepInput, OperationInput = UpsertRowInput,
   connectionName: string;
   /** One row was inserted or updated. */
   upserted: StepTarget<MutationResult<OperationOutput>>;
-  /** Existing duplicate key rows prevent a safe write. */
+  /** Existing duplicate key rows prevent a safe write before any append of this Step. */
   conflict?: StepTarget<MutationResult<OperationOutput>>;
   /** Google conclusively rejected the row write. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Google returned an invalid or oversized pre-write response. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** The dispatched write outcome cannot be confirmed. */
+  /** A possible append was not confirmed by its key: at the send cap, after Google accepted it, or beside duplicate key rows. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

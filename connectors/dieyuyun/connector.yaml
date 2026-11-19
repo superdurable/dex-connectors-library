@@ -10,6 +10,11 @@ metadata:
 spec:
   provider: dieyuyun
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-dieyuyun
+      operations: [getAccountBalance]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-dieyuyun"

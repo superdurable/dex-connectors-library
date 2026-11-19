@@ -202,7 +202,7 @@ def update_item_column_values_provider_rejected_failure() -> Case[UpdateItemColu
 setattr(update_item_column_values_provider_rejected_failure, '__module__', "dex_connectors.monday.mondaymock")
 
 def update_item_column_values_invalid_response_failure() -> Case[UpdateItemColumnValuesOutput]:
-    return Case.branch_result(INVALID_RESPONSE, UpdateItemColumnValuesOutput(), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "updateItemColumnValues", "monday.com returned a malformed item, so the values may have been set; repeating the Step is safe."))
+    return Case.branch_result(INVALID_RESPONSE, UpdateItemColumnValuesOutput(), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "updateItemColumnValues", "monday.com response reflected the connection credential"))
 
 setattr(update_item_column_values_invalid_response_failure, '__module__', "dex_connectors.monday.mondaymock")
 

@@ -97,11 +97,15 @@ export class GmailProvider {
   }
 }
 
-/** Parse one accepted Gmail send response. */
+/**
+ * Parse one Gmail send response: a JSON object whose `id` is a non-empty string names the message,
+ * whatever its other fields are. A `threadId` that is not a string becomes empty and is read back later.
+ */
 export function parseSentResponse(response: ProviderResponse): SentMessageIdentity | undefined {
   try {
     const document: unknown = JSON.parse(Buffer.from(response.body).toString('utf8')) as unknown;
-    const parsed = SentMessageSchema.safeParse(document);
-    return parsed.success && parsed.data.id ? { id: parsed.data.id, threadId: parsed.data.threadId ?? '' } : undefined;
+    if (!document || typeof document !== 'object' || Array.isArray(document)) return undefined;
+    const { id, threadId } = document as { id?: unknown; threadId?: unknown };
+    return typeof id === 'string' && id ? { id, threadId: typeof threadId === 'string' ? threadId : '' } : undefined;
   } catch { return undefined; }
 }

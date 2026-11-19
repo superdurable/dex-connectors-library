@@ -1109,7 +1109,7 @@ var SetIssueStateDefinition = sdkgo.MutationDefinition{
 		{ID: SetIssueStateBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked; the issue is unchanged.", Optional: true},
 		{ID: SetIssueStateBranchNotFound, Description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", Optional: true},
 		{ID: SetIssueStateBranchProviderRejected, Description: "GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged.", Optional: true},
-		{ID: SetIssueStateBranchInvalidResponse, Description: "GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed.", Optional: true},
+		{ID: SetIssueStateBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized issue after an accepted update now retries, because sending the same state again is safe.", Optional: true},
 		{ID: SetIssueStateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1140,6 +1140,8 @@ type SetIssueStateStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SetIssueStateResult]                       `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedIssueState]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSetIssueStateStep[IN any](config SetIssueStateStepConfig[IN]) sdkgo.MutationStep[IN, SetIssueStateInput, UpdatedIssueState] {
@@ -1199,7 +1201,7 @@ var ReplaceIssueLabelsDefinition = sdkgo.MutationDefinition{
 		{ID: ReplaceIssueLabelsBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked; the labels are unchanged.", Optional: true},
 		{ID: ReplaceIssueLabelsBranchNotFound, Description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", Optional: true},
 		{ID: ReplaceIssueLabelsBranchProviderRejected, Description: "GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged.", Optional: true},
-		{ID: ReplaceIssueLabelsBranchInvalidResponse, Description: "GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed.", Optional: true},
+		{ID: ReplaceIssueLabelsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized label list after an accepted replacement now retries, because sending the same set again is safe.", Optional: true},
 		{ID: ReplaceIssueLabelsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1230,6 +1232,8 @@ type ReplaceIssueLabelsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ReplacedIssueLabels]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplaceIssueLabelsStep[IN any](config ReplaceIssueLabelsStepConfig[IN]) sdkgo.MutationStep[IN, ReplaceIssueLabelsInput, ReplacedIssueLabels] {

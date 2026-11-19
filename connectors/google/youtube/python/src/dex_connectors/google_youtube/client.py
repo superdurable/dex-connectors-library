@@ -22,7 +22,13 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
 )
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -77,7 +83,24 @@ from .models import (
 )
 from .query_values import encode_query_values
 
-_VIDEO_ID = re.compile(r"[A-Za-z0-9_-]{11}\Z")
+# Resolve failures that only reconnection repairs; any other resolve failure is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
+
+
+_VIDEO_ID =re.compile(r"[A-Za-z0-9_-]{11}\Z")
 _CHANNEL_ID = re.compile(r"UC[A-Za-z0-9_-]{22}\Z")
 _PLAYLIST_ID = re.compile(r"[A-Za-z0-9_-]{2,64}\Z")
 _HANDLE = re.compile(r"@?[A-Za-z0-9._-]{3,30}\Z")
@@ -114,10 +137,31 @@ class _Outcome:
     failure: Failure
     receipt: Receipt
     retry_after: float = 0
+    # Credentials could not be resolved or refreshed, without a revoked grant.
+    is_transient_credential_failure: bool = False
+
+
+# The checkpoint provider ID of an insert YouTube accepted without a usable item ID; a saved
+# provider ID makes later attempts only list the playlist, never insert.
+ACCEPTED_INSERT_WITHOUT_ITEM_ID = "dex:acceptedWithoutItemId"
+
+# Only these statuses prove YouTube refused a write; every other status is an unknown outcome.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "youtube", operation, message)
+
+
+def _inserted_item_id(body: bytes) -> str:
+    """Return the playlist item ID an error response still carries, whatever its other fields hold."""
+    try:
+        value: Any = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    if isinstance(value, dict) and isinstance(value.get("id"), str):
+        return str(value["id"])
+    return ""
 
 
 def _empty_receipt() -> Receipt:
@@ -344,9 +388,7 @@ class Client:
         try:
             credential = await self.credentials.resolve(call)
         except Exception as error:
-            from dex_connectors.sdk import ReauthorizationRequiredError
-
-            if isinstance(error, ReauthorizationRequiredError):
+            if is_terminal_credential_error(error):
                 failure = _failure(
                     operation, FailureKind.AUTHENTICATION, "the YouTube connection must be authorized again"
                 )
@@ -354,9 +396,11 @@ class Client:
             failure = _failure(
                 operation,
                 FailureKind.AUTHENTICATION,
-                "YouTube connection credentials are unavailable or invalid",
+                "YouTube connection credentials are temporarily unavailable",
             )
-            return b"", _empty_receipt(), _Outcome("defect", failure, _empty_receipt())
+            return b"", _empty_receipt(), _Outcome(
+                "retry", failure, _empty_receipt(), is_transient_credential_failure=True
+            )
         token = credential.access_token.reveal() if credential.access_token is not None else ""
         if not is_header_safe_credential(token):
             failure = _failure(
@@ -381,10 +425,20 @@ class Client:
             return await self._send_and_classify(
                 call, operation, method, url, object_id, body, credential, token, is_fenced_write=False
             )
+        observed_statuses: list[int] = []
         try:
             return await write_fence.dispatch(
                 lambda _: self._send_and_classify(
-                    call, operation, method, url, object_id, body, credential, token, is_fenced_write=True
+                    call,
+                    operation,
+                    method,
+                    url,
+                    object_id,
+                    body,
+                    credential,
+                    token,
+                    is_fenced_write=True,
+                    observed_statuses=observed_statuses,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
@@ -393,6 +447,14 @@ class Client:
             return b"", receipt, _Outcome("retry", failure, receipt)
         except TimeoutError:
             receipt = self._receipt(call, object_id)
+            if any(200 <= status < 300 for status in observed_statuses):
+                # The write window cut the body after 2xx headers, so the insert was accepted.
+                failure = _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "YouTube accepted the insert but its response body could not be read",
+                )
+                return b"", receipt, _Outcome("acceptedUnreadable", failure, receipt)
             failure = _failure(operation, FailureKind.TRANSPORT, "YouTube did not return a complete response")
             return b"", receipt, _Outcome("writeUnconfirmed", failure, receipt)
 
@@ -408,12 +470,15 @@ class Client:
         token: str,
         *,
         is_fenced_write: bool,
+        observed_statuses: list[int] | None = None,
     ) -> tuple[bytes, Receipt, _Outcome | None]:
         """Send once, resending after one refreshed 401, and classify the response.
 
-        A fenced write retries as unprocessed only after a rate-limit refusal or a connection
-        that never opened, which prove YouTube did not act; any other failure after the claim,
-        including HTTP 503, may have applied the write.
+        A fenced write retries as unprocessed only after a rate-limit refusal, HTTP 503, or a
+        connection that never opened; any other failure after the claim may have applied the
+        write. A 2xx whose body cannot be read is accepted and never resent. `observed_statuses`
+        receives each status as its headers arrive, so a caller whose wait is cancelled during
+        the body read still knows YouTube answered.
         """
         transport_disposition = "writeUnconfirmed" if is_fenced_write else "retry"
         for request_attempt in range(2):
@@ -439,6 +504,8 @@ class Client:
                     operation, FailureKind.TRANSPORT, "YouTube did not return a complete response"
                 )
                 return b"", receipt, _Outcome(transport_disposition, failure, receipt)
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             if (
                 response.status_code == 401
                 and request_attempt == 0
@@ -456,9 +523,7 @@ class Client:
                     )
                     return b"", _empty_receipt(), _Outcome("defect", failure, _empty_receipt())
                 except Exception as error:
-                    from dex_connectors.sdk import ReauthorizationRequiredError
-
-                    if isinstance(error, ReauthorizationRequiredError):
+                    if is_terminal_credential_error(error):
                         failure = _failure(
                             operation,
                             FailureKind.AUTHENTICATION,
@@ -468,12 +533,15 @@ class Client:
                     failure = _failure(
                         operation,
                         FailureKind.AUTHENTICATION,
-                        "YouTube connection credentials are unavailable or invalid",
+                        "YouTube connection credentials are temporarily unavailable",
                     )
-                    return b"", _empty_receipt(), _Outcome("defect", failure, _empty_receipt())
+                    return b"", _empty_receipt(), _Outcome(
+                        "retry", failure, _empty_receipt(), is_transient_credential_failure=True
+                    )
             break
         receipt = self._receipt(call, object_id, response.headers)
         is_success = 200 <= response.status_code < 300
+        is_error_body_too_large = False
         try:
             response_body = await read_bounded_body(
                 response, self.max_response_bytes if is_success else 65536
@@ -485,10 +553,17 @@ class Client:
                     FailureKind.RESPONSE_TOO_LARGE,
                     "YouTube response exceeds the configured size limit",
                 )
-                disposition = "writeUnconfirmed" if is_fenced_write else "invalidResponse"
+                disposition = "acceptedUnreadable" if is_fenced_write else "invalidResponse"
                 return b"", receipt, _Outcome(disposition, failure, receipt)
-            response_body = b""
+            response_body, is_error_body_too_large = b"", True
         except ProviderTransportError:
+            if is_fenced_write and is_success:
+                failure = _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "YouTube accepted the insert but its response body could not be read",
+                )
+                return b"", receipt, _Outcome("acceptedUnreadable", failure, receipt)
             failure = _failure(operation, FailureKind.TRANSPORT, "YouTube did not return a complete response")
             return b"", receipt, _Outcome(transport_disposition, failure, receipt)
         if is_success:
@@ -552,10 +627,23 @@ class Client:
                 FailureKind.PROVIDER_REJECTION,
                 f"YouTube rejected the request (HTTP {status}{suffix})",
             )
-        if disposition == "retry" and is_fenced_write:
-            disposition = "retryUnprocessed" if kind == FailureKind.RATE_LIMIT else "writeUnconfirmed"
         failure = _failure(operation, kind, message)
+        if is_fenced_write and _inserted_item_id(response_body):
+            # An item ID contradicts any other status, so YouTube stored the insert; it is never resent.
+            return response_body, receipt, _Outcome("acceptedUnreadable", failure, receipt)
+        if disposition == "retry" and is_fenced_write:
+            is_proven_refusal = kind == FailureKind.RATE_LIMIT or status == 503
+            disposition = "retryUnprocessed" if is_proven_refusal else "writeUnconfirmed"
         is_retry = disposition in ("retry", "retryUnprocessed", "writeUnconfirmed")
+        if (
+            is_fenced_write
+            and not is_retry
+            and disposition != "quotaExhausted"
+            and (status not in _DEFINITE_REFUSAL_STATUSES or is_error_body_too_large)
+        ):
+            # Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert,
+            # and an oversized refusal body might hide an item ID.
+            disposition = "writeUnconfirmed"
         return (
             response_body,
             receipt,
@@ -957,12 +1045,15 @@ class ListPlaylistItemsOperation:
 
 
 class AddPlaylistItemOperation:
-    """Add a video at most once per Step call after checking the playlist for it.
+    """Add a video after checking the playlist for it, resending unknown outcomes up to the cap.
 
     YouTube has no idempotency key for playlistItems.insert and does not promise that a
-    listing shows a just-inserted item. A single-dispatch fence therefore forbids a second
-    insert after one that may have reached YouTube; such a later attempt only lists the
-    playlist and selects added when the video is shown and uncertain otherwise.
+    listing shows a just-inserted item. A single-dispatch fence counts the inserts that may
+    have reached YouTube. After an unknown outcome a later attempt lists the playlist first
+    and inserts again only while possible inserts stay below `call.max_sends`; a failed listing
+    below the cap retries. HTTP 429 and 503 prove nothing was inserted. At the cap, or after an
+    insert YouTube accepted with a 2xx, it only lists the playlist and selects added when the
+    video is shown and uncertain otherwise.
     """
 
     def __init__(self, client: Client) -> None:
@@ -977,7 +1068,7 @@ class AddPlaylistItemOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: AddPlaylistItemInput) -> MutationAttempt[AddedPlaylistItem]:
-        """Check first, then insert at most once per Step call."""
+        """Check first, then insert; an unknown insert outcome is resent below the send cap."""
         try:
             list_input = ListPlaylistItemsInput(input.playlist_id, input.video_id, 1)
             query = _playlist_query(list_input)
@@ -993,7 +1084,11 @@ class AddPlaylistItemOperation:
                 mutation=True,
             )
         try:
-            fence = Fence(call, ADD_PLAYLIST_ITEM_DEFINITION.step_defaults.execute_method_timeout)
+            fence = Fence(
+                call,
+                ADD_PLAYLIST_ITEM_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
+            )
         except ValueError:
             return _branch(
                 "addPlaylistItem",
@@ -1004,40 +1099,51 @@ class AddPlaylistItemOperation:
                 mutation=True,
             )
         decision = await fence.decide()
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            return await self._confirm_earlier_insert(call, list_input, query)
-        if decision.kind != DecisionKind.SEND_ALLOWED:
-            return MutationAttempt.uncertain(
-                AddedPlaylistItem(),
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
                 _failure(
                     "addPlaylistItem",
-                    FailureKind.TRANSPORT,
-                    "the YouTube dispatch checkpoint is unreadable, so an earlier insert cannot be "
-                    "ruled out; check the playlist before adding the video again",
-                ),
-                _empty_receipt(),
+                    FailureKind.AVAILABILITY,
+                    "the YouTube dispatch checkpoint is unreadable; nothing was inserted in this attempt",
+                )
             )
+        has_saved_item = decision.marker is not None and bool(decision.marker.provider_id)
+        # YouTube returns an item ID only for an insert it accepted, so a saved one is never resent.
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or has_saved_item:
+            return await self._confirm_earlier_insert(
+                call, list_input, query, decision.kind == DecisionKind.READ_BACK_REQUIRED
+            )
+        # This attempt's insert is the last one the cap allows when no further send remains.
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # An earlier insert may have taken effect, so no refusal or local failure can prove nothing changed.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        read_back_prefix = (
+            "an earlier attempt may have added the video, and the playlist could not be read back: "
+        )
+        # Every attempt lists first, so after any possible earlier insert this listing is the read-back.
         body, receipt, outcome = await self.client._exchange(
             call, "addPlaylistItem", "GET", "/playlistItems", query, input.playlist_id, requires_manage=True
         )
         if outcome is not None:
-            if outcome.disposition == "retry":
-                try:
-                    await fence.record_not_sent()
-                except Exception:
-                    pass  # A lost notSent marker makes the next attempt read back instead of inserting.
-            return _attempt_for_outcome(outcome, AddedPlaylistItem(), mutation=True)
+            if outcome.disposition == "retry" or outcome.is_transient_credential_failure:
+                if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
+                    try:
+                        await fence.record_not_sent()
+                    except Exception:
+                        pass  # A lost notSent marker makes the next attempt count one more possible insert.
+                return MutationAttempt.retry(outcome.failure, outcome.retry_after)
+            return _fail_before_insert_or_select_uncertain(
+                has_possible_earlier_send, outcome, read_back_prefix
+            )
         try:
             page = _decode_playlist_page(body, list_input)
         except ValueError as error:
-            return _branch(
-                "addPlaylistItem",
-                INVALID_RESPONSE,
-                AddedPlaylistItem(),
-                FailureKind.PROTOCOL,
-                str(error),
-                receipt,
-                mutation=True,
+            return _fail_before_insert_or_select_uncertain(
+                has_possible_earlier_send,
+                _Outcome(
+                    "invalidResponse", _failure("addPlaylistItem", FailureKind.PROTOCOL, str(error)), receipt
+                ),
+                read_back_prefix,
             )
         if page.items:
             return MutationAttempt.branch_result(
@@ -1064,52 +1170,103 @@ class AddPlaylistItemOperation:
             write_fence=fence,
         )
         if outcome is not None:
+            if outcome.is_transient_credential_failure:
+                # A 401 or an unstarted insert changed nothing, and the next attempt lists first.
+                if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
+                    try:
+                        await fence.record_not_sent()
+                    except Exception:
+                        pass  # After a dispatched 401 the Fence refuses notSent; canResend below covers it.
+                try:
+                    await fence.record_can_resend()
+                except Exception:
+                    pass  # Before dispatch the Fence refuses canResend; a lost marker only overcounts.
+                return MutationAttempt.retry(outcome.failure)
+            if outcome.disposition == "retry":
+                # The insert was not started, so the fence counts no send for this attempt.
+                return MutationAttempt.retry(outcome.failure, outcome.retry_after)
             if outcome.disposition == "retryUnprocessed":
                 try:
                     await fence.record_can_resend()
                 except Exception:
-                    pass  # A lost canResend marker makes the next attempt read back instead of inserting.
+                    pass  # A lost canResend marker makes the next attempt count this insert.
                 return MutationAttempt.retry(outcome.failure, outcome.retry_after)
             if outcome.disposition == "writeUnconfirmed":
-                # The claim marker stays, so the next attempt only reads the playlist back.
-                return MutationAttempt.retry(outcome.failure)
-            return _attempt_for_outcome(outcome, AddedPlaylistItem(), mutation=True)
+                return _resend_or_select_uncertain(
+                    can_resend_unknown_outcome, outcome.failure, outcome.retry_after, outcome.receipt
+                )
+            if outcome.disposition == "acceptedUnreadable":
+                return await self._confirm_accepted_insert(
+                    call, fence, list_input, query, outcome.failure, _inserted_item_id(body)
+                )
+            if not has_possible_earlier_send:
+                try:
+                    await fence.record_can_resend()
+                except Exception:
+                    pass  # The refusal ends the Step, so a lost checkpoint cannot cause another insert.
+            return _reject_or_select_uncertain(
+                has_possible_earlier_send,
+                outcome,
+                "an earlier attempt may have added the video, and YouTube refused the resend: ",
+            )
         try:
             decoded_item = _decode(body)
         except ValueError:
-            return MutationAttempt.retry(
+            return await self._confirm_accepted_insert(
+                call,
+                fence,
+                list_input,
+                query,
                 _failure(
-                    "addPlaylistItem",
-                    FailureKind.PROTOCOL,
-                    "YouTube returned a malformed insert response; the next attempt reads the playlist back",
-                )
+                    "addPlaylistItem", FailureKind.PROTOCOL, "YouTube returned a malformed insert response"
+                ),
+                _inserted_item_id(body),
             )
         try:
             item = _decode_playlist_item(decoded_item, input.playlist_id)
             if item.video_id != input.video_id:
                 raise ValueError("YouTube returned an item for a different video")
         except ValueError:
-            return _branch(
-                "addPlaylistItem",
-                INVALID_RESPONSE,
-                AddedPlaylistItem(),
-                FailureKind.PROTOCOL,
-                "YouTube returned an invalid or different inserted item",
-                receipt,
-                mutation=True,
+            return await self._confirm_accepted_insert(
+                call,
+                fence,
+                list_input,
+                query,
+                _failure(
+                    "addPlaylistItem",
+                    FailureKind.PROTOCOL,
+                    "YouTube returned an invalid or different inserted item",
+                ),
+                _inserted_item_id(body),
             )
         try:
             await fence.record_provider_id(item.id)
         except Exception:
-            pass  # A lost provider ID marker still forbids another insert.
+            pass  # A lost provider ID marker still counts this insert, so the cap still holds.
         return MutationAttempt.branch_result(
             ADDED, AddedPlaylistItem(item), _with_object_id(receipt, item.id)
         )
 
-    async def _confirm_earlier_insert(
-        self, call: Call, list_input: ListPlaylistItemsInput, query: dict[str, str]
+    async def _confirm_accepted_insert(
+        self,
+        call: Call,
+        fence: Fence,
+        list_input: ListPlaylistItemsInput,
+        query: dict[str, str],
+        acceptance: Failure,
+        accepted_item_id: str,
     ) -> MutationAttempt[AddedPlaylistItem]:
-        """List the playlist after an attempt that may have inserted; only a shown item confirms."""
+        """List the playlist after YouTube accepted this insert with an unusable body; never resend it.
+
+        A saved item ID, or the saved acceptance itself, makes later attempts list again up to the
+        send cap; uncertain is selected here only when neither could be saved. The acceptance is saved
+        before the listing, so an attempt that ends during it never inserts again.
+        """
+        try:
+            await fence.record_provider_id(accepted_item_id or ACCEPTED_INSERT_WITHOUT_ITEM_ID)
+            is_acceptance_saved = True
+        except Exception:
+            is_acceptance_saved = False
         body, receipt, outcome = await self.client._exchange(
             call,
             "addPlaylistItem",
@@ -1119,38 +1276,84 @@ class AddPlaylistItemOperation:
             list_input.playlist_id,
             requires_manage=True,
         )
+        if outcome is None:
+            try:
+                page = _decode_playlist_page(body, list_input)
+            except ValueError:
+                page = None
+            if page is not None and page.items:
+                try:
+                    await fence.record_provider_id(page.items[0].id)
+                except Exception:
+                    pass  # The listed item is authoritative even if this extra checkpoint is lost.
+                return MutationAttempt.branch_result(
+                    ADDED, AddedPlaylistItem(page.items[0]), _with_object_id(receipt, page.items[0].id)
+                )
+        if is_acceptance_saved:
+            return MutationAttempt.retry(
+                _failure(
+                    acceptance.operation,
+                    acceptance.kind,
+                    acceptance.message
+                    + "; YouTube accepted the insert, so it is not sent again, and the playlist listing "
+                    "does not show it yet; the next attempt lists again",
+                )
+            )
+        # Without a saved acceptance a later attempt could insert again, so select uncertain.
+        return MutationAttempt.uncertain(
+            AddedPlaylistItem(),
+            _failure(
+                acceptance.operation,
+                acceptance.kind,
+                acceptance.message
+                + "; YouTube accepted the insert, so it is not sent again, the playlist listing "
+                "does not show it, and its acceptance checkpoint failed; check the playlist",
+            ),
+            receipt,
+        )
+
+    async def _confirm_earlier_insert(
+        self, call: Call, list_input: ListPlaylistItemsInput, query: dict[str, str], is_at_send_cap: bool
+    ) -> MutationAttempt[AddedPlaylistItem]:
+        """List the playlist after an attempt that may have inserted, and never insert.
+
+        Only a shown item confirms. Otherwise it retries below the cap, where a saved item ID
+        brings the next attempt back here, and selects uncertain at the cap.
+        """
+        body, receipt, outcome = await self.client._exchange(
+            call,
+            "addPlaylistItem",
+            "GET",
+            "/playlistItems",
+            query,
+            list_input.playlist_id,
+            requires_manage=True,
+        )
+        read_back_prefix = (
+            "an earlier attempt may have added the video, and the playlist could not be read back: "
+        )
         if outcome is not None:
             if outcome.disposition == "retry":
                 return MutationAttempt.retry(outcome.failure, outcome.retry_after)
-            return MutationAttempt.uncertain(
-                AddedPlaylistItem(),
-                _failure(
-                    "addPlaylistItem",
-                    outcome.failure.kind,
-                    "an earlier attempt may have added the video, and the playlist could not be read back: "
-                    + outcome.failure.message,
-                ),
+            return _retry_read_back_or_select_uncertain(
+                is_at_send_cap,
+                _failure("addPlaylistItem", outcome.failure.kind, read_back_prefix + outcome.failure.message),
                 outcome.receipt,
             )
         try:
             page = _decode_playlist_page(body, list_input)
         except ValueError as error:
-            return MutationAttempt.uncertain(
-                AddedPlaylistItem(),
-                _failure(
-                    "addPlaylistItem",
-                    FailureKind.PROTOCOL,
-                    "an earlier attempt may have added the video, and the playlist could not be read back: "
-                    + str(error),
-                ),
+            return _retry_read_back_or_select_uncertain(
+                is_at_send_cap,
+                _failure("addPlaylistItem", FailureKind.PROTOCOL, read_back_prefix + str(error)),
                 receipt,
             )
         if page.items:
             return MutationAttempt.branch_result(
                 ADDED, AddedPlaylistItem(page.items[0], True), _with_object_id(receipt, page.items[0].id)
             )
-        return MutationAttempt.uncertain(
-            AddedPlaylistItem(),
+        return _retry_read_back_or_select_uncertain(
+            is_at_send_cap,
             _failure(
                 "addPlaylistItem",
                 FailureKind.TRANSPORT,
@@ -1159,6 +1362,61 @@ class AddPlaylistItemOperation:
             ),
             receipt,
         )
+
+
+def _retry_read_back_or_select_uncertain(
+    is_at_send_cap: bool, failure: Failure, receipt: Receipt
+) -> MutationAttempt[AddedPlaylistItem]:
+    """Retry an unconfirmed read-back below the cap; select uncertain at the cap."""
+    if is_at_send_cap:
+        return MutationAttempt.uncertain(AddedPlaylistItem(), failure, receipt)
+    return MutationAttempt.retry(failure)
+
+
+def _resend_or_select_uncertain(
+    can_resend_unknown_outcome: bool, failure: Failure, retry_after: float, receipt: Receipt
+) -> MutationAttempt[AddedPlaylistItem]:
+    """Retry a possibly applied insert while the send cap allows another insert."""
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt reads back and counts this insert.
+        return MutationAttempt.retry(failure, retry_after)
+    capped = _failure(
+        failure.operation,
+        failure.kind,
+        failure.message + "; the send cap is reached, so check the playlist before adding the video again",
+    )
+    return MutationAttempt.uncertain(AddedPlaylistItem(), capped, receipt)
+
+
+def _reject_or_select_uncertain(
+    has_possible_earlier_send: bool, outcome: _Outcome, uncertain_prefix: str
+) -> MutationAttempt[AddedPlaylistItem]:
+    """Select the outcome's branch only when no earlier insert of this call may have taken effect."""
+    if has_possible_earlier_send:
+        return MutationAttempt.uncertain(
+            AddedPlaylistItem(),
+            _failure("addPlaylistItem", outcome.failure.kind, uncertain_prefix + outcome.failure.message),
+            outcome.receipt,
+        )
+    return _attempt_for_outcome(outcome, AddedPlaylistItem(), mutation=True)
+
+
+def _fail_before_insert_or_select_uncertain(
+    has_possible_earlier_send: bool, outcome: _Outcome, uncertain_prefix: str
+) -> MutationAttempt[AddedPlaylistItem]:
+    """Handle a failure before this attempt's insert.
+
+    After a possible earlier insert it retries so the next attempt lists again; only a revoked
+    or refused credential selects uncertain.
+    """
+    if not has_possible_earlier_send:
+        return _attempt_for_outcome(outcome, AddedPlaylistItem(), mutation=True)
+    if outcome.disposition == "rejected" and outcome.failure.kind == FailureKind.AUTHENTICATION:
+        return _reject_or_select_uncertain(True, outcome, uncertain_prefix)
+    return MutationAttempt.retry(
+        _failure("addPlaylistItem", outcome.failure.kind, uncertain_prefix + outcome.failure.message),
+        outcome.retry_after,
+    )
 
 
 def _with_object_id(receipt: Receipt, object_id: str) -> Receipt:

@@ -126,6 +126,14 @@ func writeJSON(t *testing.T, response http.ResponseWriter, status int, body stri
 	require.NoError(t, err)
 }
 
+// writeOversizedBody sends a body above the default maxResponseBytes limit.
+func writeOversizedBody(response http.ResponseWriter, status int) {
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(status)
+	// The client stops reading at its limit, so a broken pipe here is expected.
+	_, _ = io.WriteString(response, `{"Message":"SENTINEL`+strings.Repeat("x", 5<<20)+`"}`)
+}
+
 // dropConnection closes the connection after the request arrived, as a lost response would.
 func dropConnection(t *testing.T, response http.ResponseWriter) {
 	t.Helper()

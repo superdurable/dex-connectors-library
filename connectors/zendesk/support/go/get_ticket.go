@@ -57,7 +57,10 @@ func (operation GetTicketOperation) Invoke(call sdkgo.Call, input GetTicketInput
 	if err := validateGetTicketInput(input); err != nil {
 		return sdkgo.NewQueryBranch(GetTicketBranchDefect, TicketDetails{}, zendeskFailurePointer(sdkgo.FailureValidation, getTicketOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, getTicketOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, getTicketOperation)
+	if failure != nil && !isTerminal {
+		return sdkgo.NewQueryRetry[TicketDetails](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetTicketBranchDefect, TicketDetails{}, failure, sdkgo.Receipt{})
 	}

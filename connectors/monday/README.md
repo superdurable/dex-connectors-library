@@ -1,6 +1,6 @@
 # monday.com Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/monday/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/monday/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/monday`.
 
@@ -23,7 +23,7 @@ factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses a 30-second Execute timeout. Reads and the absolute `updateItemColumnValues` use the one-hour default retry budget; `createItem` and `addUpdate` keep ten attempts within five minutes. Every mutation sends a monday.com `Idempotency-Key`. `createItem` and `addUpdate` use sync durability so dispatch checkpoints are visible to later attempts; see [Duplicate safety](#duplicate-safety).
+uses a 30-second Execute timeout. Reads and the absolute `updateItemColumnValues` use the one-hour default retry budget; `createItem` and `addUpdate` keep ten attempts within five minutes and resend an unknown outcome at most up to their send cap of three. Every mutation sends a monday.com `Idempotency-Key`. `createItem` and `addUpdate` use sync durability so dispatch checkpoints are visible to later attempts; see [Duplicate safety](#duplicate-safety).
 
 It also exposes one poll Trigger:
 
@@ -323,17 +323,24 @@ header for mutations:
    `Idempotency-Replayed: true`.
 3. A concurrent duplicate gets `409 IDEMPOTENCY_CONFLICT` with `Retry-After`.
 
-Every mutation sends the Dex Call ID as its key, stable across attempts of one Step. `createItem` and `addUpdate` record an attempt-numbered dispatch heartbeat before sending. A later attempt resends only when the immediately preceding attempt recorded that it was safe to retry. A missing or stale marker fails closed through `uncertain`; sync Execute durability makes the marker visible to the next attempt. Keep these operations synchronous and leave their heartbeat value to the connector: async durability or another heartbeat writer can make a later attempt fail closed to `uncertain`. The request stops at least three seconds before the 30-second Step deadline, and a write starts only when the remaining request window after that margin is at least three seconds.
+Every mutation sends the Dex Call ID as its key, stable across attempts of one Step. `createItem` and `addUpdate` keep the default `repeatOnUnknown: limited` tier with `maxSends: 3`, and use the SDK single-dispatch Fence (`sdkgo/singledispatch`, with `WithMaxSends(call.MaxSends())`): each attempt records a claim heartbeat that counts the possibly effective sends of the Call ID before it sends. Sync Execute durability makes the marker visible to the next attempt; keep these operations synchronous and leave their heartbeat value to the connector. The request stops at least three seconds before the Step deadline, and a write starts only when at least six seconds remain.
 
-The [monday.com idempotency contract](https://developer.monday.com/api-reference/docs/idempotency) caches responses for 30 minutes, returns 409 for concurrent requests with one key, and marks a replay with `Idempotency-Replayed: true`. It also says that responses over 1 MB and responses that exceed the user/app memory budget are **not cached**. Therefore, an accepted but malformed, oversized, interrupted, credential-reflecting, or ID-less 2xx response selects `uncertain`; the connector does not resend it. A transport failure after dispatch with no response also selects `uncertain`; this intentionally gives up the earlier same-key replay because the provider may have applied the write without caching its result. The connector disables Go HTTP transport body replay so it cannot resend an accepted write behind the checkpoint.
+monday.com has no lookup by idempotency key, so a resend under the same key is the connector's only reconciliation. The [monday.com idempotency contract](https://developer.monday.com/api-reference/docs/idempotency) caches responses for 30 minutes, returns 409 for concurrent requests with one key, and marks a replay with `Idempotency-Replayed: true`. It also says that responses over 1 MB and responses that exceed the user/app memory budget are **not cached**, so a resend can execute again and create a duplicate item or update; the send cap bounds that risk:
 
-A positively unsent request, transient credential-refresh failure, HTTP 408, 409, 423, 429, and every HTTP 5xx response record a can-resend checkpoint and return Retry. An unreadable non-2xx body also does so. A readable 2xx with no mutation data retries when it carries a documented refusal code (`API_TEMPORARILY_BLOCKED`, a rate-limit code, or `IDEMPOTENCY_CONFLICT`) or `status_code` 409, 423, 429, or 503. A 2xx with only another 5xx `status_code` selects `uncertain`, because execution is not ruled out. A 2xx with mutation data never records can-resend. A successful replay sets `replayed: true` and `idempotencyReplayed` in the Receipt. For HTTP 408 and 5xx, the first request may already have executed: monday.com's cache exceptions can make a same-key resend execute again and create a duplicate item or update. The five-minute retry budget limits this residual risk but does not eliminate it.
+- **Unknown outcome.** A transport failure after dispatch, HTTP 408, 409 and `IDEMPOTENCY_CONFLICT`, 423, every 5xx except 503 (also as a 2xx `status_code`), any unlisted 4xx or 3xx, an unknown error code, and an oversized, malformed, credential-reflecting, or ID-less 2xx return Retry while possible sends stay below the cap. The next attempt resends under the same key, usually receiving monday.com's replay. At the cap the Step selects `uncertain` and never sends again; an application can lower or raise the cap per Step with `MaxSends` (1 to 10). A 429 or 503 after an earlier unknown outcome keeps that send counted.
+- **Unreadable refusal.** A refusal status whose error body exceeds `maxResponseBytes` or breaks while it is read is unknown as above, because the unread body may carry the created value.
+- **Possibly accepted write.** A 2xx whose body breaks, or is cut off by the write window, after its headers arrived, and any non-null value in the `create_item` or `create_update` field that is not a usable result, including one beside an error, select `uncertain` at once and are never resent.
+- **Proven not processed.** HTTP 429 and 503, the rate-limit codes, `API_TEMPORARILY_BLOCKED`, a transient credential-refresh failure, and a request that provably never left the process record `canResend` and return Retry without counting a send. A transient credential read failure, such as an unavailable credential broker or project store, returns Retry and records that nothing was sent only before any possible send; a missing, unselected, or broker-refused connection selects `defect` before a send and `uncertain` after one.
+- **Definite refusal.** HTTP 400, 401, 403, 404, 411, 413, 414, 415, and 422, and the documented authentication, permission, not-found, validation, GraphQL-document, and `DAILY_LIMIT_EXCEEDED` codes, select their branch only when the mutation field carries no value. On a first send the connector records `canResend` first; after a possible earlier send it selects `uncertain`, because that send may have written. A credential failure after a possible earlier send, including one after a `canResend` marker, never records that nothing was sent.
+- **Identified write.** A created item or update records its ID in the marker, and a later attempt never resends it. A 2xx whose `create_item` or `create_update` carries a numeric ID but is otherwise unusable selects `uncertain` at once.
+- **Untrusted checkpoint.** An unreadable or foreign marker returns Retry without sending.
 
-For `updateItemColumnValues`, that limit is harmless: the values are absolute,
-so a repeat changes nothing, and the manifest declares it
-`repeatOnUnknown: safe`. `createItem` and `addUpdate` keep the default
-`limited` tier with `maxSends: 3` in their definitions; their checkpoint is
-stricter, because it never resends a request that may have been sent.
+A successful replay sets `replayed: true` and `idempotencyReplayed` in the Receipt. The connector disables Go HTTP transport body replay so it cannot resend a write behind the Fence.
+
+For `updateItemColumnValues` the values are absolute, so a repeat changes
+nothing, and the manifest declares it `repeatOnUnknown: safe`. Every unknown
+outcome returns Retry within the one-hour budget; only a definite refusal, or a
+response that echoes the connection credential (`invalidResponse`), ends the Step.
 
 ## Errors
 
@@ -349,18 +356,21 @@ before the HTTP status.
 | Response | Reads | Mutations |
 | --- | --- | --- |
 | `COMPLEXITY_BUDGET_EXHAUSTED`, `ComplexityException`, `RATE_LIMIT_EXCEEDED`, `IP_RATE_LIMIT_EXCEEDED`, `maxConcurrencyExceeded`, `FIELD_LIMIT_EXCEEDED`, 429 | Retry after `retry_in_seconds` or `Retry-After` | same |
-| `IDEMPOTENCY_CONFLICT`, 409 without a code | Retry after at least 2 seconds | same |
-| `API_TEMPORARILY_BLOCKED`, 423 | Retry | same |
-| 408, 5xx, connection or read failure | Retry | Retry after 408/5xx or confirmed no-send; lost sent response selects `uncertain` for create/add |
+| `IDEMPOTENCY_CONFLICT`, 409 without a code | Retry after at least 2 seconds | same; for create/add the send counts against the cap, then `uncertain` |
+| `API_TEMPORARILY_BLOCKED`, 423 | Retry | same; a 423 counts a create/add send |
+| 408, 5xx, connection or read failure | Retry | Retry; for create/add every outcome except 503 and a proven unsent request counts a send, then `uncertain` at the cap |
 | `DAILY_LIMIT_EXCEEDED` | `providerRejected`, `QUOTA_EXHAUSTED` | same |
 | `Unauthorized`, `NOT_AUTHENTICATED`, 401 | `providerRejected`, `AUTHENTICATION`; an HTTP 401 for an OAuth token whose stored expiry has passed is refreshed and resent once first | same |
 | `UserUnauthorizedException`, `USER_ACCESS_DENIED`, `missingRequiredPermissions`, 403 | `providerRejected`, `AUTHORIZATION` | same |
 | `ResourceNotFoundException`, `InvalidBoardIdException`, `InvalidItemIdException`, 404 | `notFound` | `notFound`; nothing was written |
 | `ColumnValueException`, `CorrectedValueException`, `InvalidColumnIdException`, `InvalidArgumentException`, `ItemNameTooLongException`, `ItemsLimitationException`, `RecordInvalidException`, 422 | `providerRejected`, `VALIDATION` | same |
 | GraphQL parse or validation errors, `JsonParseException`, `InvalidVersionException`, 400 | `defect`, `PROTOCOL` | same |
-| any other code or status, 3xx | `providerRejected`; redirects are never followed | same |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain`, or `invalidResponse` for `updateItemColumnValues` |
-| invalid input or connection credentials | `defect`, with no request | same |
+| 411, 413, 414, 415 | `providerRejected` | same |
+| any other code or status, 3xx | `providerRejected`; redirects are never followed | unknown: Retry for `updateItemColumnValues`; create/add resend up to the cap, then `uncertain` |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | unknown as above, except a credential-reflecting answer selects `invalidResponse` for `updateItemColumnValues` |
+| 2xx whose body breaks after its headers | Retry | Retry for `updateItemColumnValues`; create/add select `uncertain` without resending |
+| invalid input or connection credentials | `defect`, with no request | same; after a possible earlier create/add send, `uncertain` |
+| credential broker or store temporarily unavailable | Retry, with no request | same |
 
 A mutation whose field returned a usable object beside a nested field error
 selects its happy branch, because the write happened. monday.com documents
@@ -489,13 +499,13 @@ unverified:
 
 ## Python package
 
-`python/` provides `dex-connector-monday` v0.2.0, on `dex-connectors-sdk>=0.12.0`, with all five Go operations, both manifest authentication methods, and the `itemChanged` Trigger. `new_project_connection` uses the generated Python OAuth refresh wiring and the static connection name shown in the [runnable work-request example](python/examples/work_request/README.md). The example reads a board page, creates an item, sets typed column values, adds an update, and reads the item back. Provider replay fixtures in `conformance/connectors/monday/scenarios.json` check exact Go request and outcome agreement; live monday.com authorization and API behavior are not verified by those fixtures.
+`python/` provides `dex-connector-monday` v0.2.1, on `dex-connectors-sdk>=0.12.0`, with all five Go operations, both manifest authentication methods, and the `itemChanged` Trigger. `new_project_connection` uses the generated Python OAuth refresh wiring and the static connection name shown in the [runnable work-request example](python/examples/work_request/README.md). The example reads a board page, creates an item, sets typed column values, adds an update, and reads the item back. Provider replay fixtures in `conformance/connectors/monday/scenarios.json` check exact Go request and outcome agreement; live monday.com authorization and API behavior are not verified by those fixtures.
 
 `new_project_item_trigger_runner` polls `itemChanged` with the Python Connector SDK's poll Trigger kit at behavior parity with Go: the same scan, lookback, batches, rate-limit pauses, and reset rules, and cursor documents and Trigger event IDs that match Go byte for byte, so Go and Python replicas share one binding's cursor and inbox. The [item-changed example](python/examples/item_changed/README.md) starts one `MondayItemChangePython` Flow per change.
 
 ## TypeScript package
 
-`@superdurable/connector-monday` v0.2.0, on `@superdurable/connectors-sdk` 0.12.0,
+`@superdurable/connector-monday` v0.2.1, on `@superdurable/connectors-sdk` 0.12.0,
 implements all five Go operations and the `itemChanged` Trigger:
 `listItems`, `getItem`, `createItem`, `updateItemColumnValues`, and `addUpdate`.
 Its generated factories, definitions, models, mock cases, and OAuth credential

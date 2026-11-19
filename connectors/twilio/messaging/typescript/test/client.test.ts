@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { buildSendRequest, parseSender, twilioFailure, twilioTime, TwilioClient, zeroMessage } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const accountSid = 'AC00000000000000000000000000000000';
 const messageSid = 'SMfedcba9876543210fedcba9876543210';
@@ -50,19 +52,39 @@ describe('Twilio message validation', () => {
       expect(() => client().decodeMessage(Buffer.from(`${prefix}"num_segments":${token}}`), authorization)).toThrow('invalid message');
     }
   });
-  it('classifies a 401 as authentication even when credential lookup fails', async () => {
+  it.each([
+    { isTransient: true, kind: 'AVAILABILITY' as const, message: 'Twilio credential refresh is temporarily unavailable' },
+    { isTransient: false, kind: 'AUTHENTICATION' as const, message: 'Twilio rejected the message credentials; update the connection' },
+  ])('after a readable 401, retries only a transient refresh failure (transient: $isTransient)', async ({ isTransient, kind, message }) => {
     const sender = new TwilioClient({ accountSid, defaultSender: '+14155550100' }, credentialProvider, {
       send: async () => ({ status: 401, headers: {}, body: Buffer.from('{"code":20003}') }),
     });
-    vi.spyOn(sender, 'authorizationAfterRejection').mockResolvedValue({
-      failure: twilioFailure('sendMessage', 'AVAILABILITY', 'Twilio credential refresh is temporarily unavailable'), isTransient: true,
-    });
+    vi.spyOn(sender, 'authorizationAfterRejection').mockResolvedValue({ failure: twilioFailure('sendMessage', kind, message), isTransient });
+    const context = new HeartbeatContext(undefined);
     const call = { id: 'd1ffeecf-f887-5bbc-8ca8-1325f0d0700d', idempotencyKey: 'd1ffeecf-f887-5bbc-8ca8-1325f0d0700d',
       connection: { provider: 'twilio', name: 'twilio-test' }, operation: { connectorId: 'twilio-messaging', operationId: 'sendMessage' },
-      context: new HeartbeatContext(undefined), reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false } as unknown as Call;
-    expect(await sender.sendMessage().invoke(call, { to: '+14155550123', body: 'hello' })).toMatchObject({
-      branch: 'providerRejected', failure: { kind: 'AUTHENTICATION', message: 'Twilio credential refresh is temporarily unavailable' },
-    });
+      context, reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false } as unknown as Call;
+    const attempt = await sender.sendMessage().invoke(call, { to: '+14155550123', body: 'hello' });
+    // A readable 401 proves nothing was created, so either way the send is checkpointed as resendable.
+    expect(JSON.stringify(context.getLastHeartbeatValue())).toContain('"state":"canResend"');
+    if (isTransient) expect(attempt).toMatchObject({ kind: 'retry', failure: { kind, message } });
+    else expect(attempt).toMatchObject({ branch: 'providerRejected', failure: { kind: 'AUTHENTICATION', message } });
+  });
+  it.each([
+    { error: new ReauthorizationRequiredError(), terminal: true },
+    { error: new ObjectNotFoundError(), terminal: true },
+    { error: new ConnectionNotSelectedError(), terminal: true },
+    { error: new CredentialBrokerRejectedError(), terminal: true },
+    { error: new CredentialBrokerUnavailableError(), terminal: false },
+    { error: new Error('connection is not configured'), terminal: false },
+    { error: new TypeError('fetch failed'), terminal: false },
+    { error: new CredentialMaterialError('credential auth_token is required'), terminal: true },
+    { error: new TypeError('project credential decoding failed'), terminal: true },
+  ])('classifies a credential lookup failure: $error.name', async ({ error, terminal }) => {
+    const failing = new TwilioClient({ accountSid }, { resolve: async () => { throw error; } });
+    const call = { context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    const result = await failing.authorization(call, 'sendMessage');
+    expect(result).toMatchObject({ isTransient: !terminal, failure: { kind: terminal ? 'AUTHENTICATION' : 'AVAILABILITY' } });
   });
   it('rejects impossible Twilio dates and preserves a valid offset', () => {
     expect(twilioTime('Mon, 30 Feb 2026 17:04:05 +0000')).toBe('0001-01-01T00:00:00Z');

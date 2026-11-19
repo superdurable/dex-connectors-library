@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
-import type { BambooHRClient, BambooHRExchange } from './client.js';
+import { DefiniteRefusalStatuses, DefiniteWriteStatuses, type BambooHRClient, type BambooHRCredentialResult, type BambooHRExchange } from './client.js';
 import { AddEmployeeDefinition, FindEmployeeByEmailDefinition, GetEmployeeDefinition, ListEmployeeChangesDefinition, ListTimeOffRequestsDefinition, UpdateEmployeeDefinition } from './generated/definitions.js';
 import type { AddEmployeeInput, AddEmployeeOutput, EmployeeChange, EmployeeRecord, EmployeeSummary, FindEmployeeByEmailInput, FindEmployeeByEmailOutput, GetEmployeeInput, ListEmployeeChangesInput, ListEmployeeChangesOutput, ListTimeOffRequestsInput, ListTimeOffRequestsOutput, TimeOffRequest, UpdateEmployeeInput, UpdateEmployeeOutput } from './generated/models.js';
 
@@ -29,7 +29,7 @@ export class GetEmployeeOperation implements Query<GetEmployeeInput, EmployeeRec
     try { requireEmployeeId(input.employeeId); validateRequestedFields(input.fields, 1, 400); }
     catch { return defectQuery('getEmployee', zeroRecord); }
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved') return defectQuery('getEmployee', zeroRecord, 'AUTHENTICATION');
+    if (credential.kind !== 'resolved') return credentialFailureQuery('getEmployee', zeroRecord, credential);
     const key = credential.key;
     const query = new URLSearchParams({ fields: input.fields!.join(',') });
     if (input.includeFutureValues) query.set('onlyCurrent', 'false');
@@ -50,7 +50,7 @@ export class FindEmployeeByEmailOperation implements Query<FindEmployeeByEmailIn
     const emailField = input.emailField || 'workEmail';
     if (!isBareEmail(input.email) || !['workEmail', 'homeEmail'].includes(emailField) || (input.status && !['active', 'inactive'].includes(input.status)) || (input.fields?.length ?? 0) > 20 || input.fields?.some(field => !fieldNamePattern.test(field))) return defectQuery('findEmployeeByEmail', zeroFind);
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved') return defectQuery('findEmployeeByEmail', zeroFind, 'AUTHENTICATION');
+    if (credential.kind !== 'resolved') return credentialFailureQuery('findEmployeeByEmail', zeroFind, credential);
     const key = credential.key;
     const fields = ['workEmail', 'homeEmail', ...(input.fields ?? []).filter(field => !summaryFields.has(field) && !['workEmail', 'homeEmail'].includes(field))];
     const query = new URLSearchParams({ [`filter[${emailField}]`]: input.email, fields: fields.join(','), sort: 'employeeId', 'page[limit]': '100' });
@@ -86,7 +86,7 @@ export class ListEmployeeChangesOperation implements Query<ListEmployeeChangesIn
     const sinceMs = Date.parse(input.since);
     if (!Number.isFinite(sinceMs) || sinceMs <= 0 || (input.afterEmployeeId && !employeeIdPattern.test(input.afterEmployeeId)) || (input.changeType && !['inserted', 'updated', 'deleted'].includes(input.changeType)) || !Number.isInteger(limit) || limit < 1 || limit > 1000) return defectQuery('listEmployeeChanges', zeroChanges);
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved') return defectQuery('listEmployeeChanges', zeroChanges, 'AUTHENTICATION');
+    if (credential.kind !== 'resolved') return credentialFailureQuery('listEmployeeChanges', zeroChanges, credential);
     const key = credential.key;
     const query = new URLSearchParams({ since: isoSeconds(sinceMs - 1000) });
     if (input.changeType) query.set('type', input.changeType);
@@ -124,7 +124,7 @@ export class ListTimeOffRequestsOperation implements Query<ListTimeOffRequestsIn
     const pageSize = input.pageSize || 100;
     if (!isCivilDate(input.startDate) || !isCivilDate(input.endDate) || input.endDate < input.startDate || (input.employeeId && !employeeIdPattern.test(input.employeeId)) || input.statuses?.some(status => !['REQUESTED', 'APPROVED', 'DENIED', 'CANCELED'].includes(status)) || !Number.isInteger(page) || page < 1 || page > 2147483647 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 200) return defectQuery('listTimeOffRequests', zeroTimeOff);
     const credential = await this.client.resolveKey(call);
-    if (credential.kind !== 'resolved') return defectQuery('listTimeOffRequests', zeroTimeOff, 'AUTHENTICATION');
+    if (credential.kind !== 'resolved') return credentialFailureQuery('listTimeOffRequests', zeroTimeOff, credential);
     const key = credential.key;
     const query = new URLSearchParams({ filter: buildTimeOffRequestFilter(input), page: String(page), pageSize: String(pageSize) });
     const result = await this.client.exchange(call, 'listTimeOffRequests', key, 'GET', '/time-off/requests', query);
@@ -159,16 +159,21 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
     try { requireEmployeeId(input.employeeId); validateWrittenFields(input.fields, 1, new Set([...historyFields, ...ignoredFields])); }
     catch { return defectMutation('updateEmployee', zeroUpdate); }
     const credential = await this.client.resolveKey(call);
+    if (credential.kind === 'transient') return newMutationRetry(failure('updateEmployee', 'AVAILABILITY', 'connection credentials could not be read; nothing was sent'));
     if (credential.kind !== 'resolved') return defectMutation('updateEmployee', zeroUpdate, 'AUTHENTICATION');
     const key = credential.key;
     const fieldNames = Object.keys(input.fields!).sort();
     const receipt = this.client.receipt(call, input.employeeId);
-    const read = async (value: UpdateEmployeeOutput): Promise<EmployeeRecord | MutationAttempt<UpdateEmployeeOutput>> => {
+    const read = async (value: UpdateEmployeeOutput, isAfterWrite = false): Promise<EmployeeRecord | MutationAttempt<UpdateEmployeeOutput>> => {
       const result = await this.client.exchange(call, 'updateEmployee', key, 'GET', `/employees/${input.employeeId}`, new URLSearchParams({ fields: fieldNames.join(',') }));
+      // After an accepted write, every failed read-back retries, because repeating the absolute write is safe.
+      if (isAfterWrite && result.kind !== 'success') return newMutationRetry(result.failure, result.retryAfterMs);
+      // Before the write, only a readable allowlisted refusal or a 404 selects a branch.
+      if (result.kind === 'invalid' || ((result.kind === 'rejected' || result.kind === 'notFound') && (!DefiniteRefusalStatuses.has(result.status ?? 0) || !isReadableRefusal(result)))) return newMutationRetry(result.failure, result.retryAfterMs);
       const terminal = exchangeMutation(this.client, call, result, value, input.employeeId, true);
       if (terminal) return terminal;
       try { return decodeEmployeeRecord(parseBody(result), input.employeeId, fieldNames); }
-      catch { return newMutationBranch('invalidResponse', value, receipt, failure('updateEmployee', 'PROTOCOL', 'BambooHR returned an invalid employee')); }
+      catch { return newMutationRetry(failure('updateEmployee', 'PROTOCOL', 'BambooHR returned an invalid employee')); }
     };
     const current = await read(zeroUpdate);
     if (!('employeeId' in current)) return current;
@@ -176,11 +181,13 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
     for (const [field, text] of Object.entries(input.fields!)) if (current.fields?.[field] !== text) changed[field] = text;
     if (Object.keys(changed).length === 0) return newMutationBranch('updated', { employee: current, wasAlreadyApplied: true }, receipt);
     const write = await this.client.exchange(call, 'updateEmployee', key, 'POST', `/employees/${input.employeeId}`, undefined, changed);
+    // A write without a definite refusal may have applied; the next attempt reads first.
+    if (write.kind === 'invalid' || ((write.kind === 'rejected' || write.kind === 'notFound') && (!DefiniteWriteStatuses.has(write.status ?? 0) || !isReadableRefusal(write)))) return newMutationRetry(write.failure, write.retryAfterMs);
     const writeTerminal = exchangeMutation(this.client, call, write, { employee: current }, input.employeeId, true);
     if (writeTerminal) return writeTerminal;
     const writtenFields = Object.keys(changed).sort();
     const output: UpdateEmployeeOutput = { employee: zeroRecord, writtenFields };
-    const stored = await read(output);
+    const stored = await read(output, true);
     if (!('employeeId' in stored)) return stored;
     const unmatchedFields = fieldNames.filter(field => stored.fields?.[field] !== input.fields![field]);
     return newMutationBranch('updated', { employee: stored, writtenFields, ...(unmatchedFields.length ? { unmatchedFields } : {}) }, receipt);
@@ -198,13 +205,17 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     try { validateWrittenFields(input.fields ?? {}, 0, new Set([...ignoredFields, 'firstName', 'lastName', 'preferredName', 'workEmail', 'homeEmail', 'hireDate'])); }
     catch { return defectMutation('addEmployee', zeroAdd); }
     const receipt = this.client.receipt(call);
-    const fence = newFence(call, AddEmployeeDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
+    const operationMaxSends = definitionMaxSends(AddEmployeeDefinition);
+    const fence = newFence(call, AddEmployeeDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends });
     const decision = fence.decide();
-    if (decision.kind === 'failClosed') return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'the dispatch checkpoint is unavailable or untrusted; the request is not sent again'), receipt);
-    if (decision.kind === 'readBackRequired') {
-      const employeeId = decision.marker?.providerId;
-      if (!employeeId || decision.marker?.callId !== call.id || !employeeIdPattern.test(employeeId)) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'an earlier attempt may have sent the request; no employee ID is available for read-back'), receipt);
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'the dispatch checkpoint could not be read; nothing was sent'));
+    const savedEmployeeId = decision.marker?.callId === call.id ? decision.marker.providerId : undefined;
+    // BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
+    if (decision.kind === 'readBackRequired' || savedEmployeeId) {
+      const employeeId = savedEmployeeId;
+      if (!employeeId || !employeeIdPattern.test(employeeId)) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'earlier attempts may have added the employee up to the send cap; no employee ID is available for read-back'), receipt);
       const credential = await this.client.resolveKey(call);
+      if (credential.kind === 'terminal') return newMutationUncertain(zeroAdd, failure('addEmployee', 'AUTHENTICATION', 'the employee may have been added, and the connection credentials are unavailable to read it back; reconnect the connection'), this.client.receipt(call, employeeId));
       if (credential.kind !== 'resolved') return newMutationRetry(failure('addEmployee', 'AUTHENTICATION', 'connection credentials are unavailable'));
       const key = credential.key;
       const result = await this.client.exchange(call, 'addEmployee', key, 'GET', `/employees/${employeeId}`);
@@ -216,7 +227,15 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
       if (result.kind === 'notFound' || result.kind === 'rejected') return newMutationUncertain(zeroAdd, result.failure, this.client.receipt(call, employeeId));
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < (operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const credential = await this.client.resolveKey(call);
+    if (credential.kind !== 'resolved' && hasPossibleEarlierSend) {
+      // notSent would hide the earlier possible send, so nothing is recorded.
+      if (credential.kind === 'terminal') return newMutationUncertain(zeroAdd, failure('addEmployee', 'AUTHENTICATION', 'an earlier attempt may have added the employee, and the connection credentials are unavailable to resend it; reconnect the connection'), receipt);
+      return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'connection credentials could not be read; nothing was sent in this attempt'));
+    }
     if (credential.kind !== 'resolved') {
       try { await fence.recordNotSent(); }
       catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'credentials and not-sent checkpoint are unavailable')); }
@@ -229,34 +248,56 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     try { result = await fence.dispatch(signal => this.client.exchange(call, 'addEmployee', key, 'POST', '/employees', undefined, payload, signal)); }
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'dispatch checkpoint or attempt time is unavailable; nothing was sent'));
-      return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'the dispatch outcome is unavailable'), receipt);
+      return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, failure('addEmployee', 'TRANSPORT', 'the dispatch outcome is unavailable'));
     }
-    if (result.kind === 'success') {
+    // A 2xx whose body broke or was oversized is still accepted and is never resent.
+    if (result.kind === 'success' || result.acceptedResponse) {
+      const acceptedResponse = result.kind === 'success' ? result.response : result.acceptedResponse!;
       let employeeId = '';
       try { employeeId = decodeEmployeeId(asObject(parseBody(result)).id); }
       catch {
-        const location = result.response.headers.location;
+        const location = acceptedResponse.headers.location;
         const match = typeof location === 'string' ? /(?:\/employees\/|[?&]id=)([1-9][0-9]{0,18})(?:[/?&#]|$)/.exec(location) : null;
         employeeId = match?.[1] ?? '';
       }
+      // BambooHR accepted this POST, so a resend would duplicate the employee.
       if (!employeeId) return newMutationUncertain(zeroAdd, failure('addEmployee', 'PROTOCOL', 'BambooHR accepted the employee but returned no usable employee ID'), receipt);
       try { await fence.recordProviderId(employeeId); }
       catch { /* A failed identity checkpoint cannot authorize another POST. */ }
       return newMutationBranch('created', { employeeId }, this.client.receipt(call, employeeId));
     }
-    if (result.kind === 'rateLimited' || (result.kind === 'unavailable' && result.failure.kind === 'AVAILABILITY' && result.failure.message.includes('HTTP 503')) || result.kind === 'notSent') {
+    if (result.kind === 'rateLimited' || (result.kind === 'unavailable' && result.status === 503) || result.kind === 'notSent') {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'BambooHR did not process the request, but the resend checkpoint failed'), result.retryAfterMs); }
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
-    if (result.kind === 'unavailable' || result.kind === 'invalid') return newMutationUncertain(zeroAdd, result.failure, receipt);
-    if (result.kind === 'defect') return newMutationBranch('defect', zeroAdd, receipt, result.failure);
-    return newMutationBranch('providerRejected', zeroAdd, receipt, result.failure);
+    // An invalid result is an unreadable 2xx: BambooHR accepted this POST, so a resend would duplicate it.
+    if (result.kind === 'invalid') return newMutationUncertain(zeroAdd, result.failure, receipt);
+    if (result.kind === 'defect' && !hasPossibleEarlierSend) return newMutationBranch('defect', zeroAdd, receipt, result.failure);
+    if ((result.kind === 'rejected' || result.kind === 'notFound') && DefiniteWriteStatuses.has(result.status ?? 0) && isReadableRefusal(result)) {
+      // An earlier send may have added the employee, so a refusal of this resend proves nothing.
+      if (hasPossibleEarlierSend) return newMutationUncertain(zeroAdd, result.failure, receipt);
+      try { await fence.recordCanResend(); }
+      catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'BambooHR refused the request, but the refusal checkpoint failed')); }
+      return newMutationBranch('providerRejected', zeroAdd, receipt, result.failure);
+    }
+    // A timeout, 5xx, 408, redirect, or other status leaves the outcome unknown.
+    return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, result.failure, result.retryAfterMs);
   }
+}
+
+/** Retry a possibly sent POST while the send cap allows another send; the claim counts this send. */
+function resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome: boolean, receipt: ReceiptDraft, unknownFailure: Failure, retryAfterMs?: number): MutationAttempt<AddEmployeeOutput> {
+  return canResendUnknownOutcome ? newMutationRetry(unknownFailure, retryAfterMs) : newMutationUncertain(zeroAdd, unknownFailure, receipt);
 }
 
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'bamboohr', operation, message }; }
 function defectQuery<Output>(operation: string, value: Output, kind: Failure['kind'] = 'VALIDATION'): QueryAttempt<Output> { return newQueryBranch('defect', value, {}, failure(operation, kind, kind === 'AUTHENTICATION' ? 'connection credentials are unavailable' : 'invalid input')); }
+/** Retry a transient credential failure and select defect for a terminal one. */
+function credentialFailureQuery<Output>(operation: string, value: Output, credential: BambooHRCredentialResult): QueryAttempt<Output> {
+  if (credential.kind === 'transient') return newQueryRetry(failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable'));
+  return defectQuery(operation, value, 'AUTHENTICATION');
+}
 function defectMutation<Output>(operation: string, value: Output, kind: Failure['kind'] = 'VALIDATION'): MutationAttempt<Output> { return newMutationBranch('defect', value, {}, failure(operation, kind, kind === 'AUTHENTICATION' ? 'connection credentials are unavailable' : 'invalid input')); }
 function invalidQuery<Output>(client: BambooHRClient, call: Call, operation: string, value: Output, objectId = ''): QueryAttempt<Output> { return newQueryBranch('invalidResponse', value, client.receipt(call, objectId), failure(operation, 'PROTOCOL', 'BambooHR returned an invalid response')); }
 function exchangeQuery<Output>(client: BambooHRClient, call: Call, result: BambooHRExchange, value: Output, objectId = '', hasNotFound = false): QueryAttempt<Output> | undefined {
@@ -271,6 +312,8 @@ function exchangeMutation<Output>(client: BambooHRClient, call: Call, result: Ba
   const branch = result.kind === 'invalid' ? 'invalidResponse' : result.kind === 'defect' ? 'defect' : result.kind === 'notFound' && hasNotFound ? 'notFound' : 'providerRejected';
   return newMutationBranch(branch, value, client.receipt(call, objectId), result.failure);
 }
+/** Report an error answer read in full without echoing the credential. */
+function isReadableRefusal(result: Exclude<BambooHRExchange, { kind: 'success' }>): boolean { return !result.isBodyIncomplete && !result.isCredentialEchoed; }
 function parseBody(result: BambooHRExchange): unknown { if (result.kind !== 'success') throw new Error('response unavailable'); return JSON.parse(Buffer.from(result.response.body).toString('utf8')) as unknown; }
 function asObject(value: unknown): Record<string, unknown> { if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('expected object'); return value as Record<string, unknown>; }
 function decodeEmployeeId(value: unknown): string { const id = typeof value === 'number' ? String(value) : value; if (typeof id !== 'string' || !employeeIdPattern.test(id)) throw new Error('invalid employee ID'); return id; }

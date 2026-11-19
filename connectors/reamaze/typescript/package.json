@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-reamaze",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Re:amaze conversation operations for Dex Flows",
   "repository": {
     "type": "git",

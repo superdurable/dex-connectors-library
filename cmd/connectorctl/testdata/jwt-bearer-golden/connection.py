@@ -66,59 +66,75 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.jwt_bearer_fixture.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Token Grants Fixture credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Token Grants Fixture stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Token Grants Fixture stored credential does not match the connector credential fields")
     if set(material) - set(('client_id', 'username', 'private_key', 'login_environment', 'access_token', 'instance_url', 'auth_method')):
-        raise ValueError("Token Grants Fixture stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Token Grants Fixture stored credential does not match the connector credential fields")
     is_shared = shared
     client_id = material.get("client_id")
     if client_id is not None and not (isinstance(client_id, str)):
-        raise ValueError("Token Grants Fixture credential client_id has an invalid type")
+        raise CredentialMaterialError("Token Grants Fixture credential client_id has an invalid type")
     username = material.get("username")
     if username is not None and not (isinstance(username, str)):
-        raise ValueError("Token Grants Fixture credential username has an invalid type")
+        raise CredentialMaterialError("Token Grants Fixture credential username has an invalid type")
     private_key = material.get("private_key")
     if private_key is not None and not (isinstance(private_key, str)):
-        raise ValueError("Token Grants Fixture credential private_key has an invalid type")
+        raise CredentialMaterialError("Token Grants Fixture credential private_key has an invalid type")
     login_environment = material.get("login_environment")
     if login_environment is not None and not (isinstance(login_environment, str)):
-        raise ValueError("Token Grants Fixture credential login_environment has an invalid type")
+        raise CredentialMaterialError("Token Grants Fixture credential login_environment has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Token Grants Fixture credential access_token has an invalid type")
+        raise CredentialMaterialError("Token Grants Fixture credential access_token has an invalid type")
     instance_url = material.get("instance_url")
     if instance_url is not None and not (isinstance(instance_url, str)):
-        raise ValueError("Token Grants Fixture credential instance_url has an invalid type")
+        raise CredentialMaterialError("Token Grants Fixture credential instance_url has an invalid type")
     selected_method = material.get('auth_method')
     if selected_method is None:
         selected_method = ''
     if not isinstance(selected_method, str):
-        raise ValueError("Token Grants Fixture credential auth_method is invalid")
+        raise CredentialMaterialError("Token Grants Fixture credential auth_method is invalid")
     method = selected_method or "jwt-bearer"
     values: dict[str, Any] = {'auth_method_id': method}
     if method == "jwt-bearer":
         if not client_id:
-            raise ValueError("Token Grants Fixture credential client_id is required")
+            raise CredentialMaterialError("Token Grants Fixture credential client_id is required")
         if client_id:
             values["client_id"] = client_id
         if not username:
-            raise ValueError("Token Grants Fixture credential username is required")
+            raise CredentialMaterialError("Token Grants Fixture credential username is required")
         if username:
             values["username"] = username
         if not private_key and not is_shared:
-            raise ValueError("Token Grants Fixture credential private_key is required")
+            raise CredentialMaterialError("Token Grants Fixture credential private_key is required")
         if private_key:
             values["private_key"] = SecretString(private_key)
         if login_environment and login_environment not in ('production', 'sandbox'):
-            raise ValueError("Token Grants Fixture credential login_environment is invalid")
+            raise CredentialMaterialError("Token Grants Fixture credential login_environment is invalid")
         values["login_environment"] = login_environment or ''
         if not access_token and is_shared:
-            raise ValueError("Token Grants Fixture credential access_token is required")
+            raise CredentialMaterialError("Token Grants Fixture credential access_token is required")
         values["access_token"] = SecretString(access_token or '')
         values["instance_url"] = instance_url or ''
     else:
-        raise ValueError("Token Grants Fixture credential auth_method is invalid")
+        raise CredentialMaterialError("Token Grants Fixture credential auth_method is invalid")
     return Credentials(**values)
 
 

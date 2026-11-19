@@ -49,7 +49,7 @@ UPLOAD_FILE_DEFINITION = MutationDefinition(
         BranchDefinition(UPLOADED, "The existing Box file now has the requested content.", False),
         BranchDefinition(NOT_FOUND, "Box did not find the file or the user lacks access.", True),
         BranchDefinition(PROVIDER_REJECTED, "Box conclusively rejected the replacement.", True),
-        BranchDefinition(INVALID_RESPONSE, "Box returned malformed or oversized file metadata.", True),
+        BranchDefinition(INVALID_RESPONSE, "Retained for compatibility and no longer selected: malformed or oversized file metadata now retries.", True),
         BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
     ),
     StepDefaults(

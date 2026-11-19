@@ -10,6 +10,10 @@ metadata:
 spec:
   provider: dada
   languages:
+    python:
+      version: v0.1.0
+      operations: [queryOrderStatus]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-dada"

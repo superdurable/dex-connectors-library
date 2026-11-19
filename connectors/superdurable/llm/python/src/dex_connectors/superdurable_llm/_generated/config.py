@@ -16,6 +16,9 @@ class Config:
     anthropic_workspace_id: str
     max_response_bytes: int
     region: str = "global"
+    openai_compatible_api: str = "chat-completions"
+    models: tuple[str, ...] = ()
+    model_context_window_tokens: tuple[str, ...] = ()
 
 setattr(Config, '__module__', 'dex_connectors.superdurable_llm.client')
 

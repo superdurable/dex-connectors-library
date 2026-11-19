@@ -10,6 +10,10 @@ The [API request rules](https://newopen.imdada.cn/#/development/file/api) define
 
 The runnable example is in [`go/examples/order-status`](go/examples/order-status). Provider tests verify the official signature vector and HTTP request against a local server. Live merchant authorization and production order status remain unverified without user-controlled credentials and an existing delivery order.
 
+## Python
+
+The [Python package](python/README.md) implements `queryOrderStatus` and includes a [runnable Dex Flow](python/examples/order_status/README.md). Its 13 provider scenarios replay Go-recorded signed requests, outputs, and retry decisions. No live merchant account has been authorized for this port.
+
 ## TypeScript
 
 The [TypeScript package](typescript/README.md) implements the same signed query and includes a runnable Dex Flow. Its 13 provider scenarios replay Go-recorded requests and retry decisions.

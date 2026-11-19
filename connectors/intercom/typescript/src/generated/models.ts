@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Non-secret data hosting region of the Intercom workspace, which selects the API host every request uses: us sends to https://api.intercom.io, eu to https://api.eu.intercom.io, and au to https://api.au.intercom.io. Sign in at https://app.intercom.com/ and read the browser address bar: a workspace that opens on app.eu.intercom.com is eu, one on app.au.intercom.com is au, and one on app.intercom.com is us. An access token works only on its own region's host, so a wrong region makes every request fail with HTTP 401. Blank uses the displayed region. */
   region?: string;
-  /** Largest complete Intercom API response, in bytes. getConversation reads a conversation with up to 500 of its most recent parts in one response, so raise it only when conversations with very long messages select invalidResponse; enter a positive integer. Blank keeps the displayed safety limit. */
+  /** Largest complete Intercom API response, in bytes. getConversation reads a conversation with up to 500 of its most recent parts in one response, so raise it only when conversations with very long messages select invalidResponse, or replies select uncertain after Intercom accepted them; enter a positive integer. Blank keeps the displayed safety limit. */
   maxResponseBytes?: number;
   /** Largest Intercom webhook notification body, in bytes, that the conversationEvent endpoint accepts; a larger request is answered 413 before its signature is checked. A conversation notification carries the conversation with its recent parts, so raise it only when the endpoint answers 413 to real notifications; enter a positive integer. Blank keeps the displayed limit. */
   webhookMaxBodyBytes?: number;
@@ -65,16 +65,35 @@ export interface Credentials {
   clientSecret?: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["access_token", "client_secret"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["client_secret"] != null && !(typeof fields["client_secret"] === 'string')) throw new TypeError("credential client_secret has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["client_secret"] != null && !(typeof fields["client_secret"] === 'string')) throw new CredentialMaterialError("credential client_secret has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+  if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
   credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
   credentials.clientSecret = new SecretString((fields["client_secret"] ?? '') as string);
   return credentials;

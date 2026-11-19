@@ -71,6 +71,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.twilio_messaging.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Twilio Messaging credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -80,41 +96,41 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Twilio Messaging stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Twilio Messaging stored credential does not match the connector credential fields")
         if set(material) - set(('auth_token', 'api_key_sid', 'api_key_secret', 'auth_method')):
-            raise ValueError("Twilio Messaging stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Twilio Messaging stored credential does not match the connector credential fields")
         auth_token = material.get("auth_token")
         if auth_token is not None and not (isinstance(auth_token, str)):
-            raise ValueError("Twilio Messaging credential auth_token has an invalid type")
+            raise CredentialMaterialError("Twilio Messaging credential auth_token has an invalid type")
         api_key_sid = material.get("api_key_sid")
         if api_key_sid is not None and not (isinstance(api_key_sid, str)):
-            raise ValueError("Twilio Messaging credential api_key_sid has an invalid type")
+            raise CredentialMaterialError("Twilio Messaging credential api_key_sid has an invalid type")
         api_key_secret = material.get("api_key_secret")
         if api_key_secret is not None and not (isinstance(api_key_secret, str)):
-            raise ValueError("Twilio Messaging credential api_key_secret has an invalid type")
+            raise CredentialMaterialError("Twilio Messaging credential api_key_secret has an invalid type")
         selected_method = material.get('auth_method')
         if selected_method is None:
             selected_method = ''
         if not isinstance(selected_method, str):
-            raise ValueError("Twilio Messaging credential auth_method is invalid")
+            raise CredentialMaterialError("Twilio Messaging credential auth_method is invalid")
         method = selected_method or "auth-token"
         values: dict[str, Any] = {'auth_method_id': method}
         if method == "auth-token":
             if not auth_token:
-                raise ValueError("Twilio Messaging credential auth_token is required")
+                raise CredentialMaterialError("Twilio Messaging credential auth_token is required")
             if auth_token:
                 values["auth_token"] = SecretString(auth_token)
         elif method == "api-key":
             if not api_key_sid:
-                raise ValueError("Twilio Messaging credential api_key_sid is required")
+                raise CredentialMaterialError("Twilio Messaging credential api_key_sid is required")
             if api_key_sid:
                 values["api_key_sid"] = api_key_sid
             if not api_key_secret:
-                raise ValueError("Twilio Messaging credential api_key_secret is required")
+                raise CredentialMaterialError("Twilio Messaging credential api_key_secret is required")
             if api_key_secret:
                 values["api_key_secret"] = SecretString(api_key_secret)
         else:
-            raise ValueError("Twilio Messaging credential auth_method is invalid")
+            raise CredentialMaterialError("Twilio Messaging credential auth_method is invalid")
         return Credentials(**values)
 
 

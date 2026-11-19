@@ -74,19 +74,22 @@ export interface UpsertObjectStepConfig<StepInput, OperationInput = UpsertObject
   connectionName: string;
   /** HubSpot created the record or updated the record that owns the unique value. */
   upserted: StepTarget<MutationResult<OperationOutput>>;
-  /** The properties conflict with another record, such as an email that another contact already owns. */
+  /** HubSpot reports with a documented CONFLICT, in its batch answer or in a second HTTP 409, that the properties conflict with another record, such as an email that another contact already owns; a 409 without that category is retried. */
   conflict?: StepTarget<MutationResult<OperationOutput>>;
   /** HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** HubSpot applied or rejected the upsert but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the upsertObject Step from a named connection. */
 export function newUpsertObjectStep<StepInput, OperationInput = UpsertObjectInput, OperationOutput = UpsertedObject>(configuration: UpsertObjectStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, upserted, conflict, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, upserted, conflict, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.upsertObject(), connection: connection.reference, branches: [
     goToBranch("upserted", upserted),
@@ -107,19 +110,22 @@ export interface UpdateObjectStepConfig<StepInput, OperationInput = UpdateObject
   updated: StepTarget<MutationResult<OperationOutput>>;
   /** No unarchived record of that object type has the record ID. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** The properties conflict with another record, such as an email that another contact already owns. */
+  /** HubSpot answered 409 with its documented CONFLICT category: the properties conflict with another record, such as an email that another contact already owns. */
   conflict?: StepTarget<MutationResult<OperationOutput>>;
   /** HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** HubSpot applied or rejected the update but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because setting the same values again is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateObject Step from a named connection. */
 export function newUpdateObjectStep<StepInput, OperationInput = UpdateObjectInput, OperationOutput = CRMObject>(configuration: UpdateObjectStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, conflict, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, conflict, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateObject(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

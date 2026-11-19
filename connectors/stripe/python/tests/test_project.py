@@ -88,6 +88,28 @@ async def test_project_client_uses_current_local_credential_at_call_time() -> No
     assert "sk_test_first" not in repr(client) and "sk_test_second" not in repr(client)
 
 
+async def test_project_client_treats_malformed_stored_credentials_as_terminal() -> None:
+    """Malformed stored material selects defect without a request instead of retrying."""
+    project = project_with_local_key({"secret_key": "sk_test_example", "unexpected": "value"})
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    client = new_project_client(
+        project, "stripe-payments", httpx.AsyncClient(transport=httpx.MockTransport(answer))
+    )
+    call = Call(
+        CallID(str(UUID("ffdd13f6-fd46-4d55-ad11-7afce245c321"))),
+        ConnectionRef("stripe", "stripe-payments"),
+        OperationRef("stripe", "getCheckoutSession"),
+    )
+    result = await client.get_checkout_session().invoke(call, GetCheckoutSessionInput("cs_test_123"))
+    assert result.kind != "retry" and result.branch == "defect"
+    assert not requests
+
+
 def test_project_client_rejects_unknown_settings() -> None:
     """Unknown connection configuration cannot silently change the provider boundary."""
     project = project_with_local_key({"secret_key": "sk_test_example"})

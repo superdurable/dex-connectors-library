@@ -19,6 +19,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -65,6 +67,22 @@ def query_encode(values: dict[str, str]) -> str:
     )
 
 
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    # Imported here because the generated connection module imports this module.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
+
+
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Build a secret-safe Jira failure."""
     return Failure(kind, "jira", operation, message)
@@ -83,6 +101,11 @@ class Exchange:
     transport_error: bool = False
     not_sent: bool = False
     request_defect: bool = False
+
+    @property
+    def is_complete(self) -> bool:
+        """Report a response whose body was read in full; only then can it prove a refusal."""
+        return not (self.transport_error or self.too_large or self.body_failed or self.reflects_secret)
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,15 +209,15 @@ class Client:
         """Resolve and refresh the connection's credentials; raises SessionError when unavailable."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
-            raise SessionError(
-                failure(
-                    operation,
-                    FailureKind.AUTHENTICATION,
-                    "Jira connection credentials are unavailable; reconnect the connection",
-                )
-            ) from None
-        except Exception:
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                raise SessionError(
+                    failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "Jira connection credentials are unavailable; reconnect the connection",
+                    )
+                ) from None
             raise SessionError(
                 failure(
                     operation, FailureKind.AVAILABILITY, "Jira credential lookup is temporarily unavailable"
@@ -320,8 +343,12 @@ class Client:
         payload: Any = None,
         query: dict[str, str] | None = None,
         fenced: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one bounded exchange, refreshing a rejected read credential once."""
+        """Send one bounded exchange, refreshing a rejected read credential once.
+
+        ``observed_statuses`` receives each status when its headers arrive, before the body is read.
+        """
         url = self.endpoint
         if not gateway:
             url += f"/ex/jira/{path_escape(cloud_id)}/rest/api/3"
@@ -337,7 +364,7 @@ class Client:
         except (TypeError, ValueError):
             return Exchange(request_defect=True)
         for index in range(2):
-            result = await self._send_once(credentials, method, url, body)
+            result = await self._send_once(credentials, method, url, body, observed_statuses)
             if (
                 fenced
                 or result.status != 401
@@ -354,7 +381,12 @@ class Client:
         return result
 
     async def _send_once(
-        self, credentials: Credentials, method: str, url: str, body: bytes | None
+        self,
+        credentials: Credentials,
+        method: str,
+        url: str,
+        body: bytes | None,
+        observed_statuses: list[int] | None,
     ) -> Exchange:
         token = credentials.access_token.reveal()
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
@@ -366,6 +398,8 @@ class Client:
             return Exchange(request_defect=True)
         try:
             response, _ = await send_traced(self.http_client, request)
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             limit = (
                 self.config.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
             )
@@ -490,9 +524,10 @@ class Client:
             )
         status = response.status
         if 200 <= status < 300:
+            # An unusable 2xx body still means the write happened, so it is never resent.
             if response.body_failed:
                 return Classification(
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.TRANSPORT,
@@ -501,7 +536,7 @@ class Client:
                 )
             if response.too_large:
                 return Classification(
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.RESPONSE_TOO_LARGE,
@@ -510,7 +545,7 @@ class Client:
                 )
             if response.reflects_secret:
                 return Classification(
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.PROTOCOL,
@@ -532,10 +567,20 @@ class Client:
                 failure(operation, FailureKind.AVAILABILITY, f"Jira {subject} is temporarily unavailable"),
                 self.retry_after(response),
             )
+        if not response.is_complete:
+            # A refusal status proves nothing when its body could not be read in full.
+            return Classification(
+                "uncertain",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Jira {subject} outcome is unknown after HTTP {status} with an unreadable body",
+                ),
+            )
         fields = rejected_fields(response.body)
         if status == 404:
             return Classification("notFound", rejection_failure(operation, subject, status, ()))
-        if 400 <= status < 500 and status != 408:
+        if status in DEFINITE_WRITE_REFUSAL_STATUSES:
             return Classification(
                 "rejected", rejection_failure(operation, subject, status, fields), rejected_fields=fields
             )
@@ -545,6 +590,10 @@ class Client:
                 operation, FailureKind.AVAILABILITY, f"Jira {subject} outcome is unknown after HTTP {status}"
             ),
         )
+
+
+DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses proving Jira refused a write; any other status leaves its outcome unknown."""
 
 
 def status_failure_kind(status: int) -> FailureKind:

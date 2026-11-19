@@ -75,7 +75,7 @@ type manifestStudioCommand struct {
 
 // providerOrder is the provider enum in manifest order.
 var providerOrder = []Provider{
-	ProviderOpenai, ProviderOpenaiCompatible, ProviderAnthropic, ProviderGemini, ProviderQwen, ProviderDeepseek, ProviderMeta, ProviderMistral, ProviderKimi, ProviderXai,
+	ProviderOpenai, ProviderOpenaiCompatible, ProviderAnthropic, ProviderAnthropicCompatible, ProviderGemini, ProviderQwen, ProviderDeepseek, ProviderMeta, ProviderMistral, ProviderKimi, ProviderXai,
 }
 
 // listCommandProviders maps every Studio list command to the provider whose key it sends.
@@ -103,7 +103,7 @@ func TestManifestEnumsEqualTheServedProvidersAndRegions(t *testing.T) {
 		api, isServed := providerAPIs[provider]
 		require.True(t, isServed, provider)
 		require.Contains(t, api.regionBaseURLs, RegionGlobal, "%s serves the default region", provider)
-		if provider == ProviderOpenaiCompatible {
+		if isCustomEndpointProvider(provider) {
 			require.Empty(t, api.defaultModel, "custom endpoints have no default model")
 		} else {
 			require.NotEmpty(t, api.defaultModel, provider)
@@ -111,7 +111,7 @@ func TestManifestEnumsEqualTheServedProvidersAndRegions(t *testing.T) {
 		require.Less(t, api.requestTimeout, GenerateTextDefinition.StepDefaults.ExecuteMethodTimeout, provider)
 		for region, baseURL := range api.regionBaseURLs {
 			servedRegions[region] = true
-			if provider == ProviderOpenaiCompatible {
+			if isCustomEndpointProvider(provider) {
 				require.Empty(t, baseURL, "the endpoint comes from baseUrl")
 				continue
 			}
@@ -138,7 +138,10 @@ func TestConnectionFieldsGuideTheUser(t *testing.T) {
 		names = append(names, field.Name)
 		require.NotEmpty(t, field.Description, field.Name)
 	}
-	require.Equal(t, []string{"provider", "baseUrl", "model", "region", "anthropicWorkspaceId", "maxResponseBytes"}, names)
+	require.Equal(t, []string{
+		"provider", "baseUrl", "model", "region", "anthropicWorkspaceId", "maxResponseBytes",
+		"openaiCompatibleApi", "models", "modelContextWindowTokens",
+	}, names)
 	fields := readManifestFields(t)
 
 	provider := fields["provider"]
@@ -157,17 +160,42 @@ func TestConnectionFieldsGuideTheUser(t *testing.T) {
 	require.Equal(t, UIModelPickerPortModel, model.StudioUnit.Port)
 	require.Contains(t, model.Description, "never prefixed with the provider")
 	for _, provider := range providerOrder {
-		if provider == ProviderOpenaiCompatible {
+		if isCustomEndpointProvider(provider) {
 			continue
 		}
 		require.Contains(t, model.Description, fmt.Sprintf("%s for %s", providerAPIs[provider].defaultModel, provider))
 	}
-	require.Contains(t, model.Description, "Required for openai-compatible")
+	require.Contains(t, model.Description, "Required for openai-compatible and anthropic-compatible")
+	require.Contains(t, model.Description, "must be one of them")
 	baseURL := fields["baseUrl"]
 	require.Equal(t, "string", baseURL.Type)
 	require.False(t, baseURL.Required, "existing connections stay valid")
 	require.Contains(t, baseURL.Description, "https://example.com/v1")
-	require.Contains(t, baseURL.Description, "A blank value is invalid for openai-compatible")
+	require.Contains(t, baseURL.Description, "https://example.com/anthropic")
+	require.Contains(t, baseURL.Description, "appends /v1/messages")
+	require.Contains(t, baseURL.Description, "A blank value is invalid for both custom providers")
+
+	api := fields["openaiCompatibleApi"]
+	require.Equal(t, "enum", api.Type)
+	require.Equal(t, []string{string(OpenAICompatibleAPIChatCompletions), string(OpenAICompatibleAPIResponses)}, api.Enum)
+	require.Equal(t, string(OpenAICompatibleAPIChatCompletions), api.Default, "existing connections keep Chat Completions")
+	require.False(t, api.Required)
+	require.Contains(t, api.Description, "<baseUrl>/chat/completions")
+	require.Contains(t, api.Description, "<baseUrl>/responses")
+	require.NotContains(t, api.Description, "default is chat-completions", "Dex Web shows the default below the field")
+
+	models := fields["models"]
+	require.Equal(t, "stringList", models.Type)
+	require.False(t, models.Required)
+	require.Equal(t, []any{}, models.Default)
+	require.Contains(t, models.Description, fmt.Sprintf("at most %d", maxConnectionModels))
+	require.Contains(t, models.Description, "1 to 256 printable ASCII characters")
+	contextWindows := fields["modelContextWindowTokens"]
+	require.Equal(t, "stringList", contextWindows.Type)
+	require.False(t, contextWindows.Required)
+	require.Equal(t, []any{}, contextWindows.Default)
+	require.Contains(t, contextWindows.Description, "<model ID>=<tokens>")
+	require.Contains(t, contextWindows.Description, fmt.Sprintf("from 1 to %d", maxContextWindowTokens))
 
 	region := fields["region"]
 	require.Equal(t, "global", region.Default)

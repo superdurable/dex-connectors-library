@@ -1,0 +1,665 @@
+{
+  "connector": "jdlogistics",
+  "scenarios": [
+    {
+      "callId": "bbf4fd3f-02b4-55d5-a1fe-078bf2d57bb7",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":0,\"data\":{\"traceDetails\":[{\"waybillCode\":\"JDX009866825381\",\"state\":\"200001\",\"categoryName\":\"collected\",\"operationTime\":\"2025-01-02 03:04:05\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "categoryName": "collected",
+              "operationTime": "2025-01-02 03:04:05",
+              "state": "200001"
+            }
+          ],
+          "waybillNo": "JDX009866825381"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-found",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "2ee6bad8-4103-5254-a758-62328fb2e014",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":0,\"data\":{\"traceDetails\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "events": [],
+          "waybillNo": "JDX009866825381"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-empty",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "14d10caf-d316-5554-ab0b-280762ff39ab",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":2001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-providerRejected",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "b44054be-97b9-5771-aa9d-88bb69a886ed",
+      "exchanges": [
+        {
+          "body": "unauthorized",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-httpRejected",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "5ba7f142-7327-53eb-9be8-450f17f38f8e",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-invalidResponse",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "75b70f17-bab3-572e-87b4-f37382a24e6c",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":0,\"data\":{\"traceDetails\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-oversized",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "f2a0664a-1f3f-5e52-b640-eb0e397d2cbc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "queryWaybillTrace-defect",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "e1ed857e-5531-5923-b71a-fcc0043f7c06",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":4000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-serviceError",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "371e90cb-baa1-5a0d-8e93-8fba57ef1f72",
+      "exchanges": [
+        {
+          "body": "rate",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-rateLimited",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "56cc4850-ff14-5269-ada5-c81e7876ce5c",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-unavailable",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "2f57e0e8-8de2-5418-83ae-cb0b720eb166",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecap/v1/orders/trace/query",
+          "query": {
+            "LOP-DN": [
+              "ECAP"
+            ],
+            "access_token": [
+              "token123"
+            ],
+            "app_key": [
+              "app123"
+            ],
+            "sign": [
+              "7B4FF493E60C543840164F97AC341AD2"
+            ],
+            "timestamp": [
+              "2025-01-02 03:04:05"
+            ],
+            "v": [
+              "2.0"
+            ]
+          },
+          "requestBody": [
+            {
+              "customerCode": "010K123",
+              "orderOrigin": 1,
+              "waybillCode": "JDX009866825381"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=UTF-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "JDX009866825381"
+      },
+      "name": "queryWaybillTrace-transportFailure",
+      "operation": "queryWaybillTrace"
+    }
+  ],
+  "schemaVersion": 1
+}

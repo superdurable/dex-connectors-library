@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -505,12 +506,22 @@ func (operation ListPublicRepositoriesOperation) Invoke(call sdkgo.Call, input L
 }
 
 func (client *Client) resolveCredential(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+	credential, failure, _ := client.resolveCredentialWithTerminality(call, operation)
+	return credential, failure
+}
+
+// resolveCredentialWithTerminality also reports whether a failure needs reconnection: a revoked,
+// missing, unselected, broker-refused, or malformed credential. Any other failure is transient.
+func (client *Client) resolveCredentialWithTerminality(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil || validateResolvedCredentials(credential) != nil {
 		failure := providerFailure(operation, sdkgo.FailureAuthentication, "GitHub authorization is unavailable or revoked")
-		return Credentials{}, &failure
+		isTerminal := err == nil || errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+			errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+			errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+		return Credentials{}, &failure, isTerminal
 	}
-	return credential, nil
+	return credential, nil, false
 }
 
 func (client *Client) get(call sdkgo.Call, credential *Credentials, path string, query url.Values) (providerResponse, error) {

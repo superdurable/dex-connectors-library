@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { AddReactionOperation, CreateMessageOperation, GetChannelOperation, ListChannelMessagesOperation } from './operations.js';
 
 const defaultEndpoint = 'https://discord.com/api/v10';
@@ -33,6 +34,14 @@ export interface ExchangeFailure {
 }
 /** Successful response or classified failure. */
 export type ExchangeResult = { response: ProviderResponse } | { outcome: ExchangeFailure };
+/** One fenced send, retaining only status, body, and transport evidence. */
+export interface FencedExchange {
+  /** HTTP status, or zero when no response arrived. */ status: number;
+  /** Response headers. */ headers: ProviderResponse['headers'];
+  /** Complete bounded response body. */ body: Uint8Array;
+  /** Why the response is incomplete: no response, an oversized body, or a broken body. */ error?: 'request' | 'tooLarge' | 'read';
+  /** Whether the request may have reached Discord. */ requestSent: boolean;
+}
 
 /** Authenticated Discord HTTP client with immutable configuration. */
 export class DiscordClient {
@@ -65,29 +74,74 @@ export class DiscordClient {
       ...(objectId ? { providerObjectId: objectId } : {}) };
   }
 
-  /** Resolve credentials, perform one exchange, and classify its outcome. */
-  async exchange(call: Call, operation: string, method: string, path: string, objectId: string, body?: unknown): Promise<ExchangeResult> {
-    let token: string;
+  /** Resolve the current bot token, or classify why no request can be sent. */
+  async resolveBotToken(call: Call, operation: string): Promise<{ token: string } | { outcome: ExchangeFailure }> {
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.botToken instanceof SecretString)) throw new TypeError('invalid Discord bot token');
-      token = credentials.botToken.reveal();
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid Discord bot token');
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'the Discord connection must be authorized again') };
-      return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Discord connection credentials are unavailable or invalid') };
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error))
+        return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Discord connection credentials are unavailable or invalid') };
+      // Nothing reached Discord, so a transient credential failure retries.
+      return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Discord connection credentials are temporarily unavailable') };
     }
+    const token = credentials.botToken instanceof SecretString ? credentials.botToken.reveal() : '';
+    if (!token || !isHeaderSafeCredential(token)) return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Discord connection credentials are unavailable or invalid') };
+    return { token };
+  }
+
+  /**
+   * Send one fenced request once, keeping a broken or oversized body apart from proof that
+   * nothing was sent. A status that arrived before the body failed is kept.
+   */
+  async sendFenced(path: string, token: string, body: Uint8Array, signal: AbortSignal): Promise<FencedExchange> {
+    return this.sendOnce('POST', path, token, body, signal);
+  }
+
+  /** Read one accepted message by its path once, with the same evidence as a fenced send. */
+  async readAcceptedMessage(path: string, token: string, signal: AbortSignal): Promise<FencedExchange> {
+    return this.sendOnce('GET', path, token, undefined, signal);
+  }
+
+  private async sendOnce(method: string, path: string, token: string, body: Uint8Array | undefined, signal: AbortSignal): Promise<FencedExchange> {
+    try {
+      const response = await this.send({ url: this.endpoint + path, method, headers: this.headers(token, body !== undefined), ...(body ? { body } : {}),
+        maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes), addressPolicy: this.addressPolicy(), timeoutMs: 25_000, signal });
+      const isSuccess = response.status >= 200 && response.status < 300;
+      // Go and Python cut an error body at 64 KiB, so a longer one cannot prove a refusal.
+      if (response.body.length > (isSuccess ? this.maxResponseBytes : MaxErrorBodyBytes))
+        return { status: response.status, headers: response.headers, body: new Uint8Array(), error: 'tooLarge', requestSent: true };
+      return { status: response.status, headers: response.headers, body: response.body, requestSent: true };
+    } catch (error) {
+      if (error instanceof BodyTooLargeError && error.status !== undefined)
+        return { status: error.status, headers: error.headers ?? {}, body: new Uint8Array(), error: 'tooLarge', requestSent: true };
+      if ((error instanceof ProviderTransportError && !error.isProvablyNotSent || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 100)
+        return { status: error.status, headers: error.headers ?? {}, body: new Uint8Array(), error: 'read', requestSent: true };
+      const requestSent = !(error instanceof ProviderTransportError && error.isProvablyNotSent);
+      return { status: 0, headers: {}, body: new Uint8Array(), error: 'request', requestSent };
+    }
+  }
+
+  /** Classify one non-2xx Discord answer by status and documented error code. */
+  classifyErrorResponse(operation: string, response: ProviderResponse, receipt: ReceiptDraft): ExchangeFailure {
+    return this.classify(operation, response, receipt);
+  }
+
+  /** Resolve credentials, perform one exchange, and classify its outcome. */
+  async exchange(call: Call, operation: string, method: string, path: string, objectId: string, body?: unknown): Promise<ExchangeResult> {
+    const resolution = await this.resolveBotToken(call, operation);
+    if ('outcome' in resolution) return resolution;
+    const token = resolution.token;
     let encoded: Uint8Array | undefined;
     try { if (body !== undefined) encoded = Buffer.from(JSON.stringify(body), 'utf8'); }
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', `${operation} request could not be encoded`) }; }
     const receipt = this.receipt(call, objectId);
     let response: ProviderResponse;
     try {
-      response = await this.send({ url: this.endpoint + path, method,
-        headers: { Accept: 'application/json', Authorization: `Bot ${token}`, 'User-Agent': 'DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)', ...(encoded ? { 'Content-Type': 'application/json' } : {}) },
+      response = await this.send({ url: this.endpoint + path, method, headers: this.headers(token, encoded !== undefined),
         ...(encoded ? { body: encoded } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes),
-        addressPolicy: this.endpoint === defaultEndpoint ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs: 25_000,
-        signal: call.context.cancellationSignal });
+        addressPolicy: this.addressPolicy(), timeoutMs: 25_000, signal: call.context.cancellationSignal });
     } catch (error) {
       if (error instanceof BodyTooLargeError) {
         if (error.status !== undefined && (error.status < 200 || error.status >= 300)) return { outcome: this.classify(operation, { status: error.status, headers: error.headers ?? {}, body: Buffer.alloc(0) }, receipt) };
@@ -102,19 +156,28 @@ export class DiscordClient {
     return { outcome: this.classify(operation, response, receipt) };
   }
 
+  private headers(token: string, hasBody: boolean): Record<string, string> {
+    return { Accept: 'application/json', Authorization: `Bot ${token}`, 'User-Agent': 'DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)', ...(hasBody ? { 'Content-Type': 'application/json' } : {}) };
+  }
+
+  private addressPolicy(): ProviderRequest['addressPolicy'] {
+    return this.endpoint === defaultEndpoint ? 'publicHTTPS' : 'privateNetworkHTTP';
+  }
+
   private classify(operation: string, response: ProviderResponse, receipt: ReceiptDraft): ExchangeFailure {
     const status = response.status;
     const code = readErrorCode(response.body);
     const detail = code ? `, code ${code}` : '';
     const retryAfter = parseRetryAfter(header(response, 'retry-after'), this.now());
     if (status === 429) return this.failure('retry', operation, 'RATE_LIMIT', 'Discord rate limited the request', receipt, rateLimitDelay(response.body, retryAfter));
-    if (status === 408 || (status >= 500 && status !== 501)) return this.failure('retry', operation, 'AVAILABILITY', `Discord is temporarily unavailable (HTTP ${status}${detail})`, receipt, retryAfter);
+    if (status === 408 || status >= 500) return this.failure('retry', operation, 'AVAILABILITY', `Discord is temporarily unavailable (HTTP ${status}${detail})`, receipt, retryAfter);
     if (status === 401) return this.failure('rejected', operation, 'AUTHENTICATION', `Discord rejected the bot token (HTTP 401${detail})`, receipt);
     if (status === 403) return this.failure('rejected', operation, 'AUTHORIZATION', `Discord denied access: check that the bot is in the server and has the channel permissions (HTTP 403${detail})`, receipt);
     if (status === 404 && (!code || notFoundCodes.has(code))) return this.failure('notFound', operation, 'NOT_FOUND', `Discord found no such channel, message, or emoji (HTTP 404${detail})`, receipt);
     if (status === 400 || status === 413) return this.failure('rejected', operation, 'VALIDATION', `Discord rejected the request as invalid (HTTP ${status}${detail})`, receipt);
-    if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `Discord redirected the request (HTTP ${status})`, receipt);
-    return this.failure('rejected', operation, 'PROVIDER_REJECTION', `Discord rejected the request (HTTP ${status}${detail})`, receipt);
+    if ([404, 411, 414, 415, 422].includes(status)) return this.failure('rejected', operation, 'PROVIDER_REJECTION', `Discord rejected the request (HTTP ${status}${detail})`, receipt);
+    // A redirect or unlisted status proves nothing, so the request is retried.
+    return this.failure('retry', operation, 'AVAILABILITY', `Discord answered with an unexpected status (HTTP ${status}${detail})`, receipt);
   }
 
   private failure(disposition: ExchangeFailure['disposition'], operation: string, kind: Failure['kind'], message: string, receipt: ReceiptDraft = {}, retryAfterMs = 0): ExchangeFailure {

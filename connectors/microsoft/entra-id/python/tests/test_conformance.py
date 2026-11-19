@@ -39,7 +39,9 @@ def client_for(http_client: httpx.AsyncClient, recorder: Any) -> entra.Client:
     """Bind inert credentials and deterministic random bytes to the replay transport."""
     scenario = recorder.scenario
     config = entra.Config(
-        max_response_bytes=2 if scenario["name"] == "removeUserFromGroup-invalid-response" else 4194304
+        max_response_bytes=2
+        if scenario["name"] == "removeUserFromGroup-unusable-response-retries"
+        else 4194304
     )
     source = conformance.SyntheticRandomSource(scenario["randomSeed"]) if scenario.get("randomSeed") else None
     credentials = (

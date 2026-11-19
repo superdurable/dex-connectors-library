@@ -23,7 +23,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, clickup.WithAPIBaseURL(endpoint), clickup.WithHTTPClient(transport), clickup.WithClock(func() time.Time { return time.UnixMilli(1767225600000) }))
 	require.NoError(t, err)
 	context := newTestDexContext("conformance")
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	// An SDK fence marker is restored as Dex persisted it.
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { context.heartbeat = value })
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		context.attempt = priorAttempt + int32(attempt)
+	}, actions: map[string]conformanceOperationInvocation{
 		"searchTasks":       newConformanceQueryInvocation(t, scenario.Input, context, client.SearchTasks(), clickupConnection),
 		"getTask":           newConformanceQueryInvocation(t, scenario.Input, context, client.GetTask(), clickupConnection),
 		"createTask":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTask(), clickupConnection, scenario.CallID),
