@@ -1,6 +1,0 @@
-{
-  "payload": {
-    "type": "form.submitted",
-    "data": {"submissionId": "evt_123"}
-  }
-}

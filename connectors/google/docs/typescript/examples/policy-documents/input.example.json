@@ -1,7 +1,0 @@
-{
-  "operation": "getDocumentText",
-  "request": {
-    "documentId": "replace-with-a-Google-Doc-ID",
-    "format": "markdown"
-  }
-}

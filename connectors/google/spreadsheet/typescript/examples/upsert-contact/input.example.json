@@ -1,7 +1,0 @@
-{
-  "spreadsheetId": "replace-with-your-spreadsheet-id",
-  "sheetName": "Contacts",
-  "keyColumn": "email",
-  "keyValue": "ada@example.test",
-  "values": { "email": "ada@example.test", "name": "Ada Lovelace" }
-}

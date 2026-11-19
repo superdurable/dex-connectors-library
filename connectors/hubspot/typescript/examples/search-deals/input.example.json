@@ -1,1 +1,0 @@
-{"objectType":"deals","filterGroups":[{"filters":[{"propertyName":"dealstage","operator":"EQ","value":"appointmentscheduled"}]}],"properties":["dealname","dealstage"],"limit":10}

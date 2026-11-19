@@ -1,9 +1,0 @@
-# ClickUp Python connector
-
-The package implements the ClickUp `searchTasks`, `getTask`, `createTask`, `updateTask`, `updateTaskTags`, `addComment`, and `findMemberByEmail` operations for Dex Flows. The `taskEvent` webhook Trigger remains Go-only. Install `dex-connector-clickup==0.1.1` alongside a Dex Python application and load its named connection from Dex project configuration. The connection uses a ClickUp personal API token and resolves it before each provider request.
-
-The [getTask runnable example](examples/get_task/README.md) uses a static `clickup-workspace` connection and a real Dex Worker and Client. Its integration test exercises a retry and an unwired rejection branch against a local ClickUp stand-in. Run from this directory with `uv sync --locked`, then `uv run pytest tests/ examples/get_task/integration_test.py` while `dexcli dev` is running and `DEX_FLOW_SERVICE_ADDRESS` points to it.
-
-`createTask` and `addComment` send behind the SDK single-dispatch fence, whose Dex heartbeat checkpoint counts each possible send. After an unknown outcome the next attempt reads the write back, by its saved ID or by name or text, and sends again only while possible sends stay within the Step's send cap (`max_sends`, three by default); at the cap an unconfirmed write selects `uncertain`. Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, and 422 select a refusal branch, and `updateTask` and `updateTaskTags` retry every other unknown outcome. The provider has no idempotency-key support for these calls. The Python package currently has no live ClickUp authorization or API verification.
-
-`getTask` returns custom field JSON values only when Python can represent their numbers exactly. A value that would lose precision selects `invalidResponse` and identifies the field. `updateTaskTags` bounds its sequence of provider requests to 25 seconds; an incomplete sequence retries.
