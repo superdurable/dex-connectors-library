@@ -1,6 +1,6 @@
 # WeCom connector
 
-The Go connector sends messages through WeCom (WeChat Work, 企业微信), Tencent's
+The Go and TypeScript connectors send messages through WeCom (WeChat Work, 企业微信), Tencent's
 workplace messaging service. It offers two operations, each with its own
 connection method:
 
@@ -206,3 +206,7 @@ run, and these provider behaviors remain unconfirmed:
 - whether WeCom measures `duplicate_check_interval` from the first accepted
   send; the cutoff assumes it does and that the Worker clock is within ten
   minutes of Dex's `FirstAttemptAt`.
+
+## TypeScript
+
+Install `@superdurable/connector-wecom@0.1.0`. Both Mutation operations are available through the generated TypeScript Steps. See [the TypeScript README](typescript/README.md) and [runnable examples](typescript/examples/basic/README.md). The TypeScript package replays all 22 Go conformance scenarios; live WeCom authorization remains unverified.
