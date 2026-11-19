@@ -1,0 +1,60 @@
+{
+  "connectorId": "kuaishou",
+  "releaseTag": "connectors/kuaishou/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-kuaishou",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_user_videos_step",
+      "kind": "query",
+      "operationId": "listUserVideos",
+      "inputType": "ListUserVideosInput",
+      "description": "Read one bounded page of the authorized user's videos.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListUserVideosInput selects a page; empty cursor starts at the first page.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the photo ID returned as nextCursor by the previous page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cursor"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
