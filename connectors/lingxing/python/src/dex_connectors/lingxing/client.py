@@ -5,6 +5,7 @@
 import base64
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -52,7 +53,7 @@ def _valid_secret(value: str) -> bool:
 def _code(value: object) -> int | None:
     if type(value) is int:
         return value
-    if isinstance(value, str):
+    if isinstance(value, str) and re.fullmatch(r"[+-]?[0-9]+", value):
         try:
             return int(value)
         except ValueError:
@@ -176,7 +177,11 @@ class Client:
                     "providerRejected", FailureKind.AUTHENTICATION, "Lingxing rejected AppID or AppSecret"
                 )
             token_data = data.get("data")
-            if not isinstance(token_data, dict) or not _valid_secret(token_data.get("access_token", "")):
+            if (
+                not isinstance(token_data, dict)
+                or not isinstance(token_data.get("access_token"), str)
+                or not _valid_secret(token_data["access_token"])
+            ):
                 return _branch(
                     "invalidResponse", FailureKind.PROTOCOL, "Lingxing token response was incomplete"
                 )
@@ -290,6 +295,8 @@ class ListStoresOperation:
                     or not item["name"]
                     or type(item.get("status")) is not int
                     or not 0 <= item["status"] <= 3
+                    or not isinstance(item.get("region", ""), str)
+                    or not isinstance(item.get("country", ""), str)
                 ):
                     return _branch(
                         "invalidResponse", FailureKind.PROTOCOL, "Lingxing returned invalid store data"
