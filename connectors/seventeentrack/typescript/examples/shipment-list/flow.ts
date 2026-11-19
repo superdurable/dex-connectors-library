@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newListTrackedShipmentsStep, type Connection, type ListTrackedShipmentsInput, type TrackedShipmentPage } from '@superdurable/connector-seventeentrack';
+import { newListTrackedShipmentsStep, type Connection, type ListTrackedShipmentsInput, type TrackedShipmentPage } from '../../src/index.js';
 
 /** Static Dex Web connection for the SeventeenTrack example. */
 export const ConnectionName = 'seventeentrack';
