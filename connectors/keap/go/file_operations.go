@@ -120,7 +120,7 @@ func (operation DeleteFileOperation) Invoke(call sdkgo.Call, input FileIDInput) 
 		return keapMutationBranch("deleteFile", DeleteFileBranchDefect, FileDeletion{}, sdkgo.FailureValidation, "file ID is invalid")
 	}
 	response := operation.client.request(call, http.MethodDelete, "/rest/v2/files/"+input.FileID, nil)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("deleteFile", DeleteFileBranchNotFound, FileDeletion{}, sdkgo.FailureNotFound, "Keap did not find the file")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "deleteFile", DeleteFileBranchProviderRejected, DeleteFileBranchInvalidResponse, DeleteFileBranchDefect, FileDeletion{}); handled {
@@ -130,10 +130,10 @@ func (operation DeleteFileOperation) Invoke(call sdkgo.Call, input FileIDInput) 
 		return *branch
 	}
 	if response.status != 200 && response.status != 204 {
-		return keapMutationBranch("deleteFile", DeleteFileBranchProviderRejected, FileDeletion{}, sdkgo.FailureProviderRejection, "Keap rejected file deletion")
+		return sdkgo.NewMutationRetry[FileDeletion](keapFailure("deleteFile", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	if response.status == 200 && len(response.body) > 0 && !json.Valid(response.body) {
-		return keapMutationBranch("deleteFile", DeleteFileBranchInvalidResponse, FileDeletion{}, sdkgo.FailureProtocol, "Keap returned invalid deletion JSON")
+		return sdkgo.NewMutationRetry[FileDeletion](keapFailure("deleteFile", sdkgo.FailureProtocol, "Keap returned invalid deletion JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteFileBranchDeleted, FileDeletion{FileID: input.FileID, Deleted: true}, nil, sdkgo.Receipt{})
 }

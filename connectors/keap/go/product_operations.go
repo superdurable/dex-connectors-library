@@ -214,7 +214,10 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		return keapMutationBranch("createProduct", CreateProductBranchDefect, ProductProfile{}, sdkgo.FailureLocalDefect, "product dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[ProductProfile](keapFailure("createProduct", sdkgo.FailureTransport, "an earlier product create may have succeeded"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(ProductProfile{}, keapFailure("createProduct", sdkgo.FailureTransport, "an earlier product create may have succeeded"), sdkgo.Receipt{})
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
@@ -246,14 +249,11 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		return sdkgo.NewMutationUncertain(ProductProfile{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != 200 && response.status != 201 {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(ProductProfile{}, keapFailure("createProduct", sdkgo.FailureProviderRejection, "earlier product create may have succeeded"), sdkgo.Receipt{})
-		}
-		return keapMutationBranch("createProduct", CreateProductBranchProviderRejected, ProductProfile{}, sdkgo.FailureProviderRejection, "Keap rejected product create")
+		return classifyLimitedKeapRefusal(fence, call, response, decision.MaximumPriorSends, "createProduct", CreateProductBranchProviderRejected, ProductProfile{})
 	}
 	product, ok := decodeProduct(response.body)
 	if !ok {
-		return sdkgo.NewMutationUncertain(ProductProfile{}, keapFailure("createProduct", sdkgo.FailureProtocol, "created product identity cannot be confirmed"), sdkgo.Receipt{})
+		return unknownLimitedKeapResponse(call, response, decision.MaximumPriorSends, "createProduct", ProductProfile{})
 	}
 	return sdkgo.NewMutationBranch(CreateProductBranchCreated, product, nil, sdkgo.Receipt{})
 }
@@ -265,7 +265,7 @@ func (operation UpdateProductOperation) Invoke(call sdkgo.Call, input UpdateProd
 	}
 	body, _ := json.Marshal(map[string]any{"name": input.Name, "price": input.PriceMinor})
 	response := operation.client.request(call, http.MethodPatch, "/rest/v2/products/"+input.ProductID+"?update_mask=name,price", body)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("updateProduct", UpdateProductBranchNotFound, ProductProfile{}, sdkgo.FailureNotFound, "Keap did not find the product")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "updateProduct", UpdateProductBranchProviderRejected, UpdateProductBranchInvalidResponse, UpdateProductBranchDefect, ProductProfile{}); handled {
@@ -275,11 +275,11 @@ func (operation UpdateProductOperation) Invoke(call sdkgo.Call, input UpdateProd
 		return *branch
 	}
 	if response.status != 200 {
-		return keapMutationBranch("updateProduct", UpdateProductBranchProviderRejected, ProductProfile{}, sdkgo.FailureProviderRejection, "Keap rejected product update")
+		return sdkgo.NewMutationRetry[ProductProfile](keapFailure("updateProduct", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	product, ok := decodeProduct(response.body)
 	if !ok {
-		return keapMutationBranch("updateProduct", UpdateProductBranchInvalidResponse, ProductProfile{}, sdkgo.FailureProtocol, "Keap returned invalid product JSON")
+		return sdkgo.NewMutationRetry[ProductProfile](keapFailure("updateProduct", sdkgo.FailureProtocol, "Keap returned invalid product JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateProductBranchUpdated, product, nil, sdkgo.Receipt{})
 }
@@ -290,7 +290,7 @@ func (operation DeleteProductOperation) Invoke(call sdkgo.Call, input ProductIDI
 		return keapMutationBranch("deleteProduct", DeleteProductBranchDefect, ProductDeletion{}, sdkgo.FailureValidation, "product ID is invalid")
 	}
 	response := operation.client.request(call, http.MethodDelete, "/rest/v2/products/"+input.ProductID, nil)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("deleteProduct", DeleteProductBranchNotFound, ProductDeletion{}, sdkgo.FailureNotFound, "Keap did not find the product")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "deleteProduct", DeleteProductBranchProviderRejected, DeleteProductBranchInvalidResponse, DeleteProductBranchDefect, ProductDeletion{}); handled {
@@ -300,10 +300,10 @@ func (operation DeleteProductOperation) Invoke(call sdkgo.Call, input ProductIDI
 		return *branch
 	}
 	if response.status != 200 && response.status != 204 {
-		return keapMutationBranch("deleteProduct", DeleteProductBranchProviderRejected, ProductDeletion{}, sdkgo.FailureProviderRejection, "Keap rejected product deletion")
+		return sdkgo.NewMutationRetry[ProductDeletion](keapFailure("deleteProduct", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	if response.status == 200 && len(response.body) > 0 && !json.Valid(response.body) {
-		return keapMutationBranch("deleteProduct", DeleteProductBranchInvalidResponse, ProductDeletion{}, sdkgo.FailureProtocol, "Keap returned invalid deletion JSON")
+		return sdkgo.NewMutationRetry[ProductDeletion](keapFailure("deleteProduct", sdkgo.FailureProtocol, "Keap returned invalid deletion JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteProductBranchDeleted, ProductDeletion{ProductID: input.ProductID, Deleted: true}, nil, sdkgo.Receipt{})
 }

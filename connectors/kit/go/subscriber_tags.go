@@ -306,16 +306,16 @@ func invokeKitMutation[T any](call sdkgo.Call, client *Client, operation, method
 		return outcome
 	}
 	if status != http.StatusOK && status != http.StatusCreated {
-		return kitMutationBranch(operation, branches.rejected, *new(T), sdkgo.FailureProviderRejection, "Kit rejected HTTP "+strconv.Itoa(status))
+		return sdkgo.NewMutationRetry[T](kitFailure(operation, sdkgo.FailureTransport, "Kit write outcome is unknown"), retryAfter)
 	}
 	value, err := decode(body)
 	if err != nil {
-		return kitMutationBranch(operation, branches.invalid, *new(T), sdkgo.FailureProtocol, "Kit returned invalid JSON")
+		return sdkgo.NewMutationRetry[T](kitFailure(operation, sdkgo.FailureProtocol, "Kit write response did not confirm the result"), 0)
 	}
 	return sdkgo.NewMutationBranch(branches.success, value, nil, sdkgo.Receipt{})
 }
 
-func classifyKitMutation[T any](_ []byte, status int, retryAfter time.Duration, err error, operation string, branches mutationBranches) (sdkgo.MutationAttempt[T], bool) {
+func classifyKitMutation[T any](body []byte, status int, retryAfter time.Duration, err error, operation string, branches mutationBranches) (sdkgo.MutationAttempt[T], bool) {
 	var zero T
 	if errors.Is(err, errCredential) {
 		return kitMutationBranch(operation, branches.defect, zero, sdkgo.FailureAuthentication, "Kit credentials are unavailable"), true
@@ -329,14 +329,17 @@ func classifyKitMutation[T any](_ []byte, status int, retryAfter time.Duration, 
 	if status == 408 || status >= 500 {
 		return sdkgo.NewMutationRetry[T](kitFailure(operation, sdkgo.FailureAvailability, "Kit temporarily unavailable"), retryAfter), true
 	}
-	if status == 404 && branches.notFound != "" {
+	if status == 404 && branches.notFound != "" && definiteLimitedRefusal(status, body) {
 		return kitMutationBranch(operation, branches.notFound, zero, sdkgo.FailureNotFound, "Kit did not find the resource"), true
 	}
 	if status >= 400 {
-		return kitMutationBranch(operation, branches.rejected, zero, sdkgo.FailureProviderRejection, "Kit rejected HTTP "+strconv.Itoa(status)), true
+		if definiteLimitedRefusal(status, body) {
+			return kitMutationBranch(operation, branches.rejected, zero, sdkgo.FailureProviderRejection, "Kit rejected HTTP "+strconv.Itoa(status)), true
+		}
+		return sdkgo.NewMutationRetry[T](kitFailure(operation, sdkgo.FailureTransport, "Kit write outcome is unknown"), retryAfter), true
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return kitMutationBranch(operation, branches.invalid, zero, sdkgo.FailureResponseTooLarge, "Kit response exceeded configured limit"), true
+		return sdkgo.NewMutationRetry[T](kitFailure(operation, sdkgo.FailureResponseTooLarge, "Kit write response exceeded configured limit"), 0), true
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](kitFailure(operation, sdkgo.FailureTransport, "Kit response was interrupted"), 0), true

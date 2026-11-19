@@ -174,8 +174,8 @@ func (operation CreateInterviewOperation) Invoke(call sdkgo.Call, input CreateIn
 		return interviewMutationBranch("createInterview", CreateInterviewBranchDefect, sdkgo.FailureLocalDefect, "interview dispatch checkpoint failed", receipt)
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
-		return sdkgo.NewMutationUncertain(InterviewSummary{}, interviewFailure("createInterview", sdkgo.FailureTransport, "interview may exist at the send cap"), receipt)
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[InterviewSummary](interviewFailure("createInterview", sdkgo.FailureTransport, "interview may exist at the send cap"), 0)
 	}
 	if decision.Marker.ProviderID != "" {
 		readback := operation.client.get(call, interviewPath(input.OpportunityID, decision.Marker.ProviderID))
@@ -187,6 +187,9 @@ func (operation CreateInterviewOperation) Invoke(call sdkgo.Call, input CreateIn
 			}
 		}
 		return sdkgo.NewMutationRetry[InterviewSummary](interviewFailure("createInterview", sdkgo.FailureAvailability, "created interview read-back unavailable"), readback.retryAfter)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return sdkgo.NewMutationUncertain(InterviewSummary{}, interviewFailure("createInterview", sdkgo.FailureTransport, "interview may exist at the send cap"), receipt)
 	}
 	payload, err := encodeInterviewWrite(input.PanelID, input.InterviewerIDs, input.Date, input.DurationMinutes, input.Subject, input.Note, input.Location)
 	if err != nil {
@@ -221,10 +224,7 @@ func (operation CreateInterviewOperation) Invoke(call sdkgo.Call, input CreateIn
 		return unknownInterviewCreate(call, decision.MaximumPriorSends, receipt, sdkgo.FailureTransport, "interview create outcome is unknown")
 	}
 	if response.status != http.StatusCreated {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(InterviewSummary{}, interviewFailure("createInterview", sdkgo.FailureProviderRejection, "Lever rejected a resend after a possible create"), receipt)
-		}
-		return interviewMutationBranch("createInterview", CreateInterviewBranchProviderRejected, sdkgo.FailureProviderRejection, "Lever rejected interview creation", receipt)
+		return classifyLimitedLeverRefusal(fence, call, response, decision.MaximumPriorSends, "createInterview", CreateInterviewBranchProviderRejected, InterviewSummary{}, receipt)
 	}
 	interview, err := decodeInterviewWrite(response.body)
 	if err != nil || interview.PanelID != input.PanelID || interview.Date != input.Date || interview.DurationMinutes != input.DurationMinutes {

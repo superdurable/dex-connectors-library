@@ -116,7 +116,7 @@ spec:
         - {id: updated, goName: Updated, description: MeisterTask returned the checklist item outcome.}
         - {id: notFound, goName: NotFound, description: MeisterTask did not expose the item., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -218,7 +218,7 @@ spec:
         - {id: updated, goName: Updated, description: MeisterTask returned the checklist outcome.}
         - {id: notFound, goName: NotFound, description: MeisterTask did not expose the checklist., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -481,7 +481,7 @@ spec:
         - {id: updated, goName: Updated, description: MeisterTask returned the section.}
         - {id: notFound, goName: NotFound, description: MeisterTask did not expose the section., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -563,7 +563,7 @@ spec:
         - {id: updated, goName: Updated, description: MeisterTask returned the project.}
         - {id: notFound, goName: NotFound, description: MeisterTask did not expose the project., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -645,7 +645,7 @@ spec:
         - {id: updated, goName: Updated, description: MeisterTask returned the updated task.}
         - {id: notFound, goName: NotFound, description: MeisterTask did not expose the task., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault

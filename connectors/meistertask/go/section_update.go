@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -63,21 +62,21 @@ func (operation UpdateSectionOperation) Invoke(call sdkgo.Call, input UpdateSect
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[SectionSummary](sectionFailure("updateSection", sdkgo.FailureAvailability, "MeisterTask update outcome is not confirmed"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && definiteLimitedRefusal(response.status, response.body) {
 		return sectionMutationBranch("updateSection", UpdateSectionBranchNotFound, SectionSummary{}, sdkgo.FailureNotFound, "MeisterTask did not expose the section")
 	}
 	if response.status != http.StatusOK {
-		return sectionMutationBranch("updateSection", UpdateSectionBranchProviderRejected, SectionSummary{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.status))
+		return classifySafeMeistertaskNonSuccess(response, "updateSection", UpdateSectionBranchProviderRejected, SectionSummary{})
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return sectionMutationBranch("updateSection", UpdateSectionBranchInvalidResponse, SectionSummary{}, sdkgo.FailureResponseTooLarge, "MeisterTask response exceeded the configured limit")
+		return retryUnconfirmedMeistertaskWrite[SectionSummary]("updateSection", sdkgo.FailureResponseTooLarge, "MeisterTask write response did not confirm the result", 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[SectionSummary](sectionFailure("updateSection", sdkgo.FailureTransport, "MeisterTask response was interrupted"), 0)
 	}
 	section, err := decodeSection(response.body, input.SectionID)
 	if err != nil {
-		return sectionMutationBranch("updateSection", UpdateSectionBranchInvalidResponse, SectionSummary{}, sdkgo.FailureProtocol, "MeisterTask returned invalid section JSON")
+		return retryUnconfirmedMeistertaskWrite[SectionSummary]("updateSection", sdkgo.FailureProtocol, "MeisterTask write response did not confirm the result", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateSectionBranchUpdated, section, nil, sdkgo.Receipt{})
 }

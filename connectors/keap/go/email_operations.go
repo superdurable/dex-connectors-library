@@ -216,7 +216,7 @@ func (operation DeleteEmailRecordOperation) Invoke(call sdkgo.Call, input EmailR
 		return keapMutationBranch("deleteEmailRecord", DeleteEmailRecordBranchDefect, EmailRecordDeletion{}, sdkgo.FailureValidation, "email ID is invalid")
 	}
 	response := operation.client.request(call, http.MethodDelete, "/rest/v2/emails/"+input.EmailID, nil)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("deleteEmailRecord", DeleteEmailRecordBranchNotFound, EmailRecordDeletion{}, sdkgo.FailureNotFound, "Keap did not find the email")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "deleteEmailRecord", DeleteEmailRecordBranchProviderRejected, DeleteEmailRecordBranchInvalidResponse, DeleteEmailRecordBranchDefect, EmailRecordDeletion{}); handled {
@@ -226,10 +226,10 @@ func (operation DeleteEmailRecordOperation) Invoke(call sdkgo.Call, input EmailR
 		return *branch
 	}
 	if response.status != 200 && response.status != 204 {
-		return keapMutationBranch("deleteEmailRecord", DeleteEmailRecordBranchProviderRejected, EmailRecordDeletion{}, sdkgo.FailureProviderRejection, "Keap rejected email deletion")
+		return sdkgo.NewMutationRetry[EmailRecordDeletion](keapFailure("deleteEmailRecord", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	if response.status == 200 && len(response.body) > 0 && !json.Valid(response.body) {
-		return keapMutationBranch("deleteEmailRecord", DeleteEmailRecordBranchInvalidResponse, EmailRecordDeletion{}, sdkgo.FailureProtocol, "Keap returned invalid deletion JSON")
+		return sdkgo.NewMutationRetry[EmailRecordDeletion](keapFailure("deleteEmailRecord", sdkgo.FailureProtocol, "Keap returned invalid deletion JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteEmailRecordBranchDeleted, EmailRecordDeletion{EmailID: input.EmailID, Deleted: true}, nil, sdkgo.Receipt{})
 }
@@ -241,7 +241,10 @@ func dispatchLimitedEmail[T any](client *Client, call sdkgo.Call, operationName 
 		return keapMutationBranch(operationName, defectBranch, zero, sdkgo.FailureLocalDefect, "email dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[T](keapFailure(operationName, sdkgo.FailureTransport, "an earlier email request may have succeeded"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(zero, keapFailure(operationName, sdkgo.FailureTransport, "an earlier email request may have succeeded"), sdkgo.Receipt{})
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
@@ -273,14 +276,11 @@ func dispatchLimitedEmail[T any](client *Client, call sdkgo.Call, operationName 
 		return sdkgo.NewMutationUncertain(zero, failure, sdkgo.Receipt{})
 	}
 	if response.status < 200 || response.status >= 300 {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(zero, keapFailure(operationName, sdkgo.FailureProviderRejection, "earlier email request may have succeeded"), sdkgo.Receipt{})
-		}
-		return keapMutationBranch(operationName, rejectedBranch, zero, sdkgo.FailureProviderRejection, "Keap rejected the email request")
+		return classifyLimitedKeapRefusal(fence, call, response, decision.MaximumPriorSends, operationName, rejectedBranch, zero)
 	}
 	result, ok := decodeSuccess(response)
 	if !ok {
-		return sdkgo.NewMutationUncertain(zero, keapFailure(operationName, sdkgo.FailureProtocol, "email request outcome cannot be confirmed"), sdkgo.Receipt{})
+		return unknownLimitedKeapResponse(call, response, decision.MaximumPriorSends, operationName, zero)
 	}
 	return sdkgo.NewMutationBranch(successBranch, result, nil, sdkgo.Receipt{})
 }

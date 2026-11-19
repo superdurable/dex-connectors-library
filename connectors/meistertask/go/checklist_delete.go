@@ -6,7 +6,6 @@ package meistertask
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
@@ -59,11 +58,11 @@ func (operation DeleteChecklistOperation) Invoke(call sdkgo.Call, input DeleteCh
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[DeletedChecklist](checklistFailure("deleteChecklist", sdkgo.FailureAvailability, "MeisterTask delete outcome is not confirmed"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && definiteLimitedRefusal(response.status, response.body) {
 		return checklistMutationBranch("deleteChecklist", DeleteChecklistBranchNotFound, DeletedChecklist{}, sdkgo.FailureNotFound, "MeisterTask did not expose the checklist")
 	}
 	if response.status != http.StatusOK && response.status != http.StatusNoContent {
-		return checklistMutationBranch("deleteChecklist", DeleteChecklistBranchProviderRejected, DeletedChecklist{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.status))
+		return classifySafeMeistertaskNonSuccess(response, "deleteChecklist", DeleteChecklistBranchProviderRejected, DeletedChecklist{})
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[DeletedChecklist](checklistFailure("deleteChecklist", sdkgo.FailureTransport, "MeisterTask delete response was interrupted"), 0)

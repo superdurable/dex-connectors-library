@@ -325,7 +325,7 @@ func UpsertSubscriberProviderRejected(value kit.SubscriberMetadata, failure *sdk
 	return connectormock.Branch(kit.UpsertSubscriberBranchProviderRejected, value, failure)
 }
 
-// UpsertSubscriberInvalidResponse selects the invalidResponse branch: Kit returned malformed or oversized JSON.
+// UpsertSubscriberInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpsertSubscriberInvalidResponse(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
 	return connectormock.Branch(kit.UpsertSubscriberBranchInvalidResponse, value, failure)
 }
@@ -395,7 +395,7 @@ func CreateTagProviderRejected(value kit.TagMetadata, failure *sdkgo.Failure) co
 	return connectormock.Branch(kit.CreateTagBranchProviderRejected, value, failure)
 }
 
-// CreateTagInvalidResponse selects the invalidResponse branch: Kit returned malformed or oversized JSON.
+// CreateTagInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func CreateTagInvalidResponse(value kit.TagMetadata, failure *sdkgo.Failure) connectormock.Case[kit.TagMetadata] {
 	return connectormock.Branch(kit.CreateTagBranchInvalidResponse, value, failure)
 }
@@ -434,7 +434,7 @@ func TagSubscriberProviderRejected(value kit.SubscriberMetadata, failure *sdkgo.
 	return connectormock.Branch(kit.TagSubscriberBranchProviderRejected, value, failure)
 }
 
-// TagSubscriberInvalidResponse selects the invalidResponse branch: Kit returned malformed or oversized JSON.
+// TagSubscriberInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func TagSubscriberInvalidResponse(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
 	return connectormock.Branch(kit.TagSubscriberBranchInvalidResponse, value, failure)
 }
@@ -547,7 +547,7 @@ func CreateCustomFieldProviderRejected(value kit.CustomFieldMetadata, failure *s
 	return connectormock.Branch(kit.CreateCustomFieldBranchProviderRejected, value, failure)
 }
 
-// CreateCustomFieldInvalidResponse selects the invalidResponse branch: Kit returned invalid custom-field JSON.
+// CreateCustomFieldInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func CreateCustomFieldInvalidResponse(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
 	return connectormock.Branch(kit.CreateCustomFieldBranchInvalidResponse, value, failure)
 }
@@ -588,7 +588,7 @@ func UpdateCustomFieldProviderRejected(value kit.CustomFieldMetadata, failure *s
 	return connectormock.Branch(kit.UpdateCustomFieldBranchProviderRejected, value, failure)
 }
 
-// UpdateCustomFieldInvalidResponse selects the invalidResponse branch: Kit returned invalid custom-field JSON.
+// UpdateCustomFieldInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateCustomFieldInvalidResponse(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
 	return connectormock.Branch(kit.UpdateCustomFieldBranchInvalidResponse, value, failure)
 }
@@ -745,7 +745,7 @@ func AddSubscriberToFormProviderRejected(value kit.SubscriberMetadata, failure *
 	return connectormock.Branch(kit.AddSubscriberToFormBranchProviderRejected, value, failure)
 }
 
-// AddSubscriberToFormInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+// AddSubscriberToFormInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func AddSubscriberToFormInvalidResponse(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
 	return connectormock.Branch(kit.AddSubscriberToFormBranchInvalidResponse, value, failure)
 }

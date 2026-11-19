@@ -239,7 +239,10 @@ func (operation CreateContactNoteOperation) Invoke(call sdkgo.Call, input Create
 		return keapMutationBranch("createContactNote", CreateContactNoteBranchDefect, ContactNote{}, sdkgo.FailureLocalDefect, "note dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[ContactNote](keapFailure("createContactNote", sdkgo.FailureTransport, "an earlier note create may have succeeded"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(ContactNote{}, keapFailure("createContactNote", sdkgo.FailureTransport, "an earlier note create may have succeeded"), sdkgo.Receipt{})
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
@@ -271,14 +274,11 @@ func (operation CreateContactNoteOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationUncertain(ContactNote{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != 200 && response.status != 201 {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(ContactNote{}, keapFailure("createContactNote", sdkgo.FailureProviderRejection, "earlier note create may have succeeded"), sdkgo.Receipt{})
-		}
-		return keapMutationBranch("createContactNote", CreateContactNoteBranchProviderRejected, ContactNote{}, sdkgo.FailureProviderRejection, "Keap rejected note create")
+		return classifyLimitedKeapRefusal(fence, call, response, decision.MaximumPriorSends, "createContactNote", CreateContactNoteBranchProviderRejected, ContactNote{})
 	}
 	note, ok := decodeContactNote(response.body)
 	if !ok {
-		return sdkgo.NewMutationUncertain(ContactNote{}, keapFailure("createContactNote", sdkgo.FailureProtocol, "created note identity cannot be confirmed"), sdkgo.Receipt{})
+		return unknownLimitedKeapResponse(call, response, decision.MaximumPriorSends, "createContactNote", ContactNote{})
 	}
 	return sdkgo.NewMutationBranch(CreateContactNoteBranchCreated, note, nil, sdkgo.Receipt{})
 }
@@ -290,7 +290,7 @@ func (operation UpdateContactNoteOperation) Invoke(call sdkgo.Call, input Update
 	}
 	body, _ := json.Marshal(map[string]string{"title": input.Title, "text": input.Text})
 	response := operation.client.request(call, http.MethodPatch, contactNotePath(input.ContactID, input.NoteID)+"?update_mask=title%2Ctext", body)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("updateContactNote", UpdateContactNoteBranchNotFound, ContactNote{}, sdkgo.FailureNotFound, "Keap did not find the note")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "updateContactNote", UpdateContactNoteBranchProviderRejected, UpdateContactNoteBranchInvalidResponse, UpdateContactNoteBranchDefect, ContactNote{}); handled {
@@ -300,11 +300,11 @@ func (operation UpdateContactNoteOperation) Invoke(call sdkgo.Call, input Update
 		return *branch
 	}
 	if response.status != 200 {
-		return keapMutationBranch("updateContactNote", UpdateContactNoteBranchProviderRejected, ContactNote{}, sdkgo.FailureProviderRejection, "Keap rejected note update")
+		return sdkgo.NewMutationRetry[ContactNote](keapFailure("updateContactNote", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	note, ok := decodeContactNote(response.body)
 	if !ok {
-		return keapMutationBranch("updateContactNote", UpdateContactNoteBranchInvalidResponse, ContactNote{}, sdkgo.FailureProtocol, "Keap returned invalid note JSON")
+		return sdkgo.NewMutationRetry[ContactNote](keapFailure("updateContactNote", sdkgo.FailureProtocol, "Keap returned invalid note JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateContactNoteBranchUpdated, note, nil, sdkgo.Receipt{})
 }
@@ -315,7 +315,7 @@ func (operation DeleteContactNoteOperation) Invoke(call sdkgo.Call, input Contac
 		return keapMutationBranch("deleteContactNote", DeleteContactNoteBranchDefect, ContactNoteDeletion{}, sdkgo.FailureValidation, "contact and note IDs are required")
 	}
 	response := operation.client.request(call, http.MethodDelete, contactNotePath(input.ContactID, input.NoteID), nil)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("deleteContactNote", DeleteContactNoteBranchNotFound, ContactNoteDeletion{}, sdkgo.FailureNotFound, "Keap did not find the note")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "deleteContactNote", DeleteContactNoteBranchProviderRejected, DeleteContactNoteBranchInvalidResponse, DeleteContactNoteBranchDefect, ContactNoteDeletion{}); handled {
@@ -325,10 +325,10 @@ func (operation DeleteContactNoteOperation) Invoke(call sdkgo.Call, input Contac
 		return *branch
 	}
 	if response.status != 200 && response.status != 204 {
-		return keapMutationBranch("deleteContactNote", DeleteContactNoteBranchProviderRejected, ContactNoteDeletion{}, sdkgo.FailureProviderRejection, "Keap rejected note deletion")
+		return sdkgo.NewMutationRetry[ContactNoteDeletion](keapFailure("deleteContactNote", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	if response.status == 200 && len(response.body) > 0 && !json.Valid(response.body) {
-		return keapMutationBranch("deleteContactNote", DeleteContactNoteBranchInvalidResponse, ContactNoteDeletion{}, sdkgo.FailureProtocol, "Keap returned invalid deletion JSON")
+		return sdkgo.NewMutationRetry[ContactNoteDeletion](keapFailure("deleteContactNote", sdkgo.FailureProtocol, "Keap returned invalid deletion JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteContactNoteBranchDeleted, ContactNoteDeletion{ContactID: input.ContactID, NoteID: input.NoteID, Deleted: true}, nil, sdkgo.Receipt{})
 }

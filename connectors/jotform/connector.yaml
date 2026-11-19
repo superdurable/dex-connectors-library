@@ -84,7 +84,7 @@ spec:
         - {id: updated, goName: Updated, description: Jotform accepted the title update.}
         - {id: notFound, goName: NotFound, description: The form does not exist., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the title update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - {name: updatedDefault, branch: updated, default: true, description: A form title was updated., output: {id: "123", accepted: true}}
@@ -101,7 +101,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Jotform deleted the form.}
         - {id: notFound, goName: NotFound, description: The form does not exist., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: A form was deleted., output: {id: "123", accepted: true}}
@@ -134,7 +134,7 @@ spec:
         - {id: updated, goName: Updated, description: Jotform accepted the answer update.}
         - {id: notFound, goName: NotFound, description: The submission does not exist., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the answer update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - {name: updatedDefault, branch: updated, default: true, description: A submission was updated., output: {id: "456", accepted: true}}
@@ -151,7 +151,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Jotform deleted the submission.}
         - {id: notFound, goName: NotFound, description: The submission does not exist., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: A submission was deleted., output: {id: "456", accepted: true}}

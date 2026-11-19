@@ -128,23 +128,26 @@ func classifyUserWrite(response providerResponse, operationName string, successB
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[UserWriteResult](userWriteFailure(operationName, sdkgo.FailureAvailability, "Iterable is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound && notFoundBranch != "" {
+	if response.status == http.StatusNotFound && notFoundBranch != "" && definiteSafeRefusal(response.status, response.body) {
 		return userWriteBranch(operationName, notFoundBranch, sdkgo.FailureNotFound, "Iterable did not find the user")
 	}
 	if response.status != http.StatusOK {
-		return userWriteBranch(operationName, rejectedBranch, sdkgo.FailureProviderRejection, "Iterable rejected HTTP "+strconv.Itoa(response.status))
+		if definiteSafeRefusal(response.status, response.body) {
+			return userWriteBranch(operationName, rejectedBranch, sdkgo.FailureProviderRejection, "Iterable rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[UserWriteResult](userWriteFailure(operationName, sdkgo.FailureTransport, "Iterable write outcome is unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return userWriteBranch(operationName, invalidBranch, sdkgo.FailureResponseTooLarge, "Iterable response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[UserWriteResult](userWriteFailure(operationName, sdkgo.FailureResponseTooLarge, "Iterable write response exceeded the configured limit"), 0)
 	}
 	var result struct {
 		Code string `json:"code"`
 	}
 	if err := json.Unmarshal(response.body, &result); err != nil || result.Code == "" {
-		return userWriteBranch(operationName, invalidBranch, sdkgo.FailureProtocol, "Iterable returned invalid response JSON")
+		return sdkgo.NewMutationRetry[UserWriteResult](userWriteFailure(operationName, sdkgo.FailureProtocol, "Iterable write response did not confirm the result"), 0)
 	}
 	if result.Code != "Success" {
-		return userWriteBranch(operationName, rejectedBranch, sdkgo.FailureProviderRejection, "Iterable rejected the user write")
+		return sdkgo.NewMutationRetry[UserWriteResult](userWriteFailure(operationName, sdkgo.FailureProtocol, "Iterable write response did not confirm the result"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, UserWriteResult{Accepted: true}, nil, sdkgo.Receipt{})
 }

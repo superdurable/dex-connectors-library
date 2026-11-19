@@ -108,7 +108,7 @@ spec:
       branches:
         - {id: upserted, goName: Upserted, description: Keap returned the created or updated contact.}
         - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the contact., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - name: upsertedDefault
@@ -129,7 +129,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Keap accepted the deletion.}
         - {id: notFound, goName: NotFound, description: Keap did not find the contact., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - name: deletedDefault
@@ -211,7 +211,7 @@ spec:
         - {id: updated, goName: Updated, description: Keap updated the company.}
         - {id: notFound, goName: NotFound, description: Keap did not find the company., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid company JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -232,7 +232,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Keap accepted the deletion.}
         - {id: notFound, goName: NotFound, description: Keap did not find the company., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: deletedDefault
@@ -315,7 +315,7 @@ spec:
         - {id: updated, goName: Updated, description: Keap updated the note.}
         - {id: notFound, goName: NotFound, description: Keap did not find the note., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid note JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -336,7 +336,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Keap accepted the note deletion.}
         - {id: notFound, goName: NotFound, description: Keap did not find the note., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: deletedDefault
@@ -378,7 +378,7 @@ spec:
         - {id: applied, goName: Applied, description: Keap accepted the tag application.}
         - {id: notFound, goName: NotFound, description: Keap did not find the tag or contact., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the tag application., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid tag application JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: appliedDefault
@@ -399,7 +399,7 @@ spec:
         - {id: removed, goName: Removed, description: Keap accepted the tag removal.}
         - {id: notFound, goName: NotFound, description: Keap did not find the tag or contact., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the tag removal., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid tag removal JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: removedDefault
@@ -481,7 +481,7 @@ spec:
         - {id: updated, goName: Updated, description: Keap updated the order.}
         - {id: notFound, goName: NotFound, description: Keap did not find the order., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid order JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -502,7 +502,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Keap accepted the order deletion.}
         - {id: notFound, goName: NotFound, description: Keap did not find the order., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: deletedDefault
@@ -584,7 +584,7 @@ spec:
         - {id: updated, goName: Updated, description: Keap updated the product.}
         - {id: notFound, goName: NotFound, description: Keap did not find the product., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid product JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -605,7 +605,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Keap accepted the product deletion.}
         - {id: notFound, goName: NotFound, description: Keap did not find the product., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: deletedDefault
@@ -686,7 +686,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Keap accepted the record deletion.}
         - {id: notFound, goName: NotFound, description: Keap did not find the record., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: deletedDefault
@@ -727,7 +727,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Keap accepted the file deletion.}
         - {id: notFound, goName: NotFound, description: Keap did not find the file., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: deletedDefault

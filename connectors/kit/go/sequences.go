@@ -149,7 +149,10 @@ func (operation AddSubscriberToSequenceOperation) Invoke(call sdkgo.Call, input 
 		return kitMutationBranch("addSubscriberToSequence", AddSubscriberToSequenceBranchDefect, SubscriberMetadata{}, sdkgo.FailureLocalDefect, "sequence dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[SubscriberMetadata](kitFailure("addSubscriberToSequence", sdkgo.FailureTransport, "an earlier sequence enrollment may have succeeded"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(SubscriberMetadata{}, kitFailure("addSubscriberToSequence", sdkgo.FailureTransport, "an earlier sequence enrollment may have succeeded"), sdkgo.Receipt{})
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
@@ -183,21 +186,38 @@ func (operation AddSubscriberToSequenceOperation) Invoke(call sdkgo.Call, input 
 		}
 		return sdkgo.NewMutationUncertain(SubscriberMetadata{}, failure, sdkgo.Receipt{})
 	}
-	if status == 404 {
+	if status == 404 && definiteLimitedRefusal(status, responseBody) {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationUncertain(SubscriberMetadata{}, kitFailure("addSubscriberToSequence", sdkgo.FailureNotFound, "earlier enrollment may have succeeded"), sdkgo.Receipt{})
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[SubscriberMetadata](kitFailure("addSubscriberToSequence", sdkgo.FailureAvailability, "rejection checkpoint failed"), 0)
 		}
 		return kitMutationBranch("addSubscriberToSequence", AddSubscriberToSequenceBranchNotFound, SubscriberMetadata{}, sdkgo.FailureNotFound, "Kit did not find the sequence or subscriber")
 	}
 	if status != 200 && status != 201 {
+		if !definiteLimitedRefusal(status, responseBody) {
+			failure := kitFailure("addSubscriberToSequence", sdkgo.FailureTransport, "sequence enrollment outcome is unknown")
+			if canResend {
+				return sdkgo.NewMutationRetry[SubscriberMetadata](failure, retryAfterDuration)
+			}
+			return sdkgo.NewMutationUncertain(SubscriberMetadata{}, failure, sdkgo.Receipt{})
+		}
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationUncertain(SubscriberMetadata{}, kitFailure("addSubscriberToSequence", sdkgo.FailureProviderRejection, "earlier enrollment may have succeeded"), sdkgo.Receipt{})
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[SubscriberMetadata](kitFailure("addSubscriberToSequence", sdkgo.FailureAvailability, "rejection checkpoint failed"), 0)
 		}
 		return kitMutationBranch("addSubscriberToSequence", AddSubscriberToSequenceBranchProviderRejected, SubscriberMetadata{}, sdkgo.FailureProviderRejection, "Kit rejected sequence enrollment")
 	}
 	subscriber, err := decodeSubscriber(responseBody)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(SubscriberMetadata{}, kitFailure("addSubscriberToSequence", sdkgo.FailureProtocol, "sequence enrollment cannot be confirmed"), sdkgo.Receipt{})
+		failure := kitFailure("addSubscriberToSequence", sdkgo.FailureProtocol, "sequence enrollment cannot be confirmed")
+		if canResend {
+			return sdkgo.NewMutationRetry[SubscriberMetadata](failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(SubscriberMetadata{}, failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(AddSubscriberToSequenceBranchAdded, subscriber, nil, sdkgo.Receipt{})
 }

@@ -51,7 +51,28 @@ func (operation AddTaskLabelOperation) Invoke(call sdkgo.Call, input AddTaskLabe
 		return labelMutationBranch("addTaskLabel", AddTaskLabelBranchDefect, TaskLabelSummary{}, sdkgo.FailureLocalDefect, "attachment dispatch fence is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return addTaskLabelRetry(sdkgo.FailureAvailability, "dispatch fence failed closed", 0)
+	}
+	if decision.Marker.ProviderID != "" {
+		readback := operation.client.get(call, "/tasks/"+input.TaskID+"/task_labels")
+		if readback.status == http.StatusOK && readback.err == nil {
+			var attachments []json.RawMessage
+			if json.Unmarshal(readback.body, &attachments) == nil {
+				for _, raw := range attachments {
+					attachment, decodeErr := decodeTaskLabel(raw, decision.Marker.ProviderID)
+					if decodeErr == nil && attachment.TaskID == input.TaskID && attachment.LabelID == input.LabelID {
+						return sdkgo.NewMutationBranch(AddTaskLabelBranchAdded, attachment, nil, sdkgo.Receipt{ProviderObjectID: attachment.ID})
+					}
+				}
+			}
+		}
+		if decision.Kind == singledispatch.ReadBackRequired {
+			return addTaskLabelUncertain(sdkgo.FailureTransport, "attachment read-back could not confirm the stored provider ID")
+		}
+		return addTaskLabelRetry(sdkgo.FailureAvailability, "attachment read-back is unavailable", readback.retryAfter)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return addTaskLabelUncertain(sdkgo.FailureTransport, "an earlier attachment create may have succeeded")
 	}
 	// A repeated label attachment may be accepted, so list readback cannot prove this call's result.
@@ -120,10 +141,7 @@ func (operation AddTaskLabelOperation) Invoke(call sdkgo.Call, input AddTaskLabe
 		return retryOrUncertainAddTaskLabel(canResendUnknown, sdkgo.FailureAvailability, "attachment create outcome is unknown", retryAfter)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		if hasEarlierUnknownSend {
-			return addTaskLabelUncertain(sdkgo.FailureProviderRejection, "an earlier attachment create may have succeeded")
-		}
-		return labelMutationBranch("addTaskLabel", AddTaskLabelBranchProviderRejected, TaskLabelSummary{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.StatusCode))
+		return classifyLimitedMeistertaskRefusal(fence, call, response, operation.client.maxResponseBytes, decision.MaximumPriorSends, retryAfter, "addTaskLabel", AddTaskLabelBranchProviderRejected, TaskLabelSummary{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {

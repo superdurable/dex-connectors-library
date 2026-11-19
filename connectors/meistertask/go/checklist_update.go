@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -64,21 +63,21 @@ func (operation UpdateChecklistOperation) Invoke(call sdkgo.Call, input UpdateCh
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[ChecklistSummary](checklistFailure("updateChecklist", sdkgo.FailureAvailability, "MeisterTask update outcome is not confirmed"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && definiteLimitedRefusal(response.status, response.body) {
 		return checklistMutationBranch("updateChecklist", UpdateChecklistBranchNotFound, ChecklistSummary{}, sdkgo.FailureNotFound, "MeisterTask did not expose the checklist")
 	}
 	if response.status != http.StatusOK {
-		return checklistMutationBranch("updateChecklist", UpdateChecklistBranchProviderRejected, ChecklistSummary{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.status))
+		return classifySafeMeistertaskNonSuccess(response, "updateChecklist", UpdateChecklistBranchProviderRejected, ChecklistSummary{})
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return checklistMutationBranch("updateChecklist", UpdateChecklistBranchInvalidResponse, ChecklistSummary{}, sdkgo.FailureResponseTooLarge, "MeisterTask response exceeded the configured limit")
+		return retryUnconfirmedMeistertaskWrite[ChecklistSummary]("updateChecklist", sdkgo.FailureResponseTooLarge, "MeisterTask write response did not confirm the result", 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[ChecklistSummary](checklistFailure("updateChecklist", sdkgo.FailureTransport, "MeisterTask response was interrupted"), 0)
 	}
 	checklist, err := decodeChecklist(response.body, input.ChecklistID)
 	if err != nil {
-		return checklistMutationBranch("updateChecklist", UpdateChecklistBranchInvalidResponse, ChecklistSummary{}, sdkgo.FailureProtocol, "MeisterTask returned invalid checklist JSON")
+		return retryUnconfirmedMeistertaskWrite[ChecklistSummary]("updateChecklist", sdkgo.FailureProtocol, "MeisterTask write response did not confirm the result", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateChecklistBranchUpdated, checklist, nil, sdkgo.Receipt{})
 }

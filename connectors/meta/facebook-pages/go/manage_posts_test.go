@@ -46,11 +46,15 @@ func TestPostChangesClassifyProviderOutcomes(t *testing.T) {
 		status int
 		branch sdkgo.BranchID
 		retry  bool
-	}{{404, UpdatePostBranchNotFound, false}, {403, UpdatePostBranchProviderRejected, false}, {200, UpdatePostBranchInvalidResponse, false}, {429, "", true}, {503, "", true}, {500, "", true}} {
+	}{{404, UpdatePostBranchNotFound, false}, {403, UpdatePostBranchProviderRejected, false}, {200, "", true}, {429, "", true}, {503, "", true}, {500, "", true}} {
 		t.Run(http.StatusText(testCase.status), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(testCase.status)
-				_, err := writer.Write([]byte(`{}`))
+				body := `{}`
+				if testCase.status == http.StatusNotFound || testCase.status == http.StatusForbidden {
+					body = `{"error":{"code":100}}`
+				}
+				_, err := writer.Write([]byte(body))
 				require.NoError(t, err)
 			}))
 			defer server.Close()

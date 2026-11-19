@@ -123,8 +123,8 @@ func (operation CreatePostingOperation) Invoke(call sdkgo.Call, input CreatePost
 	}
 	decision := fence.Decide()
 	receipt := sdkgo.Receipt{CallID: call.ID, Provider: "lever"}
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
-		return sdkgo.NewMutationUncertain(Posting{}, postingFailure("createPosting", sdkgo.FailureTransport, "posting may have been created at the send cap"), receipt)
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[Posting](postingFailure("createPosting", sdkgo.FailureTransport, "posting may have been created at the send cap"), 0)
 	}
 	if decision.Marker.ProviderID != "" {
 		readback := operation.client.get(call, "/postings/"+url.PathEscape(decision.Marker.ProviderID))
@@ -136,6 +136,9 @@ func (operation CreatePostingOperation) Invoke(call sdkgo.Call, input CreatePost
 			}
 		}
 		return sdkgo.NewMutationRetry[Posting](postingFailure("createPosting", sdkgo.FailureAvailability, "created posting read-back is unavailable"), readback.retryAfter)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return sdkgo.NewMutationUncertain(Posting{}, postingFailure("createPosting", sdkgo.FailureTransport, "posting may have been created at the send cap"), receipt)
 	}
 	payload, err := json.Marshal(struct {
 		Text       string `json:"text"`
@@ -185,10 +188,7 @@ func (operation CreatePostingOperation) Invoke(call sdkgo.Call, input CreatePost
 		return sdkgo.NewMutationUncertain(Posting{}, postingFailure("createPosting", sdkgo.FailureTransport, "posting create outcome is unknown at the send cap"), receipt)
 	}
 	if response.status != http.StatusCreated {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(Posting{}, postingFailure("createPosting", sdkgo.FailureProviderRejection, "Lever rejected a resend after a possible create"), receipt)
-		}
-		return postingMutationBranch("createPosting", CreatePostingBranchProviderRejected, sdkgo.FailureProviderRejection, "Lever rejected posting creation", receipt)
+		return classifyLimitedLeverRefusal(fence, call, response, decision.MaximumPriorSends, "createPosting", CreatePostingBranchProviderRejected, Posting{}, receipt)
 	}
 	posting, err := decodePosting(response.body)
 	if err != nil || posting.Title != input.Title {

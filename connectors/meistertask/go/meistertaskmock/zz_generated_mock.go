@@ -462,7 +462,7 @@ func UpdateChecklistItemProviderRejected(value meistertask.ChecklistItemSummary,
 	return connectormock.Branch(meistertask.UpdateChecklistItemBranchProviderRejected, value, failure)
 }
 
-// UpdateChecklistItemInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+// UpdateChecklistItemInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateChecklistItemInvalidResponse(value meistertask.ChecklistItemSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistItemSummary] {
 	return connectormock.Branch(meistertask.UpdateChecklistItemBranchInvalidResponse, value, failure)
 }
@@ -652,7 +652,7 @@ func UpdateChecklistProviderRejected(value meistertask.ChecklistSummary, failure
 	return connectormock.Branch(meistertask.UpdateChecklistBranchProviderRejected, value, failure)
 }
 
-// UpdateChecklistInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+// UpdateChecklistInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateChecklistInvalidResponse(value meistertask.ChecklistSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ChecklistSummary] {
 	return connectormock.Branch(meistertask.UpdateChecklistBranchInvalidResponse, value, failure)
 }
@@ -1135,7 +1135,7 @@ func UpdateSectionProviderRejected(value meistertask.SectionSummary, failure *sd
 	return connectormock.Branch(meistertask.UpdateSectionBranchProviderRejected, value, failure)
 }
 
-// UpdateSectionInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+// UpdateSectionInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateSectionInvalidResponse(value meistertask.SectionSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.SectionSummary] {
 	return connectormock.Branch(meistertask.UpdateSectionBranchInvalidResponse, value, failure)
 }
@@ -1289,7 +1289,7 @@ func UpdateProjectProviderRejected(value meistertask.ProjectSummary, failure *sd
 	return connectormock.Branch(meistertask.UpdateProjectBranchProviderRejected, value, failure)
 }
 
-// UpdateProjectInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+// UpdateProjectInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateProjectInvalidResponse(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
 	return connectormock.Branch(meistertask.UpdateProjectBranchInvalidResponse, value, failure)
 }
@@ -1439,7 +1439,7 @@ func UpdateTaskProviderRejected(value meistertask.TaskSummary, failure *sdkgo.Fa
 	return connectormock.Branch(meistertask.UpdateTaskBranchProviderRejected, value, failure)
 }
 
-// UpdateTaskInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+// UpdateTaskInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateTaskInvalidResponse(value meistertask.TaskSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.TaskSummary] {
 	return connectormock.Branch(meistertask.UpdateTaskBranchInvalidResponse, value, failure)
 }

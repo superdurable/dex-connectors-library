@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptrace"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -56,7 +55,13 @@ func (operation CreateChecklistItemOperation) Invoke(call sdkgo.Call, input Crea
 		return checklistItemMutationBranch("createChecklistItem", CreateChecklistItemBranchDefect, ChecklistItemSummary{}, sdkgo.FailureLocalDefect, "checklist dispatch fence is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return createChecklistItemRetry(sdkgo.FailureAvailability, "dispatch fence failed closed", 0)
+	}
+	if decision.Marker.ProviderID != "" {
+		return readBackLimitedMeistertask(call, operation.client, "/checklist_items/"+decision.Marker.ProviderID, decision.Marker.ProviderID, "createChecklistItem", CreateChecklistItemBranchCreated, decision.Kind == singledispatch.ReadBackRequired, decodeChecklistItem)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return createChecklistItemUncertain(sdkgo.FailureTransport, "an earlier checklist create may have succeeded")
 	}
 	// Checklist names are not unique, so a list lookup cannot confirm this call's result.
@@ -121,10 +126,7 @@ func (operation CreateChecklistItemOperation) Invoke(call sdkgo.Call, input Crea
 		return retryOrUncertainCreateChecklistItem(canResendUnknown, sdkgo.FailureAvailability, "checklist create outcome is unknown", retryAfter)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		if hasEarlierUnknownSend {
-			return createChecklistItemUncertain(sdkgo.FailureProviderRejection, "an earlier checklist create may have succeeded")
-		}
-		return checklistItemMutationBranch("createChecklistItem", CreateChecklistItemBranchProviderRejected, ChecklistItemSummary{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.StatusCode))
+		return classifyLimitedMeistertaskRefusal(fence, call, response, operation.client.maxResponseBytes, decision.MaximumPriorSends, retryAfter, "createChecklistItem", CreateChecklistItemBranchProviderRejected, ChecklistItemSummary{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {

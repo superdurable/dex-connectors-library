@@ -486,7 +486,7 @@ func UpsertContactProviderRejected(value keap.ContactProfile, failure *sdkgo.Fai
 	return connectormock.Branch(keap.UpsertContactBranchProviderRejected, value, failure)
 }
 
-// UpsertContactInvalidResponse selects the invalidResponse branch: Keap returned malformed or oversized JSON.
+// UpsertContactInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpsertContactInvalidResponse(value keap.ContactProfile, failure *sdkgo.Failure) connectormock.Case[keap.ContactProfile] {
 	return connectormock.Branch(keap.UpsertContactBranchInvalidResponse, value, failure)
 }
@@ -527,7 +527,7 @@ func DeleteContactProviderRejected(value keap.ContactDeletion, failure *sdkgo.Fa
 	return connectormock.Branch(keap.DeleteContactBranchProviderRejected, value, failure)
 }
 
-// DeleteContactInvalidResponse selects the invalidResponse branch: Keap returned malformed or oversized JSON.
+// DeleteContactInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteContactInvalidResponse(value keap.ContactDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactDeletion] {
 	return connectormock.Branch(keap.DeleteContactBranchInvalidResponse, value, failure)
 }
@@ -679,7 +679,7 @@ func UpdateCompanyProviderRejected(value keap.CompanyProfile, failure *sdkgo.Fai
 	return connectormock.Branch(keap.UpdateCompanyBranchProviderRejected, value, failure)
 }
 
-// UpdateCompanyInvalidResponse selects the invalidResponse branch: Keap returned invalid company JSON.
+// UpdateCompanyInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateCompanyInvalidResponse(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
 	return connectormock.Branch(keap.UpdateCompanyBranchInvalidResponse, value, failure)
 }
@@ -720,7 +720,7 @@ func DeleteCompanyProviderRejected(value keap.CompanyDeletion, failure *sdkgo.Fa
 	return connectormock.Branch(keap.DeleteCompanyBranchProviderRejected, value, failure)
 }
 
-// DeleteCompanyInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+// DeleteCompanyInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteCompanyInvalidResponse(value keap.CompanyDeletion, failure *sdkgo.Failure) connectormock.Case[keap.CompanyDeletion] {
 	return connectormock.Branch(keap.DeleteCompanyBranchInvalidResponse, value, failure)
 }
@@ -879,7 +879,7 @@ func UpdateContactNoteProviderRejected(value keap.ContactNote, failure *sdkgo.Fa
 	return connectormock.Branch(keap.UpdateContactNoteBranchProviderRejected, value, failure)
 }
 
-// UpdateContactNoteInvalidResponse selects the invalidResponse branch: Keap returned invalid note JSON.
+// UpdateContactNoteInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateContactNoteInvalidResponse(value keap.ContactNote, failure *sdkgo.Failure) connectormock.Case[keap.ContactNote] {
 	return connectormock.Branch(keap.UpdateContactNoteBranchInvalidResponse, value, failure)
 }
@@ -920,7 +920,7 @@ func DeleteContactNoteProviderRejected(value keap.ContactNoteDeletion, failure *
 	return connectormock.Branch(keap.DeleteContactNoteBranchProviderRejected, value, failure)
 }
 
-// DeleteContactNoteInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+// DeleteContactNoteInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteContactNoteInvalidResponse(value keap.ContactNoteDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactNoteDeletion] {
 	return connectormock.Branch(keap.DeleteContactNoteBranchInvalidResponse, value, failure)
 }
@@ -1002,7 +1002,7 @@ func ApplyContactTagProviderRejected(value keap.ContactTagChange, failure *sdkgo
 	return connectormock.Branch(keap.ApplyContactTagBranchProviderRejected, value, failure)
 }
 
-// ApplyContactTagInvalidResponse selects the invalidResponse branch: Keap returned invalid tag application JSON.
+// ApplyContactTagInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func ApplyContactTagInvalidResponse(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
 	return connectormock.Branch(keap.ApplyContactTagBranchInvalidResponse, value, failure)
 }
@@ -1043,7 +1043,7 @@ func RemoveContactTagProviderRejected(value keap.ContactTagChange, failure *sdkg
 	return connectormock.Branch(keap.RemoveContactTagBranchProviderRejected, value, failure)
 }
 
-// RemoveContactTagInvalidResponse selects the invalidResponse branch: Keap returned invalid tag removal JSON.
+// RemoveContactTagInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func RemoveContactTagInvalidResponse(value keap.ContactTagChange, failure *sdkgo.Failure) connectormock.Case[keap.ContactTagChange] {
 	return connectormock.Branch(keap.RemoveContactTagBranchInvalidResponse, value, failure)
 }
@@ -1191,7 +1191,7 @@ func UpdateOrderTitleProviderRejected(value keap.OrderProfile, failure *sdkgo.Fa
 	return connectormock.Branch(keap.UpdateOrderTitleBranchProviderRejected, value, failure)
 }
 
-// UpdateOrderTitleInvalidResponse selects the invalidResponse branch: Keap returned invalid order JSON.
+// UpdateOrderTitleInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateOrderTitleInvalidResponse(value keap.OrderProfile, failure *sdkgo.Failure) connectormock.Case[keap.OrderProfile] {
 	return connectormock.Branch(keap.UpdateOrderTitleBranchInvalidResponse, value, failure)
 }
@@ -1232,7 +1232,7 @@ func DeleteOrderProviderRejected(value keap.OrderDeletion, failure *sdkgo.Failur
 	return connectormock.Branch(keap.DeleteOrderBranchProviderRejected, value, failure)
 }
 
-// DeleteOrderInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+// DeleteOrderInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteOrderInvalidResponse(value keap.OrderDeletion, failure *sdkgo.Failure) connectormock.Case[keap.OrderDeletion] {
 	return connectormock.Branch(keap.DeleteOrderBranchInvalidResponse, value, failure)
 }
@@ -1380,7 +1380,7 @@ func UpdateProductProviderRejected(value keap.ProductProfile, failure *sdkgo.Fai
 	return connectormock.Branch(keap.UpdateProductBranchProviderRejected, value, failure)
 }
 
-// UpdateProductInvalidResponse selects the invalidResponse branch: Keap returned invalid product JSON.
+// UpdateProductInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateProductInvalidResponse(value keap.ProductProfile, failure *sdkgo.Failure) connectormock.Case[keap.ProductProfile] {
 	return connectormock.Branch(keap.UpdateProductBranchInvalidResponse, value, failure)
 }
@@ -1421,7 +1421,7 @@ func DeleteProductProviderRejected(value keap.ProductDeletion, failure *sdkgo.Fa
 	return connectormock.Branch(keap.DeleteProductBranchProviderRejected, value, failure)
 }
 
-// DeleteProductInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+// DeleteProductInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteProductInvalidResponse(value keap.ProductDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ProductDeletion] {
 	return connectormock.Branch(keap.DeleteProductBranchInvalidResponse, value, failure)
 }
@@ -1566,7 +1566,7 @@ func DeleteEmailRecordProviderRejected(value keap.EmailRecordDeletion, failure *
 	return connectormock.Branch(keap.DeleteEmailRecordBranchProviderRejected, value, failure)
 }
 
-// DeleteEmailRecordInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+// DeleteEmailRecordInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteEmailRecordInvalidResponse(value keap.EmailRecordDeletion, failure *sdkgo.Failure) connectormock.Case[keap.EmailRecordDeletion] {
 	return connectormock.Branch(keap.DeleteEmailRecordBranchInvalidResponse, value, failure)
 }
@@ -1641,7 +1641,7 @@ func DeleteFileProviderRejected(value keap.FileDeletion, failure *sdkgo.Failure)
 	return connectormock.Branch(keap.DeleteFileBranchProviderRejected, value, failure)
 }
 
-// DeleteFileInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+// DeleteFileInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteFileInvalidResponse(value keap.FileDeletion, failure *sdkgo.Failure) connectormock.Case[keap.FileDeletion] {
 	return connectormock.Branch(keap.DeleteFileBranchInvalidResponse, value, failure)
 }

@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptrace"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -52,7 +51,13 @@ func (operation CreateCommentOperation) Invoke(call sdkgo.Call, input CreateComm
 		return commentMutationBranch("createComment", CreateCommentBranchDefect, CommentSummary{}, sdkgo.FailureLocalDefect, "comment dispatch fence is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return createCommentRetry(sdkgo.FailureAvailability, "dispatch fence failed closed", 0)
+	}
+	if decision.Marker.ProviderID != "" {
+		return readBackLimitedMeistertask(call, operation.client, "/comments/"+decision.Marker.ProviderID, decision.Marker.ProviderID, "createComment", CreateCommentBranchCreated, decision.Kind == singledispatch.ReadBackRequired, decodeComment)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return createCommentUncertain(sdkgo.FailureTransport, "an earlier comment create may have succeeded")
 	}
 	// Repeated text is valid, so a list lookup cannot confirm this call's result.
@@ -117,10 +122,7 @@ func (operation CreateCommentOperation) Invoke(call sdkgo.Call, input CreateComm
 		return retryOrUncertainCreateComment(canResendUnknown, sdkgo.FailureAvailability, "comment create outcome is unknown", retryAfter)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		if hasEarlierUnknownSend {
-			return createCommentUncertain(sdkgo.FailureProviderRejection, "an earlier comment create may have succeeded")
-		}
-		return commentMutationBranch("createComment", CreateCommentBranchProviderRejected, CommentSummary{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.StatusCode))
+		return classifyLimitedMeistertaskRefusal(fence, call, response, operation.client.maxResponseBytes, decision.MaximumPriorSends, retryAfter, "createComment", CreateCommentBranchProviderRejected, CommentSummary{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {

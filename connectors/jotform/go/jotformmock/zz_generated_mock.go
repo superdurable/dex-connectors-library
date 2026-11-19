@@ -199,7 +199,7 @@ func UpdateFormTitleProviderRejected(value jotform.WriteResult, failure *sdkgo.F
 	return connectormock.Branch(jotform.UpdateFormTitleBranchProviderRejected, value, failure)
 }
 
-// UpdateFormTitleInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+// UpdateFormTitleInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateFormTitleInvalidResponse(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
 	return connectormock.Branch(jotform.UpdateFormTitleBranchInvalidResponse, value, failure)
 }
@@ -240,7 +240,7 @@ func DeleteFormProviderRejected(value jotform.WriteResult, failure *sdkgo.Failur
 	return connectormock.Branch(jotform.DeleteFormBranchProviderRejected, value, failure)
 }
 
-// DeleteFormInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+// DeleteFormInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteFormInvalidResponse(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
 	return connectormock.Branch(jotform.DeleteFormBranchInvalidResponse, value, failure)
 }
@@ -315,7 +315,7 @@ func UpdateSubmissionProviderRejected(value jotform.WriteResult, failure *sdkgo.
 	return connectormock.Branch(jotform.UpdateSubmissionBranchProviderRejected, value, failure)
 }
 
-// UpdateSubmissionInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+// UpdateSubmissionInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdateSubmissionInvalidResponse(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
 	return connectormock.Branch(jotform.UpdateSubmissionBranchInvalidResponse, value, failure)
 }
@@ -356,7 +356,7 @@ func DeleteSubmissionProviderRejected(value jotform.WriteResult, failure *sdkgo.
 	return connectormock.Branch(jotform.DeleteSubmissionBranchProviderRejected, value, failure)
 }
 
-// DeleteSubmissionInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+// DeleteSubmissionInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteSubmissionInvalidResponse(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
 	return connectormock.Branch(jotform.DeleteSubmissionBranchInvalidResponse, value, failure)
 }

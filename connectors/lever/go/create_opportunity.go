@@ -64,7 +64,7 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 	decision := fence.Decide()
 	receipt := sdkgo.Receipt{CallID: call.ID, Provider: "lever"}
 	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationUncertain(CreatedOpportunity{}, createOpportunityFailure(sdkgo.FailureLocalDefect, "Lever create checkpoint cannot prove whether an earlier send occurred"), receipt)
+		return sdkgo.NewMutationRetry[CreatedOpportunity](createOpportunityFailure(sdkgo.FailureLocalDefect, "Lever create checkpoint cannot prove whether an earlier send occurred"), 0)
 	}
 	if decision.Marker.ProviderID != "" {
 		response := operation.client.get(call, "/opportunities/"+url.PathEscape(decision.Marker.ProviderID))
@@ -120,10 +120,7 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationUncertain(CreatedOpportunity{}, createOpportunityFailure(sdkgo.FailureTransport, "Lever create outcome is unknown at the send cap"), receipt)
 	}
 	if response.status < 200 || response.status >= 300 {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CreatedOpportunity{}, createOpportunityFailure(sdkgo.FailureProviderRejection, "Lever rejected a resend after a possible earlier create"), receipt)
-		}
-		return createOpportunityBranch(CreateOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Lever rejected the opportunity create", receipt)
+		return classifyLimitedLeverRefusal(fence, call, response, decision.MaximumPriorSends, "createOpportunity", CreateOpportunityBranchProviderRejected, CreatedOpportunity{}, receipt)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return sdkgo.NewMutationRetry[CreatedOpportunity](createOpportunityFailure(sdkgo.FailureResponseTooLarge, "Lever create response exceeded the limit after a possible create"), 0)

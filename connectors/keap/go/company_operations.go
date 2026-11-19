@@ -198,7 +198,10 @@ func (operation CreateCompanyOperation) Invoke(call sdkgo.Call, input CompanyNam
 		return keapMutationBranch("createCompany", CreateCompanyBranchDefect, CompanyProfile{}, sdkgo.FailureLocalDefect, "company dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[CompanyProfile](keapFailure("createCompany", sdkgo.FailureTransport, "an earlier company create may have succeeded"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(CompanyProfile{}, keapFailure("createCompany", sdkgo.FailureTransport, "an earlier company create may have succeeded"), sdkgo.Receipt{})
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
@@ -230,14 +233,11 @@ func (operation CreateCompanyOperation) Invoke(call sdkgo.Call, input CompanyNam
 		return sdkgo.NewMutationUncertain(CompanyProfile{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CompanyProfile{}, keapFailure("createCompany", sdkgo.FailureProviderRejection, "earlier create may have succeeded"), sdkgo.Receipt{})
-		}
-		return keapMutationBranch("createCompany", CreateCompanyBranchProviderRejected, CompanyProfile{}, sdkgo.FailureProviderRejection, "Keap rejected company create")
+		return classifyLimitedKeapRefusal(fence, call, response, decision.MaximumPriorSends, "createCompany", CreateCompanyBranchProviderRejected, CompanyProfile{})
 	}
 	company, ok := decodeCompany(response.body)
 	if !ok {
-		return sdkgo.NewMutationUncertain(CompanyProfile{}, keapFailure("createCompany", sdkgo.FailureProtocol, "created company identity cannot be confirmed"), sdkgo.Receipt{})
+		return unknownLimitedKeapResponse(call, response, decision.MaximumPriorSends, "createCompany", CompanyProfile{})
 	}
 	return sdkgo.NewMutationBranch(CreateCompanyBranchCreated, company, nil, sdkgo.Receipt{})
 }
@@ -249,7 +249,7 @@ func (operation UpdateCompanyOperation) Invoke(call sdkgo.Call, input UpdateComp
 	}
 	body, _ := json.Marshal(map[string]string{"company_name": input.Name})
 	response := operation.client.request(call, http.MethodPatch, "/rest/v2/companies/"+input.CompanyID, body)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("updateCompany", UpdateCompanyBranchNotFound, CompanyProfile{}, sdkgo.FailureNotFound, "Keap did not find the company")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "updateCompany", UpdateCompanyBranchProviderRejected, UpdateCompanyBranchInvalidResponse, UpdateCompanyBranchDefect, CompanyProfile{}); handled {
@@ -259,11 +259,11 @@ func (operation UpdateCompanyOperation) Invoke(call sdkgo.Call, input UpdateComp
 		return *branch
 	}
 	if response.status != 200 {
-		return keapMutationBranch("updateCompany", UpdateCompanyBranchProviderRejected, CompanyProfile{}, sdkgo.FailureProviderRejection, "Keap rejected company update")
+		return sdkgo.NewMutationRetry[CompanyProfile](keapFailure("updateCompany", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	company, ok := decodeCompany(response.body)
 	if !ok {
-		return keapMutationBranch("updateCompany", UpdateCompanyBranchInvalidResponse, CompanyProfile{}, sdkgo.FailureProtocol, "Keap returned invalid company JSON")
+		return sdkgo.NewMutationRetry[CompanyProfile](keapFailure("updateCompany", sdkgo.FailureProtocol, "Keap returned invalid company JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateCompanyBranchUpdated, company, nil, sdkgo.Receipt{})
 }
@@ -274,7 +274,7 @@ func (operation DeleteCompanyOperation) Invoke(call sdkgo.Call, input CompanyIDI
 		return keapMutationBranch("deleteCompany", DeleteCompanyBranchDefect, CompanyDeletion{}, sdkgo.FailureValidation, "company ID is invalid")
 	}
 	response := operation.client.request(call, http.MethodDelete, "/rest/v2/companies/"+input.CompanyID, nil)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("deleteCompany", DeleteCompanyBranchNotFound, CompanyDeletion{}, sdkgo.FailureNotFound, "Keap did not find the company")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "deleteCompany", DeleteCompanyBranchProviderRejected, DeleteCompanyBranchInvalidResponse, DeleteCompanyBranchDefect, CompanyDeletion{}); handled {
@@ -284,10 +284,10 @@ func (operation DeleteCompanyOperation) Invoke(call sdkgo.Call, input CompanyIDI
 		return *branch
 	}
 	if response.status != 204 && response.status != 200 {
-		return keapMutationBranch("deleteCompany", DeleteCompanyBranchProviderRejected, CompanyDeletion{}, sdkgo.FailureProviderRejection, "Keap rejected company deletion")
+		return sdkgo.NewMutationRetry[CompanyDeletion](keapFailure("deleteCompany", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	if response.status == 200 && len(response.body) > 0 && !json.Valid(response.body) {
-		return keapMutationBranch("deleteCompany", DeleteCompanyBranchInvalidResponse, CompanyDeletion{}, sdkgo.FailureProtocol, "Keap returned invalid deletion JSON")
+		return sdkgo.NewMutationRetry[CompanyDeletion](keapFailure("deleteCompany", sdkgo.FailureProtocol, "Keap returned invalid deletion JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteCompanyBranchDeleted, CompanyDeletion{CompanyID: input.CompanyID, Deleted: true}, nil, sdkgo.Receipt{})
 }

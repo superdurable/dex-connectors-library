@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptrace"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -52,7 +51,13 @@ func (operation CreateSectionOperation) Invoke(call sdkgo.Call, input CreateSect
 		return sectionMutationBranch("createSection", CreateSectionBranchDefect, SectionSummary{}, sdkgo.FailureLocalDefect, "section dispatch fence is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return createSectionRetry(sdkgo.FailureAvailability, "dispatch fence failed closed", 0)
+	}
+	if decision.Marker.ProviderID != "" {
+		return readBackLimitedMeistertask(call, operation.client, "/sections/"+decision.Marker.ProviderID, decision.Marker.ProviderID, "createSection", CreateSectionBranchCreated, decision.Kind == singledispatch.ReadBackRequired, decodeSection)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return createSectionUncertain(sdkgo.FailureTransport, "an earlier section create may have succeeded")
 	}
 	// Section names are not unique, so a list lookup cannot confirm this call's result.
@@ -117,10 +122,7 @@ func (operation CreateSectionOperation) Invoke(call sdkgo.Call, input CreateSect
 		return retryOrUncertainCreateSection(canResendUnknown, sdkgo.FailureAvailability, "section create outcome is unknown", retryAfter)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		if hasEarlierUnknownSend {
-			return createSectionUncertain(sdkgo.FailureProviderRejection, "an earlier section create may have succeeded")
-		}
-		return sectionMutationBranch("createSection", CreateSectionBranchProviderRejected, SectionSummary{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.StatusCode))
+		return classifyLimitedMeistertaskRefusal(fence, call, response, operation.client.maxResponseBytes, decision.MaximumPriorSends, retryAfter, "createSection", CreateSectionBranchProviderRejected, SectionSummary{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {

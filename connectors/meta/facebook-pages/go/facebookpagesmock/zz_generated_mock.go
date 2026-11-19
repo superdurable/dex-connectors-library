@@ -110,7 +110,7 @@ func UpdatePostProviderRejected(value facebookpages.ChangedPost, failure *sdkgo.
 	return connectormock.Branch(facebookpages.UpdatePostBranchProviderRejected, value, failure)
 }
 
-// UpdatePostInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+// UpdatePostInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpdatePostInvalidResponse(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
 	return connectormock.Branch(facebookpages.UpdatePostBranchInvalidResponse, value, failure)
 }
@@ -151,7 +151,7 @@ func DeletePostProviderRejected(value facebookpages.ChangedPost, failure *sdkgo.
 	return connectormock.Branch(facebookpages.DeletePostBranchProviderRejected, value, failure)
 }
 
-// DeletePostInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+// DeletePostInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeletePostInvalidResponse(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
 	return connectormock.Branch(facebookpages.DeletePostBranchInvalidResponse, value, failure)
 }

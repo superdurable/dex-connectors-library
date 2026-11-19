@@ -310,7 +310,7 @@ var UpdateFormTitleDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateFormTitleBranchUpdated, Description: "Jotform accepted the title update."},
 		{ID: UpdateFormTitleBranchNotFound, Description: "The form does not exist.", Optional: true},
 		{ID: UpdateFormTitleBranchProviderRejected, Description: "Jotform rejected the title update.", Optional: true},
-		{ID: UpdateFormTitleBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateFormTitleBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateFormTitleBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -390,7 +390,7 @@ var DeleteFormDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteFormBranchDeleted, Description: "Jotform deleted the form."},
 		{ID: DeleteFormBranchNotFound, Description: "The form does not exist.", Optional: true},
 		{ID: DeleteFormBranchProviderRejected, Description: "Jotform rejected the deletion.", Optional: true},
-		{ID: DeleteFormBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteFormBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteFormBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -546,7 +546,7 @@ var UpdateSubmissionDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateSubmissionBranchUpdated, Description: "Jotform accepted the answer update."},
 		{ID: UpdateSubmissionBranchNotFound, Description: "The submission does not exist.", Optional: true},
 		{ID: UpdateSubmissionBranchProviderRejected, Description: "Jotform rejected the answer update.", Optional: true},
-		{ID: UpdateSubmissionBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateSubmissionBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateSubmissionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -626,7 +626,7 @@ var DeleteSubmissionDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteSubmissionBranchDeleted, Description: "Jotform deleted the submission."},
 		{ID: DeleteSubmissionBranchNotFound, Description: "The submission does not exist.", Optional: true},
 		{ID: DeleteSubmissionBranchProviderRejected, Description: "Jotform rejected the deletion.", Optional: true},
-		{ID: DeleteSubmissionBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteSubmissionBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteSubmissionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

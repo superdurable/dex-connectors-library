@@ -167,29 +167,35 @@ func (client *Client) invokeSafeWrite(call sdkgo.Call, operationName, method, pa
 	if status == http.StatusRequestTimeout || status >= 500 {
 		return sdkgo.NewMutationRetry[WriteResult](writeFailure(operationName, sdkgo.FailureAvailability, "Jotform is temporarily unavailable"), retryAfter)
 	}
-	if status == http.StatusNotFound {
+	if status == http.StatusNotFound && definiteLimitedRefusal(status, responseBody) {
 		return writeBranch(operationName, branches.notFound, sdkgo.FailureNotFound, "Jotform did not find the resource")
 	}
 	if status != http.StatusOK {
-		return writeBranch(operationName, branches.rejected, sdkgo.FailureProviderRejection, "Jotform rejected HTTP "+strconv.Itoa(status))
+		if definiteLimitedRefusal(status, responseBody) {
+			return writeBranch(operationName, branches.rejected, sdkgo.FailureProviderRejection, "Jotform rejected HTTP "+strconv.Itoa(status))
+		}
+		return sdkgo.NewMutationRetry[WriteResult](writeFailure(operationName, sdkgo.FailureTransport, "Jotform write outcome is unknown"), retryAfter)
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return writeBranch(operationName, branches.invalid, sdkgo.FailureResponseTooLarge, "Jotform response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[WriteResult](writeFailure(operationName, sdkgo.FailureResponseTooLarge, "Jotform write response exceeded the configured limit"), 0)
 	}
 	var result struct {
 		ResponseCode int `json:"responseCode"`
 	}
 	if err := json.Unmarshal(responseBody, &result); err != nil || result.ResponseCode == 0 {
-		return writeBranch(operationName, branches.invalid, sdkgo.FailureProtocol, "Jotform returned invalid response JSON")
+		return sdkgo.NewMutationRetry[WriteResult](writeFailure(operationName, sdkgo.FailureProtocol, "Jotform write response did not confirm the result"), 0)
 	}
 	if result.ResponseCode == 429 || result.ResponseCode >= 500 {
 		return sdkgo.NewMutationRetry[WriteResult](writeFailure(operationName, sdkgo.FailureAvailability, "Jotform reported temporary unavailability"), retryAfter)
 	}
-	if result.ResponseCode == 404 {
+	if result.ResponseCode == 404 && definiteLimitedRefusal(result.ResponseCode, responseBody) {
 		return writeBranch(operationName, branches.notFound, sdkgo.FailureNotFound, "Jotform did not find the resource")
 	}
 	if result.ResponseCode != 200 {
-		return writeBranch(operationName, branches.rejected, sdkgo.FailureProviderRejection, "Jotform rejected the request")
+		if definiteLimitedRefusal(result.ResponseCode, responseBody) {
+			return writeBranch(operationName, branches.rejected, sdkgo.FailureProviderRejection, "Jotform rejected the request")
+		}
+		return sdkgo.NewMutationRetry[WriteResult](writeFailure(operationName, sdkgo.FailureProtocol, "Jotform write response was contradictory"), 0)
 	}
 	return sdkgo.NewMutationBranch(branches.success, WriteResult{ID: id, Accepted: true}, nil, sdkgo.Receipt{})
 }

@@ -412,7 +412,7 @@ var UpsertSubscriberDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertSubscriberBranchUpserted, Description: "Kit returned the created or updated subscriber."},
 		{ID: UpsertSubscriberBranchProviderRejected, Description: "Kit conclusively rejected the subscriber.", Optional: true},
-		{ID: UpsertSubscriberBranchInvalidResponse, Description: "Kit returned malformed or oversized JSON.", Optional: true},
+		{ID: UpsertSubscriberBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpsertSubscriberBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -557,7 +557,7 @@ var CreateTagDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTagBranchCreated, Description: "Kit returned the created or matching tag."},
 		{ID: CreateTagBranchProviderRejected, Description: "Kit conclusively rejected the tag.", Optional: true},
-		{ID: CreateTagBranchInvalidResponse, Description: "Kit returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateTagBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: CreateTagBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -633,7 +633,7 @@ var TagSubscriberDefinition = sdkgo.MutationDefinition{
 		{ID: TagSubscriberBranchTagged, Description: "Kit returned the tagged subscriber."},
 		{ID: TagSubscriberBranchNotFound, Description: "The tag or subscriber does not exist.", Optional: true},
 		{ID: TagSubscriberBranchProviderRejected, Description: "Kit conclusively rejected the tag application.", Optional: true},
-		{ID: TagSubscriberBranchInvalidResponse, Description: "Kit returned malformed or oversized JSON.", Optional: true},
+		{ID: TagSubscriberBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: TagSubscriberBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -862,7 +862,7 @@ var CreateCustomFieldDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCustomFieldBranchCreated, Description: "Kit created or reused the field."},
 		{ID: CreateCustomFieldBranchProviderRejected, Description: "Kit rejected the label.", Optional: true},
-		{ID: CreateCustomFieldBranchInvalidResponse, Description: "Kit returned invalid custom-field JSON.", Optional: true},
+		{ID: CreateCustomFieldBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: CreateCustomFieldBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -938,7 +938,7 @@ var UpdateCustomFieldDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateCustomFieldBranchUpdated, Description: "Kit updated the field label."},
 		{ID: UpdateCustomFieldBranchNotFound, Description: "Kit did not find the field.", Optional: true},
 		{ID: UpdateCustomFieldBranchProviderRejected, Description: "Kit rejected the label.", Optional: true},
-		{ID: UpdateCustomFieldBranchInvalidResponse, Description: "Kit returned invalid custom-field JSON.", Optional: true},
+		{ID: UpdateCustomFieldBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateCustomFieldBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1246,7 +1246,7 @@ var AddSubscriberToFormDefinition = sdkgo.MutationDefinition{
 		{ID: AddSubscriberToFormBranchAdded, Description: "Kit added or found the form subscription."},
 		{ID: AddSubscriberToFormBranchNotFound, Description: "Kit did not find the form or subscriber.", Optional: true},
 		{ID: AddSubscriberToFormBranchProviderRejected, Description: "Kit rejected the form subscription.", Optional: true},
-		{ID: AddSubscriberToFormBranchInvalidResponse, Description: "Kit returned invalid subscriber JSON.", Optional: true},
+		{ID: AddSubscriberToFormBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: AddSubscriberToFormBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

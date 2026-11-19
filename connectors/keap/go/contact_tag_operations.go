@@ -167,7 +167,7 @@ func (operation RemoveContactTagOperation) Invoke(call sdkgo.Call, input Contact
 func (client *Client) changeContactTag(call sdkgo.Call, input ContactTagInput, operationName, action string, accepted, notFound, rejected, invalid, defect sdkgo.BranchID) sdkgo.MutationAttempt[ContactTagChange] {
 	body, _ := json.Marshal(map[string][]string{"contact_ids": {input.ContactID}})
 	response := client.request(call, http.MethodPost, "/rest/v2/tags/"+input.TagID+"/contacts"+action, body)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch(operationName, notFound, ContactTagChange{}, sdkgo.FailureNotFound, "Keap did not find the contact or tag")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, operationName, rejected, invalid, defect, ContactTagChange{}); handled {
@@ -178,23 +178,23 @@ func (client *Client) changeContactTag(call sdkgo.Call, input ContactTagInput, o
 	}
 	if action == ":applyTags" {
 		if response.status != 200 {
-			return keapMutationBranch(operationName, rejected, ContactTagChange{}, sdkgo.FailureProviderRejection, "Keap rejected tag application")
+			return sdkgo.NewMutationRetry[ContactTagChange](keapFailure(operationName, sdkgo.FailureTransport, "Keap tag application outcome is unknown"), response.retryAfter)
 		}
 		var wire struct {
 			Results map[string]string `json:"results"`
 		}
 		if json.Unmarshal(response.body, &wire) != nil || wire.Results == nil || wire.Results[input.TagID] == "" {
-			return keapMutationBranch(operationName, invalid, ContactTagChange{}, sdkgo.FailureProtocol, "Keap returned invalid tag application JSON")
+			return sdkgo.NewMutationRetry[ContactTagChange](keapFailure(operationName, sdkgo.FailureProtocol, "Keap tag application was not confirmed"), 0)
 		}
 		if !strings.EqualFold(wire.Results[input.TagID], "Successfully applied tag") {
-			return keapMutationBranch(operationName, rejected, ContactTagChange{}, sdkgo.FailureProviderRejection, "Keap did not confirm tag application")
+			return sdkgo.NewMutationRetry[ContactTagChange](keapFailure(operationName, sdkgo.FailureProtocol, "Keap tag application was not confirmed"), 0)
 		}
 	} else {
 		if response.status != 204 && response.status != 200 {
-			return keapMutationBranch(operationName, rejected, ContactTagChange{}, sdkgo.FailureProviderRejection, "Keap rejected tag removal")
+			return sdkgo.NewMutationRetry[ContactTagChange](keapFailure(operationName, sdkgo.FailureTransport, "Keap tag removal outcome is unknown"), response.retryAfter)
 		}
 		if response.status == 200 && len(response.body) > 0 && !json.Valid(response.body) {
-			return keapMutationBranch(operationName, invalid, ContactTagChange{}, sdkgo.FailureProtocol, "Keap returned invalid tag removal JSON")
+			return sdkgo.NewMutationRetry[ContactTagChange](keapFailure(operationName, sdkgo.FailureProtocol, "Keap tag removal was not confirmed"), 0)
 		}
 	}
 	return sdkgo.NewMutationBranch(accepted, ContactTagChange{ContactID: input.ContactID, TagID: input.TagID, Changed: true}, nil, sdkgo.Receipt{})

@@ -68,7 +68,7 @@ spec:
         - {id: updated, goName: Updated, description: Meta confirmed the post update.}
         - {id: notFound, goName: NotFound, description: The post is missing or inaccessible., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -89,7 +89,7 @@ spec:
         - {id: deleted, goName: Deleted, description: Meta confirmed the post deletion.}
         - {id: notFound, goName: NotFound, description: The post is already missing or inaccessible., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: deletedDefault

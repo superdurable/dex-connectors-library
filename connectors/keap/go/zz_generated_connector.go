@@ -472,7 +472,7 @@ var UpsertContactDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertContactBranchUpserted, Description: "Keap returned the created or updated contact."},
 		{ID: UpsertContactBranchProviderRejected, Description: "Keap conclusively rejected the contact.", Optional: true},
-		{ID: UpsertContactBranchInvalidResponse, Description: "Keap returned malformed or oversized JSON.", Optional: true},
+		{ID: UpsertContactBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpsertContactBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -548,7 +548,7 @@ var DeleteContactDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteContactBranchDeleted, Description: "Keap accepted the deletion."},
 		{ID: DeleteContactBranchNotFound, Description: "Keap did not find the contact.", Optional: true},
 		{ID: DeleteContactBranchProviderRejected, Description: "Keap conclusively rejected the deletion.", Optional: true},
-		{ID: DeleteContactBranchInvalidResponse, Description: "Keap returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteContactBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteContactBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -852,7 +852,7 @@ var UpdateCompanyDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateCompanyBranchUpdated, Description: "Keap updated the company."},
 		{ID: UpdateCompanyBranchNotFound, Description: "Keap did not find the company.", Optional: true},
 		{ID: UpdateCompanyBranchProviderRejected, Description: "Keap rejected the update.", Optional: true},
-		{ID: UpdateCompanyBranchInvalidResponse, Description: "Keap returned invalid company JSON.", Optional: true},
+		{ID: UpdateCompanyBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateCompanyBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -932,7 +932,7 @@ var DeleteCompanyDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteCompanyBranchDeleted, Description: "Keap accepted the deletion."},
 		{ID: DeleteCompanyBranchNotFound, Description: "Keap did not find the company.", Optional: true},
 		{ID: DeleteCompanyBranchProviderRejected, Description: "Keap rejected the deletion.", Optional: true},
-		{ID: DeleteCompanyBranchInvalidResponse, Description: "Keap returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteCompanyBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteCompanyBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1242,7 +1242,7 @@ var UpdateContactNoteDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateContactNoteBranchUpdated, Description: "Keap updated the note."},
 		{ID: UpdateContactNoteBranchNotFound, Description: "Keap did not find the note.", Optional: true},
 		{ID: UpdateContactNoteBranchProviderRejected, Description: "Keap rejected the update.", Optional: true},
-		{ID: UpdateContactNoteBranchInvalidResponse, Description: "Keap returned invalid note JSON.", Optional: true},
+		{ID: UpdateContactNoteBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateContactNoteBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1322,7 +1322,7 @@ var DeleteContactNoteDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteContactNoteBranchDeleted, Description: "Keap accepted the note deletion."},
 		{ID: DeleteContactNoteBranchNotFound, Description: "Keap did not find the note.", Optional: true},
 		{ID: DeleteContactNoteBranchProviderRejected, Description: "Keap rejected the deletion.", Optional: true},
-		{ID: DeleteContactNoteBranchInvalidResponse, Description: "Keap returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteContactNoteBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteContactNoteBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1479,7 +1479,7 @@ var ApplyContactTagDefinition = sdkgo.MutationDefinition{
 		{ID: ApplyContactTagBranchApplied, Description: "Keap accepted the tag application."},
 		{ID: ApplyContactTagBranchNotFound, Description: "Keap did not find the tag or contact.", Optional: true},
 		{ID: ApplyContactTagBranchProviderRejected, Description: "Keap rejected the tag application.", Optional: true},
-		{ID: ApplyContactTagBranchInvalidResponse, Description: "Keap returned invalid tag application JSON.", Optional: true},
+		{ID: ApplyContactTagBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: ApplyContactTagBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1559,7 +1559,7 @@ var RemoveContactTagDefinition = sdkgo.MutationDefinition{
 		{ID: RemoveContactTagBranchRemoved, Description: "Keap accepted the tag removal."},
 		{ID: RemoveContactTagBranchNotFound, Description: "Keap did not find the tag or contact.", Optional: true},
 		{ID: RemoveContactTagBranchProviderRejected, Description: "Keap rejected the tag removal.", Optional: true},
-		{ID: RemoveContactTagBranchInvalidResponse, Description: "Keap returned invalid tag removal JSON.", Optional: true},
+		{ID: RemoveContactTagBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: RemoveContactTagBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1863,7 +1863,7 @@ var UpdateOrderTitleDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateOrderTitleBranchUpdated, Description: "Keap updated the order."},
 		{ID: UpdateOrderTitleBranchNotFound, Description: "Keap did not find the order.", Optional: true},
 		{ID: UpdateOrderTitleBranchProviderRejected, Description: "Keap rejected the update.", Optional: true},
-		{ID: UpdateOrderTitleBranchInvalidResponse, Description: "Keap returned invalid order JSON.", Optional: true},
+		{ID: UpdateOrderTitleBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateOrderTitleBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1943,7 +1943,7 @@ var DeleteOrderDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteOrderBranchDeleted, Description: "Keap accepted the order deletion."},
 		{ID: DeleteOrderBranchNotFound, Description: "Keap did not find the order.", Optional: true},
 		{ID: DeleteOrderBranchProviderRejected, Description: "Keap rejected the deletion.", Optional: true},
-		{ID: DeleteOrderBranchInvalidResponse, Description: "Keap returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteOrderBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteOrderBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -2247,7 +2247,7 @@ var UpdateProductDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateProductBranchUpdated, Description: "Keap updated the product."},
 		{ID: UpdateProductBranchNotFound, Description: "Keap did not find the product.", Optional: true},
 		{ID: UpdateProductBranchProviderRejected, Description: "Keap rejected the update.", Optional: true},
-		{ID: UpdateProductBranchInvalidResponse, Description: "Keap returned invalid product JSON.", Optional: true},
+		{ID: UpdateProductBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateProductBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -2327,7 +2327,7 @@ var DeleteProductDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteProductBranchDeleted, Description: "Keap accepted the product deletion."},
 		{ID: DeleteProductBranchNotFound, Description: "Keap did not find the product.", Optional: true},
 		{ID: DeleteProductBranchProviderRejected, Description: "Keap rejected the deletion.", Optional: true},
-		{ID: DeleteProductBranchInvalidResponse, Description: "Keap returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteProductBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteProductBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -2630,7 +2630,7 @@ var DeleteEmailRecordDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteEmailRecordBranchDeleted, Description: "Keap accepted the record deletion."},
 		{ID: DeleteEmailRecordBranchNotFound, Description: "Keap did not find the record.", Optional: true},
 		{ID: DeleteEmailRecordBranchProviderRejected, Description: "Keap rejected the deletion.", Optional: true},
-		{ID: DeleteEmailRecordBranchInvalidResponse, Description: "Keap returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteEmailRecordBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteEmailRecordBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -2781,7 +2781,7 @@ var DeleteFileDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteFileBranchDeleted, Description: "Keap accepted the file deletion."},
 		{ID: DeleteFileBranchNotFound, Description: "Keap did not find the file.", Optional: true},
 		{ID: DeleteFileBranchProviderRejected, Description: "Keap rejected the deletion.", Optional: true},
-		{ID: DeleteFileBranchInvalidResponse, Description: "Keap returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteFileBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteFileBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

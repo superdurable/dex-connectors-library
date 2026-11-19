@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptrace"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -52,7 +51,13 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 		return projectMutationBranch("createProject", CreateProjectBranchDefect, ProjectSummary{}, sdkgo.FailureLocalDefect, "project dispatch fence is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return createProjectRetry(sdkgo.FailureAvailability, "dispatch fence failed closed", 0)
+	}
+	if decision.Marker.ProviderID != "" {
+		return readBackLimitedMeistertask(call, operation.client, "/projects/"+decision.Marker.ProviderID, decision.Marker.ProviderID, "createProject", CreateProjectBranchCreated, decision.Kind == singledispatch.ReadBackRequired, decodeProject)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return createProjectUncertain(sdkgo.FailureTransport, "an earlier project create may have succeeded")
 	}
 	// Project names are not unique, so a list lookup cannot confirm this call's result.
@@ -118,10 +123,7 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 		return retryOrUncertainCreateProject(canResendUnknown, sdkgo.FailureAvailability, "project create outcome is unknown", retryAfter)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		if hasEarlierUnknownSend {
-			return createProjectUncertain(sdkgo.FailureProviderRejection, "an earlier project create may have succeeded")
-		}
-		return projectMutationBranch("createProject", CreateProjectBranchProviderRejected, ProjectSummary{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.StatusCode))
+		return classifyLimitedMeistertaskRefusal(fence, call, response, operation.client.maxResponseBytes, decision.MaximumPriorSends, retryAfter, "createProject", CreateProjectBranchProviderRejected, ProjectSummary{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {

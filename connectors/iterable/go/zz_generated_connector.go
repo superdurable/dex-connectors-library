@@ -220,7 +220,7 @@ var TrackEventDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: TrackEventBranchTracked, Description: "Iterable accepted the event."},
 		{ID: TrackEventBranchProviderRejected, Description: "Iterable conclusively rejected the event.", Optional: true},
-		{ID: TrackEventBranchInvalidResponse, Description: "Iterable returned malformed or oversized JSON.", Optional: true},
+		{ID: TrackEventBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: TrackEventBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -291,7 +291,7 @@ var SubscribeUserToListDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SubscribeUserToListBranchSubscribed, Description: "Iterable accepted the list subscription."},
 		{ID: SubscribeUserToListBranchProviderRejected, Description: "Iterable conclusively rejected the subscription.", Optional: true},
-		{ID: SubscribeUserToListBranchInvalidResponse, Description: "Iterable returned malformed or oversized JSON.", Optional: true},
+		{ID: SubscribeUserToListBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: SubscribeUserToListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -362,7 +362,7 @@ var UnsubscribeUserFromListDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UnsubscribeUserFromListBranchUnsubscribed, Description: "Iterable accepted the list unsubscription."},
 		{ID: UnsubscribeUserFromListBranchProviderRejected, Description: "Iterable conclusively rejected the unsubscription.", Optional: true},
-		{ID: UnsubscribeUserFromListBranchInvalidResponse, Description: "Iterable returned malformed or oversized JSON.", Optional: true},
+		{ID: UnsubscribeUserFromListBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UnsubscribeUserFromListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -433,7 +433,7 @@ var UpsertUserDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertUserBranchUpdated, Description: "Iterable accepted the user update."},
 		{ID: UpsertUserBranchProviderRejected, Description: "Iterable conclusively rejected the update.", Optional: true},
-		{ID: UpsertUserBranchInvalidResponse, Description: "Iterable returned malformed or oversized JSON.", Optional: true},
+		{ID: UpsertUserBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpsertUserBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -506,7 +506,7 @@ var DeleteUserDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteUserBranchDeleted, Description: "Iterable accepted the deletion."},
 		{ID: DeleteUserBranchNotFound, Description: "Iterable did not find the user.", Optional: true},
 		{ID: DeleteUserBranchProviderRejected, Description: "Iterable conclusively rejected the deletion.", Optional: true},
-		{ID: DeleteUserBranchInvalidResponse, Description: "Iterable returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteUserBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeleteUserBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

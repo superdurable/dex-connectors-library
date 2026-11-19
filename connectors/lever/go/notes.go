@@ -19,11 +19,11 @@ import (
 // NoteSummary contains note metadata without candidate note content.
 type NoteSummary struct {
 	// ID is the Lever note UID.
-	ID           string `json:"id"`
+	ID string `json:"id"`
 	// CreatedAt is Lever's creation time in Unix milliseconds.
-	CreatedAt    int64  `json:"createdAt"`
+	CreatedAt int64 `json:"createdAt"`
 	// CommentCount counts comments without exposing their text.
-	CommentCount int    `json:"commentCount"`
+	CommentCount int `json:"commentCount"`
 }
 
 // NotesPage contains note metadata from one opportunity.
@@ -43,7 +43,7 @@ type GetNoteInput struct {
 	// OpportunityID is the candidate opportunity UID.
 	OpportunityID string `json:"opportunityId"`
 	// NoteID is the note UID.
-	NoteID        string `json:"noteId"`
+	NoteID string `json:"noteId"`
 }
 
 // ListNotesInput identifies an opportunity whose notes should be listed.
@@ -57,17 +57,17 @@ type CreateNoteInput struct {
 	// OpportunityID is the candidate opportunity UID.
 	OpportunityID string `json:"opportunityId"`
 	// Value is the required note text.
-	Value         string `json:"value"`
+	Value string `json:"value"`
 }
 
 // UpdateNoteInput replaces all comments of one API-created note.
 type UpdateNoteInput struct {
 	// OpportunityID is the candidate opportunity UID.
-	OpportunityID string   `json:"opportunityId"`
+	OpportunityID string `json:"opportunityId"`
 	// NoteID is the UID of a note created through the API.
-	NoteID        string   `json:"noteId"`
+	NoteID string `json:"noteId"`
 	// Values contains every replacement comment, in order.
-	Values        []string `json:"values"`
+	Values []string `json:"values"`
 }
 
 // DeleteNoteInput identifies an API-created note to delete.
@@ -75,7 +75,7 @@ type DeleteNoteInput struct {
 	// OpportunityID is the candidate opportunity UID.
 	OpportunityID string `json:"opportunityId"`
 	// NoteID is the UID of a note created through the API.
-	NoteID        string `json:"noteId"`
+	NoteID string `json:"noteId"`
 }
 
 // GetNoteOperation reads note metadata.
@@ -137,8 +137,8 @@ func (operation CreateNoteOperation) Invoke(call sdkgo.Call, input CreateNoteInp
 		return noteMutationBranch("createNote", CreateNoteBranchDefect, sdkgo.FailureLocalDefect, "note dispatch checkpoint failed", receipt)
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
-		return sdkgo.NewMutationUncertain(NoteIdentity{}, noteFailure("createNote", sdkgo.FailureTransport, "note may have been created at the send cap"), receipt)
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[NoteIdentity](noteFailure("createNote", sdkgo.FailureTransport, "note may have been created at the send cap"), 0)
 	}
 	if decision.Marker.ProviderID != "" {
 		readback := operation.client.get(call, notePath(input.OpportunityID, decision.Marker.ProviderID))
@@ -150,6 +150,9 @@ func (operation CreateNoteOperation) Invoke(call sdkgo.Call, input CreateNoteInp
 			}
 		}
 		return sdkgo.NewMutationRetry[NoteIdentity](noteFailure("createNote", sdkgo.FailureAvailability, "created note read-back unavailable"), readback.retryAfter)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return sdkgo.NewMutationUncertain(NoteIdentity{}, noteFailure("createNote", sdkgo.FailureTransport, "note may have been created at the send cap"), receipt)
 	}
 	payload, err := json.Marshal(struct {
 		Value string `json:"value"`
@@ -185,10 +188,7 @@ func (operation CreateNoteOperation) Invoke(call sdkgo.Call, input CreateNoteInp
 		return unknownNoteCreate(call, decision.MaximumPriorSends, receipt, sdkgo.FailureTransport, "note create outcome is unknown")
 	}
 	if response.status != http.StatusCreated {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(NoteIdentity{}, noteFailure("createNote", sdkgo.FailureProviderRejection, "Lever rejected a resend after a possible create"), receipt)
-		}
-		return noteMutationBranch("createNote", CreateNoteBranchProviderRejected, sdkgo.FailureProviderRejection, "Lever rejected note creation", receipt)
+		return classifyLimitedLeverRefusal(fence, call, response, decision.MaximumPriorSends, "createNote", CreateNoteBranchProviderRejected, NoteIdentity{}, receipt)
 	}
 	identity, err := decodeNoteIdentity(response.body)
 	if err != nil {

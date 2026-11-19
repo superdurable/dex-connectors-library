@@ -462,7 +462,7 @@ var UpdateChecklistItemDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateChecklistItemBranchUpdated, Description: "MeisterTask returned the checklist item outcome."},
 		{ID: UpdateChecklistItemBranchNotFound, Description: "MeisterTask did not expose the item.", Optional: true},
 		{ID: UpdateChecklistItemBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
-		{ID: UpdateChecklistItemBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateChecklistItemBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateChecklistItemBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -840,7 +840,7 @@ var UpdateChecklistDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateChecklistBranchUpdated, Description: "MeisterTask returned the checklist outcome."},
 		{ID: UpdateChecklistBranchNotFound, Description: "MeisterTask did not expose the checklist.", Optional: true},
 		{ID: UpdateChecklistBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
-		{ID: UpdateChecklistBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateChecklistBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateChecklistBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1808,7 +1808,7 @@ var UpdateSectionDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateSectionBranchUpdated, Description: "MeisterTask returned the section."},
 		{ID: UpdateSectionBranchNotFound, Description: "MeisterTask did not expose the section.", Optional: true},
 		{ID: UpdateSectionBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
-		{ID: UpdateSectionBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateSectionBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateSectionBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -2112,7 +2112,7 @@ var UpdateProjectDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateProjectBranchUpdated, Description: "MeisterTask returned the project."},
 		{ID: UpdateProjectBranchNotFound, Description: "MeisterTask did not expose the project.", Optional: true},
 		{ID: UpdateProjectBranchProviderRejected, Description: "MeisterTask conclusively rejected the request.", Optional: true},
-		{ID: UpdateProjectBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateProjectBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateProjectBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -2416,7 +2416,7 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTaskBranchUpdated, Description: "MeisterTask returned the updated task."},
 		{ID: UpdateTaskBranchNotFound, Description: "MeisterTask did not expose the task.", Optional: true},
 		{ID: UpdateTaskBranchProviderRejected, Description: "MeisterTask conclusively rejected the update.", Optional: true},
-		{ID: UpdateTaskBranchInvalidResponse, Description: "MeisterTask returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateTaskBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdateTaskBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

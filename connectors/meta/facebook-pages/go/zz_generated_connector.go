@@ -214,7 +214,7 @@ var UpdatePostDefinition = sdkgo.MutationDefinition{
 		{ID: UpdatePostBranchUpdated, Description: "Meta confirmed the post update."},
 		{ID: UpdatePostBranchNotFound, Description: "The post is missing or inaccessible.", Optional: true},
 		{ID: UpdatePostBranchProviderRejected, Description: "Meta definitively rejected the update.", Optional: true},
-		{ID: UpdatePostBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdatePostBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: UpdatePostBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -294,7 +294,7 @@ var DeletePostDefinition = sdkgo.MutationDefinition{
 		{ID: DeletePostBranchDeleted, Description: "Meta confirmed the post deletion."},
 		{ID: DeletePostBranchNotFound, Description: "The post is already missing or inaccessible.", Optional: true},
 		{ID: DeletePostBranchProviderRejected, Description: "Meta definitively rejected deletion.", Optional: true},
-		{ID: DeletePostBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: DeletePostBranchInvalidResponse, Description: "Retired; unconfirmed successful writes retry.", Optional: true},
 		{ID: DeletePostBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

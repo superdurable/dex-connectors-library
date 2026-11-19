@@ -218,7 +218,10 @@ func (operation CreateOrderOperation) Invoke(call sdkgo.Call, input CreateOrderI
 		return keapMutationBranch("createOrder", CreateOrderBranchDefect, OrderProfile{}, sdkgo.FailureLocalDefect, "order dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[OrderProfile](keapFailure("createOrder", sdkgo.FailureTransport, "an earlier order create may have succeeded"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(OrderProfile{}, keapFailure("createOrder", sdkgo.FailureTransport, "an earlier order create may have succeeded"), sdkgo.Receipt{})
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
@@ -250,14 +253,11 @@ func (operation CreateOrderOperation) Invoke(call sdkgo.Call, input CreateOrderI
 		return sdkgo.NewMutationUncertain(OrderProfile{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != 200 && response.status != 201 {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(OrderProfile{}, keapFailure("createOrder", sdkgo.FailureProviderRejection, "earlier order create may have succeeded"), sdkgo.Receipt{})
-		}
-		return keapMutationBranch("createOrder", CreateOrderBranchProviderRejected, OrderProfile{}, sdkgo.FailureProviderRejection, "Keap rejected order create")
+		return classifyLimitedKeapRefusal(fence, call, response, decision.MaximumPriorSends, "createOrder", CreateOrderBranchProviderRejected, OrderProfile{})
 	}
 	order, ok := decodeOrder(response.body)
 	if !ok {
-		return sdkgo.NewMutationUncertain(OrderProfile{}, keapFailure("createOrder", sdkgo.FailureProtocol, "created order identity cannot be confirmed"), sdkgo.Receipt{})
+		return unknownLimitedKeapResponse(call, response, decision.MaximumPriorSends, "createOrder", OrderProfile{})
 	}
 	return sdkgo.NewMutationBranch(CreateOrderBranchCreated, order, nil, sdkgo.Receipt{})
 }
@@ -269,7 +269,7 @@ func (operation UpdateOrderTitleOperation) Invoke(call sdkgo.Call, input UpdateO
 	}
 	body, _ := json.Marshal(map[string]string{"order_title": input.Title})
 	response := operation.client.request(call, http.MethodPatch, "/rest/v2/orders/"+input.OrderID+"?update_mask=order_title", body)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("updateOrderTitle", UpdateOrderTitleBranchNotFound, OrderProfile{}, sdkgo.FailureNotFound, "Keap did not find the order")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "updateOrderTitle", UpdateOrderTitleBranchProviderRejected, UpdateOrderTitleBranchInvalidResponse, UpdateOrderTitleBranchDefect, OrderProfile{}); handled {
@@ -279,11 +279,11 @@ func (operation UpdateOrderTitleOperation) Invoke(call sdkgo.Call, input UpdateO
 		return *branch
 	}
 	if response.status != 200 {
-		return keapMutationBranch("updateOrderTitle", UpdateOrderTitleBranchProviderRejected, OrderProfile{}, sdkgo.FailureProviderRejection, "Keap rejected order update")
+		return sdkgo.NewMutationRetry[OrderProfile](keapFailure("updateOrderTitle", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	order, ok := decodeOrder(response.body)
 	if !ok {
-		return keapMutationBranch("updateOrderTitle", UpdateOrderTitleBranchInvalidResponse, OrderProfile{}, sdkgo.FailureProtocol, "Keap returned invalid order JSON")
+		return sdkgo.NewMutationRetry[OrderProfile](keapFailure("updateOrderTitle", sdkgo.FailureProtocol, "Keap returned invalid order JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateOrderTitleBranchUpdated, order, nil, sdkgo.Receipt{})
 }
@@ -294,7 +294,7 @@ func (operation DeleteOrderOperation) Invoke(call sdkgo.Call, input OrderIDInput
 		return keapMutationBranch("deleteOrder", DeleteOrderBranchDefect, OrderDeletion{}, sdkgo.FailureValidation, "order ID is invalid")
 	}
 	response := operation.client.request(call, http.MethodDelete, "/rest/v2/orders/"+input.OrderID, nil)
-	if response.status == 404 {
+	if response.status == 404 && definiteLimitedRefusal(response.status, response.body) {
 		return keapMutationBranch("deleteOrder", DeleteOrderBranchNotFound, OrderDeletion{}, sdkgo.FailureNotFound, "Keap did not find the order")
 	}
 	if branch, retry, handled := classifyKeapMutation(response, "deleteOrder", DeleteOrderBranchProviderRejected, DeleteOrderBranchInvalidResponse, DeleteOrderBranchDefect, OrderDeletion{}); handled {
@@ -304,10 +304,10 @@ func (operation DeleteOrderOperation) Invoke(call sdkgo.Call, input OrderIDInput
 		return *branch
 	}
 	if response.status != 200 && response.status != 204 {
-		return keapMutationBranch("deleteOrder", DeleteOrderBranchProviderRejected, OrderDeletion{}, sdkgo.FailureProviderRejection, "Keap rejected order deletion")
+		return sdkgo.NewMutationRetry[OrderDeletion](keapFailure("deleteOrder", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	if response.status == 200 && len(response.body) > 0 && !json.Valid(response.body) {
-		return keapMutationBranch("deleteOrder", DeleteOrderBranchInvalidResponse, OrderDeletion{}, sdkgo.FailureProtocol, "Keap returned invalid deletion JSON")
+		return sdkgo.NewMutationRetry[OrderDeletion](keapFailure("deleteOrder", sdkgo.FailureProtocol, "Keap returned invalid deletion JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteOrderBranchDeleted, OrderDeletion{OrderID: input.OrderID, Deleted: true}, nil, sdkgo.Receipt{})
 }

@@ -6,7 +6,6 @@ package meistertask
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -57,11 +56,11 @@ func (operation DeleteCommentOperation) Invoke(call sdkgo.Call, input DeleteComm
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[DeletedComment](commentFailure("deleteComment", sdkgo.FailureAvailability, "MeisterTask delete outcome is not confirmed"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && definiteLimitedRefusal(response.status, response.body) {
 		return commentMutationBranch("deleteComment", DeleteCommentBranchNotFound, DeletedComment{}, sdkgo.FailureNotFound, "MeisterTask did not expose the comment")
 	}
 	if response.status != http.StatusOK && response.status != http.StatusNoContent {
-		return commentMutationBranch("deleteComment", DeleteCommentBranchProviderRejected, DeletedComment{}, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.status))
+		return classifySafeMeistertaskNonSuccess(response, "deleteComment", DeleteCommentBranchProviderRejected, DeletedComment{})
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[DeletedComment](commentFailure("deleteComment", sdkgo.FailureTransport, "MeisterTask delete response was interrupted"), 0)

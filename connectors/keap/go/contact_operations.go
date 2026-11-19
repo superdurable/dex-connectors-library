@@ -154,7 +154,7 @@ func (operation UpsertContactOperation) Invoke(call sdkgo.Call, input UpsertCont
 		return *branch
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		return keapMutationBranch("upsertContact", UpsertContactBranchProviderRejected, ContactProfile{}, sdkgo.FailureProviderRejection, "Keap rejected contact upsert")
+		return sdkgo.NewMutationRetry[ContactProfile](keapFailure("upsertContact", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	var wire struct {
 		ID         string `json:"id"`
@@ -162,7 +162,7 @@ func (operation UpsertContactOperation) Invoke(call sdkgo.Call, input UpsertCont
 		FamilyName string `json:"family_name"`
 	}
 	if err := json.Unmarshal(response.body, &wire); err != nil || !validContactID(wire.ID) {
-		return keapMutationBranch("upsertContact", UpsertContactBranchInvalidResponse, ContactProfile{}, sdkgo.FailureProtocol, "Keap returned invalid contact JSON")
+		return sdkgo.NewMutationRetry[ContactProfile](keapFailure("upsertContact", sdkgo.FailureProtocol, "Keap returned invalid contact JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpsertContactBranchUpserted, ContactProfile{ID: wire.ID, GivenName: wire.GivenName, FamilyName: wire.FamilyName}, nil, sdkgo.Receipt{})
 }
@@ -183,10 +183,10 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input GetContact
 		return *branch
 	}
 	if response.status != http.StatusNoContent && response.status != http.StatusOK {
-		return keapMutationBranch("deleteContact", DeleteContactBranchProviderRejected, ContactDeletion{}, sdkgo.FailureProviderRejection, "Keap rejected contact deletion")
+		return sdkgo.NewMutationRetry[ContactDeletion](keapFailure("deleteContact", sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
 	}
 	if response.status == http.StatusOK && len(response.body) > 0 && !json.Valid(response.body) {
-		return keapMutationBranch("deleteContact", DeleteContactBranchInvalidResponse, ContactDeletion{}, sdkgo.FailureProtocol, "Keap returned invalid deletion JSON")
+		return sdkgo.NewMutationRetry[ContactDeletion](keapFailure("deleteContact", sdkgo.FailureProtocol, "Keap returned invalid deletion JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteContactBranchDeleted, ContactDeletion{ContactID: input.ContactID, Deleted: true}, nil, sdkgo.Receipt{})
 }
@@ -233,12 +233,16 @@ func classifyKeapMutation[T any](response providerResponse, operation string, re
 		return nil, &result, true
 	}
 	if response.status >= 400 && response.status != 404 {
-		result := keapMutationBranch(operation, rejected, zero, sdkgo.FailureProviderRejection, "Keap rejected HTTP "+strconv.Itoa(response.status))
-		return &result, nil, true
+		if definiteLimitedRefusal(response.status, response.body) {
+			result := keapMutationBranch(operation, rejected, zero, sdkgo.FailureProviderRejection, "Keap rejected HTTP "+strconv.Itoa(response.status))
+			return &result, nil, true
+		}
+		result := sdkgo.NewMutationRetry[T](keapFailure(operation, sdkgo.FailureTransport, "Keap write outcome is unknown"), response.retryAfter)
+		return nil, &result, true
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		result := keapMutationBranch(operation, invalid, zero, sdkgo.FailureResponseTooLarge, "Keap response exceeded configured limit")
-		return &result, nil, true
+		result := sdkgo.NewMutationRetry[T](keapFailure(operation, sdkgo.FailureResponseTooLarge, "Keap write response exceeded configured limit"), 0)
+		return nil, &result, true
 	}
 	if response.err != nil {
 		result := sdkgo.NewMutationRetry[T](keapFailure(operation, sdkgo.FailureTransport, "Keap response was interrupted"), 0)

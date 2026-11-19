@@ -677,7 +677,7 @@
       "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -753,13 +753,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -978,7 +975,7 @@
       "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1016,7 +1013,7 @@
       "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1071,13 +1068,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1361,7 +1355,7 @@
       "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1448,13 +1442,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1759,7 +1750,7 @@
       "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1837,13 +1828,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2124,7 +2112,7 @@
       "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2208,13 +2196,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

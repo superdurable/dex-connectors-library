@@ -664,7 +664,7 @@
       "callId": "59594dbd-c68c-506a-8692-7bbcd6e6eb5e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -737,16 +737,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "state": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1254,7 +1248,7 @@
       "callId": "6c923f2b-6a23-5242-ac02-f2f73acc1560",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1322,14 +1316,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0,
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1529,7 +1519,7 @@
       "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1588,16 +1578,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "state": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1638,7 +1622,7 @@
       "callId": "18f517a9-dea2-5a6b-9314-a6bc0335b912",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1761,16 +1745,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "state": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1844,15 +1822,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "removed": false,
-          "subscriberId": 0,
-          "tagId": 0
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2056,15 +2029,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "removed": false,
-          "subscriberId": 0,
-          "tagId": 0
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2479,7 +2447,7 @@
       "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2526,7 +2494,7 @@
       "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2759,7 +2727,7 @@
       "callId": "cdfb2263-f6f2-5b15-80bb-72c61a255ff6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3019,14 +2987,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "customFieldId": 0,
-          "deleted": false
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3222,14 +3186,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "customFieldId": 0,
-          "deleted": false
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3267,16 +3227,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": 0,
-          "key": "",
-          "label": "",
-          "name": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4075,7 +4029,7 @@
       "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4147,16 +4101,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "state": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4199,7 +4147,7 @@
       "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4349,16 +4297,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "state": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5144,7 +5086,7 @@
       "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5170,8 +5112,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "emailAddress": "",
@@ -5217,7 +5158,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -5225,16 +5166,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "state": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
       "input": {
@@ -5273,7 +5208,7 @@
       "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5428,22 +5363,16 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "state": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6054,6 +5983,424 @@
       },
       "name": "listTagSubscribers-notFound",
       "operation": "listTagSubscribers"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-first409",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-first405",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-firstEmpty400",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToSequence-firstContradictory400",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "attempts": 3,
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addSubscriberToSequence-resend409",
+      "operation": "addSubscriberToSequence"
+    },
+    {
+      "attempts": 3,
+      "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sequences/61/subscribers/204",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+      "input": {
+        "sequenceId": 61,
+        "subscriberId": 204
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "a6cf1d39-4677-5cee-bc19-548544423bf6",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addSubscriberToSequence-resendEmpty400",
+      "operation": "addSubscriberToSequence"
     }
   ],
   "schemaVersion": 1

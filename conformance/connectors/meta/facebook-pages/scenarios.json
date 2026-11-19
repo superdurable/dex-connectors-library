@@ -55,7 +55,7 @@
       "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":100}}",
           "form": {
             "message": [
               "Updated from Dex"
@@ -105,7 +105,7 @@
       "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":100}}",
           "form": {
             "message": [
               "Updated from Dex"
@@ -183,13 +183,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "postId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -407,7 +404,7 @@
       "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":100}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -448,7 +445,7 @@
       "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":100}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -509,13 +506,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "postId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

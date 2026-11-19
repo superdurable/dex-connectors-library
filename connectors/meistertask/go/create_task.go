@@ -54,7 +54,13 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 		return createTaskBranch(CreateTaskBranchDefect, sdkgo.FailureLocalDefect, "MeisterTask dispatch fence is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return createTaskRetry(sdkgo.FailureAvailability, "dispatch fence failed closed", 0)
+	}
+	if decision.Marker.ProviderID != "" {
+		return readBackLimitedMeistertask(call, operation.client, "/tasks/"+decision.Marker.ProviderID, decision.Marker.ProviderID, "createTask", CreateTaskBranchCreated, decision.Kind == singledispatch.ReadBackRequired, decodeTask)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return createTaskUncertain(sdkgo.FailureTransport, "an earlier task create may have succeeded")
 	}
 	// MeisterTask permits duplicate names, so a section lookup cannot identify this call's task.
@@ -120,10 +126,7 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 		return retryOrUncertainCreateTask(canResendUnknown, sdkgo.FailureAvailability, "task create outcome is unknown", retryAfter)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		if hasEarlierUnknownSend {
-			return createTaskUncertain(sdkgo.FailureProviderRejection, "an earlier task create may have succeeded")
-		}
-		return createTaskBranch(CreateTaskBranchProviderRejected, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.StatusCode))
+		return classifyLimitedMeistertaskRefusal(fence, call, response, operation.client.maxResponseBytes, decision.MaximumPriorSends, retryAfter, "createTask", CreateTaskBranchProviderRejected, TaskSummary{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {

@@ -127,7 +127,7 @@ func TrackEventProviderRejected(value iterable.UserWriteResult, failure *sdkgo.F
 	return connectormock.Branch(iterable.TrackEventBranchProviderRejected, value, failure)
 }
 
-// TrackEventInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+// TrackEventInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func TrackEventInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
 	return connectormock.Branch(iterable.TrackEventBranchInvalidResponse, value, failure)
 }
@@ -163,7 +163,7 @@ func SubscribeUserToListProviderRejected(value iterable.UserWriteResult, failure
 	return connectormock.Branch(iterable.SubscribeUserToListBranchProviderRejected, value, failure)
 }
 
-// SubscribeUserToListInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+// SubscribeUserToListInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func SubscribeUserToListInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
 	return connectormock.Branch(iterable.SubscribeUserToListBranchInvalidResponse, value, failure)
 }
@@ -199,7 +199,7 @@ func UnsubscribeUserFromListProviderRejected(value iterable.UserWriteResult, fai
 	return connectormock.Branch(iterable.UnsubscribeUserFromListBranchProviderRejected, value, failure)
 }
 
-// UnsubscribeUserFromListInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+// UnsubscribeUserFromListInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UnsubscribeUserFromListInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
 	return connectormock.Branch(iterable.UnsubscribeUserFromListBranchInvalidResponse, value, failure)
 }
@@ -235,7 +235,7 @@ func UpsertUserProviderRejected(value iterable.UserWriteResult, failure *sdkgo.F
 	return connectormock.Branch(iterable.UpsertUserBranchProviderRejected, value, failure)
 }
 
-// UpsertUserInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+// UpsertUserInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func UpsertUserInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
 	return connectormock.Branch(iterable.UpsertUserBranchInvalidResponse, value, failure)
 }
@@ -276,7 +276,7 @@ func DeleteUserProviderRejected(value iterable.UserWriteResult, failure *sdkgo.F
 	return connectormock.Branch(iterable.DeleteUserBranchProviderRejected, value, failure)
 }
 
-// DeleteUserInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+// DeleteUserInvalidResponse selects the invalidResponse branch: Retired; unconfirmed successful writes retry.
 func DeleteUserInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
 	return connectormock.Branch(iterable.DeleteUserBranchInvalidResponse, value, failure)
 }

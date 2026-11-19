@@ -1390,8 +1390,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""
@@ -2419,7 +2418,7 @@
       "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2458,8 +2457,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -3767,7 +3765,7 @@
       "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3795,8 +3793,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""
@@ -5240,7 +5237,7 @@
       "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5283,8 +5280,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "date": 0,
@@ -7058,7 +7054,7 @@
       "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7088,8 +7084,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "accessRole": "",
@@ -7313,30 +7308,6 @@
           "status": 500
         },
         {
-          "body": "{\"data\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/users",
-          "query": {
-            "email": [
-              "sample@example.com"
-            ],
-            "includeDeactivated": [
-              "true"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
-            ]
-          },
-          "status": 200
-        },
-        {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
@@ -7359,30 +7330,6 @@
             ]
           },
           "status": 500
-        },
-        {
-          "body": "{\"data\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/users",
-          "query": {
-            "email": [
-              "sample@example.com"
-            ],
-            "includeDeactivated": [
-              "true"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
-            ]
-          },
-          "status": 200
         },
         {
           "body": "{}",
@@ -7423,7 +7370,7 @@
           "active": false,
           "id": ""
         },
-        "requestCount": 5,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -7447,7 +7394,7 @@
           "retryAfterMs": 0
         },
         {
-          "exchangeCount": 3,
+          "exchangeCount": 2,
           "failureKind": "TRANSPORT",
           "heartbeat": {
             "attempt": 2,
@@ -8345,6 +8292,2624 @@
       },
       "name": "reactivateUser-transportFailure",
       "operation": "reactivateUser"
+    },
+    {
+      "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "input": {
+        "email": "sample@example.test",
+        "name": "Sample Candidate",
+        "performAsUserId": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "createOpportunity-first409",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "input": {
+        "email": "sample@example.test",
+        "name": "Sample Candidate",
+        "performAsUserId": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "createOpportunity-first405",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "input": {
+        "email": "sample@example.test",
+        "name": "Sample Candidate",
+        "performAsUserId": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "createOpportunity-firstEmpty400",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "input": {
+        "email": "sample@example.test",
+        "name": "Sample Candidate",
+        "performAsUserId": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "createOpportunity-firstContradictory400",
+      "operation": "createOpportunity"
+    },
+    {
+      "attempts": 3,
+      "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"message\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "input": {
+        "email": "sample@example.test",
+        "name": "Sample Candidate",
+        "performAsUserId": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createOpportunity-resend409",
+      "operation": "createOpportunity"
+    },
+    {
+      "attempts": 3,
+      "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"message\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "query": {
+            "perform_as": [
+              "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            ]
+          },
+          "requestBody": {
+            "emails": [
+              "sample@example.test"
+            ],
+            "name": "Sample Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+      "input": {
+        "email": "sample@example.test",
+        "name": "Sample Candidate",
+        "performAsUserId": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "da459c28-3d8e-590a-a8f6-79a076b8d115",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createOpportunity-resendEmpty400",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-first409",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-first405",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-firstEmpty400",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "name": "createPosting-firstContradictory400",
+      "operation": "createPosting"
+    },
+    {
+      "attempts": 3,
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createPosting-resend409",
+      "operation": "createPosting"
+    },
+    {
+      "attempts": 3,
+      "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/postings",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "categories": {
+              "department": "Engineering",
+              "location": "San Francisco",
+              "team": "Platform"
+            },
+            "state": "draft",
+            "text": "Infrastructure Engineer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "state": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+      "input": {
+        "department": "Engineering",
+        "location": "San Francisco",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "team": "Platform",
+        "title": "Infrastructure Engineer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "f6c00feb-511b-57cc-8fb2-5df4502dd1ec",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createPosting-resendEmpty400",
+      "operation": "createPosting"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-first409",
+      "operation": "createNote"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-first405",
+      "operation": "createNote"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-firstEmpty400",
+      "operation": "createNote"
+    },
+    {
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "name": "createNote-firstContradictory400",
+      "operation": "createNote"
+    },
+    {
+      "attempts": 3,
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createNote-resend409",
+      "operation": "createNote"
+    },
+    {
+      "attempts": 3,
+      "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/notes",
+          "requestBody": {
+            "value": "Please review the candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "21109a59-7017-5fca-b353-4af5ee0fea86",
+      "input": {
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "value": "Please review the candidate"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "21109a59-7017-5fca-b353-4af5ee0fea86",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createNote-resendEmpty400",
+      "operation": "createNote"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-first409",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-first405",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-firstEmpty400",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "name": "createInterview-firstContradictory400",
+      "operation": "createInterview"
+    },
+    {
+      "attempts": 3,
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createInterview-resend409",
+      "operation": "createInterview"
+    },
+    {
+      "attempts": 3,
+      "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/250d8f03-738a-4bba-a671-8a3d73477145/interviews",
+          "query": {
+            "perform_as": [
+              "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a"
+            ]
+          },
+          "requestBody": {
+            "date": 1794906000000,
+            "duration": 30,
+            "interviewers": [
+              {
+                "id": "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+              }
+            ],
+            "location": "Conference room",
+            "note": "Review the role",
+            "panel": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+            "subject": "Panel interview"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "date": 0,
+          "durationMinutes": 0,
+          "id": "",
+          "panelId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+      "input": {
+        "date": 1794906000000,
+        "durationMinutes": 30,
+        "interviewerIds": [
+          "412f5bf5-1509-4916-ba5b-8b16a5c3ce6d"
+        ],
+        "location": "Conference room",
+        "note": "Review the role",
+        "opportunityId": "250d8f03-738a-4bba-a671-8a3d73477145",
+        "panelId": "fdb313e8-13c5-47de-9e51-6a21a4d76ff6",
+        "performAsUserId": "ec1cb1bb-8b58-4834-bc6e-b2af06296e4a",
+        "subject": "Panel interview"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b64f1e55-70d1-5ecc-afda-b82aa6bc8c4c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createInterview-resendEmpty400",
+      "operation": "createInterview"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-first409",
+      "operation": "createUser"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-first405",
+      "operation": "createUser"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-firstEmpty400",
+      "operation": "createUser"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-firstContradictory400",
+      "operation": "createUser"
+    },
+    {
+      "attempts": 3,
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createUser-resend409",
+      "operation": "createUser"
+    },
+    {
+      "attempts": 3,
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createUser-resendEmpty400",
+      "operation": "createUser"
     }
   ],
   "schemaVersion": 1

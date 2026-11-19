@@ -695,7 +695,7 @@
       "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -796,15 +796,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "familyName": "",
-          "givenName": "",
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1057,7 +1052,7 @@
       "callId": "d80b0739-1722-5c2e-9779-f62853902635",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1113,14 +1108,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": "",
-          "deleted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1157,7 +1148,7 @@
       "callId": "d80b0739-1722-5c2e-9779-f62853902635",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2013,7 +2004,7 @@
       "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2041,8 +2032,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -2294,7 +2284,7 @@
       "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -2340,7 +2330,7 @@
       "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -2363,14 +2353,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2409,14 +2395,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "name": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2637,7 +2619,7 @@
       "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2693,14 +2675,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "companyId": "",
-          "deleted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2715,7 +2693,7 @@
       "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3902,7 +3880,7 @@
       "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3932,8 +3910,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "contactId": "",
@@ -4247,7 +4224,7 @@
       "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -4303,7 +4280,7 @@
       "callId": "3bac0f3c-2426-5b93-8c36-bf2c57514a9f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -4332,16 +4309,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": "",
-          "id": "",
-          "text": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4388,16 +4359,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "contactId": "",
-          "id": "",
-          "text": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4681,7 +4646,7 @@
       "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4739,15 +4704,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": "",
-          "deleted": false,
-          "noteId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4763,7 +4723,7 @@
       "callId": "0a64c4c6-3d60-52ff-ab21-3f9f3c25f569",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5544,7 +5504,7 @@
       "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5593,7 +5553,7 @@
       "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5618,15 +5578,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "changed": false,
-          "contactId": "",
-          "tagId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5667,15 +5622,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "changed": false,
-          "contactId": "",
-          "tagId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5938,7 +5888,7 @@
       "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -6012,15 +5962,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "changed": false,
-          "contactId": "",
-          "tagId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6036,7 +5981,7 @@
       "callId": "484d9eb9-dc67-5354-8b1e-bdd847479593",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -6308,15 +6253,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "changed": false,
-          "contactId": "",
-          "tagId": ""
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7049,7 +6989,7 @@
       "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7086,8 +7026,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -7435,7 +7374,7 @@
       "callId": "68e39186-c796-5462-ab32-63076ef2148e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -7487,7 +7426,7 @@
       "callId": "68e39186-c796-5462-ab32-63076ef2148e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -7515,15 +7454,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "status": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7567,15 +7501,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "status": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7840,7 +7769,7 @@
       "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7896,14 +7825,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "orderId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7918,7 +7843,7 @@
       "callId": "95ad7459-3af8-53ea-ab7e-7250bc8d36d1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -8968,7 +8893,7 @@
       "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -8999,8 +8924,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -9317,7 +9241,7 @@
       "callId": "86541cbe-0393-51d1-a166-8b05925c80d5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -9427,7 +9351,7 @@
       "callId": "86541cbe-0393-51d1-a166-8b05925c80d5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -9741,7 +9665,7 @@
       "callId": "544c2746-ab46-50b9-8f32-7d1a8f0223a4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -9797,14 +9721,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "productId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -9819,7 +9739,7 @@
       "callId": "544c2746-ab46-50b9-8f32-7d1a8f0223a4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -10614,7 +10534,7 @@
       "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -10644,8 +10564,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "contactId": "",
@@ -10671,7 +10590,7 @@
       "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -10704,8 +10623,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "accepted": false,
@@ -11236,7 +11154,7 @@
       "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -11292,14 +11210,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "emailId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11314,7 +11228,7 @@
       "callId": "20cb7bcd-ce71-5c4a-ab02-c5a3bab31e08",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -12166,7 +12080,7 @@
       "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -12222,14 +12136,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "fileId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -12244,7 +12154,7 @@
       "callId": "917fbd2e-ef8b-57f5-88f4-5d323f591d22",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -12438,6 +12348,2894 @@
       },
       "name": "deleteFile-defect",
       "operation": "deleteFile"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-first409",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-first405",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-firstEmpty400",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-firstContradictory400",
+      "operation": "createCompany"
+    },
+    {
+      "attempts": 3,
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCompany-resend409",
+      "operation": "createCompany"
+    },
+    {
+      "attempts": 3,
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCompany-resendEmpty400",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-first409",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-first405",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-firstEmpty400",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "name": "createContactNote-firstContradictory400",
+      "operation": "createContactNote"
+    },
+    {
+      "attempts": 3,
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContactNote-resend409",
+      "operation": "createContactNote"
+    },
+    {
+      "attempts": 3,
+      "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts/123/notes",
+          "requestBody": {
+            "text": "Example details",
+            "title": "Example note",
+            "user_id": "789"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "text": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+      "input": {
+        "contactId": "123",
+        "text": "Example details",
+        "title": "Example note",
+        "userId": "789"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "028169e7-4fbc-5302-bad5-56cb2e8ef266",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContactNote-resendEmpty400",
+      "operation": "createContactNote"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-first409",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-first405",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-firstEmpty400",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "name": "createOrder-firstContradictory400",
+      "operation": "createOrder"
+    },
+    {
+      "attempts": 3,
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createOrder-resend409",
+      "operation": "createOrder"
+    },
+    {
+      "attempts": 3,
+      "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/orders",
+          "requestBody": {
+            "contact_id": "123",
+            "order_items": [
+              {
+                "product_id": "901",
+                "quantity": 2
+              }
+            ],
+            "order_time": "2026-11-17T08:00:00Z",
+            "order_title": "Example order",
+            "order_type": "OFFLINE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+      "input": {
+        "contactId": "123",
+        "orderTime": "2026-11-17T08:00:00Z",
+        "orderType": "OFFLINE",
+        "productId": "901",
+        "quantity": 2,
+        "title": "Example order"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5b9549a8-4a8f-5a46-aabf-7ccc110b9975",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createOrder-resendEmpty400",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "input": {
+        "name": "Example product",
+        "priceMinor": 1250,
+        "shortDescription": "A sample product",
+        "sku": "EXAMPLE-1"
+      },
+      "name": "createProduct-first409",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "input": {
+        "name": "Example product",
+        "priceMinor": 1250,
+        "shortDescription": "A sample product",
+        "sku": "EXAMPLE-1"
+      },
+      "name": "createProduct-first405",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "input": {
+        "name": "Example product",
+        "priceMinor": 1250,
+        "shortDescription": "A sample product",
+        "sku": "EXAMPLE-1"
+      },
+      "name": "createProduct-firstEmpty400",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "input": {
+        "name": "Example product",
+        "priceMinor": 1250,
+        "shortDescription": "A sample product",
+        "sku": "EXAMPLE-1"
+      },
+      "name": "createProduct-firstContradictory400",
+      "operation": "createProduct"
+    },
+    {
+      "attempts": 3,
+      "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "priceMinor": 0,
+          "sku": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "input": {
+        "name": "Example product",
+        "priceMinor": 1250,
+        "shortDescription": "A sample product",
+        "sku": "EXAMPLE-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProduct-resend409",
+      "operation": "createProduct"
+    },
+    {
+      "attempts": 3,
+      "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/products",
+          "requestBody": {
+            "name": "Example product",
+            "price": 1250,
+            "short_description": "A sample product",
+            "sku": "EXAMPLE-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "priceMinor": 0,
+          "sku": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+      "input": {
+        "name": "Example product",
+        "priceMinor": 1250,
+        "shortDescription": "A sample product",
+        "sku": "EXAMPLE-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "c4a90989-08d5-50c1-84fb-0bd5441da87e",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProduct-resendEmpty400",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-first409",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-first405",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-firstEmpty400",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "name": "createEmailRecord-firstContradictory400",
+      "operation": "createEmailRecord"
+    },
+    {
+      "attempts": 3,
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "sentToAddress": "",
+          "subject": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEmailRecord-resend409",
+      "operation": "createEmailRecord"
+    },
+    {
+      "attempts": 3,
+      "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails",
+          "requestBody": {
+            "contact_id": "123",
+            "sent_to_address": "contact@example.com",
+            "subject": "Example email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "sentToAddress": "",
+          "subject": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+      "input": {
+        "contactId": "123",
+        "sentToAddress": "contact@example.com",
+        "subject": "Example email"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "2523a352-84e2-55b1-97f2-c1a663cf03bb",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEmailRecord-resendEmpty400",
+      "operation": "createEmailRecord"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-first409",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-first405",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-firstEmpty400",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "name": "sendEmail-firstContradictory400",
+      "operation": "sendEmail"
+    },
+    {
+      "attempts": 3,
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "contactId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEmail-resend409",
+      "operation": "sendEmail"
+    },
+    {
+      "attempts": 3,
+      "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/emails:send",
+          "requestBody": {
+            "contacts": [
+              "123"
+            ],
+            "plain_content": "SGVsbG8gZnJvbSBEZXgu",
+            "subject": "Example email",
+            "user_id": "321"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "contactId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+      "input": {
+        "contactId": "123",
+        "plainContent": "Hello from Dex.",
+        "subject": "Example email",
+        "userId": "321"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "29eaa6e8-20e2-5bb9-a534-11d02e948658",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEmail-resendEmpty400",
+      "operation": "sendEmail"
     }
   ],
   "schemaVersion": 1

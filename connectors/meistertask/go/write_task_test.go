@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -58,10 +59,14 @@ func TestUpdateTaskClassifiesOutcomes(t *testing.T) {
 		status int
 		branch sdkgo.BranchID
 		retry  bool
-	}{{404, UpdateTaskBranchNotFound, false}, {403, UpdateTaskBranchProviderRejected, false}, {429, "", true}, {503, "", true}, {200, UpdateTaskBranchInvalidResponse, false}} {
+	}{{404, UpdateTaskBranchNotFound, false}, {403, UpdateTaskBranchProviderRejected, false}, {429, "", true}, {503, "", true}, {200, "", true}} {
 		t.Run(http.StatusText(testCase.status), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(testCase.status)
+				if testCase.status == http.StatusNotFound || testCase.status == http.StatusForbidden {
+					_, err := writer.Write([]byte(`{"error":"request not accepted"}`))
+					require.NoError(t, err)
+				}
 			}))
 			defer server.Close()
 			result, err := sdkgo.RunMutation(queryContext{}, newTestClient(t, server.URL, 0).UpdateTask(), testConnection, UpdateTaskInput{TaskID: "15", Name: &name})
@@ -114,7 +119,7 @@ func TestCreateTaskSucceedsAndRejects(t *testing.T) {
 		status int
 		body   string
 		branch sdkgo.BranchID
-	}{{200, `{"id":15,"status":1,"name":"Task Name"}`, CreateTaskBranchCreated}, {400, `{}`, CreateTaskBranchProviderRejected}} {
+	}{{200, `{"id":15,"status":1,"name":"Task Name"}`, CreateTaskBranchCreated}, {400, `{"error":"invalid task"}`, CreateTaskBranchProviderRejected}} {
 		t.Run(http.StatusText(testCase.status), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(testCase.status)
@@ -128,4 +133,42 @@ func TestCreateTaskSucceedsAndRejects(t *testing.T) {
 			require.Equal(t, testCase.branch, result.Branch)
 		})
 	}
+}
+
+func TestCreateTaskReadsStoredProviderIDAtSendCap(t *testing.T) {
+	posts, reads := 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.Method {
+		case http.MethodPost:
+			posts++
+			writer.WriteHeader(http.StatusInternalServerError)
+		case http.MethodGet:
+			reads++
+			require.Equal(t, "/tasks/15", request.URL.Path)
+			_, err := writer.Write([]byte(`{"id":15,"status":1,"name":"Task Name"}`))
+			require.NoError(t, err)
+		}
+	}))
+	defer server.Close()
+	ctx := singledispatchtest.NewContext("meistertask-readback", "create-task")
+	client := newTestClient(t, server.URL, 0)
+	input := CreateTaskInput{SectionID: "7", Name: "Task Name"}
+	_, err := sdkgo.RunMutation(ctx, client.CreateTask(), testConnection, input)
+	require.Error(t, err)
+	heartbeats := ctx.Heartbeats()
+	require.NotEmpty(t, heartbeats)
+	var marker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &marker))
+	marker.ProviderID = "15"
+	marker.Attempt = 3
+	marker.SendCount = 3
+	ctx.AdvanceAttempt()
+	ctx.AdvanceAttempt()
+	ctx.AdvanceAttempt()
+	require.NoError(t, ctx.SetPersistedCheckpoint(marker))
+	result, err := sdkgo.RunMutation(ctx, client.CreateTask(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchCreated, result.Branch)
+	require.Equal(t, 1, posts)
+	require.Equal(t, 1, reads)
 }

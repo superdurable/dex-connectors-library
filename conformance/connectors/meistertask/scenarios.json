@@ -383,7 +383,7 @@
       "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -434,7 +434,7 @@
       "callId": "137b79e3-55a6-5209-8113-65a24b6140ed",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -510,15 +510,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -754,7 +749,7 @@
       "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -783,8 +778,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -2027,7 +2021,7 @@
       "callId": "180da628-8922-5b57-8300-9921cf84a094",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2078,7 +2072,7 @@
       "callId": "180da628-8922-5b57-8300-9921cf84a094",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2154,15 +2148,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2371,7 +2360,7 @@
       "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2400,8 +2389,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -3301,7 +3289,7 @@
       "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3351,7 +3339,7 @@
       "callId": "520f3758-aa1b-5e8e-b42f-673ccd36b258",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3425,16 +3413,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "projectId": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3636,7 +3618,7 @@
       "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3664,8 +3646,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -4526,7 +4507,7 @@
       "callId": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4543,13 +4524,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "commentId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4564,7 +4542,7 @@
       "callId": "2898f89e-ddaf-5bc1-9e39-f744d4e2d9bc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4581,13 +4559,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "commentId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4759,7 +4734,7 @@
       "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4787,8 +4762,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -5551,7 +5525,7 @@
       "callId": "47d7c60e-19f8-512c-9adf-97bc40272174",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5568,13 +5542,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "taskLabelId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5589,7 +5560,7 @@
       "callId": "47d7c60e-19f8-512c-9adf-97bc40272174",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5606,13 +5577,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "taskLabelId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5784,7 +5752,7 @@
       "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5812,8 +5780,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -6681,7 +6648,7 @@
       "callId": "371308d5-3e61-582e-ad90-6d9cd2e3c195",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6728,7 +6695,7 @@
       "callId": "371308d5-3e61-582e-ad90-6d9cd2e3c195",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6798,15 +6765,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "taskId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6984,7 +6946,7 @@
       "callId": "8ee53887-8b05-5633-9958-fc96c7b3ec68",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7001,13 +6963,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "checklistId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7022,7 +6981,7 @@
       "callId": "8ee53887-8b05-5633-9958-fc96c7b3ec68",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7039,13 +6998,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "checklistId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7217,7 +7173,7 @@
       "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7245,8 +7201,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -8122,7 +8077,7 @@
       "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8172,7 +8127,7 @@
       "callId": "177109c5-3b84-587a-bc12-eda3235a7a46",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8246,16 +8201,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "checklistId": "",
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8440,7 +8389,7 @@
       "callId": "067dc24d-359e-5b52-91f6-7b2755fbc249",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -8457,13 +8406,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "checklistItemId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8478,7 +8424,7 @@
       "callId": "067dc24d-359e-5b52-91f6-7b2755fbc249",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -8495,13 +8441,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "checklistItemId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8674,7 +8617,7 @@
       "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -8702,8 +8645,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "checklistId": "",
@@ -8984,6 +8926,3088 @@
         }
       ],
       "name": "createChecklistItem-uncertain",
+      "operation": "createChecklistItem"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-first409",
+      "operation": "createTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-first405",
+      "operation": "createTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-firstEmpty400",
+      "operation": "createTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "name": "createTask-firstContradictory400",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 3,
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-resend409",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 3,
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/7/tasks",
+          "requestBody": {
+            "name": "Task Name",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "input": {
+        "name": "Task Name",
+        "notes": "Details",
+        "sectionId": "7"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-resendEmpty400",
+      "operation": "createTask"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-first409",
+      "operation": "createProject"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-first405",
+      "operation": "createProject"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-firstEmpty400",
+      "operation": "createProject"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-firstContradictory400",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 3,
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProject-resend409",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 3,
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProject-resendEmpty400",
+      "operation": "createProject"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-first409",
+      "operation": "createSection"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-first405",
+      "operation": "createSection"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-firstEmpty400",
+      "operation": "createSection"
+    },
+    {
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "name": "createSection-firstContradictory400",
+      "operation": "createSection"
+    },
+    {
+      "attempts": 3,
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSection-resend409",
+      "operation": "createSection"
+    },
+    {
+      "attempts": 3,
+      "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects/123/sections",
+          "requestBody": {
+            "name": "Example Section"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+      "input": {
+        "name": "Example Section",
+        "projectId": "123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "506494c7-2849-5b4c-8e98-f43f35c7b26d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSection-resendEmpty400",
+      "operation": "createSection"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-first409",
+      "operation": "createComment"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-first405",
+      "operation": "createComment"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-firstEmpty400",
+      "operation": "createComment"
+    },
+    {
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "name": "createComment-firstContradictory400",
+      "operation": "createComment"
+    },
+    {
+      "attempts": 3,
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "personId": "",
+          "taskId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createComment-resend409",
+      "operation": "createComment"
+    },
+    {
+      "attempts": 3,
+      "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/comments",
+          "requestBody": {
+            "text": "Looks good"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "personId": "",
+          "taskId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+      "input": {
+        "taskId": "15",
+        "text": "Looks good"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "369c3ff7-4da7-576f-9516-6e7c2ba8bcf5",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createComment-resendEmpty400",
+      "operation": "createComment"
+    },
+    {
+      "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "input": {
+        "labelId": "25",
+        "taskId": "15"
+      },
+      "name": "addTaskLabel-first409",
+      "operation": "addTaskLabel"
+    },
+    {
+      "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "input": {
+        "labelId": "25",
+        "taskId": "15"
+      },
+      "name": "addTaskLabel-first405",
+      "operation": "addTaskLabel"
+    },
+    {
+      "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "input": {
+        "labelId": "25",
+        "taskId": "15"
+      },
+      "name": "addTaskLabel-firstEmpty400",
+      "operation": "addTaskLabel"
+    },
+    {
+      "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "input": {
+        "labelId": "25",
+        "taskId": "15"
+      },
+      "name": "addTaskLabel-firstContradictory400",
+      "operation": "addTaskLabel"
+    },
+    {
+      "attempts": 3,
+      "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "labelId": "",
+          "taskId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "input": {
+        "labelId": "25",
+        "taskId": "15"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addTaskLabel-resend409",
+      "operation": "addTaskLabel"
+    },
+    {
+      "attempts": 3,
+      "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/task_labels",
+          "requestBody": {
+            "label_id": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "labelId": "",
+          "taskId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+      "input": {
+        "labelId": "25",
+        "taskId": "15"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "c1277c19-3e1b-57c0-9db0-3d7d76d7c9c2",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addTaskLabel-resendEmpty400",
+      "operation": "addTaskLabel"
+    },
+    {
+      "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "input": {
+        "name": "Steps",
+        "taskId": "15"
+      },
+      "name": "createTaskChecklist-first409",
+      "operation": "createTaskChecklist"
+    },
+    {
+      "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "input": {
+        "name": "Steps",
+        "taskId": "15"
+      },
+      "name": "createTaskChecklist-first405",
+      "operation": "createTaskChecklist"
+    },
+    {
+      "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "input": {
+        "name": "Steps",
+        "taskId": "15"
+      },
+      "name": "createTaskChecklist-firstEmpty400",
+      "operation": "createTaskChecklist"
+    },
+    {
+      "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "input": {
+        "name": "Steps",
+        "taskId": "15"
+      },
+      "name": "createTaskChecklist-firstContradictory400",
+      "operation": "createTaskChecklist"
+    },
+    {
+      "attempts": 3,
+      "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "taskId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "input": {
+        "name": "Steps",
+        "taskId": "15"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTaskChecklist-resend409",
+      "operation": "createTaskChecklist"
+    },
+    {
+      "attempts": 3,
+      "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/15/checklists",
+          "requestBody": {
+            "name": "Steps"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "taskId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+      "input": {
+        "name": "Steps",
+        "taskId": "15"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "acd19a49-0d80-58b5-a384-13be390bbaaa",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTaskChecklist-resendEmpty400",
+      "operation": "createTaskChecklist"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-first409",
+      "operation": "createChecklistItem"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-first405",
+      "operation": "createChecklistItem"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-firstEmpty400",
+      "operation": "createChecklistItem"
+    },
+    {
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "name": "createChecklistItem-firstContradictory400",
+      "operation": "createChecklistItem"
+    },
+    {
+      "attempts": 3,
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createChecklistItem-resend409",
+      "operation": "createChecklistItem"
+    },
+    {
+      "attempts": 3,
+      "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/checklists/20/checklist_items",
+          "requestBody": {
+            "name": "Step One"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "checklistId": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+      "input": {
+        "checklistId": "20",
+        "name": "Step One"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "e81a33f0-d0ca-52fd-a6bc-2d35690a237f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createChecklistItem-resendEmpty400",
       "operation": "createChecklistItem"
     }
   ],

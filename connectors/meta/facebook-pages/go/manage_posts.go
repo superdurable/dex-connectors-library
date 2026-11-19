@@ -146,14 +146,17 @@ func classifyPostChange(operation string, response graphResponse, postID string,
 			return sdkgo.NewMutationRetry[ChangedPost](postChangeFailure(operation, sdkgo.FailureAvailability, "Meta reported a transient error"), response.retryAfter)
 		}
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && definitePostChangeRefusal(response.status, response.body) {
 		return postChangeBranch(operation, notFound, sdkgo.FailureNotFound, "Meta did not find the post")
 	}
 	if response.status < 200 || response.status >= 300 {
-		return postChangeBranch(operation, rejected, sdkgo.FailureProviderRejection, "Meta rejected HTTP "+strconv.Itoa(response.status))
+		if definitePostChangeRefusal(response.status, response.body) {
+			return postChangeBranch(operation, rejected, sdkgo.FailureProviderRejection, "Meta rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[ChangedPost](postChangeFailure(operation, sdkgo.FailureTransport, "Meta post change outcome is unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return postChangeBranch(operation, invalid, sdkgo.FailureResponseTooLarge, "Meta response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[ChangedPost](postChangeFailure(operation, sdkgo.FailureResponseTooLarge, "Meta write response exceeded the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[ChangedPost](postChangeFailure(operation, sdkgo.FailureTransport, "Meta response was interrupted"), 0)
@@ -165,9 +168,21 @@ func classifyPostChange(operation string, response graphResponse, postID string,
 		Success bool `json:"success"`
 	}
 	if json.Unmarshal(response.body, &body) != nil || !body.Success {
-		return postChangeBranch(operation, invalid, sdkgo.FailureProtocol, "Meta returned an invalid post change acknowledgement")
+		return sdkgo.NewMutationRetry[ChangedPost](postChangeFailure(operation, sdkgo.FailureProtocol, "Meta write response did not confirm the result"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, ChangedPost{PostID: postID}, nil, sdkgo.Receipt{})
+}
+
+func definitePostChangeRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	graphErr, ok := decodeGraphError(body)
+	return ok && graphErr.code != 0 && !graphErr.isTransient && !graphErr.isThrottled()
 }
 
 func postChangeFailure(operation string, kind sdkgo.FailureKind, message string) sdkgo.Failure {

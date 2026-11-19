@@ -1435,7 +1435,7 @@
       "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1485,8 +1485,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "accepted": false,
@@ -1967,7 +1966,7 @@
       "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "form": {
             "properties[title]": [
               "New title"
@@ -2015,7 +2014,7 @@
       "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "form": {
             "properties[title]": [
               "New title"
@@ -2088,14 +2087,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false,
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2303,7 +2298,7 @@
       "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2342,7 +2337,7 @@
       "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2398,14 +2393,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false,
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2601,7 +2592,7 @@
       "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"invalid request\"}",
           "form": {
             "submission[1]": [
               "Ada"
@@ -2631,8 +2622,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "accepted": false,
@@ -3013,7 +3003,7 @@
       "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "form": {
             "submission[1]": [
               "Ada"
@@ -3063,7 +3053,7 @@
       "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "form": {
             "submission[1]": [
               "Ada"
@@ -3138,14 +3128,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false,
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3363,7 +3349,7 @@
       "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3402,7 +3388,7 @@
       "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"request not accepted\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3458,14 +3444,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accepted": false,
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3600,6 +3582,1120 @@
       },
       "name": "deleteSubmission-transportFailure",
       "operation": "deleteSubmission"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-first409",
+      "operation": "createForm"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-first405",
+      "operation": "createForm"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-firstEmpty400",
+      "operation": "createForm"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-firstContradictory400",
+      "operation": "createForm"
+    },
+    {
+      "attempts": 3,
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createForm-resend409",
+      "operation": "createForm"
+    },
+    {
+      "attempts": 3,
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createForm-resendEmpty400",
+      "operation": "createForm"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-first409",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-first405",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-firstEmpty400",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid request\",\"accepted\":true}",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-firstContradictory400",
+      "operation": "createSubmission"
+    },
+    {
+      "attempts": 3,
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSubmission-resend409",
+      "operation": "createSubmission"
+    },
+    {
+      "attempts": 3,
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSubmission-resendEmpty400",
+      "operation": "createSubmission"
     }
   ],
   "schemaVersion": 1

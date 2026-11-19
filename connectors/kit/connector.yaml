@@ -108,7 +108,7 @@ spec:
       branches:
         - {id: upserted, goName: Upserted, description: Kit returned the created or updated subscriber.}
         - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the subscriber., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - name: upsertedDefault
@@ -148,7 +148,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Kit returned the created or matching tag.}
         - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the tag., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - name: createdDefault
@@ -169,7 +169,7 @@ spec:
         - {id: tagged, goName: Tagged, description: Kit returned the tagged subscriber.}
         - {id: notFound, goName: NotFound, description: The tag or subscriber does not exist., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the tag application., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - name: taggedDefault
@@ -230,7 +230,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Kit created or reused the field.}
         - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the label., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid custom-field JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: createdDefault
@@ -251,7 +251,7 @@ spec:
         - {id: updated, goName: Updated, description: Kit updated the field label.}
         - {id: notFound, goName: NotFound, description: Kit did not find the field., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the label., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid custom-field JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault
@@ -334,7 +334,7 @@ spec:
         - {id: added, goName: Added, description: Kit added or found the form subscription.}
         - {id: notFound, goName: NotFound, description: Kit did not find the form or subscriber., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the form subscription., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid subscriber JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - name: addedDefault

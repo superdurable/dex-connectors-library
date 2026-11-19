@@ -152,22 +152,24 @@ func (operation CreateUserOperation) Invoke(call sdkgo.Call, input CreateUserInp
 		return userMutationBranch("createUser", CreateUserBranchDefect, sdkgo.FailureLocalDefect, "user dispatch checkpoint failed", receipt)
 	}
 	decision := fence.Decide()
-	if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
-		readback := operation.client.get(call, "/users?"+url.Values{"email": {input.Email}, "includeDeactivated": {"true"}}.Encode())
+	if decision.Marker.ProviderID != "" {
+		readback := operation.client.get(call, "/users/"+url.PathEscape(decision.Marker.ProviderID))
 		if readback.status == http.StatusOK && readback.err == nil {
-			user, found, err := findCreatedUser(readback.body, input)
-			if err == nil && found {
+			user, err := decodeUser(readback.body)
+			if err == nil && user.ID == decision.Marker.ProviderID && user.AccessRole == input.AccessRole {
 				receipt.ProviderObjectID = user.ID
 				return sdkgo.NewMutationBranch(CreateUserBranchCreated, user, nil, receipt)
 			}
-			if err != nil {
-				return sdkgo.NewMutationRetry[UserSummary](userFailure("createUser", sdkgo.FailureProtocol, "user read-back was invalid"), 0)
-			}
-		} else {
-			return sdkgo.NewMutationRetry[UserSummary](userFailure("createUser", sdkgo.FailureAvailability, "user read-back unavailable"), readback.retryAfter)
 		}
+		if decision.Kind == singledispatch.ReadBackRequired && readback.status == http.StatusNotFound {
+			return sdkgo.NewMutationUncertain(UserSummary{}, userFailure("createUser", sdkgo.FailureTransport, "user create could not be confirmed at the send cap"), receipt)
+		}
+		return sdkgo.NewMutationRetry[UserSummary](userFailure("createUser", sdkgo.FailureAvailability, "user read-back unavailable"), readback.retryAfter)
 	}
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[UserSummary](userFailure("createUser", sdkgo.FailureTransport, "user may exist at the send cap"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(UserSummary{}, userFailure("createUser", sdkgo.FailureTransport, "user may exist at the send cap"), receipt)
 	}
 	payload, err := json.Marshal(struct {
@@ -206,10 +208,7 @@ func (operation CreateUserOperation) Invoke(call sdkgo.Call, input CreateUserInp
 		return unknownUserCreate(call, decision.MaximumPriorSends, receipt, sdkgo.FailureTransport, "user create outcome is unknown")
 	}
 	if response.status != http.StatusCreated {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(UserSummary{}, userFailure("createUser", sdkgo.FailureProviderRejection, "Lever rejected a resend after a possible create"), receipt)
-		}
-		return userMutationBranch("createUser", CreateUserBranchProviderRejected, sdkgo.FailureProviderRejection, "Lever rejected user creation", receipt)
+		return classifyLimitedLeverRefusal(fence, call, response, decision.MaximumPriorSends, "createUser", CreateUserBranchProviderRejected, UserSummary{}, receipt)
 	}
 	user, err := decodeUser(response.body)
 	if err != nil || user.AccessRole != input.AccessRole {
@@ -402,26 +401,6 @@ func decodeUsers(body []byte) (UsersPage, error) {
 		page.Users = append(page.Users, user)
 	}
 	return page, nil
-}
-func findCreatedUser(body []byte, input CreateUserInput) (UserSummary, bool, error) {
-	var wire struct {
-		Data []struct {
-			ID            string `json:"id"`
-			Name          string `json:"name"`
-			Email         string `json:"email"`
-			AccessRole    string `json:"accessRole"`
-			DeactivatedAt *int64 `json:"deactivatedAt"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &wire); err != nil || wire.Data == nil {
-		return UserSummary{}, false, fmt.Errorf("Lever user lookup JSON invalid")
-	}
-	for _, entry := range wire.Data {
-		if entry.Email == input.Email && entry.Name == input.Name && entry.AccessRole == input.AccessRole && validOpportunityID(entry.ID) {
-			return UserSummary{ID: entry.ID, AccessRole: entry.AccessRole, Active: entry.DeactivatedAt == nil}, true, nil
-		}
-	}
-	return UserSummary{}, false, nil
 }
 func unknownUserCreate(call sdkgo.Call, priorSends int32, receipt sdkgo.Receipt, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[UserSummary] {
 	if priorSends+1 < call.MaxSends() {

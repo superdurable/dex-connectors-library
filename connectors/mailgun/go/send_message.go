@@ -87,12 +87,15 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	}
 	decision := fence.Decide()
 	receipt := sdkgo.Receipt{CallID: call.ID, Provider: "mailgun"}
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
-		return sdkgo.NewMutationUncertain(SentMessage{}, sentMessageFailure(sdkgo.FailureTransport, "Mailgun may have queued the message at the send cap"), receipt)
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[SentMessage](sentMessageFailure(sdkgo.FailureTransport, "Mailgun may have queued the message at the send cap"), 0)
 	}
 	if decision.Marker.ProviderID != "" {
 		// A confirmed response ID is durable; avoid sending again even if read-back is unavailable.
 		return sdkgo.NewMutationBranch(SendMessageBranchSent, SentMessage{ID: decision.Marker.ProviderID}, nil, sdkgo.Receipt{CallID: call.ID, Provider: "mailgun", ProviderObjectID: decision.Marker.ProviderID})
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return sdkgo.NewMutationUncertain(SentMessage{}, sentMessageFailure(sdkgo.FailureTransport, "Mailgun may have queued the message at the send cap"), receipt)
 	}
 	payload, contentType, err := encodeMailgunMessage(input)
 	if err != nil {
@@ -135,8 +138,18 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationUncertain(SentMessage{}, sentMessageFailure(sdkgo.FailureTransport, "Mailgun send outcome is unknown at the send cap"), receipt)
 	}
 	if status != http.StatusOK && status != http.StatusAccepted {
+		if !definiteLimitedRefusal(status, body) {
+			failure := sentMessageFailure(sdkgo.FailureTransport, "Mailgun send outcome is unknown")
+			if decision.MaximumPriorSends+1 < call.MaxSends() {
+				return sdkgo.NewMutationRetry[SentMessage](failure, retryAfterDuration)
+			}
+			return sdkgo.NewMutationUncertain(SentMessage{}, failure, receipt)
+		}
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationUncertain(SentMessage{}, sentMessageFailure(sdkgo.FailureProviderRejection, "Mailgun rejected a resend after a possible earlier send"), receipt)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[SentMessage](sentMessageFailure(sdkgo.FailureAvailability, "Mailgun rejection checkpoint failed"), 0)
 		}
 		return sentMessageBranch(SendMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "Mailgun rejected the send", receipt)
 	}

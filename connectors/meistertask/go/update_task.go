@@ -82,21 +82,21 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[TaskSummary](updateTaskFailure(sdkgo.FailureAvailability, "MeisterTask update outcome is not confirmed"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && definiteLimitedRefusal(response.status, response.body) {
 		return updateTaskBranch(UpdateTaskBranchNotFound, sdkgo.FailureNotFound, "MeisterTask did not expose the task")
 	}
 	if response.status != http.StatusOK {
-		return updateTaskBranch(UpdateTaskBranchProviderRejected, sdkgo.FailureProviderRejection, "MeisterTask rejected HTTP "+strconv.Itoa(response.status))
+		return classifySafeMeistertaskNonSuccess(response, "updateTask", UpdateTaskBranchProviderRejected, TaskSummary{})
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return updateTaskBranch(UpdateTaskBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "MeisterTask response exceeded the configured limit")
+		return retryUnconfirmedMeistertaskWrite[TaskSummary]("updateTask", sdkgo.FailureResponseTooLarge, "MeisterTask write response did not confirm the result", 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[TaskSummary](updateTaskFailure(sdkgo.FailureTransport, "MeisterTask response was interrupted"), 0)
 	}
 	taskSummary, err := decodeTask(response.body, input.TaskID)
 	if err != nil {
-		return updateTaskBranch(UpdateTaskBranchInvalidResponse, sdkgo.FailureProtocol, "MeisterTask returned invalid task JSON")
+		return retryUnconfirmedMeistertaskWrite[TaskSummary]("updateTask", sdkgo.FailureProtocol, "MeisterTask write response did not confirm the result", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, taskSummary, nil, sdkgo.Receipt{})
 }

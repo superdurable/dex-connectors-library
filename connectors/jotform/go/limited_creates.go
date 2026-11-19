@@ -105,7 +105,10 @@ func (client *Client) invokeLimitedCreate(call sdkgo.Call, operationName, method
 		return writeBranch(operationName, defectBranch, sdkgo.FailureLocalDefect, "Jotform dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[WriteResult](writeFailure(operationName, sdkgo.FailureTransport, "an earlier Jotform create may have succeeded"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(WriteResult{}, writeFailure(operationName, sdkgo.FailureTransport, "an earlier Jotform create may have succeeded"), sdkgo.Receipt{})
 	}
 	canResendUnknown := decision.MaximumPriorSends+1 < call.MaxSends()
@@ -145,8 +148,18 @@ func (client *Client) invokeLimitedCreate(call sdkgo.Call, operationName, method
 		return sdkgo.NewMutationUncertain(WriteResult{}, failure, sdkgo.Receipt{})
 	}
 	if status != http.StatusOK {
+		if !definiteLimitedRefusal(status, responseBody) {
+			failure := writeFailure(operationName, sdkgo.FailureTransport, "Jotform create outcome is unknown")
+			if canResendUnknown {
+				return sdkgo.NewMutationRetry[WriteResult](failure, retryAfter)
+			}
+			return sdkgo.NewMutationUncertain(WriteResult{}, failure, sdkgo.Receipt{})
+		}
 		if hasPossibleEarlierSend {
 			return sdkgo.NewMutationUncertain(WriteResult{}, writeFailure(operationName, sdkgo.FailureProviderRejection, "an earlier Jotform create may have succeeded"), sdkgo.Receipt{})
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[WriteResult](writeFailure(operationName, sdkgo.FailureAvailability, "Jotform rejection checkpoint failed"), 0)
 		}
 		return writeBranch(operationName, rejectedBranch, sdkgo.FailureProviderRejection, "Jotform rejected the create")
 	}
@@ -157,7 +170,11 @@ func (client *Client) invokeLimitedCreate(call sdkgo.Call, operationName, method
 		} `json:"content"`
 	}
 	if err := json.Unmarshal(responseBody, &wire); err != nil || wire.ResponseCode == 0 {
-		return sdkgo.NewMutationUncertain(WriteResult{}, writeFailure(operationName, sdkgo.FailureProtocol, "Jotform create response cannot be confirmed"), sdkgo.Receipt{})
+		failure := writeFailure(operationName, sdkgo.FailureProtocol, "Jotform create response cannot be confirmed")
+		if canResendUnknown {
+			return sdkgo.NewMutationRetry[WriteResult](failure, retryAfter)
+		}
+		return sdkgo.NewMutationUncertain(WriteResult{}, failure, sdkgo.Receipt{})
 	}
 	if wire.ResponseCode == 429 || wire.ResponseCode >= 500 {
 		failure := writeFailure(operationName, sdkgo.FailureAvailability, "Jotform reported an unknown create outcome")
@@ -167,13 +184,18 @@ func (client *Client) invokeLimitedCreate(call sdkgo.Call, operationName, method
 		return sdkgo.NewMutationUncertain(WriteResult{}, failure, sdkgo.Receipt{})
 	}
 	if wire.ResponseCode != 200 {
-		if hasPossibleEarlierSend {
-			return sdkgo.NewMutationUncertain(WriteResult{}, writeFailure(operationName, sdkgo.FailureProviderRejection, "an earlier Jotform create may have succeeded"), sdkgo.Receipt{})
+		failure := writeFailure(operationName, sdkgo.FailureProtocol, "Jotform create response was contradictory")
+		if canResendUnknown {
+			return sdkgo.NewMutationRetry[WriteResult](failure, retryAfter)
 		}
-		return writeBranch(operationName, rejectedBranch, sdkgo.FailureProviderRejection, "Jotform rejected the create")
+		return sdkgo.NewMutationUncertain(WriteResult{}, failure, sdkgo.Receipt{})
 	}
 	if !numericID.MatchString(wire.Content.ID) {
-		return sdkgo.NewMutationUncertain(WriteResult{}, writeFailure(operationName, sdkgo.FailureProtocol, "Jotform returned no created resource ID"), sdkgo.Receipt{})
+		failure := writeFailure(operationName, sdkgo.FailureProtocol, "Jotform returned no created resource ID")
+		if canResendUnknown {
+			return sdkgo.NewMutationRetry[WriteResult](failure, retryAfter)
+		}
+		return sdkgo.NewMutationUncertain(WriteResult{}, failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(createdBranch, WriteResult{ID: wire.Content.ID, Accepted: true}, nil, sdkgo.Receipt{})
 }
