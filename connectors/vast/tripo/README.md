@@ -5,3 +5,7 @@ The Go connector reads available and frozen Tripo API credits. VAST identifies [
 The connector outputs those numbers as exact decimal strings, preserving the provider's credit precision. It never creates generation tasks or reads usage history. The [authentication guide](https://developers.tripo3d.com/en/docs/authentication) locates one-time-shown keys in **Tripo Console > API Keys > Create Key**. The [error guide](https://developers.tripo3d.com/en/docs/error-handling) defines authentication, permission, rate, and service errors; the connector retries only documented transient failures.
 
 See the [runnable Dex Flow](go/examples/account-balance/README.md). Mock tests do not verify a live key, account balance, or provider responses.
+
+## TypeScript
+
+`@superdurable/connector-vast-tripo` provides `getAccountBalance` and a runnable Dex Flow in `typescript/examples/basic/`. Its conformance suite replays the Go-recorded provider scenarios.
