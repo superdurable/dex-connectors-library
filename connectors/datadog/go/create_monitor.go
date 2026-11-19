@@ -144,7 +144,15 @@ func isDefiniteDatadogCreateRefusal(status int, body []byte) bool {
 		Errors []string        `json:"errors"`
 		ID     json.RawMessage `json:"id"`
 	}
-	return json.Unmarshal(body, &answer) == nil && len(answer.Errors) > 0 && len(answer.ID) == 0
+	if json.Unmarshal(body, &answer) != nil || len(answer.ID) != 0 {
+		return false
+	}
+	for _, message := range answer.Errors {
+		if strings.TrimSpace(message) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func validCreateMonitorInput(input CreateMonitorInput) bool {

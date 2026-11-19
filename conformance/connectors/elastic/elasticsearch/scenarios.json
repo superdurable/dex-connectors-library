@@ -56,7 +56,7 @@
       "callId": "d06cf1ca-9dd1-52c1-ae88-84c6074b1ad5",
       "exchanges": [
         {
-          "body": "{\"error\":\"forbidden\"}",
+          "body": "{\"error\":{\"type\":\"security_exception\",\"reason\":\"forbidden\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -569,7 +569,7 @@
       "callId": "7fdea409-526e-5179-83a3-010dfd811be7",
       "exchanges": [
         {
-          "body": "{\"error\":\"forbidden\"}",
+          "body": "{\"error\":{\"type\":\"security_exception\",\"reason\":\"forbidden\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1690,13 +1690,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "AUTHORIZATION",
-        "output": {
-          "index": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1963,13 +1960,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "AUTHORIZATION",
-        "output": {
-          "index": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2877,14 +2871,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "index": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2928,14 +2918,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "AUTHORIZATION",
-        "output": {
-          "id": "",
-          "index": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

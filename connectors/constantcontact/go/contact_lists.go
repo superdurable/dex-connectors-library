@@ -381,7 +381,7 @@ func (operation UpdateContactListOperation) Invoke(call sdkgo.Call, input Update
 		return listMutationBranch[ContactListMetadata]("updateContactList", UpdateContactListBranchDefect, sdkgo.FailureLocalDefect, "list request could not be encoded")
 	}
 	response := operation.client.send(call, http.MethodPut, "/contact_lists/"+input.ListID, payload)
-	if kind, failure := classifyListResponse("updateContactList", response); kind != listResponseSuccess {
+	if kind, failure := classifyListWriteResponse("updateContactList", response); kind != listResponseSuccess {
 		if kind == listResponseRetry || kind == listResponseInvalid {
 			return sdkgo.NewMutationRetry[ContactListMetadata](failure, response.retryAfter)
 		}
@@ -395,7 +395,7 @@ func (operation UpdateContactListOperation) Invoke(call sdkgo.Call, input Update
 		return sdkgo.NewMutationBranch(branch, ContactListMetadata{}, &failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
-		return listMutationBranch[ContactListMetadata]("updateContactList", UpdateContactListBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
+		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("updateContactList", sdkgo.FailureAvailability, "list update outcome is unknown"), response.retryAfter)
 	}
 	list, err := decodeContactList(response.body)
 	if err != nil {
@@ -410,7 +410,7 @@ func (operation DeleteContactListOperation) Invoke(call sdkgo.Call, input Delete
 		return listMutationBranch[DeleteContactListOutput]("deleteContactList", DeleteContactListBranchDefect, sdkgo.FailureValidation, "list ID must be a UUID")
 	}
 	response := operation.client.send(call, http.MethodDelete, "/contact_lists/"+input.ListID, nil)
-	if kind, failure := classifyListResponse("deleteContactList", response); kind != listResponseSuccess {
+	if kind, failure := classifyListWriteResponse("deleteContactList", response); kind != listResponseSuccess {
 		if kind == listResponseRetry || kind == listResponseInvalid {
 			return sdkgo.NewMutationRetry[DeleteContactListOutput](failure, response.retryAfter)
 		}
@@ -424,7 +424,7 @@ func (operation DeleteContactListOperation) Invoke(call sdkgo.Call, input Delete
 		return sdkgo.NewMutationBranch(branch, DeleteContactListOutput{}, &failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusAccepted && response.status != http.StatusOK {
-		return listMutationBranch[DeleteContactListOutput]("deleteContactList", DeleteContactListBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
+		return sdkgo.NewMutationRetry[DeleteContactListOutput](listFailure("deleteContactList", sdkgo.FailureAvailability, "list deletion outcome is unknown"), response.retryAfter)
 	}
 	var activity struct {
 		ActivityID string `json:"activity_id"`
@@ -478,6 +478,16 @@ func classifyListResponse(operation string, response providerResponse) (listResp
 	default:
 		return listResponseSuccess, failure
 	}
+}
+
+func classifyListWriteResponse(operation string, response providerResponse) (listResponseKind, sdkgo.Failure) {
+	kind, failure := classifyListResponse(operation, response)
+	if kind == listResponseInvalid || kind == listResponseRejected && !isDefiniteConstantContactWriteRefusal(response) {
+		failure.Kind = sdkgo.FailureAvailability
+		failure.Message = "Constant Contact write outcome is unknown"
+		return listResponseRetry, failure
+	}
+	return kind, failure
 }
 
 func validContactListSettings(name string, description string) bool {

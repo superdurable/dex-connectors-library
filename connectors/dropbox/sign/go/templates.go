@@ -192,7 +192,10 @@ func (operation DeleteTemplateOperation) Invoke(call sdkgo.Call, input TemplateI
 		return sdkgo.NewMutationRetry[DeletedTemplate](signatureExpansionFailure("deleteTemplate", templateRetryKind(response.status), "template deletion is unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusNotFound {
-		return deleteTemplateFailure(DeleteTemplateBranchProviderRejected, sdkgo.FailureProviderRejection, "Dropbox Sign rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteSignatureActionRefusal(response) {
+			return deleteTemplateFailure(DeleteTemplateBranchProviderRejected, sdkgo.FailureProviderRejection, "Dropbox Sign rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[DeletedTemplate](signatureExpansionFailure("deleteTemplate", sdkgo.FailureAvailability, "template deletion outcome is unknown"), response.retryAfter)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[DeletedTemplate](signatureExpansionFailure("deleteTemplate", sdkgo.FailureTransport, "template deletion response was interrupted"), 0)

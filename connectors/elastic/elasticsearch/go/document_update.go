@@ -69,9 +69,15 @@ func (operation UpdateDocumentOperation) Invoke(call sdkgo.Call, input UpdateDoc
 		}
 		return sdkgo.NewMutationBranch(UpdateDocumentBranchUpdated, IndexedDocument{Index: input.Index, ID: input.DocumentID}, nil, sdkgo.Receipt{})
 	case http.StatusNotFound:
-		return updateDocumentFailure(UpdateDocumentBranchNotFound, sdkgo.FailureNotFound, "Elasticsearch document or index was not found")
+		if isDefiniteRefusalStatus(exchange.status, exchange.body) {
+			return updateDocumentFailure(UpdateDocumentBranchNotFound, sdkgo.FailureNotFound, "Elasticsearch document or index was not found")
+		}
+		return updateDocumentRetry(sdkgo.FailureAvailability, "Elasticsearch update outcome is unknown", 0)
 	default:
-		return updateDocumentFailure(UpdateDocumentBranchProviderRejected, indexStatusFailureKind(exchange.status), "Elasticsearch rejected document update with HTTP "+strconv.Itoa(exchange.status))
+		if isDefiniteRefusalStatus(exchange.status, exchange.body) {
+			return updateDocumentFailure(UpdateDocumentBranchProviderRejected, indexStatusFailureKind(exchange.status), "Elasticsearch rejected document update with HTTP "+strconv.Itoa(exchange.status))
+		}
+		return updateDocumentRetry(sdkgo.FailureAvailability, "Elasticsearch update outcome is unknown", 0)
 	}
 }
 

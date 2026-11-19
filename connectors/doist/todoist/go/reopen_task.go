@@ -49,9 +49,12 @@ func (operation ReopenTaskOperation) Invoke(call sdkgo.Call, input ReopenTaskInp
 		return sdkgo.NewMutationBranch(ReopenTaskBranchDefect, ReopenedTask{}, result.failure, sdkgo.Receipt{})
 	case result.isTransient || result.status == http.StatusTooManyRequests:
 		return sdkgo.NewMutationRetry[ReopenedTask](*result.failure, result.retryAfter)
-	case result.status == http.StatusNotFound:
+	case result.status == http.StatusNotFound && isDefiniteTodoistWriteRefusal(result):
 		return sdkgo.NewMutationBranch(ReopenTaskBranchNotFound, ReopenedTask{}, result.failure, sdkgo.Receipt{})
 	default:
-		return sdkgo.NewMutationBranch(ReopenTaskBranchProviderRejected, ReopenedTask{}, result.failure, sdkgo.Receipt{})
+		if isDefiniteTodoistWriteRefusal(result) {
+			return sdkgo.NewMutationBranch(ReopenTaskBranchProviderRejected, ReopenedTask{}, result.failure, sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[ReopenedTask](*result.failure, result.retryAfter)
 	}
 }

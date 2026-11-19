@@ -122,17 +122,20 @@ func invokeMutation[T any](call sdkgo.Call, client *Client, operation, method, p
 		}
 	}
 	if status != http.StatusOK && status != http.StatusCreated && status != http.StatusNoContent {
-		return mutationBranch(operation, branches.rejected, zero, sdkgo.FailureProviderRejection, "Drip rejected HTTP "+strconv.Itoa(status))
+		if err == nil && isDefiniteDripSubscriptionRefusal(status, responseBody) {
+			return mutationBranch(operation, branches.rejected, zero, sdkgo.FailureProviderRejection, "Drip rejected HTTP "+strconv.Itoa(status))
+		}
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureAvailability, "Drip write outcome is unknown"), retryAfter)
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return mutationBranch(operation, branches.invalid, zero, sdkgo.FailureResponseTooLarge, "Drip response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureResponseTooLarge, "Drip response exceeded the configured limit"), retryAfter)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureTransport, "Drip response was interrupted"), 0)
 	}
 	value, err := decode(responseBody)
 	if err != nil {
-		return mutationBranch(operation, branches.invalid, zero, sdkgo.FailureProtocol, "Drip returned invalid JSON")
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureProtocol, "Drip returned invalid JSON"), retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.success, value, nil, sdkgo.Receipt{})
 }

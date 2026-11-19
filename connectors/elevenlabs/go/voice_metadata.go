@@ -109,14 +109,17 @@ func (operation EditVoiceMetadataOperation) Invoke(call sdkgo.Call, input EditVo
 		}
 		return editVoiceMetadataRetry(kind, "voice edit is unavailable", retryAfter)
 	}
-	if status == http.StatusNotFound {
+	if status == http.StatusNotFound && isDefiniteElevenLabsWriteRefusal(status, body, err) {
 		return editVoiceMetadataFailure(EditVoiceMetadataBranchNotFound, sdkgo.FailureNotFound, "voice is unavailable")
 	}
 	if status != http.StatusOK {
-		return editVoiceMetadataFailure(EditVoiceMetadataBranchProviderRejected, sdkgo.FailureProviderRejection, "ElevenLabs rejected HTTP "+strconv.Itoa(status))
+		if isDefiniteElevenLabsWriteRefusal(status, body, err) {
+			return editVoiceMetadataFailure(EditVoiceMetadataBranchProviderRejected, sdkgo.FailureProviderRejection, "ElevenLabs rejected HTTP "+strconv.Itoa(status))
+		}
+		return editVoiceMetadataRetry(sdkgo.FailureAvailability, "voice edit outcome is unknown", retryAfter)
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return editVoiceMetadataFailure(EditVoiceMetadataBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "voice edit confirmation exceeded the response limit")
+		return editVoiceMetadataRetry(sdkgo.FailureResponseTooLarge, "voice edit confirmation exceeded the response limit", retryAfter)
 	}
 	if err != nil {
 		return editVoiceMetadataRetry(sdkgo.FailureTransport, "voice edit response was interrupted", 0)
@@ -125,7 +128,7 @@ func (operation EditVoiceMetadataOperation) Invoke(call sdkgo.Call, input EditVo
 		Status string `json:"status"`
 	}
 	if json.Unmarshal(body, &wire) != nil || wire.Status != "ok" {
-		return editVoiceMetadataFailure(EditVoiceMetadataBranchInvalidResponse, sdkgo.FailureProtocol, "voice edit confirmation is invalid")
+		return editVoiceMetadataRetry(sdkgo.FailureProtocol, "voice edit confirmation is invalid", retryAfter)
 	}
 	return sdkgo.NewMutationBranch(EditVoiceMetadataBranchEdited, EditedVoiceMetadata{VoiceID: input.VoiceID, Name: input.Name}, nil, sdkgo.Receipt{})
 }
@@ -153,10 +156,13 @@ func (operation DeleteVoiceOperation) Invoke(call sdkgo.Call, input GetVoiceInpu
 		return sdkgo.NewMutationBranch(DeleteVoiceBranchDeleted, DeletedVoice{VoiceID: input.VoiceID, Deleted: true}, nil, sdkgo.Receipt{})
 	}
 	if status != http.StatusOK {
-		return deleteVoiceFailure(DeleteVoiceBranchProviderRejected, sdkgo.FailureProviderRejection, "ElevenLabs rejected HTTP "+strconv.Itoa(status))
+		if isDefiniteElevenLabsWriteRefusal(status, body, err) {
+			return deleteVoiceFailure(DeleteVoiceBranchProviderRejected, sdkgo.FailureProviderRejection, "ElevenLabs rejected HTTP "+strconv.Itoa(status))
+		}
+		return deleteVoiceRetry(sdkgo.FailureAvailability, "voice deletion outcome is unknown", retryAfter)
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return deleteVoiceFailure(DeleteVoiceBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "voice deletion confirmation exceeded the response limit")
+		return deleteVoiceRetry(sdkgo.FailureResponseTooLarge, "voice deletion confirmation exceeded the response limit", retryAfter)
 	}
 	if err != nil {
 		return deleteVoiceRetry(sdkgo.FailureTransport, "voice deletion response was interrupted", 0)
@@ -165,7 +171,7 @@ func (operation DeleteVoiceOperation) Invoke(call sdkgo.Call, input GetVoiceInpu
 		Status string `json:"status"`
 	}
 	if json.Unmarshal(body, &wire) != nil || wire.Status != "ok" {
-		return deleteVoiceFailure(DeleteVoiceBranchInvalidResponse, sdkgo.FailureProtocol, "voice deletion confirmation is invalid")
+		return deleteVoiceRetry(sdkgo.FailureProtocol, "voice deletion confirmation is invalid", retryAfter)
 	}
 	return sdkgo.NewMutationBranch(DeleteVoiceBranchDeleted, DeletedVoice{VoiceID: input.VoiceID, Deleted: true}, nil, sdkgo.Receipt{})
 }

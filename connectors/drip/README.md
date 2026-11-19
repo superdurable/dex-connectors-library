@@ -1,5 +1,7 @@
 # Drip connector
 
+Safe campaign and subscriber writes retry unlisted HTTP statuses and unusable success responses.
+
 The Go, Python, and TypeScript connectors list accessible account IDs and names with `listAccounts`, then read one subscriber's ID, email, name, and status with `getSubscriber`. Go also supports `listSubscribers` for bounded pages, `upsertSubscriber` for creation and identity updates, and `deleteSubscriber` for permanent removal. Address, custom fields, tags, and tracking data remain outside Flow results. Use an account ID from `listAccounts` for subscriber operations.
 
 Go also supports `listCampaigns` and `getCampaign` for email series campaign IDs, names, and states, plus `activateCampaign` and `pauseCampaign` for state changes. Campaign listing accepts a one-based page and optional status (`draft`, `active`, `paused`), sort (`created_at`, `name`), and direction (`asc`, `desc`); blank values use Drip defaults. A 422 state response is checked with a campaign read and succeeds only when the target state is confirmed. These safe operations retry rate limits, 503, other server errors, and transport failures. See the [Drip campaign API](https://developer.drip.com/#email-series-campaigns) and the [Go campaign page Flow](go/examples/account-discovery/README.md).

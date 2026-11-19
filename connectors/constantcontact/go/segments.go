@@ -219,7 +219,7 @@ func (operation UpdateSegmentOperation) Invoke(call sdkgo.Call, input UpdateSegm
 		return listMutationBranch[SegmentMetadata]("updateSegment", UpdateSegmentBranchDefect, sdkgo.FailureLocalDefect, "segment request could not be encoded")
 	}
 	response := operation.client.send(call, http.MethodPut, "/segments/"+strconv.FormatInt(input.SegmentID, 10), payload)
-	if kind, failure := classifyListResponse("updateSegment", response); kind != listResponseSuccess {
+	if kind, failure := classifyListWriteResponse("updateSegment", response); kind != listResponseSuccess {
 		if kind == listResponseRetry {
 			return sdkgo.NewMutationRetry[SegmentMetadata](failure, response.retryAfter)
 		}
@@ -234,11 +234,11 @@ func (operation UpdateSegmentOperation) Invoke(call sdkgo.Call, input UpdateSegm
 		return sdkgo.NewMutationBranch(branch, SegmentMetadata{}, &failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
-		return listMutationBranch[SegmentMetadata]("updateSegment", UpdateSegmentBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected the segment update")
+		return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("updateSegment", sdkgo.FailureAvailability, "segment update outcome is unknown"), response.retryAfter)
 	}
 	segment, err := decodeSegment(response.body, true)
 	if err != nil {
-		return listMutationBranch[SegmentMetadata]("updateSegment", UpdateSegmentBranchInvalidResponse, sdkgo.FailureProtocol, "Constant Contact returned an invalid segment")
+		return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("updateSegment", sdkgo.FailureProtocol, "Constant Contact returned an invalid segment"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(UpdateSegmentBranchUpdated, segment, nil, sdkgo.Receipt{})
 }
@@ -249,7 +249,7 @@ func (operation DeleteSegmentOperation) Invoke(call sdkgo.Call, input DeleteSegm
 		return listMutationBranch[DeleteSegmentOutput]("deleteSegment", DeleteSegmentBranchDefect, sdkgo.FailureValidation, "segment ID must be positive")
 	}
 	response := operation.client.send(call, http.MethodDelete, "/segments/"+strconv.FormatInt(input.SegmentID, 10), nil)
-	if kind, failure := classifyListResponse("deleteSegment", response); kind != listResponseSuccess {
+	if kind, failure := classifyListWriteResponse("deleteSegment", response); kind != listResponseSuccess {
 		if kind == listResponseRetry {
 			return sdkgo.NewMutationRetry[DeleteSegmentOutput](failure, response.retryAfter)
 		}
@@ -262,7 +262,7 @@ func (operation DeleteSegmentOperation) Invoke(call sdkgo.Call, input DeleteSegm
 		return sdkgo.NewMutationBranch(branch, DeleteSegmentOutput{}, &failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusNoContent {
-		return listMutationBranch[DeleteSegmentOutput]("deleteSegment", DeleteSegmentBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected the segment deletion")
+		return sdkgo.NewMutationRetry[DeleteSegmentOutput](listFailure("deleteSegment", sdkgo.FailureAvailability, "segment deletion outcome is unknown"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(DeleteSegmentBranchDeleted, DeleteSegmentOutput{SegmentID: input.SegmentID}, nil, sdkgo.Receipt{})
 }

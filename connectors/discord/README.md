@@ -1,5 +1,7 @@
 # Discord Connector
 
+Safe channel and member writes retry unlisted HTTP statuses and unusable success responses when acceptance is unclear.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.5.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/discord`.

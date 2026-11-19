@@ -257,6 +257,9 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	case errors.Is(err, errRequestNotBuilt):
 		return response, client.outcome(outcomeDefect, operation, sdkgo.FailureLocalDefect, errRequestNotBuilt.Error(), receipt)
 	case errors.Is(err, errResponseTooLarge):
+		if request.method != http.MethodGet {
+			return response, client.outcome(outcomeRetry, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+		}
 		return response, client.outcome(outcomeInvalidResponse, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
 	case err != nil:
 		return response, client.outcome(outcomeRetry, operation, sdkgo.FailureTransport, "Discord did not return a complete response", receipt)
@@ -264,8 +267,27 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 		return response, nil
 	}
 	classified := classifyErrorResponse(operation, response, client.now())
+	if request.method != http.MethodGet && classified.disposition != outcomeRetry && !isDefiniteDiscordWriteRefusal(response) {
+		classified = providerOutcome{disposition: outcomeRetry, failure: providerFailure(operation, sdkgo.FailureAvailability, "Discord write outcome is unknown")}
+	}
 	classified.receipt = receipt
 	return response, &classified
+}
+
+func isDefiniteDiscordWriteRefusal(response providerResponse) bool {
+	if response.isErrorBodyOversized || readErrorCode(response.body) == "" {
+		return false
+	}
+	var answer map[string]json.RawMessage
+	if json.Unmarshal(response.body, &answer) != nil {
+		return false
+	}
+	for _, field := range []string{"id", "message_id", "channel_id", "guild_id"} {
+		if len(answer[field]) > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (client *Client) send(call sdkgo.Call, credentials Credentials, request providerRequest) (providerResponse, error) {

@@ -39,7 +39,11 @@ func isDefiniteCreatioWriteRefusal(response odataResponse) bool {
 		Error json.RawMessage `json:"error"`
 		ID    json.RawMessage `json:"Id"`
 	}
-	return json.Unmarshal(response.body, &answer) == nil && len(bytes.TrimSpace(answer.Error)) > 0 && len(bytes.TrimSpace(answer.ID)) == 0
+	if json.Unmarshal(response.body, &answer) != nil || len(bytes.TrimSpace(answer.ID)) != 0 {
+		return false
+	}
+	errorBody := string(bytes.TrimSpace(answer.Error))
+	return errorBody != "" && errorBody != "null" && errorBody != "{}" && errorBody != "[]" && errorBody != `""`
 }
 
 var errInvalidAccessToken = errors.New("Creatio access token unavailable")

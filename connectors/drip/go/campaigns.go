@@ -162,7 +162,7 @@ func invokeCampaignState(call sdkgo.Call, client *Client, operation string, inpu
 	if !validCampaignIdentity(input) {
 		return campaignStateFailure(operation, defect, sdkgo.FailureValidation, "account or campaign ID is invalid")
 	}
-	_, status, retryAfter, err := client.send(call, http.MethodPost, campaignPath(input)+"/"+action, nil)
+	responseBody, status, retryAfter, err := client.send(call, http.MethodPost, campaignPath(input)+"/"+action, nil)
 	if errors.Is(err, errCredential) {
 		return campaignStateFailure(operation, defect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -194,7 +194,10 @@ func invokeCampaignState(call sdkgo.Call, client *Client, operation string, inpu
 			}
 		}
 	}
-	return campaignStateFailure(operation, rejected, sdkgo.FailureProviderRejection, "Drip rejected campaign action with HTTP "+strconv.Itoa(status))
+	if isDefiniteDripSubscriptionRefusal(status, responseBody) {
+		return campaignStateFailure(operation, rejected, sdkgo.FailureProviderRejection, "Drip rejected campaign action with HTTP "+strconv.Itoa(status))
+	}
+	return campaignStateRetry(operation, sdkgo.FailureAvailability, "campaign action outcome is unknown", retryAfter)
 }
 
 func decodeCampaignsPage(body []byte) (CampaignsPage, error) {

@@ -199,7 +199,8 @@ func isDefiniteConstantContactWriteRefusal(response providerResponse) bool {
 		if strings.HasSuffix(lowerKey, "id") || lowerKey == "contacts" || lowerKey == "lists" || lowerKey == "segments" {
 			return false
 		}
-		if strings.HasPrefix(lowerKey, "error") && len(value) > 0 {
+		trimmed := strings.TrimSpace(string(value))
+		if strings.HasPrefix(lowerKey, "error") && trimmed != "" && trimmed != "null" && trimmed != "[]" && trimmed != "{}" && trimmed != `""` {
 			hasError = true
 		}
 	}

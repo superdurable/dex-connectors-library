@@ -232,17 +232,20 @@ func invokeFileMutation[T any](call sdkgo.Call, client *Client, operation, endpo
 		}
 	}
 	if status != http.StatusOK {
-		return fileMutationBranch(operation, rejected, zero, sdkgo.FailureProviderRejection, "Dropbox rejected HTTP "+strconv.Itoa(status))
+		if err == nil && isDefiniteDropboxTransferRefusal(status, body) {
+			return fileMutationBranch(operation, rejected, zero, sdkgo.FailureProviderRejection, "Dropbox rejected HTTP "+strconv.Itoa(status))
+		}
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureAvailability, "Dropbox write outcome is unknown"), retryAfter)
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return fileMutationBranch(operation, invalid, zero, sdkgo.FailureResponseTooLarge, "Dropbox response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureResponseTooLarge, "Dropbox response exceeded the configured limit"), retryAfter)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureTransport, "Dropbox response was interrupted"), 0)
 	}
 	value, err := decode(body)
 	if err != nil {
-		return fileMutationBranch(operation, invalid, zero, sdkgo.FailureProtocol, "Dropbox returned invalid JSON")
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureProtocol, "Dropbox returned invalid JSON"), retryAfter)
 	}
 	return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
 }

@@ -263,11 +263,14 @@ func classifyAccountWrite(operation string, targetID string, response odataRespo
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[AccountWriteOutput](accountsFailure(operation, sdkgo.FailureTransport, "Creatio write response failed"), 0)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteCreatioWriteRefusal(response) {
 		return accountWriteBranch(operation, notFoundBranch, sdkgo.FailureNotFound, "Creatio account was not found")
 	}
 	if response.status != http.StatusNoContent {
-		return accountWriteBranch(operation, rejectedBranch, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteCreatioWriteRefusal(response) {
+			return accountWriteBranch(operation, rejectedBranch, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[AccountWriteOutput](accountsFailure(operation, sdkgo.FailureAvailability, "Creatio write outcome is unknown"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(successBranch, AccountWriteOutput{ID: targetID}, nil, sdkgo.Receipt{})
 }

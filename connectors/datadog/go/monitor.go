@@ -177,24 +177,27 @@ func executeMonitorMutation[T any](client *Client, call sdkgo.Call, operation st
 		retry, after := retryFailure(response, operation)
 		return sdkgo.NewMutationRetry[T](retry, after)
 	}
-	if response.StatusCode == http.StatusNotFound {
-		providerFailure := statusFailure(response, operation)
-		return sdkgo.NewMutationBranch(notFound, *new(T), &providerFailure, sdkgo.Receipt{})
-	}
 	if response.StatusCode != http.StatusOK {
+		body, readErr := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if readErr != nil || !isDefiniteDatadogCreateRefusal(response.StatusCode, body) {
+			return monitorMutationRetry[T](operation, sdkgo.FailureAvailability, "Datadog write outcome is unknown", 0)
+		}
 		providerFailure := statusFailure(response, operation)
+		if response.StatusCode == http.StatusNotFound {
+			return sdkgo.NewMutationBranch(notFound, *new(T), &providerFailure, sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationBranch(rejected, *new(T), &providerFailure, sdkgo.Receipt{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return monitorMutationBranch[T](invalid, operation, sdkgo.FailureResponseTooLarge, "Datadog response exceeded the configured limit")
+		return monitorMutationRetry[T](operation, sdkgo.FailureResponseTooLarge, "Datadog response exceeded the configured limit", 0)
 	}
 	if err != nil {
 		return monitorMutationRetry[T](operation, sdkgo.FailureTransport, "Datadog response was interrupted", 0)
 	}
 	value, err := decode(body)
 	if err != nil {
-		return monitorMutationBranch[T](invalid, operation, sdkgo.FailureProtocol, "Datadog returned an invalid monitor response")
+		return monitorMutationRetry[T](operation, sdkgo.FailureProtocol, "Datadog returned an invalid monitor response", 0)
 	}
 	return sdkgo.NewMutationBranch(happy, value, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "datadog", ObservedAt: time.Now().UTC()})
 }

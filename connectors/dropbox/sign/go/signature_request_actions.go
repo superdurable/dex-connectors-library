@@ -212,11 +212,14 @@ func (operation CancelIncompleteSignatureRequestOperation) Invoke(call sdkgo.Cal
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return cancelRetry(sdkgo.FailureAvailability, "cancellation outcome is unavailable", response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSignatureActionRefusal(response) {
 		return cancelFailure(CancelIncompleteSignatureRequestBranchNotFound, sdkgo.FailureNotFound, "signature request is unavailable")
 	}
 	if response.status != http.StatusOK {
-		return cancelFailure(CancelIncompleteSignatureRequestBranchProviderRejected, sdkgo.FailureProviderRejection, "Dropbox Sign rejected cancellation with HTTP "+strconv.Itoa(response.status))
+		if isDefiniteSignatureActionRefusal(response) {
+			return cancelFailure(CancelIncompleteSignatureRequestBranchProviderRejected, sdkgo.FailureProviderRejection, "Dropbox Sign rejected cancellation with HTTP "+strconv.Itoa(response.status))
+		}
+		return cancelRetry(sdkgo.FailureAvailability, "cancellation outcome is unknown", response.retryAfter)
 	}
 	if response.err != nil {
 		return cancelRetry(sdkgo.FailureTransport, "cancellation response was interrupted", 0)

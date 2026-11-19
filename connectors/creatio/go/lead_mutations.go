@@ -263,11 +263,14 @@ func classifyLeadWrite(operation string, targetID string, response odataResponse
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[LeadWriteOutput](leadsFailure(operation, sdkgo.FailureTransport, "Creatio write response failed"), 0)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteCreatioWriteRefusal(response) {
 		return leadWriteBranch(operation, notFoundBranch, sdkgo.FailureNotFound, "Creatio lead was not found")
 	}
 	if response.status != http.StatusNoContent {
-		return leadWriteBranch(operation, rejectedBranch, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteCreatioWriteRefusal(response) {
+			return leadWriteBranch(operation, rejectedBranch, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[LeadWriteOutput](leadsFailure(operation, sdkgo.FailureAvailability, "Creatio write outcome is unknown"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(successBranch, LeadWriteOutput{ID: targetID}, nil, sdkgo.Receipt{})
 }

@@ -162,14 +162,17 @@ func (operation UpdateSignerNameOperation) Invoke(call sdkgo.Call, input UpdateS
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[UpdatedSignerName](signatureExpansionFailure("updateSignerName", sdkgo.FailureAvailability, "Dropbox Sign is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSignatureActionRefusal(response) {
 		return updateSignerNameBranch(UpdateSignerNameBranchNotFound, sdkgo.FailureNotFound, "Dropbox Sign did not expose the signature request")
 	}
 	if response.status != http.StatusOK {
-		return updateSignerNameBranch(UpdateSignerNameBranchProviderRejected, sdkgo.FailureProviderRejection, "Dropbox Sign rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteSignatureActionRefusal(response) {
+			return updateSignerNameBranch(UpdateSignerNameBranchProviderRejected, sdkgo.FailureProviderRejection, "Dropbox Sign rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[UpdatedSignerName](signatureExpansionFailure("updateSignerName", sdkgo.FailureAvailability, "signer update outcome is unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return updateSignerNameBranch(UpdateSignerNameBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Dropbox Sign response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[UpdatedSignerName](signatureExpansionFailure("updateSignerName", sdkgo.FailureResponseTooLarge, "Dropbox Sign response exceeded the configured limit"), response.retryAfter)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[UpdatedSignerName](signatureExpansionFailure("updateSignerName", sdkgo.FailureTransport, "Dropbox Sign response was interrupted"), 0)
@@ -180,7 +183,7 @@ func (operation UpdateSignerNameOperation) Invoke(call sdkgo.Call, input UpdateS
 		} `json:"signature_request"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.SignatureRequest.ID != input.SignatureRequestID {
-		return updateSignerNameBranch(UpdateSignerNameBranchInvalidResponse, sdkgo.FailureProtocol, "Dropbox Sign returned invalid update JSON")
+		return sdkgo.NewMutationRetry[UpdatedSignerName](signatureExpansionFailure("updateSignerName", sdkgo.FailureProtocol, "Dropbox Sign returned invalid update JSON"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(UpdateSignerNameBranchUpdated, UpdatedSignerName{SignatureRequestID: input.SignatureRequestID, Updated: true}, nil, sdkgo.Receipt{})
 }

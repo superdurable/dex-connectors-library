@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -315,7 +316,15 @@ func isDefiniteDripSubscriptionRefusal(status int, body []byte) bool {
 		Errors      []string `json:"errors"`
 		Subscribers []any    `json:"subscribers"`
 	}
-	return json.Unmarshal(body, &response) == nil && len(response.Errors) > 0 && len(response.Subscribers) == 0
+	if json.Unmarshal(body, &response) != nil || len(response.Subscribers) != 0 {
+		return false
+	}
+	for _, message := range response.Errors {
+		if strings.TrimSpace(message) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // Invoke removes one campaign membership; repeating the removal converges on the same state.

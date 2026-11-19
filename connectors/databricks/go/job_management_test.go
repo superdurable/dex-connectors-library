@@ -42,7 +42,13 @@ func TestUpdateAndDeleteJobUseBoundedRequests(t *testing.T) {
 
 func TestUpdateAndDeleteJobClassifyRejectionAndRetries(t *testing.T) {
 	for _, status := range []int{http.StatusNotFound, http.StatusForbidden, http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusInternalServerError} {
-		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { response.WriteHeader(status) }))
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(status)
+			if status == http.StatusNotFound || status == http.StatusForbidden {
+				_, err := response.Write([]byte(`{"error_code":"RESOURCE_NOT_AVAILABLE"}`))
+				require.NoError(t, err)
+			}
+		}))
 		client := newTestClient(t, server.URL, 0)
 		updated, updateErr := sdkgo.RunMutation(queryContext{}, client.UpdateJobName(), testConnection, UpdateJobNameInput{JobID: "123", Name: "Dex renamed job"})
 		deleted, deleteErr := sdkgo.RunMutation(queryContext{}, client.DeleteJob(), testConnection, DeleteJobInput{JobID: "123"})

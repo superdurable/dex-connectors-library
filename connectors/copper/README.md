@@ -1,5 +1,7 @@
 # Copper CRM connector
 
+Safe updates and deletions retry unlisted HTTP statuses and unusable success responses when the outcome is unknown.
+
 All three language packages read lead status IDs and names with `listLeadStatuses` and one lead's public metadata with `getLead`. Go also provides `createPerson`, `getPerson`, `listPeople`, `updatePerson`, and `deletePerson`. `listPeople` reads a page from Copper's [people search endpoint](https://developer.copper.com/people/list-people-search.html), with optional full-name and work-email filters. `pageNumber` starts at one; zero selects the first page. `pageSize` accepts 1–200; zero uses Copper's default of 20. Person results contain the numeric ID, name, first work email, and notes; custom fields and other private data stay out of Flow state. A positive decimal ID is required for person lookup, update, and deletion.
 
 Go also provides `createCompany`, `getCompany`, `listCompanies`, `updateCompany`, and `deleteCompany` through the [Companies API](https://developer.copper.com/companies/overview.html). Company creation requires an email domain, which Copper keeps unique, so a later attempt can search by domain and exact name before resending. `listCompanies` supports page number, size, name, and email-domain filters. Updates send only name and details; deletion is permanent. Company custom fields remain outside persisted results.

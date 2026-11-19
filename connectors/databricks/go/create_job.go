@@ -146,8 +146,9 @@ func isDefiniteDatabricksCreateRefusal(response providerResponse) bool {
 	var answer struct {
 		ErrorCode string          `json:"error_code"`
 		JobID     json.RawMessage `json:"job_id"`
+		RunID     json.RawMessage `json:"run_id"`
 	}
-	return json.Unmarshal(response.body, &answer) == nil && answer.ErrorCode != "" && len(answer.JobID) == 0
+	return json.Unmarshal(response.body, &answer) == nil && answer.ErrorCode != "" && len(answer.JobID) == 0 && len(answer.RunID) == 0
 }
 
 func (operation CreateJobOperation) retryOrUncertain(call sdkgo.Call, decision singledispatch.Decision, retryAfter time.Duration, message string) sdkgo.MutationAttempt[JobSummary] {

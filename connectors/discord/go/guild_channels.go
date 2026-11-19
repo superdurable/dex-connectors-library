@@ -110,7 +110,7 @@ func (operation UpdateChannelOperation) Invoke(call sdkgo.Call, input UpdateChan
 	}
 	channel, err := decodeChannel(response.body, input.ChannelID)
 	if err != nil || (input.Name != nil && channel.Name != *input.Name) || (input.Topic != nil && channel.Topic != *input.Topic) {
-		return sdkgo.NewMutationBranch(UpdateChannelBranchInvalidResponse, Channel{}, providerFailurePointer("updateChannel", sdkgo.FailureProtocol, "Discord returned a channel inconsistent with the update"), operation.client.receipt(call, input.ChannelID))
+		return sdkgo.NewMutationRetry[Channel](providerFailure("updateChannel", sdkgo.FailureProtocol, "Discord returned a channel inconsistent with the update"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateChannelBranchUpdated, channel, nil, operation.client.receipt(call, input.ChannelID))
 }
@@ -148,7 +148,7 @@ func (operation DeleteChannelOperation) Invoke(call sdkgo.Call, input DeleteChan
 	}
 	channel, err := decodeChannel(response.body, input.ChannelID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(DeleteChannelBranchInvalidResponse, Channel{}, providerFailurePointer("deleteChannel", sdkgo.FailureProtocol, "Discord returned an invalid deleted channel"), operation.client.receipt(call, input.ChannelID))
+		return sdkgo.NewMutationRetry[Channel](providerFailure("deleteChannel", sdkgo.FailureProtocol, "Discord returned an invalid deleted channel"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteChannelBranchDeleted, channel, nil, operation.client.receipt(call, input.ChannelID))
 }

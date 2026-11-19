@@ -1,5 +1,7 @@
 # Todoist Connector
 
+Safe close and reopen commands retry HTTP responses that do not clearly prove refusal or success.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go@v0.5.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/doist/todoist`.

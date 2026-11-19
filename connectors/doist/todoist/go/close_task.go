@@ -65,10 +65,10 @@ func (operation CloseTaskOperation) Invoke(call sdkgo.Call, input CloseTaskInput
 	case result.isTransient || result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable:
 		return sdkgo.NewMutationRetry[ClosedTask](*result.failure, result.retryAfter)
 	case result.failure != nil:
-		if result.status == http.StatusNotFound {
+		if result.status == http.StatusNotFound && isDefiniteTodoistWriteRefusal(result) {
 			return sdkgo.NewMutationBranch(CloseTaskBranchNotFound, ClosedTask{}, result.failure, sdkgo.Receipt{})
 		}
-		if result.status >= 500 || result.status >= 200 && result.status < 300 {
+		if result.status >= 500 || result.status >= 200 && result.status < 300 || !isDefiniteTodoistWriteRefusal(result) {
 			return sdkgo.NewMutationRetry[ClosedTask](*result.failure, result.retryAfter)
 		}
 		return sdkgo.NewMutationBranch(CloseTaskBranchProviderRejected, ClosedTask{}, result.failure, sdkgo.Receipt{})
@@ -97,7 +97,7 @@ func (operation CloseTaskOperation) Invoke(call sdkgo.Call, input CloseTaskInput
 	if commandError.HTTPCode == http.StatusNotFound || strings.EqualFold(commandError.Error, "ITEM_NOT_FOUND") || strings.EqualFold(commandError.ErrorCode, "ITEM_NOT_FOUND") {
 		return sdkgo.NewMutationBranch(CloseTaskBranchNotFound, ClosedTask{}, failure("closeTask", sdkgo.FailureNotFound, "Todoist found no task with that ID"), sdkgo.Receipt{})
 	}
-	if commandError.HTTPCode == http.StatusBadRequest || commandError.HTTPCode == http.StatusUnauthorized || commandError.HTTPCode == http.StatusForbidden || commandError.HTTPCode == http.StatusConflict {
+	if (commandError.HTTPCode == http.StatusBadRequest || commandError.HTTPCode == http.StatusUnauthorized || commandError.HTTPCode == http.StatusForbidden) && (commandError.Error != "" || commandError.ErrorCode != "") {
 		return sdkgo.NewMutationBranch(CloseTaskBranchProviderRejected, ClosedTask{}, failure("closeTask", sdkgo.FailureProviderRejection, "Todoist rejected the close command"), sdkgo.Receipt{})
 	}
 	return closeTaskProtocolRetry("Todoist did not confirm the close command")

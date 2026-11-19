@@ -299,11 +299,14 @@ func classifyOpportunityWrite(operation string, targetID string, response odataR
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[OpportunityWriteOutput](opportunitiesFailure(operation, sdkgo.FailureTransport, "Creatio write response failed"), 0)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteCreatioWriteRefusal(response) {
 		return opportunityWriteBranch(operation, notFoundBranch, sdkgo.FailureNotFound, "Creatio opportunity was not found")
 	}
 	if response.status != http.StatusNoContent {
-		return opportunityWriteBranch(operation, rejectedBranch, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteCreatioWriteRefusal(response) {
+			return opportunityWriteBranch(operation, rejectedBranch, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[OpportunityWriteOutput](opportunitiesFailure(operation, sdkgo.FailureAvailability, "Creatio write outcome is unknown"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(successBranch, OpportunityWriteOutput{ID: targetID}, nil, sdkgo.Receipt{})
 }

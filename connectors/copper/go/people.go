@@ -292,7 +292,11 @@ func isDefiniteCopperWriteRefusal(response personResponse) bool {
 		Error json.RawMessage `json:"error"`
 		ID    json.RawMessage `json:"id"`
 	}
-	return json.Unmarshal(response.body, &answer) == nil && len(bytes.TrimSpace(answer.Error)) > 0 && len(bytes.TrimSpace(answer.ID)) == 0
+	if json.Unmarshal(response.body, &answer) != nil || len(bytes.TrimSpace(answer.ID)) != 0 {
+		return false
+	}
+	errorBody := string(bytes.TrimSpace(answer.Error))
+	return errorBody != "" && errorBody != "null" && errorBody != "{}" && errorBody != "[]" && errorBody != `""`
 }
 
 func (client *Client) personRequest(requestContext context.Context, call sdkgo.Call, method, path string, body []byte) personResponse {
@@ -391,8 +395,10 @@ func personResponseFailure(operation string, response personResponse) (bool, *sd
 		kind = sdkgo.FailureRateLimit
 	case response.status == http.StatusRequestTimeout || response.status >= 500:
 		kind = sdkgo.FailureAvailability
-	case response.status >= 400:
+	case response.status >= 400 && isDefiniteCopperWriteRefusal(response):
 		kind = sdkgo.FailureProviderRejection
+	case response.status >= 400:
+		kind = sdkgo.FailureAvailability
 	default:
 		return false, nil
 	}

@@ -29,6 +29,9 @@ func TestReopenTaskUsesV1PathAndClassifiesOutcomes(t *testing.T) {
 				response.WriteHeader(testCase.status)
 				if testCase.status == http.StatusOK {
 					_, _ = response.Write([]byte("null"))
+				} else {
+					_, err := response.Write([]byte(`{"error":"task unavailable"}`))
+					require.NoError(t, err)
 				}
 			}))
 			defer server.Close()

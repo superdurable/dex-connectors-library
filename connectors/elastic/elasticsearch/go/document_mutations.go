@@ -100,11 +100,17 @@ func (operation IndexDocumentOperation) Invoke(call sdkgo.Call, input IndexDocum
 		}
 		return sdkgo.NewMutationBranch(IndexDocumentBranchIndexed, IndexedDocument{Index: input.Index, ID: input.DocumentID}, nil, sdkgo.Receipt{})
 	case http.StatusUnauthorized:
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
+			return indexRetry(sdkgo.FailureAvailability, "Elasticsearch indexing outcome is unknown", 0)
+		}
 		return indexFailure(IndexDocumentBranchProviderRejected, sdkgo.FailureAuthentication, "Elasticsearch rejected the credentials")
 	case http.StatusForbidden:
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
+			return indexRetry(sdkgo.FailureAvailability, "Elasticsearch indexing outcome is unknown", 0)
+		}
 		return indexFailure(IndexDocumentBranchProviderRejected, sdkgo.FailureAuthorization, "Elasticsearch denied index access")
 	default:
-		if !isDefiniteRefusalStatus(exchange.status) {
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
 			return indexRetry(sdkgo.FailureAvailability, "Elasticsearch answered indexing with HTTP "+strconv.Itoa(exchange.status)+", so the outcome is unknown", 0)
 		}
 		return indexFailure(IndexDocumentBranchProviderRejected, sdkgo.FailureProviderRejection, "Elasticsearch rejected indexing with HTTP "+strconv.Itoa(exchange.status))
@@ -144,11 +150,17 @@ func (operation DeleteDocumentOperation) Invoke(call sdkgo.Call, input DeleteDoc
 		}
 		return sdkgo.NewMutationBranch(DeleteDocumentBranchAbsent, DeletedDocument{Index: input.Index, ID: input.DocumentID, WasDeleted: wire.Result == "deleted"}, nil, sdkgo.Receipt{})
 	case http.StatusUnauthorized:
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
+			return deleteRetry(sdkgo.FailureAvailability, "Elasticsearch deletion outcome is unknown", 0)
+		}
 		return deleteFailure(DeleteDocumentBranchProviderRejected, sdkgo.FailureAuthentication, "Elasticsearch rejected the credentials")
 	case http.StatusForbidden:
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
+			return deleteRetry(sdkgo.FailureAvailability, "Elasticsearch deletion outcome is unknown", 0)
+		}
 		return deleteFailure(DeleteDocumentBranchProviderRejected, sdkgo.FailureAuthorization, "Elasticsearch denied index access")
 	default:
-		if !isDefiniteRefusalStatus(exchange.status) {
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
 			return deleteRetry(sdkgo.FailureAvailability, "Elasticsearch answered deletion with HTTP "+strconv.Itoa(exchange.status)+", so the outcome is unknown", 0)
 		}
 		return deleteFailure(DeleteDocumentBranchProviderRejected, sdkgo.FailureProviderRejection, "Elasticsearch rejected deletion with HTTP "+strconv.Itoa(exchange.status))
@@ -156,11 +168,20 @@ func (operation DeleteDocumentOperation) Invoke(call sdkgo.Call, input DeleteDoc
 }
 
 // isDefiniteRefusalStatus reports a status that proves Elasticsearch refused the write; any other status is unknown.
-func isDefiniteRefusalStatus(status int) bool {
+func isDefiniteRefusalStatus(status int, body []byte) bool {
 	switch status {
-	case http.StatusBadRequest, http.StatusNotFound, http.StatusLengthRequired, http.StatusRequestEntityTooLarge,
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired, http.StatusRequestEntityTooLarge,
 		http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		var answer struct {
+			Error struct {
+				Type string `json:"type"`
+			} `json:"error"`
+			ID           json.RawMessage `json:"_id"`
+			Index        json.RawMessage `json:"_index"`
+			Result       json.RawMessage `json:"result"`
+			Acknowledged json.RawMessage `json:"acknowledged"`
+		}
+		return json.Unmarshal(body, &answer) == nil && answer.Error.Type != "" && len(answer.ID) == 0 && len(answer.Index) == 0 && len(answer.Result) == 0 && len(answer.Acknowledged) == 0
 	}
 	return false
 }

@@ -58,11 +58,14 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[DeleteContactOutput](deleteContactFailure(sdkgo.FailureAvailability, "Constant Contact is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteConstantContactWriteRefusal(response) {
 		return deleteContactBranch(DeleteContactBranchNotFound, sdkgo.FailureNotFound, "Constant Contact did not find the contact")
 	}
 	if response.status != http.StatusNoContent {
-		return deleteContactBranch(DeleteContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteConstantContactWriteRefusal(response) {
+			return deleteContactBranch(DeleteContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[DeleteContactOutput](deleteContactFailure(sdkgo.FailureAvailability, "contact deletion outcome is unknown"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(DeleteContactBranchDeleted, DeleteContactOutput{ContactID: input.ContactID}, nil, sdkgo.Receipt{})
 }

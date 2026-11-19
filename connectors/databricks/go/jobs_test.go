@@ -88,6 +88,56 @@ func TestRunJobAndCancelRunUseBoundedRequests(t *testing.T) {
 	require.Equal(t, CancelJobRunBranchCancelled, cancelled.Branch)
 }
 
+func TestJobWritesRetryUnknownProviderOutcomes(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "conflict", status: http.StatusConflict, body: `{"error_code":"CONFLICT"}`},
+		{name: "unexpected client status", status: http.StatusMethodNotAllowed, body: `{"error_code":"REJECTED"}`},
+		{name: "empty refusal", status: http.StatusBadRequest, body: `{}`},
+		{name: "malformed success", status: http.StatusOK, body: `{"run_id":0}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				writer.WriteHeader(testCase.status)
+				_, err := writer.Write([]byte(testCase.body))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			client := newTestClient(t, server.URL, 0)
+			if testCase.status == http.StatusOK {
+				_, err := sdkgo.RunMutation(queryContext{}, client.RunJob(), testConnection, RunJobInput{JobID: "11223344"})
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			for _, invoke := range []func() error{
+				func() error {
+					_, err := sdkgo.RunMutation(queryContext{}, client.RunJob(), testConnection, RunJobInput{JobID: "11223344"})
+					return err
+				},
+				func() error {
+					_, err := sdkgo.RunMutation(queryContext{}, client.UpdateJobName(), testConnection, UpdateJobNameInput{JobID: "11223344", Name: "Renamed"})
+					return err
+				},
+				func() error {
+					_, err := sdkgo.RunMutation(queryContext{}, client.DeleteJob(), testConnection, DeleteJobInput{JobID: "11223344"})
+					return err
+				},
+				func() error {
+					_, err := sdkgo.RunMutation(queryContext{}, client.CancelJobRun(), testConnection, CancelJobRunInput{RunID: "11223344"})
+					return err
+				},
+			} {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, invoke(), &retry)
+			}
+		})
+	}
+}
+
 func TestJobOperationsClassifyProviderFailures(t *testing.T) {
 	for _, testCase := range []struct {
 		status int

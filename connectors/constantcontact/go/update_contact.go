@@ -93,7 +93,7 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 		return updateContactBranch(UpdateContactBranchDefect, sdkgo.FailureLocalDefect, "contact update could not be encoded")
 	}
 	response = operation.client.send(call, http.MethodPut, "/contacts/"+input.ContactID, requestBody)
-	if kind, failure := classifyListResponse("updateContact", response); kind != listResponseSuccess {
+	if kind, failure := classifyListWriteResponse("updateContact", response); kind != listResponseSuccess {
 		if kind == listResponseRetry {
 			return sdkgo.NewMutationRetry[ContactMetadata](failure, response.retryAfter)
 		}
@@ -108,7 +108,7 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 		return sdkgo.NewMutationBranch(branch, ContactMetadata{}, &failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
-		return updateContactBranch(UpdateContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
+		return sdkgo.NewMutationRetry[ContactMetadata](listFailure("updateContact", sdkgo.FailureAvailability, "contact update outcome is unknown"), response.retryAfter)
 	}
 	updated, err := decodeContact(response.body)
 	if err != nil || updated.ContactID != input.ContactID {

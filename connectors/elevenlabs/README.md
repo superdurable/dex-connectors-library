@@ -1,5 +1,7 @@
 # ElevenLabs connector
 
+Safe history and voice writes retry unlisted HTTP statuses and unusable success confirmations.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/elevenlabs/go@v0.3.0` after release.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/elevenlabs`.

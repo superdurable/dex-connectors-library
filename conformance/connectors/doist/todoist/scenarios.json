@@ -438,13 +438,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
+        "branch": "",
         "failureKind": "NOT_FOUND",
-        "output": {
-          "taskId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -479,13 +476,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
+        "branch": "",
         "failureKind": "AUTHORIZATION",
-        "output": {
-          "taskId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

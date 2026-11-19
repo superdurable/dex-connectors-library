@@ -176,10 +176,13 @@ func (operation DeleteHistoryItemOperation) Invoke(call sdkgo.Call, input Histor
 		return sdkgo.NewMutationBranch(DeleteHistoryItemBranchDeleted, DeletedHistoryItem{HistoryItemID: input.HistoryItemID, Deleted: true}, nil, sdkgo.Receipt{})
 	}
 	if status != http.StatusOK {
-		return deleteHistoryFailure(DeleteHistoryItemBranchProviderRejected, sdkgo.FailureProviderRejection, "ElevenLabs rejected HTTP "+strconv.Itoa(status))
+		if isDefiniteElevenLabsWriteRefusal(status, body, err) {
+			return deleteHistoryFailure(DeleteHistoryItemBranchProviderRejected, sdkgo.FailureProviderRejection, "ElevenLabs rejected HTTP "+strconv.Itoa(status))
+		}
+		return deleteHistoryRetry(sdkgo.FailureAvailability, "history deletion outcome is unknown", retryAfter)
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return deleteHistoryFailure(DeleteHistoryItemBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "deletion confirmation exceeded the response limit")
+		return deleteHistoryRetry(sdkgo.FailureResponseTooLarge, "deletion confirmation exceeded the response limit", retryAfter)
 	}
 	if err != nil {
 		return deleteHistoryRetry(sdkgo.FailureTransport, "history deletion response was interrupted", 0)
@@ -188,9 +191,38 @@ func (operation DeleteHistoryItemOperation) Invoke(call sdkgo.Call, input Histor
 		Status string `json:"status"`
 	}
 	if json.Unmarshal(body, &wire) != nil || wire.Status != "ok" {
-		return deleteHistoryFailure(DeleteHistoryItemBranchInvalidResponse, sdkgo.FailureProtocol, "history deletion confirmation is invalid")
+		return deleteHistoryRetry(sdkgo.FailureProtocol, "history deletion confirmation is invalid", retryAfter)
 	}
 	return sdkgo.NewMutationBranch(DeleteHistoryItemBranchDeleted, DeletedHistoryItem{HistoryItemID: input.HistoryItemID, Deleted: true}, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteElevenLabsWriteRefusal(status int, body []byte, responseErr error) bool {
+	if responseErr != nil {
+		return false
+	}
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType,
+		http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var answer struct {
+		Detail json.RawMessage `json:"detail"`
+		Status string          `json:"status"`
+	}
+	if json.Unmarshal(body, &answer) != nil || answer.Status == "ok" {
+		return false
+	}
+	var detailMessage string
+	if json.Unmarshal(answer.Detail, &detailMessage) == nil {
+		return strings.TrimSpace(detailMessage) != ""
+	}
+	var detail struct {
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	return json.Unmarshal(answer.Detail, &detail) == nil && detail.Status != "" && detail.Message != ""
 }
 
 func decodeHistoryItemsPage(body []byte) (HistoryItemsPage, error) {

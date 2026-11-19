@@ -181,7 +181,7 @@ func (operation RunJobOperation) Invoke(call sdkgo.Call, input RunJobInput) sdkg
 		return attempt
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return mutationBranch[StartedJobRun](RunJobBranchInvalidResponse, "runJob", sdkgo.FailureResponseTooLarge, "Databricks run response exceeded the configured limit")
+		return mutationRetry[StartedJobRun]("runJob", sdkgo.FailureResponseTooLarge, "Databricks run response exceeded the configured limit", response.retryAfter)
 	}
 	if response.err != nil {
 		return mutationRetry[StartedJobRun]("runJob", sdkgo.FailureTransport, "Databricks run response was interrupted", response.retryAfter)
@@ -190,7 +190,7 @@ func (operation RunJobOperation) Invoke(call sdkgo.Call, input RunJobInput) sdkg
 		RunID int64 `json:"run_id"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.RunID <= 0 {
-		return mutationBranch[StartedJobRun](RunJobBranchInvalidResponse, "runJob", sdkgo.FailureProtocol, "Databricks returned an invalid run ID")
+		return mutationRetry[StartedJobRun]("runJob", sdkgo.FailureProtocol, "Databricks returned an invalid run ID", response.retryAfter)
 	}
 	runID := strconv.FormatInt(wire.RunID, 10)
 	return sdkgo.NewMutationBranch(RunJobBranchStarted, StartedJobRun{RunID: runID}, nil, jobReceipt(call, runID))
@@ -243,11 +243,14 @@ func classifyMutationResponse[T any](response providerResponse, operation string
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return mutationRetry[T](operation, sdkgo.FailureAvailability, "Databricks is temporarily unavailable", response.retryAfter), true
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteDatabricksCreateRefusal(response) {
 		return mutationBranch[T](notFound, operation, sdkgo.FailureNotFound, "Databricks did not expose the resource"), true
 	}
 	if response.status != http.StatusOK && response.status != http.StatusNoContent {
-		return mutationBranch[T](rejected, operation, sdkgo.FailureProviderRejection, "Databricks rejected HTTP "+strconv.Itoa(response.status)), true
+		if isDefiniteDatabricksCreateRefusal(response) {
+			return mutationBranch[T](rejected, operation, sdkgo.FailureProviderRejection, "Databricks rejected HTTP "+strconv.Itoa(response.status)), true
+		}
+		return mutationRetry[T](operation, sdkgo.FailureAvailability, "Databricks write outcome is unknown", response.retryAfter), true
 	}
 	return sdkgo.MutationAttempt[T]{}, false
 }

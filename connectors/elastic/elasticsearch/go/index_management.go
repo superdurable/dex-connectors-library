@@ -114,7 +114,10 @@ func (operation CreateIndexOperation) Invoke(call sdkgo.Call, input IndexNameInp
 	if exchange.status == http.StatusBadRequest && indexErrorType(exchange.body) == "resource_already_exists_exception" {
 		return sdkgo.NewMutationBranch(CreateIndexBranchPresent, IndexResult{Index: input.Index}, nil, sdkgo.Receipt{})
 	}
-	return indexManagementMutationFailure("createIndex", CreateIndexBranchProviderRejected, indexStatusFailureKind(exchange.status), "Elasticsearch rejected index creation with HTTP "+strconv.Itoa(exchange.status))
+	if isDefiniteRefusalStatus(exchange.status, exchange.body) {
+		return indexManagementMutationFailure("createIndex", CreateIndexBranchProviderRejected, indexStatusFailureKind(exchange.status), "Elasticsearch rejected index creation with HTTP "+strconv.Itoa(exchange.status))
+	}
+	return indexManagementMutationRetry("createIndex", sdkgo.FailureAvailability, "Elasticsearch index creation outcome is unknown", 0)
 }
 
 // Invoke deletes a concrete index, accepting a repeated deletion.
@@ -135,7 +138,10 @@ func (operation DeleteIndexOperation) Invoke(call sdkgo.Call, input IndexNameInp
 	if exchange.status == http.StatusOK {
 		return indexManagementMutationRetry("deleteIndex", sdkgo.FailureProtocol, "Elasticsearch index deletion was not confirmed", 0)
 	}
-	return indexManagementMutationFailure("deleteIndex", DeleteIndexBranchProviderRejected, indexStatusFailureKind(exchange.status), "Elasticsearch rejected index deletion with HTTP "+strconv.Itoa(exchange.status))
+	if isDefiniteRefusalStatus(exchange.status, exchange.body) {
+		return indexManagementMutationFailure("deleteIndex", DeleteIndexBranchProviderRejected, indexStatusFailureKind(exchange.status), "Elasticsearch rejected index deletion with HTTP "+strconv.Itoa(exchange.status))
+	}
+	return indexManagementMutationRetry("deleteIndex", sdkgo.FailureAvailability, "Elasticsearch index deletion outcome is unknown", 0)
 }
 
 // Invoke reads metadata for one concrete index.

@@ -1,5 +1,7 @@
 # Databricks connector
 
+Safe job writes retry unknown HTTP outcomes; `runJob` also retries an unusable success response with the same idempotency token.
+
 The Go, Python, and TypeScript `getJobRun` Query reads a job run ID, current `status.state`, and optional legacy terminal result state. Go also supports `createJob`, `updateJobName`, `deleteJob`, `listJobs`, `getJob`, `listJobRuns`, `runJob`, and `cancelJobRun`. These operations return bounded IDs, names, and states; task details and user metadata stay out of Dex Results.
 
 ## Connect

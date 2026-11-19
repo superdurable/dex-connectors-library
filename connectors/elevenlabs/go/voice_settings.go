@@ -107,11 +107,14 @@ func (operation UpdateVoiceSettingsOperation) Invoke(call sdkgo.Call, input Upda
 	if status == http.StatusRequestTimeout || status >= http.StatusInternalServerError {
 		return updateVoiceSettingsRetry(sdkgo.FailureAvailability, "provider is temporarily unavailable", retryAfter)
 	}
-	if status == http.StatusNotFound {
+	if status == http.StatusNotFound && isDefiniteElevenLabsWriteRefusal(status, body, err) {
 		return updateVoiceSettingsFailure(UpdateVoiceSettingsBranchNotFound, sdkgo.FailureNotFound, "provider did not find the voice")
 	}
 	if status != http.StatusOK {
-		return updateVoiceSettingsFailure(UpdateVoiceSettingsBranchProviderRejected, sdkgo.FailureProviderRejection, "provider rejected the settings with HTTP "+strconv.Itoa(status))
+		if isDefiniteElevenLabsWriteRefusal(status, body, err) {
+			return updateVoiceSettingsFailure(UpdateVoiceSettingsBranchProviderRejected, sdkgo.FailureProviderRejection, "provider rejected the settings with HTTP "+strconv.Itoa(status))
+		}
+		return updateVoiceSettingsRetry(sdkgo.FailureAvailability, "voice settings outcome is unknown", retryAfter)
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
 		return updateVoiceSettingsRetry(sdkgo.FailureResponseTooLarge, "provider confirmation exceeded the configured limit", 0)

@@ -1,5 +1,7 @@
 # Creatio connector
 
+Safe OData updates and deletions retry unlisted HTTP statuses and incomplete confirmations of a dispatched write.
+
 The Go, [Python](python/README.md), and [TypeScript](typescript/README.md) packages implement `getContact` through [Creatio OData 4](https://academy.creatio.com/guides/dev/development-on-creatio-platform/integrations-and-api/data-services/odata/basics/overview). Go also implements `listContacts`, `createContact`, `updateContact`, and `deleteContact`. The list Query pages through IDs, names, and emails. Create uses a durable dispatch fence with a three-send limit and reads by name and email before resending; an unproven matching contact selects `uncertain`. Update uses OData PATCH for only the supplied fields; delete removes a contact permanently. Each write requires the technical user's corresponding object permission. An empty Get result selects `notFound`; 429, 408, 5xx, and transport failures retry. Malformed OData and definitive rejections select separate optional branches.
 
 Go also implements `getAccount`, `listAccounts`, `createAccount`, `updateAccount`, and `deleteAccount` through the OData [Account collection](https://academy.creatio.com/guides/dev/development-on-creatio-platform/integrations-and-api/data-services/odata/basics/overview). Account names are not unique. Create reads by name before resending but treats an unproven match as `uncertain`; a saved provider ID can confirm the record. Updates replace the name, and deletion is permanent. The technical user needs matching Account object permissions.

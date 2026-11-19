@@ -644,6 +644,9 @@ func isSuccessStatus(status int) bool { return status >= 200 && status < 300 }
 
 func classifyHTTPFailure(operation string, response *http.Response) exchangeResult {
 	result := exchangeResult{status: response.StatusCode}
+	if body, bodyErr := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes); bodyErr == nil {
+		result.body = body
+	}
 	kind := sdkgo.FailureProviderRejection
 	switch response.StatusCode {
 	case http.StatusUnauthorized:

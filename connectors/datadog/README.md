@@ -1,5 +1,7 @@
 # Datadog connector
 
+Safe monitor writes retry unlisted HTTP statuses and unusable success responses when acceptance is unclear.
+
 After the v0.4.0 release, install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/datadog/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/datadog`.

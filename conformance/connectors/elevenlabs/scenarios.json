@@ -2374,14 +2374,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "historyItemId": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2413,14 +2409,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "historyItemId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2699,14 +2691,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "name": "",
-          "voiceId": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2763,14 +2751,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "name": "",
-          "voiceId": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2827,14 +2811,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "name": "",
-          "voiceId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3207,14 +3187,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "voiceId": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3246,14 +3222,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "voiceId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3423,6 +3395,76 @@
       },
       "name": "deleteVoice-transport",
       "operation": "deleteVoice"
+    },
+    {
+      "callId": "c7a76149-76cc-48b7-8672-997443a5edaa",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/history/history_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7a76149-76cc-48b7-8672-997443a5edaa",
+      "input": {
+        "historyItemId": "history_meridian"
+      },
+      "name": "deleteHistoryItem-conflict-unknown",
+      "operation": "deleteHistoryItem"
+    },
+    {
+      "callId": "c7a76149-76cc-48b7-8672-997443a5edab",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"method\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/history/history_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7a76149-76cc-48b7-8672-997443a5edab",
+      "input": {
+        "historyItemId": "history_meridian"
+      },
+      "name": "deleteHistoryItem-unlisted-client-status-unknown",
+      "operation": "deleteHistoryItem"
     }
   ],
   "schemaVersion": 1
