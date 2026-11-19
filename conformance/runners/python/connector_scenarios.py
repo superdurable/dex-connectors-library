@@ -420,7 +420,7 @@ class ExchangeRecorder:
         if exchange.get("transportFailure") != "before-send":
             self.provider_request_count += 1
         self._equal(index, "method", request.method, exchange["method"])
-        self._equal(index, "path", request.url.path, self.path_prefix + exchange["path"])
+        self._equal(index, "path", request.url.path, self.path_prefix.removesuffix("/") + exchange["path"])
         for field, actual in (("query", parse_qs(request.url.query.decode(), keep_blank_values=True)),
                               ("form", parse_qs(request.content.decode(), keep_blank_values=True)
                                if request.headers.get("content-type", "").startswith("application/x-www-form-urlencoded") else {})):
