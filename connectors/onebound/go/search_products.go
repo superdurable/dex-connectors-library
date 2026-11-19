@@ -75,7 +75,7 @@ func (operation SearchProductsOperation) Invoke(call sdkgo.Call, input SearchPro
 	parameters := map[string]string{
 		"api_name": "item_search", "key": credentials.APIKey.Reveal(),
 		"q": input.Keyword, "page": strconv.Itoa(pageNumber), "page_size": strconv.Itoa(productPageSize),
-		"dateline": time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02 15:04:05"),
+		"dateline": operation.client.now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02 15:04:05"),
 	}
 	query := url.Values{}
 	for name, value := range parameters {

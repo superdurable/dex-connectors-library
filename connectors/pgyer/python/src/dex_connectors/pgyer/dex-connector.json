@@ -1,0 +1,60 @@
+{
+  "connectorId": "pgyer",
+  "releaseTag": "connectors/pgyer/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-pgyer",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_uploaded_apps_step",
+      "kind": "query",
+      "operationId": "listUploadedApps",
+      "inputType": "ListUploadedAppsInput",
+      "description": "List one page of uploaded apps, returning app and build IDs, name, type, version, and creation time only.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListUploadedAppsInput selects one page of apps uploaded by the API Key's account.",
+        "properties": {
+          "page": {
+            "description": "Page is a positive page number; zero asks Pgyer for its first page.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

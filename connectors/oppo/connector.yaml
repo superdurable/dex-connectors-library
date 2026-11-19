@@ -9,6 +9,7 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    python: {version: v0.1.0, operations: [getPushQuota], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-oppo", operations: [getPushQuota], triggers: []}
   provider: oppo
   codegen:

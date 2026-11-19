@@ -1,0 +1,632 @@
+{
+  "connector": "meituan",
+  "scenarios": [
+    {
+      "callId": "10000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"delivery_id\":123456,\"mt_peisong_id\":\"MT123456789\",\"order_id\":\"ORDER123\",\"status\":20,\"operate_time\":1794552600,\"courier_name\":\"private rider\"}}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "deliveryId": 123456,
+          "meituanOrderId": "MT123456789",
+          "merchantOrderId": "ORDER123",
+          "operatedAt": 1794552600,
+          "status": 20
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-found",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"code\":12,\"message\":\"bad request\"}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deliveryId": 0,
+          "meituanOrderId": "",
+          "merchantOrderId": "",
+          "operatedAt": 0,
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-providerRejected",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"delivery_id\":123456,\"mt_peisong_id\":\"MT123456789\",\"order_id\":\"ORDER123\",\"operate_time\":1794552600}}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deliveryId": 0,
+          "meituanOrderId": "",
+          "merchantOrderId": "",
+          "operatedAt": 0,
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-invalidResponse",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deliveryId": 0,
+          "meituanOrderId": "",
+          "merchantOrderId": "",
+          "operatedAt": 0,
+          "status": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 0,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-defect",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-429",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-503",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-transport",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"delivery_id\":123456,\"mt_peisong_id\":\"MT123456789\",\"order_id\":\"ORDER123\",\"status\":20,\"operate_time\":1794552600}}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "deliveryId": 0,
+          "meituanOrderId": "",
+          "merchantOrderId": "",
+          "operatedAt": 0,
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-oversized",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"code\":11}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-providerLimit",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "deliveryId": 0,
+          "meituanOrderId": "",
+          "merchantOrderId": "",
+          "operatedAt": 0,
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-unauthorized",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"delivery_id\":123456,\"mt_peisong_id\":\"OTHER\",\"order_id\":\"ORDER123\",\"status\":20,\"operate_time\":1794552600}}",
+          "form": {
+            "appkey": [
+              "test-app-key"
+            ],
+            "delivery_id": [
+              "123456"
+            ],
+            "mt_peisong_id": [
+              "MT123456789"
+            ],
+            "sign": [
+              "e120c634aaaa2f71f1946a286c05d9906eea622b"
+            ],
+            "timestamp": [
+              "1767225600"
+            ],
+            "version": [
+              "1.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deliveryId": 0,
+          "meituanOrderId": "",
+          "merchantOrderId": "",
+          "operatedAt": 0,
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deliveryId": 123456,
+        "meituanOrderId": "MT123456789"
+      },
+      "name": "queryOrderStatus-wrongOrder",
+      "operation": "queryOrderStatus"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -7,3 +7,7 @@ Ping++ [API authentication](https://www.pingxx.com/api/%E8%AE%A4%E8%AF%81.html) 
 `getChargeStatus` selects `fetched`, `notFound`, `providerRejected`, `invalidResponse`, or `defect`. Concurrency limits, rate limits, transport errors, and temporary server faults retry. Optional branches fail the example Flow unless wired by an application.
 
 [Run the Charge status Flow](go/examples/charge-status/README.md). Its checked-in mock is synthetic; live payment state has not been verified without a user-controlled API Key in Dex Web Connections.
+
+## Python
+
+The first Python package implements the read-only operation and all Go-recorded provider branches. See [Python package](python/README.md) and its [runnable Flow](python/examples/charge_status/README.md). Live provider authorization and responses are unverified.

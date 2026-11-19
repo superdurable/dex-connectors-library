@@ -92,7 +92,7 @@ func (operation ListProjectsOperation) Invoke(call sdkgo.Call, input ListProject
 		if challengeErr != nil {
 			return projectsBranch(ListProjectsBranchProviderRejected, sdkgo.FailureAuthentication, "TiDB Cloud returned an unsupported Digest challenge")
 		}
-		authorization, authErr := digestAuthorization(challenge, credentials.PublicKey.Reveal(), credentials.PrivateKey.Reveal(), http.MethodGet, endpoint.RequestURI())
+		authorization, authErr := digestAuthorization(challenge, credentials.PublicKey.Reveal(), credentials.PrivateKey.Reveal(), http.MethodGet, endpoint.RequestURI(), operation.client.nonceReader)
 		if authErr != nil {
 			return projectsBranch(ListProjectsBranchDefect, sdkgo.FailureAvailability, "Digest authorization could not be constructed")
 		}

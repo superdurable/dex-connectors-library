@@ -43,7 +43,7 @@ func (operation ListChannelsOperation) Invoke(call sdkgo.Call, _ ListChannelsInp
 	}
 	values := url.Values{}
 	values.Set("appId", credentials.AppID)
-	values.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
+	values.Set("timestamp", strconv.FormatInt(operation.client.now().UnixMilli(), 10))
 	values.Set("sign", signPolyvParameters(values, credentials.AppSecret.Reveal()))
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, channelsEndpoint+"?"+values.Encode(), nil)
 	if err != nil {

@@ -1,0 +1,465 @@
+{
+  "connector": "onenet",
+  "scenarios": [
+    {
+      "callId": "30000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"pid\":\"demo123\",\"name\":\"传感器 1\",\"status\":1,\"desc\":\"sensor\",\"create_time\":\"2025-11-28T09:49:00+08:00\",\"last_time\":\"2025-12-01T15:38:51+08:00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createTime": "2025-11-28T09:49:00+08:00",
+          "description": "sensor",
+          "deviceName": "传感器 1",
+          "lastOnlineTime": "2025-12-01T15:38:51+08:00",
+          "productId": "demo123",
+          "status": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-found",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"code\":1001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createTime": "",
+          "description": "",
+          "deviceName": "",
+          "lastOnlineTime": "",
+          "productId": "",
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-providerRejected",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createTime": "",
+          "description": "",
+          "deviceName": "",
+          "lastOnlineTime": "",
+          "productId": "",
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-invalidResponse",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "createTime": "",
+          "description": "",
+          "deviceName": "",
+          "lastOnlineTime": "",
+          "productId": "",
+          "status": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": ""
+      },
+      "name": "queryDeviceDetail-defect",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-429",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-503",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-transport",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"pid\":\"p\",\"name\":\"d\",\"status\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "createTime": "",
+          "description": "",
+          "deviceName": "",
+          "lastOnlineTime": "",
+          "productId": "",
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-oversized",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createTime": "",
+          "description": "",
+          "deviceName": "",
+          "lastOnlineTime": "",
+          "productId": "",
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-unauthorized",
+      "operation": "queryDeviceDetail"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"pid\":\"demo123\",\"name\":\"传感器 1\",\"status\":1}} {}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/device/detail",
+          "query": {
+            "device_name": [
+              "传感器 1"
+            ],
+            "product_id": [
+              "demo123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "version=2022-05-01\u0026res=userid%2F130037\u0026et=1767229200\u0026method=sha256\u0026sign=v%2BYEjNxxq6nRuBWA1%2F69PwtuuhIE8pUlIRjJwvbEg%2FU%3D"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createTime": "",
+          "description": "",
+          "deviceName": "",
+          "lastOnlineTime": "",
+          "productId": "",
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "deviceName": "传感器 1"
+      },
+      "name": "queryDeviceDetail-trailing",
+      "operation": "queryDeviceDetail"
+    }
+  ],
+  "schemaVersion": 1
+}
