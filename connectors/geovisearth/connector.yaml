@@ -10,6 +10,7 @@ metadata:
 spec:
   provider: geovisearth
   languages:
+    python: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-geovisearth"

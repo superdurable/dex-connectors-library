@@ -1,0 +1,52 @@
+{
+  "connectorId": "upyun",
+  "releaseTag": "connectors/upyun/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-upyun",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetServiceUsageStep",
+      "kind": "query",
+      "operationId": "getServiceUsage",
+      "inputType": "GetServiceUsageInput",
+      "description": "Read one storage service's used bytes without changing objects.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetServiceUsageInput has no parameters; the connection selects the storage service.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

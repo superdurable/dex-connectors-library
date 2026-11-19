@@ -11,3 +11,7 @@ Sign in at [FOFA](https://fofa.info), open the account avatar > personal center 
 Run the [example Flow](go/examples/search-domain-assets/) and start `FOFADomainAssetSearch` with `{"domain":"example.com"}`. The checked-in mock returns one asset. Live FOFA API behavior requires a user-provided Key and has not been verified here.
 
 The [TypeScript package](typescript/) provides the same `searchDomainAssets` Query and a [runnable Dex Worker/Client example](typescript/examples/basic/). Its provider adapter replays the Go-recorded response and retry scenarios without persisting the API Key.
+
+## Python
+
+The first Python package is [`python/`](python/README.md). It implements the same read-only Query and replays the Go-recorded provider scenarios. Its runnable Flow includes a real Dex Worker and Client integration test.

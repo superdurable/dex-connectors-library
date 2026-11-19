@@ -9,3 +9,5 @@ The Query retries HTTP 408, 429, and 5xx responses and transport failures under 
 Install `github.com/superdurable/dex-connectors-library/connectors/qiniu/go@v0.1.0` after the first release. Provider tests run against an HTTP test server. The mock-backed example integration test requires a real `dexcli dev` stack. Live Qiniu authentication and bucket listing require a user-configured key pair and are not exercised by local provider tests.
 
 The [Python package](python/README.md) implements `listBuckets` and includes a [runnable Dex Flow](python/examples/bucket_list/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.
+
+The [TypeScript package](typescript/README.md) implements the same `listBuckets` Query, Go-recorded provider scenarios, and a runnable Dex Worker/Client example. Live Qiniu credentials were not available for this port.

@@ -15,3 +15,7 @@ The [current-weather Flow](go/examples/current-weather/) is a runnable Worker wi
 ## TypeScript
 
 The [TypeScript package](typescript/) provides the `getCurrentWeather` Query and a [runnable Dex Worker/Client example](typescript/examples/basic/). It replays the Go-recorded provider scenarios and keeps the token outside Flow state.
+
+## Python
+
+The first Python package is [`python/`](python/README.md). It implements the same read-only Query and replays the Go-recorded provider scenarios. Its runnable Flow includes a real Dex Worker and Client integration test.

@@ -10,6 +10,7 @@ metadata:
 spec:
   provider: honor
   languages:
+    python: {version: v0.1.0, operations: [lookupAppID], triggers: []}
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-honor"

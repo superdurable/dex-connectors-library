@@ -11,3 +11,5 @@ Sign in to [HONOR Developers](https://developer.honor.com/), open Management Cen
 The [runnable Flow](go/examples/lookup-app-id/) starts with `{"packageName":"com.example.app"}` and completes with a typed `LookupAppIDOutput`. Its default mock returns one app ID. Live HONOR authorization, app ownership, and provider response variation remain unverified without a user-controlled Dex Web Connection.
 
 The [TypeScript package](typescript/) offers the same `lookupAppID` Query and a [runnable Dex Worker/Client Flow](typescript/examples/basic/) backed by Go-recorded provider replay tests.
+
+The [Python package](python/) implements `lookupAppID` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.

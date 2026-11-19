@@ -1,0 +1,60 @@
+{
+  "connectorId": "fofa",
+  "releaseTag": "connectors/fofa/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-fofa",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_search_domain_assets_step",
+      "kind": "query",
+      "operationId": "searchDomainAssets",
+      "inputType": "SearchDomainAssetsInput",
+      "description": "Search public indexed hosts for one exact domain.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchDomainAssetsInput identifies one DNS domain to search in FOFA's public index.",
+        "properties": {
+          "domain": {
+            "description": "Domain is one DNS domain, without a URL scheme or wildcard.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
