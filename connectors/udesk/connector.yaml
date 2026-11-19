@@ -50,6 +50,11 @@ spec:
         - Follow the Udesk v2 authentication guide at https://www.udesk.cn/doc/apiv2/intro/ and call POST /open_api_v1/log_in from your own trusted server with the super administrator email and password. Copy open_api_auth_token from a code 1000 response; never enter the password into Dex.
         - Enter the exact super administrator mailbox in admin_email and the returned token in api_token. Keep both as Dex credentials; rotate the token by obtaining a new one through the Udesk login API if exposed.
         - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector generates the Unix-seconds timestamp, one-use nonce, v2 version, and SHA-256 signature automatically.
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listTicketStatuses]
+      triggers: []
   operations:
     - name: listTicketStatuses
       goName: ListTicketStatuses
