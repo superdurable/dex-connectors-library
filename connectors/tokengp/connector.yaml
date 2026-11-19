@@ -8,11 +8,10 @@ metadata:
   categories: [ai]
   version: v0.1.0
 spec:
-  languages:
-    typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   provider: tokengp
   languages:
     python: {version: v0.1.0, operations: [listModels], triggers: []}
+    typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   codegen:
     go:
       package: tokengp
