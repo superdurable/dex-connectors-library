@@ -1,0 +1,52 @@
+{
+  "connectorId": "submail",
+  "releaseTag": "connectors/submail/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-submail",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_sms_balance_step",
+      "kind": "query",
+      "operationId": "getSMSBalance",
+      "inputType": "GetSMSBalanceInput",
+      "description": "Read general and transactional SMS credit balances.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSMSBalanceInput has no parameters; the connection identifies the SMS app.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
