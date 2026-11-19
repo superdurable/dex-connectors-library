@@ -1,0 +1,65 @@
+{
+  "connectorId": "yuandian",
+  "releaseTag": "connectors/yuandian/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-yuandian",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_company_profile_step",
+      "kind": "query",
+      "operationId": "getCompanyProfile",
+      "inputType": "GetCompanyProfileInput",
+      "description": "Read selected company registration facts by unified social credit code.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "no_data",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCompanyProfileInput identifies one company by its unified social credit code.",
+        "properties": {
+          "creditCode": {
+            "description": "CreditCode is the 18-character uppercase unified social credit code.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "creditCode"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
