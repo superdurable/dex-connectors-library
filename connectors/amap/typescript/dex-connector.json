@@ -1,0 +1,64 @@
+{
+  "connectorId": "amap",
+  "releaseTag": "connectors/amap/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-amap",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGeocodeAddressStep",
+      "kind": "query",
+      "operationId": "geocodeAddress",
+      "inputType": "GeocodeAddressInput",
+      "description": "Resolve one structured Chinese address to Amap's candidate locations, optionally limiting the search to a city.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "geocoded",
+          "field": "geocoded",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GeocodeAddressInput selects a structured address and optional city scope.",
+        "properties": {
+          "address": {
+            "description": "Address is the Chinese address, from province to street number.",
+            "type": "string"
+          },
+          "city": {
+            "description": "City optionally limits matching to a Chinese city name, pinyin, citycode, or adcode.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

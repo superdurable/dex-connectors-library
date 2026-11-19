@@ -8,9 +8,13 @@ metadata:
   categories: [ai, developer-tools]
   version: v0.1.0
 spec:
-  provider: hby365
   languages:
     python: {version: v0.1.0, operations: [listModels], triggers: []}
+    typescript:
+      version: v0.1.0
+      operations: [listModels]
+      triggers: []
+  provider: hby365
   codegen:
     go:
       package: hby365
