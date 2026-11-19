@@ -34,3 +34,5 @@ The provider tests use an HTTP server and do not require a live Key. The
 example's Dex integration test requires `dexcli dev`. A live Amap call requires
 a user-configured Web Service Key in Dex Web Connections; it is not run by the
 provider tests.
+
+The [Python package](python/README.md) implements the same Query and has a checked-in Dex Flow and Worker.

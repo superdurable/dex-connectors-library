@@ -31,3 +31,7 @@ GOWORK=off go vet ./...
 Provider tests use a local HTTP server. The example's integration test uses a
 real Dex Worker and Client with a generated mock. A real Baichuan account and
 Dex Web connection are needed for live verification.
+
+## Python
+
+The [Python package](python/README.md) implements `listKnowledgeBases` with a runnable Dex Flow and Go-recorded provider scenarios. Provider authorization with a live Baichuan API key remains unverified.
