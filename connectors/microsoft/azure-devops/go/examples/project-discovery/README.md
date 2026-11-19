@@ -2,6 +2,8 @@
 
 This runnable Flow calls `listProjects` with the static `azure-devops` connection. Its successful result is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only project IDs, names, and states enter the Flow result; the PAT does not.
 
+The same Worker also registers `QueryWorkItemsFlow`. Start it with `{"project":"Example","wiql":"SELECT [System.Id] FROM WorkItems","top":20}` after replacing the project with one shown under **Azure DevOps > Projects**. In that project, open **Boards > Queries** to prepare a flat, read-only `SELECT` query. Its matching IDs appear in the Flow result and Dex Web; use `getWorkItem` separately for titles and states.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/microsoft/azure-devops/go`, run:

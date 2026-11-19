@@ -17,12 +17,18 @@ import (
 
 // Mock is a scripted outlook-calendar connection. Script each operation through its accessor.
 type Mock struct {
-	connection    outlookcalendar.Connection
-	listEvents    *connectormock.Query[outlookcalendar.ListEventsInput, outlookcalendar.ListEventsOutput]
-	getEvent      *connectormock.Query[outlookcalendar.GetEventInput, outlookcalendar.Event]
-	createEvent   *connectormock.Mutation[outlookcalendar.CreateEventInput, outlookcalendar.CreateEventOutput]
-	updateEvent   *connectormock.Mutation[outlookcalendar.UpdateEventInput, outlookcalendar.UpdateEventOutput]
-	queryFreeBusy *connectormock.Query[outlookcalendar.QueryFreeBusyInput, outlookcalendar.QueryFreeBusyOutput]
+	connection     outlookcalendar.Connection
+	createCalendar *connectormock.Mutation[outlookcalendar.CreateCalendarInput, outlookcalendar.Calendar]
+	updateCalendar *connectormock.Mutation[outlookcalendar.UpdateCalendarInput, outlookcalendar.Calendar]
+	deleteCalendar *connectormock.Mutation[outlookcalendar.DeleteCalendarInput, outlookcalendar.DeleteCalendarOutput]
+	listCalendars  *connectormock.Query[outlookcalendar.ListCalendarsInput, outlookcalendar.ListCalendarsOutput]
+	getCalendar    *connectormock.Query[outlookcalendar.GetCalendarInput, outlookcalendar.Calendar]
+	deleteEvent    *connectormock.Mutation[outlookcalendar.DeleteEventInput, outlookcalendar.DeleteEventOutput]
+	listEvents     *connectormock.Query[outlookcalendar.ListEventsInput, outlookcalendar.ListEventsOutput]
+	getEvent       *connectormock.Query[outlookcalendar.GetEventInput, outlookcalendar.Event]
+	createEvent    *connectormock.Mutation[outlookcalendar.CreateEventInput, outlookcalendar.CreateEventOutput]
+	updateEvent    *connectormock.Mutation[outlookcalendar.UpdateEventInput, outlookcalendar.UpdateEventOutput]
+	queryFreeBusy  *connectormock.Query[outlookcalendar.QueryFreeBusyInput, outlookcalendar.QueryFreeBusyOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -30,12 +36,24 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listEvents:    connectormock.NewQuery[outlookcalendar.ListEventsInput, outlookcalendar.ListEventsOutput](t, outlookcalendar.ListEventsDefinition),
-		getEvent:      connectormock.NewQuery[outlookcalendar.GetEventInput, outlookcalendar.Event](t, outlookcalendar.GetEventDefinition),
-		createEvent:   connectormock.NewMutation[outlookcalendar.CreateEventInput, outlookcalendar.CreateEventOutput](t, outlookcalendar.CreateEventDefinition),
-		updateEvent:   connectormock.NewMutation[outlookcalendar.UpdateEventInput, outlookcalendar.UpdateEventOutput](t, outlookcalendar.UpdateEventDefinition),
-		queryFreeBusy: connectormock.NewQuery[outlookcalendar.QueryFreeBusyInput, outlookcalendar.QueryFreeBusyOutput](t, outlookcalendar.QueryFreeBusyDefinition),
+		createCalendar: connectormock.NewMutation[outlookcalendar.CreateCalendarInput, outlookcalendar.Calendar](t, outlookcalendar.CreateCalendarDefinition),
+		updateCalendar: connectormock.NewMutation[outlookcalendar.UpdateCalendarInput, outlookcalendar.Calendar](t, outlookcalendar.UpdateCalendarDefinition),
+		deleteCalendar: connectormock.NewMutation[outlookcalendar.DeleteCalendarInput, outlookcalendar.DeleteCalendarOutput](t, outlookcalendar.DeleteCalendarDefinition),
+		listCalendars:  connectormock.NewQuery[outlookcalendar.ListCalendarsInput, outlookcalendar.ListCalendarsOutput](t, outlookcalendar.ListCalendarsDefinition),
+		getCalendar:    connectormock.NewQuery[outlookcalendar.GetCalendarInput, outlookcalendar.Calendar](t, outlookcalendar.GetCalendarDefinition),
+		deleteEvent:    connectormock.NewMutation[outlookcalendar.DeleteEventInput, outlookcalendar.DeleteEventOutput](t, outlookcalendar.DeleteEventDefinition),
+		listEvents:     connectormock.NewQuery[outlookcalendar.ListEventsInput, outlookcalendar.ListEventsOutput](t, outlookcalendar.ListEventsDefinition),
+		getEvent:       connectormock.NewQuery[outlookcalendar.GetEventInput, outlookcalendar.Event](t, outlookcalendar.GetEventDefinition),
+		createEvent:    connectormock.NewMutation[outlookcalendar.CreateEventInput, outlookcalendar.CreateEventOutput](t, outlookcalendar.CreateEventDefinition),
+		updateEvent:    connectormock.NewMutation[outlookcalendar.UpdateEventInput, outlookcalendar.UpdateEventOutput](t, outlookcalendar.UpdateEventDefinition),
+		queryFreeBusy:  connectormock.NewQuery[outlookcalendar.QueryFreeBusyInput, outlookcalendar.QueryFreeBusyOutput](t, outlookcalendar.QueryFreeBusyDefinition),
 	}
+	mock.createCalendar.Default(CreateCalendarDefault())
+	mock.updateCalendar.Default(UpdateCalendarDefault())
+	mock.deleteCalendar.Default(DeleteCalendarDefault())
+	mock.listCalendars.Default(ListCalendarsDefault())
+	mock.getCalendar.Default(GetCalendarDefault())
+	mock.deleteEvent.Default(DeleteEventDefault())
 	mock.listEvents.Default(ListEventsDefault())
 	mock.getEvent.Default(GetEventDefault())
 	mock.createEvent.Default(CreateEventDefault())
@@ -51,6 +69,36 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() outlookcalendar.Connection { return mock.connection }
+
+// CreateCalendar returns the createCalendar script.
+func (mock *Mock) CreateCalendar() *connectormock.Mutation[outlookcalendar.CreateCalendarInput, outlookcalendar.Calendar] {
+	return mock.createCalendar
+}
+
+// UpdateCalendar returns the updateCalendar script.
+func (mock *Mock) UpdateCalendar() *connectormock.Mutation[outlookcalendar.UpdateCalendarInput, outlookcalendar.Calendar] {
+	return mock.updateCalendar
+}
+
+// DeleteCalendar returns the deleteCalendar script.
+func (mock *Mock) DeleteCalendar() *connectormock.Mutation[outlookcalendar.DeleteCalendarInput, outlookcalendar.DeleteCalendarOutput] {
+	return mock.deleteCalendar
+}
+
+// ListCalendars returns the listCalendars script.
+func (mock *Mock) ListCalendars() *connectormock.Query[outlookcalendar.ListCalendarsInput, outlookcalendar.ListCalendarsOutput] {
+	return mock.listCalendars
+}
+
+// GetCalendar returns the getCalendar script.
+func (mock *Mock) GetCalendar() *connectormock.Query[outlookcalendar.GetCalendarInput, outlookcalendar.Calendar] {
+	return mock.getCalendar
+}
+
+// DeleteEvent returns the deleteEvent script.
+func (mock *Mock) DeleteEvent() *connectormock.Mutation[outlookcalendar.DeleteEventInput, outlookcalendar.DeleteEventOutput] {
+	return mock.deleteEvent
+}
 
 // ListEvents returns the listEvents script.
 func (mock *Mock) ListEvents() *connectormock.Query[outlookcalendar.ListEventsInput, outlookcalendar.ListEventsOutput] {
@@ -79,6 +127,24 @@ func (mock *Mock) QueryFreeBusy() *connectormock.Query[outlookcalendar.QueryFree
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateCalendar() sdkgo.Mutation[outlookcalendar.CreateCalendarInput, outlookcalendar.Calendar] {
+	return operations.mock.createCalendar
+}
+func (operations mockOperations) UpdateCalendar() sdkgo.Mutation[outlookcalendar.UpdateCalendarInput, outlookcalendar.Calendar] {
+	return operations.mock.updateCalendar
+}
+func (operations mockOperations) DeleteCalendar() sdkgo.Mutation[outlookcalendar.DeleteCalendarInput, outlookcalendar.DeleteCalendarOutput] {
+	return operations.mock.deleteCalendar
+}
+func (operations mockOperations) ListCalendars() sdkgo.Query[outlookcalendar.ListCalendarsInput, outlookcalendar.ListCalendarsOutput] {
+	return operations.mock.listCalendars
+}
+func (operations mockOperations) GetCalendar() sdkgo.Query[outlookcalendar.GetCalendarInput, outlookcalendar.Calendar] {
+	return operations.mock.getCalendar
+}
+func (operations mockOperations) DeleteEvent() sdkgo.Mutation[outlookcalendar.DeleteEventInput, outlookcalendar.DeleteEventOutput] {
+	return operations.mock.deleteEvent
+}
 func (operations mockOperations) ListEvents() sdkgo.Query[outlookcalendar.ListEventsInput, outlookcalendar.ListEventsOutput] {
 	return operations.mock.listEvents
 }
@@ -93,6 +159,227 @@ func (operations mockOperations) UpdateEvent() sdkgo.Mutation[outlookcalendar.Up
 }
 func (operations mockOperations) QueryFreeBusy() sdkgo.Query[outlookcalendar.QueryFreeBusyInput, outlookcalendar.QueryFreeBusyOutput] {
 	return operations.mock.queryFreeBusy
+}
+
+// CreateCalendarCreated selects the created branch: Graph created the calendar.
+func CreateCalendarCreated(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.CreateCalendarBranchCreated, value, failure)
+}
+
+// CreateCalendarProviderRejected selects the providerRejected branch: Graph rejected calendar creation.
+func CreateCalendarProviderRejected(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.CreateCalendarBranchProviderRejected, value, failure)
+}
+
+// CreateCalendarInvalidResponse selects the invalidResponse branch: Graph returned invalid calendar metadata.
+func CreateCalendarInvalidResponse(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.CreateCalendarBranchInvalidResponse, value, failure)
+}
+
+// CreateCalendarDefect selects the defect branch: Local input or configuration is invalid.
+func CreateCalendarDefect(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.CreateCalendarBranchDefect, value, failure)
+}
+
+// CreateCalendarUncertain returns an uncertain createCalendar outcome.
+func CreateCalendarUncertain(value outlookcalendar.Calendar, failure sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCalendarRetry asks Dex to retry the createCalendar Step, after the delay when it is positive.
+func CreateCalendarRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Retry[outlookcalendar.Calendar](failure, after)
+}
+
+// CreateCalendarCreatedDefaultAnswer is the manifest mock createdDefaultAnswer: Create the Ops Team calendar.
+func CreateCalendarCreatedDefaultAnswer() connectormock.Case[outlookcalendar.Calendar] {
+	value := connectormock.MustDecodeOutput[outlookcalendar.Calendar](`{"id":"team-calendar","name":"Ops Team","canEdit":true}`)
+	return connectormock.Branch(outlookcalendar.CreateCalendarBranchCreated, value, nil)
+}
+
+// CreateCalendarDefault is the manifest default, createdDefaultAnswer, which New installs.
+func CreateCalendarDefault() connectormock.Case[outlookcalendar.Calendar] {
+	return CreateCalendarCreatedDefaultAnswer()
+}
+
+// UpdateCalendarUpdated selects the updated branch: The calendar was renamed.
+func UpdateCalendarUpdated(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.UpdateCalendarBranchUpdated, value, failure)
+}
+
+// UpdateCalendarNotFound selects the notFound branch: The calendar is absent.
+func UpdateCalendarNotFound(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.UpdateCalendarBranchNotFound, value, failure)
+}
+
+// UpdateCalendarProviderRejected selects the providerRejected branch: Graph rejected the rename.
+func UpdateCalendarProviderRejected(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.UpdateCalendarBranchProviderRejected, value, failure)
+}
+
+// UpdateCalendarInvalidResponse selects the invalidResponse branch: Graph returned invalid calendar metadata.
+func UpdateCalendarInvalidResponse(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.UpdateCalendarBranchInvalidResponse, value, failure)
+}
+
+// UpdateCalendarDefect selects the defect branch: Local input or configuration is invalid.
+func UpdateCalendarDefect(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.UpdateCalendarBranchDefect, value, failure)
+}
+
+// UpdateCalendarRetry asks Dex to retry the updateCalendar Step, after the delay when it is positive.
+func UpdateCalendarRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Retry[outlookcalendar.Calendar](failure, after)
+}
+
+// UpdateCalendarUpdatedDefaultAnswer is the manifest mock updatedDefaultAnswer: Rename the Ops Team calendar.
+func UpdateCalendarUpdatedDefaultAnswer() connectormock.Case[outlookcalendar.Calendar] {
+	value := connectormock.MustDecodeOutput[outlookcalendar.Calendar](`{"id":"team-calendar","name":"Operations","canEdit":true}`)
+	return connectormock.Branch(outlookcalendar.UpdateCalendarBranchUpdated, value, nil)
+}
+
+// UpdateCalendarDefault is the manifest default, updatedDefaultAnswer, which New installs.
+func UpdateCalendarDefault() connectormock.Case[outlookcalendar.Calendar] {
+	return UpdateCalendarUpdatedDefaultAnswer()
+}
+
+// DeleteCalendarDeleted selects the deleted branch: The calendar is absent.
+func DeleteCalendarDeleted(value outlookcalendar.DeleteCalendarOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.DeleteCalendarOutput] {
+	return connectormock.Branch(outlookcalendar.DeleteCalendarBranchDeleted, value, failure)
+}
+
+// DeleteCalendarProviderRejected selects the providerRejected branch: Graph rejected deletion.
+func DeleteCalendarProviderRejected(value outlookcalendar.DeleteCalendarOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.DeleteCalendarOutput] {
+	return connectormock.Branch(outlookcalendar.DeleteCalendarBranchProviderRejected, value, failure)
+}
+
+// DeleteCalendarDefect selects the defect branch: Local input or configuration is invalid.
+func DeleteCalendarDefect(value outlookcalendar.DeleteCalendarOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.DeleteCalendarOutput] {
+	return connectormock.Branch(outlookcalendar.DeleteCalendarBranchDefect, value, failure)
+}
+
+// DeleteCalendarRetry asks Dex to retry the deleteCalendar Step, after the delay when it is positive.
+func DeleteCalendarRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[outlookcalendar.DeleteCalendarOutput] {
+	return connectormock.Retry[outlookcalendar.DeleteCalendarOutput](failure, after)
+}
+
+// DeleteCalendarDeletedDefaultAnswer is the manifest mock deletedDefaultAnswer: Delete the Ops Team calendar.
+func DeleteCalendarDeletedDefaultAnswer() connectormock.Case[outlookcalendar.DeleteCalendarOutput] {
+	value := connectormock.MustDecodeOutput[outlookcalendar.DeleteCalendarOutput](`{"calendarId":"team-calendar"}`)
+	return connectormock.Branch(outlookcalendar.DeleteCalendarBranchDeleted, value, nil)
+}
+
+// DeleteCalendarDefault is the manifest default, deletedDefaultAnswer, which New installs.
+func DeleteCalendarDefault() connectormock.Case[outlookcalendar.DeleteCalendarOutput] {
+	return DeleteCalendarDeletedDefaultAnswer()
+}
+
+// ListCalendarsListed selects the listed branch: A page of calendars was listed.
+func ListCalendarsListed(value outlookcalendar.ListCalendarsOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.ListCalendarsOutput] {
+	return connectormock.Branch(outlookcalendar.ListCalendarsBranchListed, value, failure)
+}
+
+// ListCalendarsProviderRejected selects the providerRejected branch: Graph rejected the calendar list.
+func ListCalendarsProviderRejected(value outlookcalendar.ListCalendarsOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.ListCalendarsOutput] {
+	return connectormock.Branch(outlookcalendar.ListCalendarsBranchProviderRejected, value, failure)
+}
+
+// ListCalendarsInvalidResponse selects the invalidResponse branch: Graph returned invalid calendar metadata.
+func ListCalendarsInvalidResponse(value outlookcalendar.ListCalendarsOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.ListCalendarsOutput] {
+	return connectormock.Branch(outlookcalendar.ListCalendarsBranchInvalidResponse, value, failure)
+}
+
+// ListCalendarsDefect selects the defect branch: Local input or configuration is invalid.
+func ListCalendarsDefect(value outlookcalendar.ListCalendarsOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.ListCalendarsOutput] {
+	return connectormock.Branch(outlookcalendar.ListCalendarsBranchDefect, value, failure)
+}
+
+// ListCalendarsRetry asks Dex to retry the listCalendars Step, after the delay when it is positive.
+func ListCalendarsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[outlookcalendar.ListCalendarsOutput] {
+	return connectormock.Retry[outlookcalendar.ListCalendarsOutput](failure, after)
+}
+
+// ListCalendarsListedDefaultAnswer is the manifest mock listedDefaultAnswer: List the Ops Team calendar.
+func ListCalendarsListedDefaultAnswer() connectormock.Case[outlookcalendar.ListCalendarsOutput] {
+	value := connectormock.MustDecodeOutput[outlookcalendar.ListCalendarsOutput](`{"calendars":[{"id":"team-calendar","name":"Ops Team","canEdit":true}]}`)
+	return connectormock.Branch(outlookcalendar.ListCalendarsBranchListed, value, nil)
+}
+
+// ListCalendarsDefault is the manifest default, listedDefaultAnswer, which New installs.
+func ListCalendarsDefault() connectormock.Case[outlookcalendar.ListCalendarsOutput] {
+	return ListCalendarsListedDefaultAnswer()
+}
+
+// GetCalendarFound selects the found branch: The calendar was found.
+func GetCalendarFound(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.GetCalendarBranchFound, value, failure)
+}
+
+// GetCalendarNotFound selects the notFound branch: The calendar is absent.
+func GetCalendarNotFound(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.GetCalendarBranchNotFound, value, failure)
+}
+
+// GetCalendarProviderRejected selects the providerRejected branch: Graph rejected the calendar read.
+func GetCalendarProviderRejected(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.GetCalendarBranchProviderRejected, value, failure)
+}
+
+// GetCalendarInvalidResponse selects the invalidResponse branch: Graph returned invalid calendar metadata.
+func GetCalendarInvalidResponse(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.GetCalendarBranchInvalidResponse, value, failure)
+}
+
+// GetCalendarDefect selects the defect branch: Local input or configuration is invalid.
+func GetCalendarDefect(value outlookcalendar.Calendar, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Branch(outlookcalendar.GetCalendarBranchDefect, value, failure)
+}
+
+// GetCalendarRetry asks Dex to retry the getCalendar Step, after the delay when it is positive.
+func GetCalendarRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[outlookcalendar.Calendar] {
+	return connectormock.Retry[outlookcalendar.Calendar](failure, after)
+}
+
+// GetCalendarFoundDefaultAnswer is the manifest mock foundDefaultAnswer: Read the Ops Team calendar.
+func GetCalendarFoundDefaultAnswer() connectormock.Case[outlookcalendar.Calendar] {
+	value := connectormock.MustDecodeOutput[outlookcalendar.Calendar](`{"id":"team-calendar","name":"Ops Team","canEdit":true}`)
+	return connectormock.Branch(outlookcalendar.GetCalendarBranchFound, value, nil)
+}
+
+// GetCalendarDefault is the manifest default, foundDefaultAnswer, which New installs.
+func GetCalendarDefault() connectormock.Case[outlookcalendar.Calendar] {
+	return GetCalendarFoundDefaultAnswer()
+}
+
+// DeleteEventDeleted selects the deleted branch: The event is absent.
+func DeleteEventDeleted(value outlookcalendar.DeleteEventOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.DeleteEventOutput] {
+	return connectormock.Branch(outlookcalendar.DeleteEventBranchDeleted, value, failure)
+}
+
+// DeleteEventProviderRejected selects the providerRejected branch: Graph rejected event deletion.
+func DeleteEventProviderRejected(value outlookcalendar.DeleteEventOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.DeleteEventOutput] {
+	return connectormock.Branch(outlookcalendar.DeleteEventBranchProviderRejected, value, failure)
+}
+
+// DeleteEventDefect selects the defect branch: Local input or configuration is invalid.
+func DeleteEventDefect(value outlookcalendar.DeleteEventOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.DeleteEventOutput] {
+	return connectormock.Branch(outlookcalendar.DeleteEventBranchDefect, value, failure)
+}
+
+// DeleteEventRetry asks Dex to retry the deleteEvent Step, after the delay when it is positive.
+func DeleteEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[outlookcalendar.DeleteEventOutput] {
+	return connectormock.Retry[outlookcalendar.DeleteEventOutput](failure, after)
+}
+
+// DeleteEventDeletedDefaultAnswer is the manifest mock deletedDefaultAnswer: Delete the Meridian kickoff event.
+func DeleteEventDeletedDefaultAnswer() connectormock.Case[outlookcalendar.DeleteEventOutput] {
+	value := connectormock.MustDecodeOutput[outlookcalendar.DeleteEventOutput](`{"eventId":"hold-1"}`)
+	return connectormock.Branch(outlookcalendar.DeleteEventBranchDeleted, value, nil)
+}
+
+// DeleteEventDefault is the manifest default, deletedDefaultAnswer, which New installs.
+func DeleteEventDefault() connectormock.Case[outlookcalendar.DeleteEventOutput] {
+	return DeleteEventDeletedDefaultAnswer()
 }
 
 // ListEventsListed selects the listed branch: One page of events in the window was listed.

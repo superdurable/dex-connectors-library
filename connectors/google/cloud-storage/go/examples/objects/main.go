@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{objectsflow.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{objectsflow.NewFlow(connection), objectsflow.NewBucketFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Google Cloud Storage list Flow: %w", err)
 	}

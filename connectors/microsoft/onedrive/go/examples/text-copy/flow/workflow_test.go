@@ -39,6 +39,8 @@ func TestDestinationMappersUseTheDestinationDriveAndTheEnsuredFolder(t *testing.
 	}, flow.MapToUploadFileInput(CopyRequest{FolderID: "01COPIES", Name: "copy.txt", MimeType: "text/plain", Text: "text", ConflictBehavior: onedrive.ConflictBehaviorFail}))
 	require.Equal(t, onedrive.GetFileInput{DriveID: "b!finance", ItemID: "01COPY"},
 		flow.MapToGetFileInput(onedrive.UploadFileResult{Value: onedrive.UploadFileOutput{Item: onedrive.DriveItem{ID: "01COPY"}}}))
+	require.Equal(t, onedrive.RenameItemInput{DriveID: "b!finance", ItemID: "01COPY", Name: "final.txt"},
+		flow.MapToRenameItemInput(RenameRequest{ItemID: "01COPY", Name: "final.txt"}))
 }
 
 func TestCopyMimeTypeDropsParametersAndGenericLabels(t *testing.T) {
@@ -64,6 +66,7 @@ func TestStepIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, recordCopyFolderStepType, dex.GetFinalStepType[onedrive.CreateFolderResult](recordCopyFolder{}))
 	require.Equal(t, prepareCopyStepType, dex.GetFinalStepType[onedrive.ReadFileTextResult](prepareTextCopy{}))
 	require.Equal(t, completeCopyStepType, dex.GetFinalStepType[onedrive.GetFileResult](completeTextCopy{}))
+	require.Equal(t, completeRenamedStepType, dex.GetFinalStepType[onedrive.RenameItemResult](completeRenamedTextCopy{}))
 	wait, err := recordCopyRequest{}.WaitFor(nil, Input{})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

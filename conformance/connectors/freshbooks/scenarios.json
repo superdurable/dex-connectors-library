@@ -303,6 +303,410 @@
       },
       "name": "getInvoice-transportFailure",
       "operation": "getInvoice"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"response\":{\"result\":{\"invoices\":[{\"accountid\":\"KAG77\",\"invoiceid\":2201278,\"invoice_number\":\"0000003\",\"amount\":{\"amount\":\"800.00\",\"code\":\"USD\"},\"payment_status\":\"unpaid\"}],\"page\":2,\"pages\":3,\"per_page\":100,\"total\":101}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accounting/account/KAG77/invoices/invoices",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-freshbooks-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "accountId": "KAG77",
+          "invoices": [
+            {
+              "accountId": "KAG77",
+              "amount": "800.00",
+              "currencyCode": "USD",
+              "invoiceId": 2201278,
+              "invoiceNumber": "0000003",
+              "paymentStatus": "unpaid"
+            }
+          ],
+          "page": 2,
+          "pageCount": 3,
+          "total": 101
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": 2
+      },
+      "name": "listInvoices-success",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accounting/account/KAG77/invoices/invoices",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-freshbooks-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accountId": "",
+          "invoices": [],
+          "page": 0,
+          "pageCount": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": 2
+      },
+      "name": "listInvoices-missing",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accounting/account/KAG77/invoices/invoices",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-freshbooks-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountId": "",
+          "invoices": [],
+          "page": 0,
+          "pageCount": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": 2
+      },
+      "name": "listInvoices-providerRejected",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accounting/account/KAG77/invoices/invoices",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-freshbooks-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountId": "",
+          "invoices": [],
+          "page": 0,
+          "pageCount": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": 2
+      },
+      "name": "listInvoices-invalidResponse",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accounting/account/KAG77/invoices/invoices",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-freshbooks-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": 2
+      },
+      "name": "listInvoices-rateLimited",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accounting/account/KAG77/invoices/invoices",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-freshbooks-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": 2
+      },
+      "name": "listInvoices-serverUnavailable",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accounting/account/KAG77/invoices/invoices",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-freshbooks-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": 2
+      },
+      "name": "listInvoices-serviceUnavailable",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accounting/account/KAG77/invoices/invoices",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-freshbooks-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": 2
+      },
+      "name": "listInvoices-transportFailure",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountId": "",
+          "invoices": [],
+          "page": 0,
+          "pageCount": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "KAG77",
+        "page": -1
+      },
+      "name": "listInvoices-defect",
+      "operation": "listInvoices"
     }
   ],
   "schemaVersion": 1

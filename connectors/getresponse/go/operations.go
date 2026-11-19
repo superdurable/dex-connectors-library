@@ -47,6 +47,46 @@ type GetContactInput struct {
 	ContactID string `json:"contactId"`
 }
 
+// CreateContactInput selects a list and the email address to subscribe.
+type CreateContactInput struct {
+	// Email is the contact's email address.
+	Email string `json:"email"`
+	// CampaignID is the list token from Contacts > Lists > Settings.
+	CampaignID string `json:"campaignId"`
+	// Name is an optional display name.
+	Name string `json:"name,omitempty"`
+}
+
+// CreateContactOutput identifies the contact queued for asynchronous processing.
+type CreateContactOutput struct {
+	// Email is the submitted contact email address.
+	Email string `json:"email"`
+	// CampaignID is the list token used for the request.
+	CampaignID string `json:"campaignId"`
+}
+
+// UpdateContactInput replaces the supplied contact fields with absolute values.
+type UpdateContactInput struct {
+	// ContactID identifies the existing contact.
+	ContactID string `json:"contactId"`
+	// Email replaces the email when nonempty.
+	Email string `json:"email,omitempty"`
+	// Name replaces the display name when nonempty.
+	Name string `json:"name,omitempty"`
+}
+
+// DeleteContactInput selects the contact to remove.
+type DeleteContactInput struct {
+	// ContactID identifies the contact to remove.
+	ContactID string `json:"contactId"`
+}
+
+// DeleteContactOutput identifies the contact removed.
+type DeleteContactOutput struct {
+	// ContactID is the removed contact's ID.
+	ContactID string `json:"contactId"`
+}
+
 // ListContactsOperation retrieves one page of contact metadata.
 type ListContactsOperation struct{ client *Client }
 

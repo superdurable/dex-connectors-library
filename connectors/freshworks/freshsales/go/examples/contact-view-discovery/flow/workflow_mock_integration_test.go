@@ -56,4 +56,9 @@ func TestContactViewDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, []freshsales.ContactViewMetadata{{ID: 1, Name: "All Contacts"}}, output.Views)
 	require.Len(t, mock.ListContactViews().Calls(), 1)
+	require.Len(t, mock.ListContacts().Calls(), 1)
+	require.Len(t, mock.ListAccountViews().Calls(), 1)
+	require.Len(t, mock.ListDealViews().Calls(), 1)
+	require.Len(t, mock.ListAppointments().Calls(), 1)
+	require.Len(t, mock.ListSalesActivities().Calls(), 1)
 }
