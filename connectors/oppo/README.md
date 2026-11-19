@@ -9,3 +9,7 @@ The endpoint, [auth exchange and quota response](https://storepic.oppomobile.com
 ## Example
 
 Run the [GetPushQuota Flow](go/examples/get-push-quota/) with `dexcli dev` and start `OppoPushQuota` with `{}`. The result contains only quota counters.
+
+## Python
+
+The first Python package implements the read-only operation and all Go-recorded provider branches. See [Python package](python/README.md) and its [runnable Flow](python/examples/push_quota/README.md). Live provider authorization and responses are unverified.
