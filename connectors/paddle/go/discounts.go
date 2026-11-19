@@ -288,27 +288,28 @@ func (operation CreateDiscountOperation) Invoke(call sdkgo.Call, input CreateDis
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
 	}
+	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
 	if decision.Kind != singledispatch.SendAllowed {
 		query := url.Values{"code": {input.Code}, "per_page": {"1"}}
 		readBack := operation.client.exchange(call, call.Context, http.MethodGet, "/discounts?"+query.Encode(), nil)
 		if readBack.status == http.StatusOK && readBack.err == nil {
 			page, ok := decodeDiscountPage(readBack.body)
 			if !ok {
-				return sdkgo.NewMutationUncertain(PaddleDiscount{}, *discountFailure(name, sdkgo.FailureProtocol, "discount read-back is invalid"), sdkgo.Receipt{})
+				return unknownPaddleCreate[PaddleDiscount](canResend, discountFailure(name, sdkgo.FailureProtocol, "discount read-back is invalid"), 0)
 			}
 			if len(page.Items) == 1 && strings.EqualFold(page.Items[0].Code, input.Code) && page.Items[0].Description == input.Description && page.Items[0].Amount == input.Amount && readBackContainsCallID(readBack.body, call.ID) {
 				return sdkgo.NewMutationBranch(CreateDiscountBranchCreated, page.Items[0], nil, sdkgo.Receipt{ProviderObjectID: page.Items[0].ID})
 			}
 			if len(page.Items) != 0 {
-				return sdkgo.NewMutationUncertain(PaddleDiscount{}, *discountFailure(name, sdkgo.FailureProtocol, "discount read-back disagreed with request"), sdkgo.Receipt{})
+				return unknownPaddleCreate[PaddleDiscount](canResend, discountFailure(name, sdkgo.FailureProtocol, "discount read-back disagreed with request"), 0)
 			}
 		} else if paddleRetryable(readBack) {
 			return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureAvailability, "discount read-back is unavailable"), readBack.retryAfter)
 		} else {
-			return sdkgo.NewMutationUncertain(PaddleDiscount{}, *discountFailure(name, sdkgo.FailureTransport, "discount read-back was rejected"), sdkgo.Receipt{})
+			return unknownPaddleCreate[PaddleDiscount](canResend, discountFailure(name, sdkgo.FailureTransport, "discount read-back was rejected"), 0)
 		}
 		if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
-			return sdkgo.NewMutationUncertain(PaddleDiscount{}, *discountFailure(name, sdkgo.FailureTransport, "discount creation reached its send cap"), sdkgo.Receipt{})
+			return unknownPaddleCreate[PaddleDiscount](canResend, discountFailure(name, sdkgo.FailureTransport, "discount creation reached its send cap"), 0)
 		}
 	}
 	var exchange paddleExchange
@@ -320,11 +321,17 @@ func (operation CreateDiscountOperation) Invoke(call sdkgo.Call, input CreateDis
 		return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureTransport, "discount dispatch did not start"), 0)
 	}
 	if errors.Is(exchange.err, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
+		}
+		if fence.RecordNotSent() != nil {
+			return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateDiscountBranchDefect, PaddleDiscount{}, discountFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
 	if exchange.status == http.StatusTooManyRequests || exchange.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(PaddleDiscount{}, *discountFailure(name, sdkgo.FailureTransport, "discount retry checkpoint failed"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureAvailability, "retry checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureAvailability, "Paddle requested a retry"), exchange.retryAfter)
 	}
@@ -332,14 +339,20 @@ func (operation CreateDiscountOperation) Invoke(call sdkgo.Call, input CreateDis
 		return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureAvailability, "discount creation outcome is unknown"), exchange.retryAfter)
 	}
 	if exchange.status != http.StatusCreated {
+		if !isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureTransport, "discount creation outcome is unknown"), exchange.retryAfter)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PaddleDiscount{}, *discountFailure(name, sdkgo.FailureTransport, "an earlier discount create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureTransport, "an earlier discount create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateDiscountBranchProviderRejected, PaddleDiscount{}, discountFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected discount creation"), sdkgo.Receipt{})
 	}
 	discount, ok := decodePaddleDiscount(exchange.body, "")
 	if !ok || exchange.err != nil || !strings.EqualFold(discount.Code, input.Code) {
-		return sdkgo.NewMutationUncertain(PaddleDiscount{}, *discountFailure(name, sdkgo.FailureProtocol, "Paddle accepted discount creation but returned invalid data"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(name, sdkgo.FailureProtocol, "Paddle accepted discount creation but returned invalid data"), 0)
 	}
 	_ = fence.RecordProviderID(discount.ID)
 	return sdkgo.NewMutationBranch(CreateDiscountBranchCreated, discount, nil, sdkgo.Receipt{ProviderObjectID: discount.ID})
@@ -353,15 +366,18 @@ func (client *Client) replaceDiscount(call sdkgo.Call, operationName string, dis
 	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(operationName, sdkgo.FailureAvailability, "discount update is unavailable"), exchange.retryAfter)
 	}
-	if exchange.status == http.StatusNotFound {
+	if exchange.status == http.StatusNotFound && isDefinitePaddleRefusal(exchange) {
 		return sdkgo.NewMutationBranch(notFoundBranch, PaddleDiscount{}, discountFailure(operationName, sdkgo.FailureNotFound, "discount was not found"), sdkgo.Receipt{})
 	}
 	if exchange.status != http.StatusOK {
-		return sdkgo.NewMutationBranch(rejectedBranch, PaddleDiscount{}, discountFailure(operationName, sdkgo.FailureProviderRejection, "Paddle rejected discount update"), sdkgo.Receipt{})
+		if isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationBranch(rejectedBranch, PaddleDiscount{}, discountFailure(operationName, sdkgo.FailureProviderRejection, "Paddle rejected discount update"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(operationName, sdkgo.FailureTransport, "Paddle rejected discount update"), exchange.retryAfter)
 	}
 	discount, ok := decodePaddleDiscount(exchange.body, discountID)
 	if !ok || exchange.err != nil || expectedStatus != "" && discount.Status != expectedStatus {
-		return sdkgo.NewMutationBranch(invalidBranch, PaddleDiscount{}, discountFailure(operationName, sdkgo.FailureProtocol, "Paddle returned an invalid discount"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PaddleDiscount](*discountFailure(operationName, sdkgo.FailureProtocol, "Paddle returned an invalid discount"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, discount, nil, sdkgo.Receipt{ProviderObjectID: discount.ID})
 }

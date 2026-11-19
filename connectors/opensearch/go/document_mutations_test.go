@@ -34,6 +34,10 @@ func TestIndexDocumentReplacesSameStableIDAcrossRetry(t *testing.T) {
 			_, err := fmt.Fprint(w, `{"_index":"products","_id":"sku-42","result":"created"}`)
 			require.NoError(t, err)
 		}
+		if status == http.StatusUnauthorized {
+			_, err := fmt.Fprint(w, `{"error":{"type":"security_exception","reason":"credentials rejected"}}`)
+			require.NoError(t, err)
+		}
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)

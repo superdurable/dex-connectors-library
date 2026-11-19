@@ -218,6 +218,9 @@ func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input Creat
 		if read.err != nil || read.status == 429 || read.status >= 500 {
 			return sdkgo.NewMutationRetry[Conversation](*conversationFailure(sdkgo.FailureAvailability, "createConversation", "conversation read-back is unavailable"), retryAfterHeader(read.header))
 		}
+		if decision.Kind != singledispatch.ReadBackRequired && decision.MaximumPriorSends < call.MaxSends() {
+			return sdkgo.NewMutationRetry[Conversation](*conversationFailure(sdkgo.FailureTransport, "createConversation", "created conversation could not be confirmed"), 0)
+		}
 		return sdkgo.NewMutationUncertain(Conversation{}, *conversationFailure(sdkgo.FailureTransport, "createConversation", "created conversation could not be confirmed"), responseReceipt(call, read.requestID, read.header, decision.Marker.ProviderID))
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
@@ -234,7 +237,10 @@ func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input Creat
 	}
 	if result.requestFailure != nil {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(Conversation{}, *conversationFailure(sdkgo.FailureTransport, "createConversation", "an earlier send may have created a conversation"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[Conversation](*conversationFailure(sdkgo.FailureAuthentication, "createConversation", "credentials are unavailable for resend"), 0)
+		}
+		if err := fence.RecordNotSent(); err != nil {
+			return sdkgo.NewMutationRetry[Conversation](*conversationFailure(sdkgo.FailureAvailability, "createConversation", "no-send checkpoint could not be saved"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateConversationBranchDefect, Conversation{}, result.requestFailure, sdkgo.Receipt{})
 	}
@@ -253,6 +259,9 @@ func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input Creat
 	receipt := responseReceipt(call, result.requestID, result.header, "")
 	if result.status != 200 {
 		if decision.MaximumPriorSends > 0 {
+			if decision.MaximumPriorSends+1 < call.MaxSends() {
+				return sdkgo.NewMutationRetry[Conversation](*conversationFailure(sdkgo.FailureTransport, "createConversation", "an earlier send may have created a conversation"), 0)
+			}
 			return sdkgo.NewMutationUncertain(Conversation{}, *conversationFailure(sdkgo.FailureTransport, "createConversation", "an earlier send may have created a conversation"), receipt)
 		}
 		if err := fence.RecordCanResend(); err != nil {
@@ -331,15 +340,18 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 		return sdkgo.NewMutationRetry[Conversation](*conversationFailure(sdkgo.FailureAvailability, "updateConversation", "provider outcome could not be confirmed"), retryAfterHeader(result.header))
 	}
 	receipt := responseReceipt(call, result.requestID, result.header, input.ConversationID)
-	if result.status == 404 {
+	if result.status == 404 && isDefiniteConversationRefusal(result.status, result.body) {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchNotFound, Conversation{}, conversationFailure(sdkgo.FailureNotFound, "updateConversation", "conversation was not found"), receipt)
 	}
 	if result.status != 200 {
-		return sdkgo.NewMutationBranch(UpdateConversationBranchProviderRejected, Conversation{}, conversationFailure(sdkgo.FailureProviderRejection, "updateConversation", "provider rejected metadata update"), receipt)
+		if isDefiniteConversationRefusal(result.status, result.body) {
+			return sdkgo.NewMutationBranch(UpdateConversationBranchProviderRejected, Conversation{}, conversationFailure(sdkgo.FailureProviderRejection, "updateConversation", "provider rejected metadata update"), receipt)
+		}
+		return sdkgo.NewMutationRetry[Conversation](*conversationFailure(sdkgo.FailureTransport, "updateConversation", "provider outcome is unknown"), retryAfterHeader(result.header))
 	}
 	conversation, ok := decodeConversation(result.body, input.ConversationID)
 	if !ok {
-		return sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, Conversation{}, conversationFailure(sdkgo.FailureProtocol, "updateConversation", "provider returned invalid conversation"), receipt)
+		return sdkgo.NewMutationRetry[Conversation](*conversationFailure(sdkgo.FailureProtocol, "updateConversation", "provider returned invalid conversation"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateConversationBranchUpdated, conversation, nil, receipt)
 }
@@ -357,11 +369,14 @@ func (operation DeleteConversationOperation) Invoke(call sdkgo.Call, input Conve
 		return sdkgo.NewMutationRetry[DeletedResponse](*conversationFailure(sdkgo.FailureAvailability, "deleteConversation", "provider outcome could not be confirmed"), retryAfterHeader(result.header))
 	}
 	receipt := responseReceipt(call, result.requestID, result.header, input.ConversationID)
-	if result.status == 404 {
+	if result.status == 404 && isDefiniteConversationRefusal(result.status, result.body) {
 		return sdkgo.NewMutationBranch(DeleteConversationBranchNotFound, DeletedResponse{}, conversationFailure(sdkgo.FailureNotFound, "deleteConversation", "conversation was not found"), receipt)
 	}
 	if result.status != 200 {
-		return sdkgo.NewMutationBranch(DeleteConversationBranchProviderRejected, DeletedResponse{}, conversationFailure(sdkgo.FailureProviderRejection, "deleteConversation", "provider rejected conversation deletion"), receipt)
+		if isDefiniteConversationRefusal(result.status, result.body) {
+			return sdkgo.NewMutationBranch(DeleteConversationBranchProviderRejected, DeletedResponse{}, conversationFailure(sdkgo.FailureProviderRejection, "deleteConversation", "provider rejected conversation deletion"), receipt)
+		}
+		return sdkgo.NewMutationRetry[DeletedResponse](*conversationFailure(sdkgo.FailureTransport, "deleteConversation", "provider outcome is unknown"), retryAfterHeader(result.header))
 	}
 	var deleted struct {
 		ID      string `json:"id"`
@@ -369,7 +384,7 @@ func (operation DeleteConversationOperation) Invoke(call sdkgo.Call, input Conve
 		Deleted bool   `json:"deleted"`
 	}
 	if json.Unmarshal(result.body, &deleted) != nil || deleted.Object != "conversation.deleted" || deleted.ID != input.ConversationID || !deleted.Deleted {
-		return sdkgo.NewMutationBranch(DeleteConversationBranchInvalidResponse, DeletedResponse{}, conversationFailure(sdkgo.FailureProtocol, "deleteConversation", "provider returned invalid deletion receipt"), receipt)
+		return sdkgo.NewMutationRetry[DeletedResponse](*conversationFailure(sdkgo.FailureProtocol, "deleteConversation", "provider returned invalid deletion receipt"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteConversationBranchDeleted, DeletedResponse{ID: deleted.ID, Deleted: true}, nil, receipt)
 }

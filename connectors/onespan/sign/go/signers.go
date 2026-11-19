@@ -263,7 +263,7 @@ func (operation AddSignerOperation) Invoke(call sdkgo.Call, input AddSignerInput
 	}
 	if errors.Is(err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(SignerRoleID{}, packageOperationFailure("addSigner", sdkgo.FailureAuthentication, "earlier addition may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SignerRoleID](packageOperationFailure("addSigner", sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
 		}
 		if fence.RecordNotSent() != nil {
 			return sdkgo.NewMutationRetry[SignerRoleID](packageOperationFailure("addSigner", sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -288,8 +288,22 @@ func (operation AddSignerOperation) Invoke(call sdkgo.Call, input AddSignerInput
 		return sdkgo.NewMutationUncertain(SignerRoleID{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
+		if !isDefiniteOneSpanRefusal(response.status, response.body) {
+			failure := packageOperationFailure("addSigner", sdkgo.FailureTransport, "provider write outcome is unknown")
+			if canResend {
+				return sdkgo.NewMutationRetry[SignerRoleID](failure, response.retryAfter)
+			}
+			return sdkgo.NewMutationUncertain(SignerRoleID{}, failure, sdkgo.Receipt{})
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(SignerRoleID{}, packageOperationFailure("addSigner", sdkgo.FailureProviderRejection, "earlier addition may have succeeded"), sdkgo.Receipt{})
+			failure := packageOperationFailure("addSigner", sdkgo.FailureTransport, "an earlier write may have succeeded")
+			if canResend {
+				return sdkgo.NewMutationRetry[SignerRoleID](failure, 0)
+			}
+			return sdkgo.NewMutationUncertain(SignerRoleID{}, failure, sdkgo.Receipt{})
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[SignerRoleID](packageOperationFailure("addSigner", sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return packageMutationBranch[SignerRoleID]("addSigner", AddSignerBranchProviderRejected, sdkgo.FailureProviderRejection, "provider rejected the signer")
 	}
@@ -297,7 +311,11 @@ func (operation AddSignerOperation) Invoke(call sdkgo.Call, input AddSignerInput
 		ID string `json:"id"`
 	}
 	if json.Unmarshal(response.body, &created) != nil || created.ID != input.RoleID {
-		return sdkgo.NewMutationUncertain(SignerRoleID{}, packageOperationFailure("addSigner", sdkgo.FailureProtocol, "provider accepted signer without the requested role ID"), sdkgo.Receipt{})
+		failure := packageOperationFailure("addSigner", sdkgo.FailureProtocol, "provider accepted signer without the requested role ID")
+		if canResend {
+			return sdkgo.NewMutationRetry[SignerRoleID](failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(SignerRoleID{}, failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(AddSignerBranchAdded, SignerRoleID{RoleID: input.RoleID}, nil, sdkgo.Receipt{})
 }

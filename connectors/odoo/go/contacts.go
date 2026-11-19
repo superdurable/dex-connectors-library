@@ -312,7 +312,7 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	}
 	if errors.Is(err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CreatedContact{}, contactFailure("createContact", sdkgo.FailureAuthentication, "earlier create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CreatedContact](contactFailure("createContact", sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
 		}
 		if fence.RecordNotSent() != nil {
 			return sdkgo.NewMutationRetry[CreatedContact](contactFailure("createContact", sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -337,14 +337,32 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationUncertain(CreatedContact{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteOdooRefusal(response.status, response.body) {
+			failure := contactFailure("createContact", sdkgo.FailureTransport, "Odoo create outcome is unknown")
+			if canResend {
+				return sdkgo.NewMutationRetry[CreatedContact](failure, response.retryAfter)
+			}
+			return sdkgo.NewMutationUncertain(CreatedContact{}, failure, sdkgo.Receipt{})
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CreatedContact{}, contactFailure("createContact", sdkgo.FailureProviderRejection, "earlier create may have succeeded"), sdkgo.Receipt{})
+			failure := contactFailure("createContact", sdkgo.FailureTransport, "earlier create may have succeeded")
+			if canResend {
+				return sdkgo.NewMutationRetry[CreatedContact](failure, 0)
+			}
+			return sdkgo.NewMutationUncertain(CreatedContact{}, failure, sdkgo.Receipt{})
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CreatedContact](contactFailure("createContact", sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return contactMutationBranch[CreatedContact]("createContact", CreateContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Odoo rejected contact creation")
 	}
 	var ids []int64
 	if json.Unmarshal(response.body, &ids) != nil || len(ids) != 1 || ids[0] <= 0 {
-		return sdkgo.NewMutationUncertain(CreatedContact{}, contactFailure("createContact", sdkgo.FailureProtocol, "Odoo accepted contact creation without a valid ID"), sdkgo.Receipt{})
+		failure := contactFailure("createContact", sdkgo.FailureProtocol, "Odoo accepted contact creation without a valid ID")
+		if canResend {
+			return sdkgo.NewMutationRetry[CreatedContact](failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(CreatedContact{}, failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateContactBranchCreated, CreatedContact{ID: ids[0]}, nil, sdkgo.Receipt{})
 }
@@ -367,24 +385,27 @@ func invokeContactBooleanMutation[T any](call sdkgo.Call, client *Client, operat
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[T](contactFailure(operation, sdkgo.FailureAvailability, "Odoo is unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteOdooRefusal(response.status, response.body) {
 		return contactMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "Odoo did not find the contact")
 	}
 	if response.status != http.StatusOK {
-		return contactMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, rejectedStatus(response.status))
+		if isDefiniteOdooRefusal(response.status, response.body) {
+			return contactMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, rejectedStatus(response.status))
+		}
+		return sdkgo.NewMutationRetry[T](contactFailure(operation, sdkgo.FailureTransport, "Odoo write outcome is unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return contactMutationBranch[T](operation, invalid, sdkgo.FailureResponseTooLarge, "Odoo response exceeded the limit")
+		return sdkgo.NewMutationRetry[T](contactFailure(operation, sdkgo.FailureResponseTooLarge, "Odoo response exceeded the limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[T](contactFailure(operation, sdkgo.FailureTransport, "Odoo response was interrupted"), 0)
 	}
 	var succeeded bool
 	if json.Unmarshal(response.body, &succeeded) != nil {
-		return contactMutationBranch[T](operation, invalid, sdkgo.FailureProtocol, "Odoo returned invalid write result")
+		return sdkgo.NewMutationRetry[T](contactFailure(operation, sdkgo.FailureProtocol, "Odoo returned invalid write result"), 0)
 	}
 	if !succeeded {
-		return contactMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, fmt.Sprintf("Odoo did not update contact %d", id))
+		return sdkgo.NewMutationRetry[T](contactFailure(operation, sdkgo.FailureProtocol, fmt.Sprintf("Odoo did not confirm contact %d", id)), 0)
 	}
 	return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
 }

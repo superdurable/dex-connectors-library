@@ -150,11 +150,14 @@ func (operation DeleteFileOperation) Invoke(call sdkgo.Call, input FileIDRequest
 		return sdkgo.NewMutationRetry[DeletedResponse](*conversationFailure(sdkgo.FailureAvailability, "deleteFile", "file deletion outcome is unknown"), retryAfterHeader(result.header))
 	}
 	receipt := responseReceipt(call, result.requestID, result.header, input.FileID)
-	if result.status == 404 {
+	if result.status == 404 && isDefiniteConversationRefusal(result.status, result.body) {
 		return sdkgo.NewMutationBranch(DeleteFileBranchNotFound, DeletedResponse{}, conversationFailure(sdkgo.FailureNotFound, "deleteFile", "file was not found"), receipt)
 	}
 	if result.status != 200 {
-		return sdkgo.NewMutationBranch(DeleteFileBranchProviderRejected, DeletedResponse{}, conversationFailure(sdkgo.FailureProviderRejection, "deleteFile", "provider rejected file deletion"), receipt)
+		if isDefiniteConversationRefusal(result.status, result.body) {
+			return sdkgo.NewMutationBranch(DeleteFileBranchProviderRejected, DeletedResponse{}, conversationFailure(sdkgo.FailureProviderRejection, "deleteFile", "provider rejected file deletion"), receipt)
+		}
+		return sdkgo.NewMutationRetry[DeletedResponse](*conversationFailure(sdkgo.FailureTransport, "deleteFile", "file deletion outcome is unknown"), retryAfterHeader(result.header))
 	}
 	var wire struct {
 		ID      string `json:"id"`
@@ -162,7 +165,7 @@ func (operation DeleteFileOperation) Invoke(call sdkgo.Call, input FileIDRequest
 		Deleted bool   `json:"deleted"`
 	}
 	if json.Unmarshal(result.body, &wire) != nil || wire.ID != input.FileID || wire.Object != "file" || !wire.Deleted {
-		return sdkgo.NewMutationBranch(DeleteFileBranchInvalidResponse, DeletedResponse{}, conversationFailure(sdkgo.FailureProtocol, "deleteFile", "provider returned invalid deletion receipt"), receipt)
+		return sdkgo.NewMutationRetry[DeletedResponse](*conversationFailure(sdkgo.FailureProtocol, "deleteFile", "provider returned invalid deletion receipt"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteFileBranchDeleted, DeletedResponse{ID: wire.ID, Deleted: true}, nil, receipt)
 }

@@ -208,6 +208,10 @@ func (operation CreateTransactionOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationBranch(CreateTransactionBranchDefect, TransactionStatus{}, transactionOperationFailure(name, sdkgo.FailureLocalDefect, "transaction dispatch fence is unavailable"), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
+	}
+	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
 	if decision.Marker.ProviderID != "" {
 		readBack := operation.client.exchange(call, call.Context, http.MethodGet, "/transactions/"+url.PathEscape(decision.Marker.ProviderID), nil)
 		if readBack.status == http.StatusOK && readBack.err == nil {
@@ -219,13 +223,10 @@ func (operation CreateTransactionOperation) Invoke(call sdkgo.Call, input Create
 		if paddleRetryable(readBack) {
 			return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "transaction read-back is unavailable"), readBack.retryAfter)
 		}
-		return sdkgo.NewMutationUncertain(TransactionStatus{}, *transactionOperationFailure(name, sdkgo.FailureProtocol, "created transaction could not be confirmed"), sdkgo.Receipt{})
-	}
-	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
+		return unknownPaddleCreate[TransactionStatus](canResend, transactionOperationFailure(name, sdkgo.FailureProtocol, "created transaction could not be confirmed"), 0)
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
-		return sdkgo.NewMutationUncertain(TransactionStatus{}, *transactionOperationFailure(name, sdkgo.FailureTransport, "transaction creation outcome is unknown"), sdkgo.Receipt{})
+		return unknownPaddleCreate[TransactionStatus](canResend, transactionOperationFailure(name, sdkgo.FailureTransport, "transaction creation outcome is unknown"), 0)
 	}
 	payload := map[string]any{"items": []map[string]any{{"price_id": input.PriceID, "quantity": input.Quantity}}}
 	var exchange paddleExchange
@@ -237,26 +238,38 @@ func (operation CreateTransactionOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureTransport, "transaction dispatch did not start"), 0)
 	}
 	if errors.Is(exchange.err, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
+		}
+		if fence.RecordNotSent() != nil {
+			return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateTransactionBranchDefect, TransactionStatus{}, transactionOperationFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
 	if exchange.status == http.StatusTooManyRequests || exchange.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(TransactionStatus{}, *transactionOperationFailure(name, sdkgo.FailureTransport, "transaction retry checkpoint failed"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "retry checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "Paddle requested a retry"), exchange.retryAfter)
 	}
 	if paddleRetryable(exchange) {
-		return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "transaction creation outcome is unknown"), exchange.retryAfter)
+		return unknownPaddleCreate[TransactionStatus](canResend, transactionOperationFailure(name, sdkgo.FailureAvailability, "transaction creation outcome is unknown"), exchange.retryAfter)
 	}
 	if exchange.status != http.StatusCreated {
+		if !isDefinitePaddleRefusal(exchange) {
+			return unknownPaddleCreate[TransactionStatus](canResend, transactionOperationFailure(name, sdkgo.FailureTransport, "transaction creation outcome is unknown"), exchange.retryAfter)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(TransactionStatus{}, *transactionOperationFailure(name, sdkgo.FailureTransport, "an earlier transaction create may have succeeded"), sdkgo.Receipt{})
+			return unknownPaddleCreate[TransactionStatus](canResend, transactionOperationFailure(name, sdkgo.FailureTransport, "an earlier transaction create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateTransactionBranchProviderRejected, TransactionStatus{}, transactionOperationFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected transaction creation"), sdkgo.Receipt{})
 	}
 	transaction, decodeErr := decodeTransaction(exchange.body, "")
 	if decodeErr != nil || exchange.err != nil || transaction.Status != "draft" && transaction.Status != "ready" {
-		return sdkgo.NewMutationUncertain(TransactionStatus{}, *transactionOperationFailure(name, sdkgo.FailureProtocol, "Paddle accepted transaction creation but returned invalid data"), sdkgo.Receipt{})
+		return unknownPaddleCreate[TransactionStatus](canResend, transactionOperationFailure(name, sdkgo.FailureProtocol, "Paddle accepted transaction creation but returned invalid data"), 0)
 	}
 	_ = fence.RecordProviderID(transaction.ID)
 	return sdkgo.NewMutationBranch(CreateTransactionBranchCreated, transaction, nil, sdkgo.Receipt{ProviderObjectID: transaction.ID})
@@ -270,15 +283,18 @@ func (client *Client) replaceTransaction(call sdkgo.Call, name, transactionID st
 	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureAvailability, "transaction update is unavailable"), exchange.retryAfter)
 	}
-	if exchange.status == http.StatusNotFound {
+	if exchange.status == http.StatusNotFound && isDefinitePaddleRefusal(exchange) {
 		return sdkgo.NewMutationBranch(notFoundBranch, TransactionStatus{}, transactionOperationFailure(name, sdkgo.FailureNotFound, "transaction was not found"), sdkgo.Receipt{})
 	}
 	if exchange.status != http.StatusOK {
-		return sdkgo.NewMutationBranch(rejectedBranch, TransactionStatus{}, transactionOperationFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected transaction update"), sdkgo.Receipt{})
+		if isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationBranch(rejectedBranch, TransactionStatus{}, transactionOperationFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected transaction update"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureTransport, "Paddle rejected transaction update"), exchange.retryAfter)
 	}
 	transaction, decodeErr := decodeTransaction(exchange.body, transactionID)
 	if decodeErr != nil || exchange.err != nil || expectedStatus != "" && transaction.Status != expectedStatus {
-		return sdkgo.NewMutationBranch(invalidBranch, TransactionStatus{}, transactionOperationFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid transaction"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[TransactionStatus](*transactionOperationFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid transaction"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, transaction, nil, sdkgo.Receipt{ProviderObjectID: transaction.ID})
 }

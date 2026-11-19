@@ -197,6 +197,34 @@ func paddleRetryable(exchange paddleExchange) bool {
 	return errors.Is(exchange.err, errRequest) || exchange.status == http.StatusRequestTimeout || exchange.status == http.StatusTooManyRequests || exchange.status >= 500
 }
 
+func isDefinitePaddleRefusal(exchange paddleExchange) bool {
+	switch exchange.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	if exchange.err != nil {
+		return false
+	}
+	var envelope struct {
+		Data  json.RawMessage `json:"data"`
+		Error struct {
+			Detail string `json:"detail"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(exchange.body, &envelope) == nil && len(envelope.Data) == 0 && strings.TrimSpace(envelope.Error.Detail) != ""
+}
+
+func unknownPaddleCreate[T any](canResend bool, failure *sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[T] {
+	if canResend {
+		return sdkgo.NewMutationRetry[T](*failure, retryAfter)
+	}
+	var zero T
+	return sdkgo.NewMutationUncertain(zero, *failure, sdkgo.Receipt{})
+}
+
 func validPaddleID(identifier, prefix string) bool {
 	if len(identifier) != len(prefix)+26 || !strings.HasPrefix(identifier, prefix) {
 		return false
@@ -331,24 +359,27 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
 	}
+	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
 	if decision.Kind != singledispatch.SendAllowed {
 		query := url.Values{"email": {input.Email}, "per_page": {"1"}}
 		readBack := operation.client.exchange(call, call.Context, http.MethodGet, "/customers?"+query.Encode(), nil)
 		if readBack.status == http.StatusOK && readBack.err == nil {
 			page, ok := decodeCustomerPage(readBack.body)
 			if !ok {
-				return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureProtocol, "customer read-back is invalid"), sdkgo.Receipt{})
+				return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureProtocol, "customer read-back is invalid"), 0)
 			}
 			if len(page.Items) == 1 && page.Items[0].Email == input.Email && page.Items[0].Name == input.Name && readBackContainsCallID(readBack.body, call.ID) {
 				return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, page.Items[0], nil, sdkgo.Receipt{ProviderObjectID: page.Items[0].ID})
 			}
 			if len(page.Items) != 0 {
-				return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureProtocol, "customer read-back disagreed with request"), sdkgo.Receipt{})
+				return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureProtocol, "customer read-back disagreed with request"), 0)
 			}
 		} else if paddleRetryable(readBack) {
 			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer read-back is unavailable"), readBack.retryAfter)
-		} else {
+		} else if decision.Kind == singledispatch.ReadBackRequired || !canResend {
 			return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "customer read-back was rejected"), sdkgo.Receipt{})
+		} else {
+			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureTransport, "customer read-back was rejected"), 0)
 		}
 		if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
 			return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "customer creation reached its send cap"), sdkgo.Receipt{})
@@ -363,11 +394,17 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureTransport, "customer dispatch did not start"), 0)
 	}
 	if errors.Is(exchange.err, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
+		}
+		if fence.RecordNotSent() != nil {
+			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateCustomerBranchDefect, PaddleCustomer{}, customerFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
 	if exchange.status == http.StatusTooManyRequests || exchange.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "retry checkpoint failed"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "retry checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "Paddle requested a retry"), exchange.retryAfter)
 	}
@@ -375,14 +412,20 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer creation outcome is unknown"), exchange.retryAfter)
 	}
 	if exchange.status != http.StatusCreated {
+		if !isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureTransport, "customer creation outcome is unknown"), exchange.retryAfter)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "an earlier create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureTransport, "an earlier create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateCustomerBranchProviderRejected, PaddleCustomer{}, customerFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected customer creation"), sdkgo.Receipt{})
 	}
 	customer, ok := decodePaddleCustomer(exchange.body, "")
 	if !ok || exchange.err != nil || customer.Email != input.Email {
-		return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureProtocol, "Paddle accepted customer creation but returned invalid data"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureProtocol, "Paddle accepted customer creation but returned invalid data"), 0)
 	}
 	_ = fence.RecordProviderID(customer.ID)
 	return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, customer, nil, sdkgo.Receipt{ProviderObjectID: customer.ID})
@@ -401,15 +444,18 @@ func (operation UpdateCustomerOperation) Invoke(call sdkgo.Call, input UpdateCus
 	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer update is unavailable"), exchange.retryAfter)
 	}
-	if exchange.status == http.StatusNotFound {
+	if exchange.status == http.StatusNotFound && isDefinitePaddleRefusal(exchange) {
 		return sdkgo.NewMutationBranch(UpdateCustomerBranchNotFound, PaddleCustomer{}, customerFailure(name, sdkgo.FailureNotFound, "customer was not found"), sdkgo.Receipt{})
 	}
 	if exchange.status != http.StatusOK {
-		return sdkgo.NewMutationBranch(UpdateCustomerBranchProviderRejected, PaddleCustomer{}, customerFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected customer update"), sdkgo.Receipt{})
+		if isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationBranch(UpdateCustomerBranchProviderRejected, PaddleCustomer{}, customerFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected customer update"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureTransport, "Paddle rejected customer update"), exchange.retryAfter)
 	}
 	customer, ok := decodePaddleCustomer(exchange.body, input.CustomerID)
 	if !ok || exchange.err != nil {
-		return sdkgo.NewMutationBranch(UpdateCustomerBranchInvalidResponse, PaddleCustomer{}, customerFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid customer"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid customer"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateCustomerBranchUpdated, customer, nil, sdkgo.Receipt{ProviderObjectID: customer.ID})
 }
@@ -427,15 +473,18 @@ func (operation ArchiveCustomerOperation) Invoke(call sdkgo.Call, input Customer
 	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer archival is unavailable"), exchange.retryAfter)
 	}
-	if exchange.status == http.StatusNotFound {
+	if exchange.status == http.StatusNotFound && isDefinitePaddleRefusal(exchange) {
 		return sdkgo.NewMutationBranch(ArchiveCustomerBranchNotFound, PaddleCustomer{}, customerFailure(name, sdkgo.FailureNotFound, "customer was not found"), sdkgo.Receipt{})
 	}
 	if exchange.status != http.StatusOK {
-		return sdkgo.NewMutationBranch(ArchiveCustomerBranchProviderRejected, PaddleCustomer{}, customerFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected customer archival"), sdkgo.Receipt{})
+		if isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationBranch(ArchiveCustomerBranchProviderRejected, PaddleCustomer{}, customerFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected customer archival"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureTransport, "Paddle rejected customer archival"), exchange.retryAfter)
 	}
 	customer, ok := decodePaddleCustomer(exchange.body, input.CustomerID)
 	if !ok || exchange.err != nil || customer.Status != "archived" {
-		return sdkgo.NewMutationBranch(ArchiveCustomerBranchInvalidResponse, PaddleCustomer{}, customerFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid archive result"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid archive result"), 0)
 	}
 	return sdkgo.NewMutationBranch(ArchiveCustomerBranchArchived, customer, nil, sdkgo.Receipt{ProviderObjectID: customer.ID})
 }

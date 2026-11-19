@@ -21,6 +21,7 @@ type queryContext struct{ dex.Context }
 
 func (queryContext) FlowID() string              { return "pandadoc-provider-test" }
 func (queryContext) StepExecutionID() string     { return "get-document" }
+func (queryContext) Attempt() int32              { return 1 }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }
 func (queryContext) Done() <-chan struct{}       { return nil }
 func (queryContext) Err() error                  { return nil }

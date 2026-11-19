@@ -406,28 +406,29 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 	}
 	// Closing the response cannot change a completed provider write.
 	defer func() { _ = response.Body.Close() }()
+	content, bodyError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	switch {
 	case response.StatusCode == http.StatusTooManyRequests:
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureRateLimit, "provider rate limited the request"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
-	case response.StatusCode == http.StatusConflict:
-		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the conflicting update")
-	case response.StatusCode == http.StatusNotFound && notFound != "":
+	case response.StatusCode == http.StatusNotFound && notFound != "" && bodyError == nil && isDefinitePagerDutyRefusal(response.StatusCode, content):
 		return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
 	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted:
-		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
+		if bodyError == nil && isDefinitePagerDutyRefusal(response.StatusCode, content) {
+			return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureTransport, "provider write outcome is unknown"), 0)
 	}
-	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return mutationFailure[T](operation, invalid, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit")
+	if errors.Is(bodyError, providerhttp.ErrBodyTooLarge) {
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
-	if err != nil {
+	if bodyError != nil {
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider response was interrupted"), 0)
 	}
 	value, err := decode(content)
 	if err != nil {
-		return mutationFailure[T](operation, invalid, sdkgo.FailureProtocol, "provider response is incomplete or malformed")
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureProtocol, "provider response is incomplete or malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
 }
@@ -437,6 +438,24 @@ func queryFailure[T any](operation string, branch sdkgo.BranchID, kind sdkgo.Fai
 	failure := newFailure(operation, kind, message)
 	return sdkgo.NewQueryBranch(branch, zero, &failure, sdkgo.Receipt{})
 }
+func isDefinitePagerDutyRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var envelope struct {
+		Incident json.RawMessage `json:"incident"`
+		Note     json.RawMessage `json:"note"`
+		Error    struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && len(envelope.Incident) == 0 && len(envelope.Note) == 0 && strings.TrimSpace(envelope.Error.Message) != ""
+}
+
 func mutationFailure[T any](operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[T] {
 	var zero T
 	failure := newFailure(operation, kind, message)

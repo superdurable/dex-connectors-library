@@ -270,7 +270,7 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 	}
 	if errors.Is(err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CreatedRecord{}, contactFailure("createRecord", sdkgo.FailureAuthentication, "earlier create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CreatedRecord](contactFailure("createRecord", sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
 		}
 		if fence.RecordNotSent() != nil {
 			return sdkgo.NewMutationRetry[CreatedRecord](contactFailure("createRecord", sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -295,14 +295,32 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 		return sdkgo.NewMutationUncertain(CreatedRecord{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteOdooRefusal(response.status, response.body) {
+			failure := contactFailure("createRecord", sdkgo.FailureTransport, "Odoo create outcome is unknown")
+			if canResend {
+				return sdkgo.NewMutationRetry[CreatedRecord](failure, response.retryAfter)
+			}
+			return sdkgo.NewMutationUncertain(CreatedRecord{}, failure, sdkgo.Receipt{})
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CreatedRecord{}, contactFailure("createRecord", sdkgo.FailureProviderRejection, "earlier create may have succeeded"), sdkgo.Receipt{})
+			failure := contactFailure("createRecord", sdkgo.FailureTransport, "earlier create may have succeeded")
+			if canResend {
+				return sdkgo.NewMutationRetry[CreatedRecord](failure, 0)
+			}
+			return sdkgo.NewMutationUncertain(CreatedRecord{}, failure, sdkgo.Receipt{})
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CreatedRecord](contactFailure("createRecord", sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return contactMutationBranch[CreatedRecord]("createRecord", CreateRecordBranchProviderRejected, sdkgo.FailureProviderRejection, "Odoo rejected record creation")
 	}
 	var ids []int64
 	if json.Unmarshal(response.body, &ids) != nil || len(ids) != 1 || ids[0] <= 0 {
-		return sdkgo.NewMutationUncertain(CreatedRecord{}, contactFailure("createRecord", sdkgo.FailureProtocol, "Odoo accepted creation without a valid ID"), sdkgo.Receipt{})
+		failure := contactFailure("createRecord", sdkgo.FailureProtocol, "Odoo accepted creation without a valid ID")
+		if canResend {
+			return sdkgo.NewMutationRetry[CreatedRecord](failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(CreatedRecord{}, failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateRecordBranchCreated, CreatedRecord{ID: ids[0]}, nil, sdkgo.Receipt{})
 }

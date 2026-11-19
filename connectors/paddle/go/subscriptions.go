@@ -238,15 +238,18 @@ func (operation SetNextBillingDateOperation) Invoke(call sdkgo.Call, input SetNe
 	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddleSubscription](*subscriptionFailure(name, sdkgo.FailureAvailability, "subscription billing date update is unavailable"), exchange.retryAfter)
 	}
-	if exchange.status == http.StatusNotFound {
+	if exchange.status == http.StatusNotFound && isDefinitePaddleRefusal(exchange) {
 		return sdkgo.NewMutationBranch(SetNextBillingDateBranchNotFound, PaddleSubscription{}, subscriptionFailure(name, sdkgo.FailureNotFound, "subscription was not found"), sdkgo.Receipt{})
 	}
 	if exchange.status != http.StatusOK {
-		return sdkgo.NewMutationBranch(SetNextBillingDateBranchProviderRejected, PaddleSubscription{}, subscriptionFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected the next billing date"), sdkgo.Receipt{})
+		if isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationBranch(SetNextBillingDateBranchProviderRejected, PaddleSubscription{}, subscriptionFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected the next billing date"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[PaddleSubscription](*subscriptionFailure(name, sdkgo.FailureTransport, "Paddle rejected the next billing date"), exchange.retryAfter)
 	}
 	subscription, ok := decodeSubscription(exchange.body, input.SubscriptionID)
 	if !ok || exchange.err != nil || subscription.NextBilledAt != input.NextBilledAt {
-		return sdkgo.NewMutationBranch(SetNextBillingDateBranchInvalidResponse, PaddleSubscription{}, subscriptionFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid subscription"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PaddleSubscription](*subscriptionFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid subscription"), 0)
 	}
 	return sdkgo.NewMutationBranch(SetNextBillingDateBranchUpdated, subscription, nil, sdkgo.Receipt{ProviderObjectID: subscription.ID})
 }

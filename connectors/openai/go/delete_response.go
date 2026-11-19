@@ -67,26 +67,27 @@ func (operation DeleteResponseOperation) Invoke(call sdkgo.Call, input DeleteRes
 		}
 		return sdkgo.NewMutationRetry[DeletedResponse](openAIFailure(kind, "deleteResponse", "provider returned HTTP "+strconv.Itoa(response.StatusCode)), retryAfterHeader(response.Header))
 	}
-	if response.StatusCode == http.StatusNotFound {
-		failure := openAIFailure(sdkgo.FailureNotFound, "deleteResponse", "stored response was not found")
-		return sdkgo.NewMutationBranch(DeleteResponseBranchNotFound, DeletedResponse{}, &failure, receipt)
-	}
-	if response.StatusCode != http.StatusOK {
-		failure := openAIFailure(sdkgo.FailureProviderRejection, "deleteResponse", "provider returned HTTP "+strconv.Itoa(response.StatusCode))
-		return sdkgo.NewMutationBranch(DeleteResponseBranchProviderRejected, DeletedResponse{}, &failure, receipt)
-	}
 	body, err := io.ReadAll(io.LimitReader(response.Body, operation.client.maxResponseBytes+1))
 	if err != nil {
 		return sdkgo.NewMutationRetry[DeletedResponse](openAIFailure(sdkgo.FailureTransport, "deleteResponse", "deletion receipt could not be read"), 0)
 	}
 	if int64(len(body)) > operation.client.maxResponseBytes {
-		failure := openAIFailure(sdkgo.FailureResponseTooLarge, "deleteResponse", "deletion receipt exceeds the configured limit")
-		return sdkgo.NewMutationBranch(DeleteResponseBranchInvalidResponse, DeletedResponse{}, &failure, receipt)
+		return sdkgo.NewMutationRetry[DeletedResponse](openAIFailure(sdkgo.FailureResponseTooLarge, "deleteResponse", "deletion receipt exceeds the configured limit"), 0)
+	}
+	if response.StatusCode == http.StatusNotFound && isDefiniteConversationRefusal(response.StatusCode, body) {
+		failure := openAIFailure(sdkgo.FailureNotFound, "deleteResponse", "stored response was not found")
+		return sdkgo.NewMutationBranch(DeleteResponseBranchNotFound, DeletedResponse{}, &failure, receipt)
+	}
+	if response.StatusCode != http.StatusOK {
+		if isDefiniteConversationRefusal(response.StatusCode, body) {
+			failure := openAIFailure(sdkgo.FailureProviderRejection, "deleteResponse", "provider returned HTTP "+strconv.Itoa(response.StatusCode))
+			return sdkgo.NewMutationBranch(DeleteResponseBranchProviderRejected, DeletedResponse{}, &failure, receipt)
+		}
+		return sdkgo.NewMutationRetry[DeletedResponse](openAIFailure(sdkgo.FailureTransport, "deleteResponse", "provider outcome is unknown"), retryAfterHeader(response.Header))
 	}
 	var result DeletedResponse
 	if json.Unmarshal(body, &result) != nil || result.ID != input.ResponseID || !result.Deleted {
-		failure := openAIFailure(sdkgo.FailureProtocol, "deleteResponse", "provider returned an invalid deletion receipt")
-		return sdkgo.NewMutationBranch(DeleteResponseBranchInvalidResponse, DeletedResponse{}, &failure, receipt)
+		return sdkgo.NewMutationRetry[DeletedResponse](openAIFailure(sdkgo.FailureProtocol, "deleteResponse", "provider returned an invalid deletion receipt"), 0)
 	}
 	receipt.ObservedAt = time.Now().UTC()
 	return sdkgo.NewMutationBranch(DeleteResponseBranchDeleted, result, nil, receipt)

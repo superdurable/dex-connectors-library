@@ -1151,7 +1151,7 @@
       "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Netlify refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1189,7 +1189,7 @@
       "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Netlify refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1392,7 +1392,7 @@
       "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Netlify refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1433,7 +1433,7 @@
       "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Netlify refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1491,16 +1491,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "site_id": "",
-          "state": "",
-          "url": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1636,6 +1630,321 @@
         "deployId": ""
       },
       "name": "cancelDeploy-defect",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Netlify refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-unknown-409",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Netlify refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-unknown-405",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-unknown-empty403",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"refused\",\"id\":\"accepted\",\"data\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-unknown-contradictory403",
+      "operation": "deleteSite"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Netlify refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-unknown-409",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Netlify refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-unknown-405",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-unknown-empty403",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"refused\",\"id\":\"accepted\",\"data\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-unknown-contradictory403",
+      "operation": "cancelDeploy"
+    },
+    {
+      "callId": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deploys/deploy-meridian/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eb103e3-e1e9-5ea4-b2ff-a5ff94c9d1fd",
+      "input": {
+        "deployId": "deploy-meridian"
+      },
+      "name": "cancelDeploy-malformed-success-retry",
       "operation": "cancelDeploy"
     }
   ],

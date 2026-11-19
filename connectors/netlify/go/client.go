@@ -225,6 +225,10 @@ func (operation DeleteSiteOperation) Invoke(call sdkgo.Call, input DeleteSiteInp
 	if response.StatusCode == http.StatusNoContent {
 		return sdkgo.NewMutationBranch(DeleteSiteBranchDeleted, DeletedSite{SiteID: input.SiteID}, nil, sdkgo.Receipt{})
 	}
+	body, bodyError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	if bodyError != nil || !isDefiniteNetlifyRefusal(response.StatusCode, body) {
+		return sdkgo.NewMutationRetry[DeletedSite](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "netlify", Operation: "deleteSite", Message: "site deletion outcome is unknown"}, 0)
+	}
 	providerFailure := statusFailure(response, "deleteSite")
 	if response.StatusCode == http.StatusNotFound {
 		return sdkgo.NewMutationBranch(DeleteSiteBranchNotFound, DeletedSite{}, &providerFailure, sdkgo.Receipt{})
@@ -270,6 +274,10 @@ func (operation CancelDeployOperation) Invoke(call sdkgo.Call, input CancelDeplo
 		return sdkgo.NewMutationRetry[Deploy](retry, after)
 	}
 	if response.StatusCode != http.StatusCreated {
+		body, bodyError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		if bodyError != nil || !isDefiniteNetlifyRefusal(response.StatusCode, body) {
+			return sdkgo.NewMutationRetry[Deploy](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "netlify", Operation: "cancelDeploy", Message: "deploy cancellation outcome is unknown"}, 0)
+		}
 		providerFailure := statusFailure(response, "cancelDeploy")
 		if response.StatusCode == http.StatusNotFound {
 			return sdkgo.NewMutationBranch(CancelDeployBranchNotFound, Deploy{}, &providerFailure, sdkgo.Receipt{})
@@ -278,11 +286,11 @@ func (operation CancelDeployOperation) Invoke(call sdkgo.Call, input CancelDeplo
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {
-		return sdkgo.NewMutationBranch(CancelDeployBranchInvalidResponse, Deploy{}, failure(sdkgo.FailureProtocol, "cancelDeploy", "response was malformed or oversized"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Deploy](sdkgo.Failure{Kind: sdkgo.FailureProtocol, Provider: "netlify", Operation: "cancelDeploy", Message: "response was malformed or oversized"}, 0)
 	}
 	deploy, err := decodeDeploy(body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(CancelDeployBranchInvalidResponse, Deploy{}, failure(sdkgo.FailureProtocol, "cancelDeploy", "response was malformed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Deploy](sdkgo.Failure{Kind: sdkgo.FailureProtocol, Provider: "netlify", Operation: "cancelDeploy", Message: "response was malformed"}, 0)
 	}
 	return sdkgo.NewMutationBranch(CancelDeployBranchCancelled, deploy, nil, sdkgo.Receipt{})
 }
@@ -428,6 +436,21 @@ func statusFailure(response *http.Response, operation string) sdkgo.Failure {
 		kind = sdkgo.FailureValidation
 	}
 	return sdkgo.Failure{Kind: kind, Provider: "netlify", Operation: operation, Message: fmt.Sprintf("Netlify returned HTTP %d", response.StatusCode)}
+}
+
+func isDefiniteNetlifyRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var fields struct {
+		ID      string `json:"id"`
+		Message string `json:"message"`
+	}
+	return json.Unmarshal(body, &fields) == nil && fields.ID == "" && strings.TrimSpace(fields.Message) != ""
 }
 
 func shouldRetry(response *http.Response) bool {

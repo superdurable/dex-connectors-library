@@ -152,19 +152,21 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 		}
 		return providerResponse{retry: true, retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), failure: failure(operationID, kind, "provider is temporarily unavailable")}
 	}
-	if response.StatusCode == http.StatusNotFound && hasNotFound {
-		return providerResponse{branch: "notFound", failure: failure(operationID, sdkgo.FailureNotFound, "resource was not found")}
-	}
-	if response.StatusCode != successStatus {
-		kind := sdkgo.FailureProviderRejection
-		if response.StatusCode == http.StatusUnauthorized {
-			kind = sdkgo.FailureAuthentication
-		} else if response.StatusCode == http.StatusForbidden {
-			kind = sdkgo.FailureAuthorization
-		} else if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
-			kind = sdkgo.FailureValidation
+	if !isPineconeMutation(operationID) {
+		if response.StatusCode == http.StatusNotFound && hasNotFound {
+			return providerResponse{branch: "notFound", failure: failure(operationID, sdkgo.FailureNotFound, "resource was not found")}
 		}
-		return providerResponse{branch: "providerRejected", status: response.StatusCode, failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
+		if response.StatusCode != successStatus {
+			kind := sdkgo.FailureProviderRejection
+			if response.StatusCode == http.StatusUnauthorized {
+				kind = sdkgo.FailureAuthentication
+			} else if response.StatusCode == http.StatusForbidden {
+				kind = sdkgo.FailureAuthorization
+			} else if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
+				kind = sdkgo.FailureValidation
+			}
+			return providerResponse{branch: "providerRejected", status: response.StatusCode, failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
+		}
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -176,7 +178,31 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 	if !json.Valid(responseBody) {
 		return providerResponse{branch: "invalidResponse", failure: failure(operationID, sdkgo.FailureProtocol, "provider returned malformed JSON")}
 	}
+	if response.StatusCode == http.StatusNotFound && hasNotFound && isDefiniteRefusalStatus(response.StatusCode, responseBody) {
+		return providerResponse{branch: "notFound", failure: failure(operationID, sdkgo.FailureNotFound, "resource was not found")}
+	}
+	if response.StatusCode != successStatus {
+		if !isDefiniteRefusalStatus(response.StatusCode, responseBody) {
+			return providerResponse{retry: true, failure: failure(operationID, sdkgo.FailureTransport, "provider outcome is unknown")}
+		}
+		kind := sdkgo.FailureProviderRejection
+		if response.StatusCode == http.StatusUnauthorized {
+			kind = sdkgo.FailureAuthentication
+		} else if response.StatusCode == http.StatusForbidden {
+			kind = sdkgo.FailureAuthorization
+		} else if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
+			kind = sdkgo.FailureValidation
+		}
+		return providerResponse{branch: "providerRejected", status: response.StatusCode, body: responseBody, failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
+	}
 	return providerResponse{body: responseBody}
+}
+func isPineconeMutation(operationID string) bool {
+	switch operationID {
+	case "upsertVectors", "updateVector", "deleteVectors", "clearNamespace":
+		return true
+	}
+	return false
 }
 func failure(operationID string, kind sdkgo.FailureKind, message string) *sdkgo.Failure {
 	return &sdkgo.Failure{Kind: kind, Provider: "pinecone", Operation: operationID, Message: message}
@@ -234,7 +260,7 @@ func (operation UpsertVectorsOperation) Invoke(call sdkgo.Call, input UpsertVect
 		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*response.failure, response.retryAfter)
 	}
 	// A repeated upsert replaces the same vector IDs, so an unknown outcome retries.
-	if response.branch == UpsertVectorsBranchInvalidResponse || (response.branch == UpsertVectorsBranchProviderRejected && !isDefiniteRefusalStatus(response.status)) {
+	if response.branch == UpsertVectorsBranchInvalidResponse || (response.branch == UpsertVectorsBranchProviderRejected && !isDefiniteRefusalStatus(response.status, response.body)) {
 		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*response.failure, 0)
 	}
 	if response.failure != nil {
@@ -258,13 +284,20 @@ func isTerminalCredentialError(err error) bool {
 }
 
 // isDefiniteRefusalStatus reports a status that proves Pinecone refused the write; any other status is unknown.
-func isDefiniteRefusalStatus(status int) bool {
+func isDefiniteRefusalStatus(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
 		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+	default:
+		return false
 	}
-	return false
+	var fields struct {
+		Message       string          `json:"message"`
+		UpsertedCount json.RawMessage `json:"upsertedCount"`
+		Vectors       json.RawMessage `json:"vectors"`
+	}
+	return json.Unmarshal(body, &fields) == nil && strings.TrimSpace(fields.Message) != "" &&
+		len(fields.UpsertedCount) == 0 && len(fields.Vectors) == 0
 }
 
 func encodeUpsertVectorsInput(input UpsertVectorsInput) (string, url.Values, []byte, error) {

@@ -182,13 +182,18 @@ func (client *Client) readBackIncident(call sdkgo.Call, incidentKey, serviceID s
 	if err != nil {
 		return Incident{}, false
 	}
-	var page IncidentPage
+	var page struct {
+		Incidents []struct {
+			Incident
+			IncidentKey string `json:"incident_key"`
+		} `json:"incidents"`
+	}
 	if json.Unmarshal(content, &page) != nil {
 		return Incident{}, false
 	}
 	for _, incident := range page.Incidents {
-		if incident.ID != "" {
-			return incident, true
+		if incident.ID != "" && incident.IncidentKey == incidentKey {
+			return incident.Incident, true
 		}
 	}
 	return Incident{}, false
@@ -216,7 +221,7 @@ func runLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path st
 	request, err := client.newRequest(call, http.MethodPost, path, body)
 	if err != nil {
 		if decision.MaximumPriorSends > 0 {
-			return uncertainCreate[T](operation)
+			return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAuthentication, "credentials are unavailable for read-back or resend"), 0)
 		}
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -235,10 +240,7 @@ func runLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path st
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
 	if err != nil || response == nil {
-		if !canResend {
-			return uncertainCreate[T](operation)
-		}
-		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider request outcome is unknown"), 0)
+		return unknownPagerDutyCreate[T](operation, canResend || readBack != nil)
 	}
 	// Response close cannot change the completed provider decision.
 	defer func() { _ = response.Body.Close() }()
@@ -253,30 +255,36 @@ func runLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path st
 		return sdkgo.NewMutationRetry[T](newFailure(operation, kind, "provider asked to retry the request"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
 	if response.StatusCode >= 500 || response.StatusCode == http.StatusRequestTimeout {
-		if !canResend {
-			return uncertainCreate[T](operation)
-		}
-		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
+		return unknownPagerDutyCreate[T](operation, canResend || readBack != nil)
 	}
-	if response.StatusCode == http.StatusNotFound && notFound != "" {
+	content, bodyError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if response.StatusCode == http.StatusNotFound && notFound != "" && bodyError == nil && isDefinitePagerDutyRefusal(response.StatusCode, content) {
 		if decision.MaximumPriorSends > 0 {
-			return uncertainCreate[T](operation)
+			return unknownPagerDutyCreate[T](operation, canResend || readBack != nil)
+		}
+		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+			return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "incident was not found")
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		if bodyError != nil || !isDefinitePagerDutyRefusal(response.StatusCode, content) {
+			return unknownPagerDutyCreate[T](operation, canResend || readBack != nil)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return uncertainCreate[T](operation)
+			return unknownPagerDutyCreate[T](operation, canResend || readBack != nil)
+		}
+		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+			return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the creation")
 	}
-	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if err != nil {
-		return uncertainCreate[T](operation)
+	if bodyError != nil {
+		return unknownPagerDutyCreate[T](operation, canResend || readBack != nil)
 	}
 	value, err := decode(content)
 	if err != nil {
-		return uncertainCreate[T](operation)
+		return unknownPagerDutyCreate[T](operation, canResend || readBack != nil)
 	}
 	return sdkgo.NewMutationBranch(created, value, nil, sdkgo.Receipt{})
 }
@@ -284,4 +292,11 @@ func runLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path st
 func uncertainCreate[T any](operation string) sdkgo.MutationAttempt[T] {
 	var zero T
 	return sdkgo.NewMutationUncertain(zero, newFailure(operation, sdkgo.FailureTransport, "provider write may have succeeded"), sdkgo.Receipt{})
+}
+
+func unknownPagerDutyCreate[T any](operation string, canRetry bool) sdkgo.MutationAttempt[T] {
+	if canRetry {
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureTransport, "provider write outcome is unknown"), 0)
+	}
+	return uncertainCreate[T](operation)
 }

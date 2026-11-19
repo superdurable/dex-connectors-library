@@ -81,6 +81,9 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("createContact", sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
 	}
+	if decision.Marker.ProviderID != "" {
+		return operation.readBackCreatedContact(call, decision.Marker.ProviderID)
+	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(ContactMetadata{}, queryFailure("createContact", sdkgo.FailureTransport, "an earlier contact create may have succeeded"), sdkgo.Receipt{})
 	}
@@ -97,7 +100,7 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	}
 	if errors.Is(err, errCredential) {
 		if hasEarlierSend {
-			return sdkgo.NewMutationUncertain(ContactMetadata{}, queryFailure("createContact", sdkgo.FailureAuthentication, "earlier create may have succeeded; credentials are unavailable"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("createContact", sdkgo.FailureAuthentication, "credentials are unavailable for read-back or resend"), 0)
 		}
 		if checkpointError := fence.RecordNotSent(); checkpointError != nil {
 			return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("createContact", sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -114,10 +117,7 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		}
 		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("createContact", failureKind, "Nimble temporarily rejected the create"), response.retryAfter)
 	}
-	if response.status == http.StatusOK && err != nil {
-		return sdkgo.NewMutationUncertain(ContactMetadata{}, queryFailure("createContact", sdkgo.FailureProtocol, "Nimble accepted the create but its response was unreadable"), sdkgo.Receipt{})
-	}
-	if err != nil || response.status >= 500 {
+	if err != nil || response.status == http.StatusOK && !json.Valid(response.body) || response.status >= 500 {
 		failure := queryFailure("createContact", sdkgo.FailureAvailability, "contact create outcome is unknown")
 		if canResend {
 			return sdkgo.NewMutationRetry[ContactMetadata](failure, response.retryAfter)
@@ -125,16 +125,50 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationUncertain(ContactMetadata{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteNimbleRefusal(response.status, response.body) {
+			failure := queryFailure("createContact", sdkgo.FailureTransport, "Nimble create outcome is unknown")
+			if canResend {
+				return sdkgo.NewMutationRetry[ContactMetadata](failure, response.retryAfter)
+			}
+			return sdkgo.NewMutationUncertain(ContactMetadata{}, failure, sdkgo.Receipt{})
+		}
 		if hasEarlierSend {
-			return sdkgo.NewMutationUncertain(ContactMetadata{}, queryFailure("createContact", sdkgo.FailureProviderRejection, "an earlier create may have succeeded"), sdkgo.Receipt{})
+			failure := queryFailure("createContact", sdkgo.FailureTransport, "an earlier create may have succeeded")
+			if canResend {
+				return sdkgo.NewMutationRetry[ContactMetadata](failure, 0)
+			}
+			return sdkgo.NewMutationUncertain(ContactMetadata{}, failure, sdkgo.Receipt{})
+		}
+		if checkpointError := fence.RecordCanResend(); checkpointError != nil {
+			return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("createContact", sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return mutationBranch(CreateContactBranchProviderRejected, "createContact", ContactMetadata{}, sdkgo.FailureProviderRejection, "Nimble rejected the create")
 	}
 	contact, parseError := decodeWrittenContact(response.body)
 	if parseError != nil {
-		return sdkgo.NewMutationUncertain(ContactMetadata{}, queryFailure("createContact", sdkgo.FailureProtocol, "Nimble accepted the create but did not identify the contact"), sdkgo.Receipt{})
+		failure := queryFailure("createContact", sdkgo.FailureProtocol, "Nimble accepted the create but did not identify the contact")
+		if canResend {
+			return sdkgo.NewMutationRetry[ContactMetadata](failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(ContactMetadata{}, failure, sdkgo.Receipt{})
 	}
-	return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{})
+	// The accepted ID prevents a replay from sending another create after a lost Step result.
+	_ = fence.RecordProviderID(contact.ID)
+	return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{ProviderObjectID: contact.ID})
+}
+
+func (operation CreateContactOperation) readBackCreatedContact(call sdkgo.Call, contactID string) sdkgo.MutationAttempt[ContactMetadata] {
+	response, err := operation.client.sendWrite(call, call.Context, http.MethodGet, "/contact/"+url.PathEscape(contactID), nil)
+	if err == nil && response.status == http.StatusOK {
+		contact, decodeError := decodeContact(response.body, contactID)
+		if decodeError == nil {
+			return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{ProviderObjectID: contact.ID})
+		}
+	}
+	if err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
+		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("createContact", sdkgo.FailureAvailability, "contact read-back is unavailable"), response.retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(ContactMetadata{}, queryFailure("createContact", sdkgo.FailureTransport, "created contact could not be confirmed by ID"), sdkgo.Receipt{ProviderObjectID: contactID})
 }
 
 // UpdateContactInput replaces all Nimble contact fields with the supplied field collection.
@@ -185,15 +219,18 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureAvailability, "Nimble update is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteNimbleRefusal(response.status, response.body) {
 		return mutationBranch(UpdateContactBranchNotFound, "updateContact", ContactMetadata{}, sdkgo.FailureNotFound, "contact was not found")
 	}
 	if response.status != http.StatusOK {
-		return mutationBranch(UpdateContactBranchProviderRejected, "updateContact", ContactMetadata{}, sdkgo.FailureProviderRejection, "Nimble rejected the update")
+		if isDefiniteNimbleRefusal(response.status, response.body) {
+			return mutationBranch(UpdateContactBranchProviderRejected, "updateContact", ContactMetadata{}, sdkgo.FailureProviderRejection, "Nimble rejected the update")
+		}
+		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureTransport, "Nimble update outcome is unknown"), response.retryAfter)
 	}
 	contact, parseError := decodeWrittenContact(response.body)
 	if parseError != nil {
-		return mutationBranch(UpdateContactBranchInvalidResponse, "updateContact", ContactMetadata{}, sdkgo.FailureProtocol, "Nimble returned an invalid contact")
+		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureProtocol, "Nimble returned an invalid contact"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateContactBranchUpdated, contact, nil, sdkgo.Receipt{})
 }
@@ -239,11 +276,14 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[DeletedContact](queryFailure("deleteContact", sdkgo.FailureAvailability, "Nimble deletion is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteNimbleRefusal(response.status, response.body) {
 		return mutationBranch(DeleteContactBranchNotFound, "deleteContact", DeletedContact{}, sdkgo.FailureNotFound, "contact was not found")
 	}
 	if response.status != http.StatusOK {
-		return mutationBranch(DeleteContactBranchProviderRejected, "deleteContact", DeletedContact{}, sdkgo.FailureProviderRejection, "Nimble rejected the deletion")
+		if isDefiniteNimbleRefusal(response.status, response.body) {
+			return mutationBranch(DeleteContactBranchProviderRejected, "deleteContact", DeletedContact{}, sdkgo.FailureProviderRejection, "Nimble rejected the deletion")
+		}
+		return sdkgo.NewMutationRetry[DeletedContact](queryFailure("deleteContact", sdkgo.FailureTransport, "Nimble deletion outcome is unknown"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(DeleteContactBranchDeleted, DeletedContact{ContactID: input.ContactID}, nil, sdkgo.Receipt{})
 }
@@ -277,6 +317,46 @@ func (client *Client) sendWrite(call sdkgo.Call, requestContext context.Context,
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	return writeResponse{status: response.StatusCode, body: responseBody, retryAfter: retryAfter}, readErr
+}
+
+func isDefiniteNimbleRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil || len(fields) == 0 {
+		return false
+	}
+	for _, key := range []string{"id", "resource", "contact", "note", "data", "success"} {
+		if value, exists := fields[key]; exists && string(value) != "null" && string(value) != "false" {
+			return false
+		}
+	}
+	var message string
+	if json.Unmarshal(fields["error"], &message) == nil && strings.TrimSpace(message) != "" {
+		return true
+	}
+	var namedError struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(fields["error"], &namedError) == nil && strings.TrimSpace(namedError.Message) != "" {
+		return true
+	}
+	var errors []struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(fields["errors"], &errors) == nil {
+		for _, providerError := range errors {
+			if strings.TrimSpace(providerError.Message) != "" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func decodeWrittenContact(body []byte) (ContactMetadata, error) {

@@ -99,12 +99,17 @@ func (operation IndexDocumentOperation) Invoke(call sdkgo.Call, input IndexDocum
 			return indexRetry(sdkgo.FailureProtocol, "OpenSearch indexing confirmation is unusable", 0)
 		}
 		return sdkgo.NewMutationBranch(IndexDocumentBranchIndexed, IndexedDocument{Index: input.Index, ID: input.DocumentID}, nil, sdkgo.Receipt{})
-	case http.StatusUnauthorized:
-		return indexFailure(IndexDocumentBranchProviderRejected, sdkgo.FailureAuthentication, "OpenSearch rejected the credentials")
-	case http.StatusForbidden:
-		return indexFailure(IndexDocumentBranchProviderRejected, sdkgo.FailureAuthorization, "OpenSearch denied index access")
+	case http.StatusUnauthorized, http.StatusForbidden:
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
+			return indexRetry(sdkgo.FailureTransport, "OpenSearch indexing outcome is unknown", 0)
+		}
+		kind := sdkgo.FailureAuthentication
+		if exchange.status == http.StatusForbidden {
+			kind = sdkgo.FailureAuthorization
+		}
+		return indexFailure(IndexDocumentBranchProviderRejected, kind, "OpenSearch refused index access")
 	default:
-		if !isDefiniteRefusalStatus(exchange.status) {
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
 			return indexRetry(sdkgo.FailureAvailability, "OpenSearch answered indexing with HTTP "+strconv.Itoa(exchange.status)+", so the outcome is unknown", 0)
 		}
 		return indexFailure(IndexDocumentBranchProviderRejected, sdkgo.FailureProviderRejection, "OpenSearch rejected indexing with HTTP "+strconv.Itoa(exchange.status))
@@ -136,33 +141,56 @@ func (operation DeleteDocumentOperation) Invoke(call sdkgo.Call, input DeleteDoc
 		if err := json.Unmarshal(exchange.body, &wire); err != nil {
 			return deleteRetry(sdkgo.FailureProtocol, "OpenSearch deletion confirmation is unusable", 0)
 		}
-		if exchange.status == http.StatusNotFound && wire.Error.Type == "index_not_found_exception" {
+		if exchange.status == http.StatusNotFound && wire.Error.Type == "index_not_found_exception" && wire.ID == "" && wire.Result == "" {
 			return deleteFailure(DeleteDocumentBranchIndexNotFound, sdkgo.FailureNotFound, "OpenSearch index was not found")
 		}
 		if wire.Index != input.Index || wire.ID != input.DocumentID || (wire.Result != "deleted" && wire.Result != "not_found") {
 			return deleteRetry(sdkgo.FailureProtocol, "OpenSearch deletion confirmation is incomplete", 0)
 		}
 		return sdkgo.NewMutationBranch(DeleteDocumentBranchAbsent, DeletedDocument{Index: input.Index, ID: input.DocumentID, WasDeleted: wire.Result == "deleted"}, nil, sdkgo.Receipt{})
-	case http.StatusUnauthorized:
-		return deleteFailure(DeleteDocumentBranchProviderRejected, sdkgo.FailureAuthentication, "OpenSearch rejected the credentials")
-	case http.StatusForbidden:
-		return deleteFailure(DeleteDocumentBranchProviderRejected, sdkgo.FailureAuthorization, "OpenSearch denied index access")
+	case http.StatusUnauthorized, http.StatusForbidden:
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
+			return deleteRetry(sdkgo.FailureTransport, "OpenSearch deletion outcome is unknown", 0)
+		}
+		kind := sdkgo.FailureAuthentication
+		if exchange.status == http.StatusForbidden {
+			kind = sdkgo.FailureAuthorization
+		}
+		return deleteFailure(DeleteDocumentBranchProviderRejected, kind, "OpenSearch refused index access")
 	default:
-		if !isDefiniteRefusalStatus(exchange.status) {
+		if !isDefiniteRefusalStatus(exchange.status, exchange.body) {
 			return deleteRetry(sdkgo.FailureAvailability, "OpenSearch answered deletion with HTTP "+strconv.Itoa(exchange.status)+", so the outcome is unknown", 0)
 		}
 		return deleteFailure(DeleteDocumentBranchProviderRejected, sdkgo.FailureProviderRejection, "OpenSearch rejected deletion with HTTP "+strconv.Itoa(exchange.status))
 	}
 }
 
-// isDefiniteRefusalStatus reports a status that proves OpenSearch refused the write; any other status is unknown.
-func isDefiniteRefusalStatus(status int) bool {
+// isDefiniteRefusalStatus accepts only a parsed refusal with no write receipt.
+func isDefiniteRefusalStatus(status int, body []byte) bool {
 	switch status {
-	case http.StatusBadRequest, http.StatusNotFound, http.StatusLengthRequired, http.StatusRequestEntityTooLarge,
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired, http.StatusRequestEntityTooLarge,
 		http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+	default:
+		return false
 	}
-	return false
+	var fields struct {
+		ID     string          `json:"_id"`
+		Result string          `json:"result"`
+		Error  json.RawMessage `json:"error"`
+	}
+	if json.Unmarshal(body, &fields) != nil || fields.ID != "" || fields.Result != "" {
+		return false
+	}
+	var message string
+	if json.Unmarshal(fields.Error, &message) == nil {
+		return strings.TrimSpace(message) != ""
+	}
+	var providerError struct {
+		Type   string `json:"type"`
+		Reason string `json:"reason"`
+	}
+	return json.Unmarshal(fields.Error, &providerError) == nil &&
+		(strings.TrimSpace(providerError.Type) != "" || strings.TrimSpace(providerError.Reason) != "")
 }
 
 type documentExchange struct {

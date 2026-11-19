@@ -233,6 +233,9 @@ func (operation CreateContactNoteOperation) Invoke(call sdkgo.Call, input Create
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ContactNote](queryFailure("createContactNote", sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
 	}
+	if decision.Marker.ProviderID != "" {
+		return operation.readBackCreatedNote(call, decision.Marker.ProviderID)
+	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return sdkgo.NewMutationUncertain(ContactNote{}, queryFailure("createContactNote", sdkgo.FailureTransport, "an earlier note create may have succeeded"), sdkgo.Receipt{})
 	}
@@ -248,7 +251,7 @@ func (operation CreateContactNoteOperation) Invoke(call sdkgo.Call, input Create
 	}
 	if errors.Is(err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(ContactNote{}, queryFailure("createContactNote", sdkgo.FailureAuthentication, "earlier note create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[ContactNote](queryFailure("createContactNote", sdkgo.FailureAuthentication, "credentials are unavailable for read-back or resend"), 0)
 		}
 		if fence.RecordNotSent() != nil {
 			return sdkgo.NewMutationRetry[ContactNote](queryFailure("createContactNote", sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -273,16 +276,50 @@ func (operation CreateContactNoteOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationUncertain(ContactNote{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusCreated {
+		if !isDefiniteNimbleRefusal(response.status, response.body) {
+			failure := queryFailure("createContactNote", sdkgo.FailureTransport, "note create outcome is unknown")
+			if canResend {
+				return sdkgo.NewMutationRetry[ContactNote](failure, response.retryAfter)
+			}
+			return sdkgo.NewMutationUncertain(ContactNote{}, failure, sdkgo.Receipt{})
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(ContactNote{}, queryFailure("createContactNote", sdkgo.FailureProviderRejection, "earlier note create may have succeeded"), sdkgo.Receipt{})
+			failure := queryFailure("createContactNote", sdkgo.FailureTransport, "earlier note create may have succeeded")
+			if canResend {
+				return sdkgo.NewMutationRetry[ContactNote](failure, 0)
+			}
+			return sdkgo.NewMutationUncertain(ContactNote{}, failure, sdkgo.Receipt{})
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[ContactNote](queryFailure("createContactNote", sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return mutationBranch(CreateContactNoteBranchProviderRejected, "createContactNote", ContactNote{}, sdkgo.FailureProviderRejection, "Nimble rejected the note")
 	}
 	note, parseError := decodeContactNote(response.body)
 	if parseError != nil {
-		return sdkgo.NewMutationUncertain(ContactNote{}, queryFailure("createContactNote", sdkgo.FailureProtocol, "Nimble accepted the note but did not identify it"), sdkgo.Receipt{})
+		failure := queryFailure("createContactNote", sdkgo.FailureProtocol, "Nimble accepted the note but did not identify it")
+		if canResend {
+			return sdkgo.NewMutationRetry[ContactNote](failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(ContactNote{}, failure, sdkgo.Receipt{})
 	}
-	return sdkgo.NewMutationBranch(CreateContactNoteBranchCreated, note, nil, sdkgo.Receipt{})
+	// The accepted ID prevents a replay from sending another note after a lost Step result.
+	_ = fence.RecordProviderID(note.ID)
+	return sdkgo.NewMutationBranch(CreateContactNoteBranchCreated, note, nil, sdkgo.Receipt{ProviderObjectID: note.ID})
+}
+
+func (operation CreateContactNoteOperation) readBackCreatedNote(call sdkgo.Call, noteID string) sdkgo.MutationAttempt[ContactNote] {
+	response, err := operation.client.sendWrite(call, call.Context, http.MethodGet, "/contacts/notes/"+url.PathEscape(noteID), nil)
+	if err == nil && response.status == http.StatusOK {
+		note, decodeError := decodeContactNote(response.body)
+		if decodeError == nil && note.ID == noteID {
+			return sdkgo.NewMutationBranch(CreateContactNoteBranchCreated, note, nil, sdkgo.Receipt{ProviderObjectID: note.ID})
+		}
+	}
+	if err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
+		return sdkgo.NewMutationRetry[ContactNote](queryFailure("createContactNote", sdkgo.FailureAvailability, "note read-back is unavailable"), response.retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(ContactNote{}, queryFailure("createContactNote", sdkgo.FailureTransport, "created note could not be confirmed by ID"), sdkgo.Receipt{ProviderObjectID: noteID})
 }
 
 // UpdateContactNoteOperation replaces a contact note.
@@ -326,15 +363,18 @@ func (operation UpdateContactNoteOperation) Invoke(call sdkgo.Call, input Update
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[ContactNote](queryFailure("updateContactNote", sdkgo.FailureAvailability, "note replacement is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteNimbleRefusal(response.status, response.body) {
 		return mutationBranch(UpdateContactNoteBranchNotFound, "updateContactNote", ContactNote{}, sdkgo.FailureNotFound, "note was not found")
 	}
 	if response.status != http.StatusOK {
-		return mutationBranch(UpdateContactNoteBranchProviderRejected, "updateContactNote", ContactNote{}, sdkgo.FailureProviderRejection, "Nimble rejected the note replacement")
+		if isDefiniteNimbleRefusal(response.status, response.body) {
+			return mutationBranch(UpdateContactNoteBranchProviderRejected, "updateContactNote", ContactNote{}, sdkgo.FailureProviderRejection, "Nimble rejected the note replacement")
+		}
+		return sdkgo.NewMutationRetry[ContactNote](queryFailure("updateContactNote", sdkgo.FailureTransport, "note replacement outcome is unknown"), response.retryAfter)
 	}
 	note, parseError := decodeContactNote(response.body)
 	if parseError != nil {
-		return mutationBranch(UpdateContactNoteBranchInvalidResponse, "updateContactNote", ContactNote{}, sdkgo.FailureProtocol, "Nimble returned an invalid note")
+		return sdkgo.NewMutationRetry[ContactNote](queryFailure("updateContactNote", sdkgo.FailureProtocol, "Nimble returned an invalid note"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateContactNoteBranchUpdated, note, nil, sdkgo.Receipt{})
 }
@@ -384,11 +424,14 @@ func (operation DeleteContactNoteOperation) Invoke(call sdkgo.Call, input Delete
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[DeletedContactNote](queryFailure("deleteContactNote", sdkgo.FailureAvailability, "note deletion is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteNimbleRefusal(response.status, response.body) {
 		return mutationBranch(DeleteContactNoteBranchNotFound, "deleteContactNote", DeletedContactNote{}, sdkgo.FailureNotFound, "note was not found")
 	}
 	if response.status != http.StatusOK {
-		return mutationBranch(DeleteContactNoteBranchProviderRejected, "deleteContactNote", DeletedContactNote{}, sdkgo.FailureProviderRejection, "Nimble rejected the note deletion")
+		if isDefiniteNimbleRefusal(response.status, response.body) {
+			return mutationBranch(DeleteContactNoteBranchProviderRejected, "deleteContactNote", DeletedContactNote{}, sdkgo.FailureProviderRejection, "Nimble rejected the note deletion")
+		}
+		return sdkgo.NewMutationRetry[DeletedContactNote](queryFailure("deleteContactNote", sdkgo.FailureTransport, "note deletion outcome is unknown"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(DeleteContactNoteBranchDeleted, DeletedContactNote{NoteID: input.NoteID}, nil, sdkgo.Receipt{})
 }

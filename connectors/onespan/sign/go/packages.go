@@ -268,7 +268,7 @@ func (operation CreateDraftPackageOperation) Invoke(call sdkgo.Call, input Creat
 	}
 	if errors.Is(err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CreatedPackage{}, packageOperationFailure("createDraftPackage", sdkgo.FailureAuthentication, "earlier create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CreatedPackage](packageOperationFailure("createDraftPackage", sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
 		}
 		if fence.RecordNotSent() != nil {
 			return sdkgo.NewMutationRetry[CreatedPackage](packageOperationFailure("createDraftPackage", sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -293,14 +293,32 @@ func (operation CreateDraftPackageOperation) Invoke(call sdkgo.Call, input Creat
 		return sdkgo.NewMutationUncertain(CreatedPackage{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
+		if !isDefiniteOneSpanRefusal(response.status, response.body) {
+			failure := packageOperationFailure("createDraftPackage", sdkgo.FailureTransport, "provider write outcome is unknown")
+			if canResend {
+				return sdkgo.NewMutationRetry[CreatedPackage](failure, response.retryAfter)
+			}
+			return sdkgo.NewMutationUncertain(CreatedPackage{}, failure, sdkgo.Receipt{})
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CreatedPackage{}, packageOperationFailure("createDraftPackage", sdkgo.FailureProviderRejection, "earlier create may have succeeded"), sdkgo.Receipt{})
+			failure := packageOperationFailure("createDraftPackage", sdkgo.FailureTransport, "an earlier write may have succeeded")
+			if canResend {
+				return sdkgo.NewMutationRetry[CreatedPackage](failure, 0)
+			}
+			return sdkgo.NewMutationUncertain(CreatedPackage{}, failure, sdkgo.Receipt{})
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CreatedPackage](packageOperationFailure("createDraftPackage", sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return packageMutationBranch[CreatedPackage]("createDraftPackage", CreateDraftPackageBranchProviderRejected, sdkgo.FailureProviderRejection, "provider rejected draft creation")
 	}
 	var created CreatedPackage
 	if json.Unmarshal(response.body, &created) != nil || !validPackageID(created.ID) {
-		return sdkgo.NewMutationUncertain(CreatedPackage{}, packageOperationFailure("createDraftPackage", sdkgo.FailureProtocol, "provider accepted draft without a valid ID"), sdkgo.Receipt{})
+		failure := packageOperationFailure("createDraftPackage", sdkgo.FailureProtocol, "provider accepted draft without a valid ID")
+		if canResend {
+			return sdkgo.NewMutationRetry[CreatedPackage](failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(CreatedPackage{}, failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateDraftPackageBranchCreated, created, nil, sdkgo.Receipt{})
 }
@@ -319,14 +337,17 @@ func invokePackageWrite[T any](call sdkgo.Call, client *Client, operation, metho
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[T](packageOperationFailure(operation, sdkgo.FailureAvailability, "provider is unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteOneSpanRefusal(response.status, response.body) {
 		return packageMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "package was not found")
 	}
 	if response.status != http.StatusOK && response.status != http.StatusNoContent {
-		return packageMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, fmt.Sprintf("provider rejected HTTP %d", response.status))
+		if isDefiniteOneSpanRefusal(response.status, response.body) {
+			return packageMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, fmt.Sprintf("provider rejected HTTP %d", response.status))
+		}
+		return sdkgo.NewMutationRetry[T](packageOperationFailure(operation, sdkgo.FailureTransport, "provider write outcome is unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return packageMutationBranch[T](operation, invalid, sdkgo.FailureResponseTooLarge, "response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[T](packageOperationFailure(operation, sdkgo.FailureResponseTooLarge, "response exceeded the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[T](packageOperationFailure(operation, sdkgo.FailureTransport, "provider response was interrupted"), 0)
@@ -413,7 +434,7 @@ func (operation SendPackageOperation) Invoke(call sdkgo.Call, input SendPackageI
 	}
 	if errors.Is(err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(SentPackage{}, packageOperationFailure("sendPackage", sdkgo.FailureAuthentication, "earlier send may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SentPackage](packageOperationFailure("sendPackage", sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
 		}
 		if fence.RecordNotSent() != nil {
 			return sdkgo.NewMutationRetry[SentPackage](packageOperationFailure("sendPackage", sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -437,15 +458,26 @@ func (operation SendPackageOperation) Invoke(call sdkgo.Call, input SendPackageI
 		}
 		return sdkgo.NewMutationUncertain(SentPackage{}, failure, sdkgo.Receipt{})
 	}
-	if response.status == http.StatusNotFound {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(SentPackage{}, packageOperationFailure("sendPackage", sdkgo.FailureNotFound, "earlier delivery may have succeeded"), sdkgo.Receipt{})
-		}
-		return packageMutationBranch[SentPackage]("sendPackage", SendPackageBranchNotFound, sdkgo.FailureNotFound, "package was not found")
-	}
 	if response.status != http.StatusOK && response.status != http.StatusNoContent {
+		if !isDefiniteOneSpanRefusal(response.status, response.body) {
+			failure := packageOperationFailure("sendPackage", sdkgo.FailureTransport, "delivery outcome is unknown")
+			if canResend {
+				return sdkgo.NewMutationRetry[SentPackage](failure, response.retryAfter)
+			}
+			return sdkgo.NewMutationUncertain(SentPackage{}, failure, sdkgo.Receipt{})
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(SentPackage{}, packageOperationFailure("sendPackage", sdkgo.FailureProviderRejection, "earlier delivery may have succeeded"), sdkgo.Receipt{})
+			failure := packageOperationFailure("sendPackage", sdkgo.FailureTransport, "earlier delivery may have succeeded")
+			if canResend {
+				return sdkgo.NewMutationRetry[SentPackage](failure, 0)
+			}
+			return sdkgo.NewMutationUncertain(SentPackage{}, failure, sdkgo.Receipt{})
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[SentPackage](packageOperationFailure("sendPackage", sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
+		}
+		if response.status == http.StatusNotFound {
+			return packageMutationBranch[SentPackage]("sendPackage", SendPackageBranchNotFound, sdkgo.FailureNotFound, "package was not found")
 		}
 		return packageMutationBranch[SentPackage]("sendPackage", SendPackageBranchProviderRejected, sdkgo.FailureProviderRejection, "provider rejected the send")
 	}

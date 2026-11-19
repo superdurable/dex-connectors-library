@@ -22,18 +22,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {APIKey: sdkgo.NewSecretString("sample-onespan-sign-api-key")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	conformanceContext := queryContext{priorHeartbeat: scenario.PriorHeartbeat}
-	if len(scenario.PriorHeartbeat) > 0 {
-		var marker struct {
-			Attempt int32 `json:"attempt"`
-		}
-		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
-		conformanceContext.attempt = marker.Attempt + 1
-	}
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	conformanceContext := &queryContext{}
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { conformanceContext.priorHeartbeat = append(json.RawMessage(nil), value...) })
+	conformanceContext.attempt = priorAttempt + 1
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { conformanceContext.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
 		"getPackage":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPackage(), reference),
 		"listPackages":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPackages(), reference),
-		"createDraftPackage": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateDraftPackage(), reference, scenario.CallID),
+		"createDraftPackage": newConformanceMutationInvocation(t, scenario.Input, conformanceContext, client.CreateDraftPackage(), reference, scenario.CallID),
 		"updatePackageName":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdatePackageName(), reference, scenario.CallID),
 		"sendPackage":        newConformanceMutationInvocation(t, scenario.Input, conformanceContext, client.SendPackage(), reference, scenario.CallID),
 		"trashPackage":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.TrashPackage(), reference, scenario.CallID),

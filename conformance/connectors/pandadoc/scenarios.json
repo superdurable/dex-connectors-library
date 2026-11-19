@@ -340,7 +340,7 @@
       "callId": "00000000-0000-4000-8000-000000000202",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -696,7 +696,7 @@
       "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -929,7 +929,7 @@
       "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1029,13 +1029,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "documentId": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1209,7 +1206,7 @@
       "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1283,10 +1280,14 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "id": "fANp5wW5EwY7AkiTkTGekZ",
@@ -1316,7 +1317,7 @@
       "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1352,10 +1353,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": "",
@@ -1421,9 +1426,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1484,9 +1494,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1545,12 +1560,16 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1607,12 +1626,16 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -1700,23 +1723,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "id": "",
-          "name": "",
-          "status": ""
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
       "input": {
@@ -1888,23 +1910,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-          "sendCount": 3,
-          "state": "claimed"
-        },
-        "output": {
-          "id": "",
-          "name": "",
-          "status": ""
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 3,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 5,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
       "input": {
@@ -1920,23 +1941,31 @@
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+                "attempt": 1,
+                "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
         {
           "exchangeCount": 3,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 2,
-            "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-            "sendCount": 2,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+                "attempt": 2,
+                "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+                "sendCount": 2,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -1976,10 +2005,14 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "documentId": "fANp5wW5EwY7AkiTkTGekZ"
@@ -2003,7 +2036,7 @@
       "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2031,10 +2064,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "documentId": ""
@@ -2086,9 +2123,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2137,9 +2179,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2186,12 +2233,16 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2236,12 +2287,16 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -2286,7 +2341,7 @@
       "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2314,10 +2369,14 @@
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "documentId": ""
@@ -2447,21 +2506,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-          "sendCount": 3,
-          "state": "claimed"
-        },
-        "output": {
-          "documentId": ""
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 3,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 5,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
       "input": {
@@ -2473,23 +2533,31 @@
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+                "attempt": 1,
+                "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
         {
           "exchangeCount": 3,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 2,
-            "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-            "sendCount": 2,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+                "attempt": 2,
+                "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+                "sendCount": 2,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -2588,12 +2656,16 @@
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+                "attempt": 1,
+                "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -2667,18 +2739,951 @@
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+                "attempt": 1,
+                "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
       ],
       "name": "sendDocument-read-back",
       "operation": "sendDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-unknown-409",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-unknown-405",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-unknown-empty403",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-unknown-contradictory403",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-unknown-409",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-unknown-405",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-unknown-empty403",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-unknown-contradictory403",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-unknown-409",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-unknown-405",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-unknown-empty403",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-unknown-contradictory403",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-unknown-409",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-unknown-405",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-unknown-empty403",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 1,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-unknown-contradictory403",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{\"results\":[],\"count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "metadata_dex_call_id": [
+              "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-send-cap-readback-unconfirmed",
+      "operation": "createDocument",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 3,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"fANp5wW5EwY7AkiTkTGekZ\",\"name\":\"Example agreement\",\"status\":\"document.draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-send-cap-readback-unconfirmed",
+      "operation": "sendDocument",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3": {
+              "attempt": 3,
+              "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 1

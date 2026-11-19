@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -256,19 +257,40 @@ func executePayoutWrite[T any](client *Client, call sdkgo.Call, operation, metho
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		return sdkgo.NewMutationRetry[T](*failureFor(operation, sdkgo.FailureAvailability, "payout outcome is unknown"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
-	if response.StatusCode == http.StatusNotFound && notFoundBranch != "" {
+	content, bodyError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if response.StatusCode == http.StatusNotFound && notFoundBranch != "" && bodyError == nil && isDefinitePayPalRefusal(response.StatusCode, content) {
 		return payoutFailure[T](operation, notFoundBranch, sdkgo.FailureNotFound, "payout item was not found")
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted {
-		return payoutFailure[T](operation, rejectedBranch, sdkgo.FailureProviderRejection, "provider rejected the payout action with HTTP "+strconv.Itoa(response.StatusCode))
+		if bodyError == nil && isDefinitePayPalRefusal(response.StatusCode, content) {
+			return payoutFailure[T](operation, rejectedBranch, sdkgo.FailureProviderRejection, "provider rejected the payout action with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return sdkgo.NewMutationRetry[T](*failureFor(operation, sdkgo.FailureTransport, "payout outcome is unknown"), 0)
 	}
-	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if err != nil {
-		return payoutFailure[T](operation, invalidBranch, sdkgo.FailureProtocol, "provider payout response was invalid")
+	if bodyError != nil {
+		return sdkgo.NewMutationRetry[T](*failureFor(operation, sdkgo.FailureProtocol, "provider payout response was invalid"), 0)
 	}
 	value, err := decode(content)
 	if err != nil {
-		return payoutFailure[T](operation, invalidBranch, sdkgo.FailureProtocol, "provider payout response was invalid")
+		return sdkgo.NewMutationRetry[T](*failureFor(operation, sdkgo.FailureProtocol, "provider payout response was invalid"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, value, nil, sdkgo.Receipt{IdempotencyKey: call.IdempotencyKey})
+}
+
+func isDefinitePayPalRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var fields struct {
+		Name         string          `json:"name"`
+		Message      string          `json:"message"`
+		BatchHeader  json.RawMessage `json:"batch_header"`
+		PayoutItemID string          `json:"payout_item_id"`
+	}
+	return json.Unmarshal(body, &fields) == nil && len(fields.BatchHeader) == 0 && fields.PayoutItemID == "" &&
+		strings.TrimSpace(fields.Name) != "" && strings.TrimSpace(fields.Message) != ""
 }

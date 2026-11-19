@@ -241,7 +241,7 @@
       "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1032,7 +1032,7 @@
       "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1079,7 +1079,7 @@
       "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1477,7 +1477,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1576,7 +1576,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1675,7 +1675,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2258,7 +2258,7 @@
       "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2297,7 +2297,7 @@
       "callId": "6d970af9-bbb1-501e-beb0-a270017bfe8b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2353,14 +2353,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2532,11 +2528,15 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-          "providerId": "conv_001",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "providerId": "conv_001",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "createdAt": 1741900000,
@@ -2602,9 +2602,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "createdAt": 0,
@@ -2668,10 +2673,14 @@
         "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2762,9 +2771,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2823,10 +2837,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2883,10 +2901,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -2954,7 +2976,7 @@
       "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2993,7 +3015,7 @@
       "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -3243,7 +3265,7 @@
       "callId": "47acef64-c72b-564b-975d-4236cf033d67",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3291,7 +3313,7 @@
       "callId": "47acef64-c72b-564b-975d-4236cf033d67",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3361,15 +3383,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "createdAt": 0,
-          "id": "",
-          "metadata": {}
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3579,7 +3596,7 @@
       "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3618,7 +3635,7 @@
       "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3674,14 +3691,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3910,10 +3923,14 @@
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-          "sendCount": 3,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 3,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "createdAt": 0,
@@ -3943,10 +3960,14 @@
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+                "attempt": 1,
+                "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
@@ -3954,10 +3975,14 @@
           "exchangeCount": 2,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 2,
-            "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
-            "sendCount": 2,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+                "attempt": 2,
+                "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+                "sendCount": 2,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -4029,7 +4054,7 @@
       "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4335,7 +4360,7 @@
       "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4374,7 +4399,7 @@
       "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4430,14 +4455,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4571,6 +4592,835 @@
         "fileId": "file_001"
       },
       "name": "deleteFile-transport",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"conversation request refused\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-unknown-409",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"conversation request refused\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-unknown-405",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-unknown-empty403",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-unknown-contradictory403",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-unknown-409",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-unknown-405",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-unknown-empty403",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-unknown-contradictory403",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-unknown-409",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-unknown-405",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-unknown-empty403",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-unknown-contradictory403",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-unknown-409",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OpenAI refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-unknown-405",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-unknown-empty403",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-unknown-contradictory403",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "47acef64-c72b-564b-975d-4236cf033d67",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/conv_001",
+          "requestBody": {
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47acef64-c72b-564b-975d-4236cf033d67",
+      "input": {
+        "conversationId": "conv_001",
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "updateConversation-malformed-success-retry",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/conv_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "365e09f8-ee6e-5451-abb0-4d2ca3a30d9f",
+      "input": {
+        "conversationId": "conv_001"
+      },
+      "name": "deleteConversation-malformed-success-retry",
+      "operation": "deleteConversation"
+    },
+    {
+      "callId": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/files/file_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9aaf83f-6413-5a00-b0a3-65c76d3fb206",
+      "input": {
+        "fileId": "file_001"
+      },
+      "name": "deleteFile-malformed-success-retry",
       "operation": "deleteFile"
     }
   ],

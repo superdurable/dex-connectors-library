@@ -1353,7 +1353,7 @@
           "status": 200
         },
         {
-          "body": "{\"name\":\"INVALID_REQUEST\"}",
+          "body": "{\"name\":\"INVALID_REQUEST\",\"message\":\"PayPal refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1483,16 +1483,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "batch_header": {
-            "batch_status": "",
-            "payout_batch_id": ""
-          }
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1893,7 +1887,7 @@
           "status": 200
         },
         {
-          "body": "{\"name\":\"INVALID_REQUEST\"}",
+          "body": "{\"name\":\"INVALID_REQUEST\",\"message\":\"PayPal refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1970,14 +1964,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "payout_item_id": "",
-          "transaction_status": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2179,7 +2169,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"name\":\"INVALID_REQUEST\",\"message\":\"PayPal refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

@@ -311,14 +311,20 @@ func runSafeDocumentMutation(client *Client, call sdkgo.Call, operation, method,
 	if errors.Is(response.err, errRequest) || response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[DocumentAction](documentOperationFailure(operation, sdkgo.FailureAvailability, "provider update outcome is unknown"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && response.err == nil && isDefinitePandaDocRefusal(response.status, response.body) {
 		if isDelete {
 			return sdkgo.NewMutationBranch(success, DocumentAction{DocumentID: documentID}, nil, sdkgo.Receipt{})
 		}
 		return mutationDocumentFailure[DocumentAction](operation, notFound, sdkgo.FailureNotFound, "document was not found")
 	}
 	if response.status != http.StatusNoContent {
-		return mutationDocumentFailure[DocumentAction](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the document action")
+		if response.err == nil && isDefinitePandaDocRefusal(response.status, response.body) {
+			return mutationDocumentFailure[DocumentAction](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the document action")
+		}
+		return sdkgo.NewMutationRetry[DocumentAction](documentOperationFailure(operation, sdkgo.FailureTransport, "document action outcome is unknown"), response.retryAfter)
+	}
+	if response.err != nil {
+		return sdkgo.NewMutationRetry[DocumentAction](documentOperationFailure(operation, sdkgo.FailureProtocol, "document response is unreadable"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, DocumentAction{DocumentID: documentID}, nil, sdkgo.Receipt{})
 }
@@ -373,7 +379,7 @@ func runLimitedDocumentMutation[T any](client *Client, call sdkgo.Call, operatio
 	request, err := client.newDocumentRequest(call, http.MethodPost, path, body)
 	if err != nil {
 		if decision.MaximumPriorSends > 0 {
-			return uncertainDocumentMutation[T](operation)
+			return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, sdkgo.FailureAuthentication, "credentials are unavailable for read-back or resend"), 0)
 		}
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
@@ -390,10 +396,7 @@ func runLimitedDocumentMutation[T any](client *Client, call sdkgo.Call, operatio
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
 	if errors.Is(err, errRequest) || response.status == 0 {
-		if !canResend {
-			return uncertainDocumentMutation[T](operation)
-		}
-		return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
+		return unknownDocumentMutation[T](operation, canResend || readBack != nil)
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -406,29 +409,35 @@ func runLimitedDocumentMutation[T any](client *Client, call sdkgo.Call, operatio
 		return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, kind, "provider asked to retry the write"), response.retryAfter)
 	}
 	if response.status >= 500 || response.status == http.StatusRequestTimeout {
-		if !canResend {
-			return uncertainDocumentMutation[T](operation)
-		}
-		return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
+		return unknownDocumentMutation[T](operation, canResend || readBack != nil)
 	}
-	if response.status == http.StatusNotFound && notFound != "" {
+	if response.status == http.StatusNotFound && notFound != "" && response.err == nil && isDefinitePandaDocRefusal(response.status, response.body) {
 		if decision.MaximumPriorSends > 0 {
-			return uncertainDocumentMutation[T](operation)
+			return unknownDocumentMutation[T](operation, canResend || readBack != nil)
+		}
+		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+			return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return mutationDocumentFailure[T](operation, notFound, sdkgo.FailureNotFound, "document was not found")
 	}
 	if response.status < 200 || response.status >= 300 {
+		if response.err != nil || !isDefinitePandaDocRefusal(response.status, response.body) {
+			return unknownDocumentMutation[T](operation, canResend || readBack != nil)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return uncertainDocumentMutation[T](operation)
+			return unknownDocumentMutation[T](operation, canResend || readBack != nil)
+		}
+		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+			return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return mutationDocumentFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the write")
 	}
 	if response.err != nil {
-		return uncertainDocumentMutation[T](operation)
+		return unknownDocumentMutation[T](operation, canResend || readBack != nil)
 	}
 	value, err := decode(response)
 	if err != nil {
-		return uncertainDocumentMutation[T](operation)
+		return unknownDocumentMutation[T](operation, canResend || readBack != nil)
 	}
 	return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
 }
@@ -448,6 +457,30 @@ func mutationDocumentFailure[T any](operation string, branch sdkgo.BranchID, kin
 func uncertainDocumentMutation[T any](operation string) sdkgo.MutationAttempt[T] {
 	var zero T
 	return sdkgo.NewMutationUncertain(zero, documentOperationFailure(operation, sdkgo.FailureTransport, "provider write may have succeeded"), sdkgo.Receipt{})
+}
+
+func unknownDocumentMutation[T any](operation string, canRetry bool) sdkgo.MutationAttempt[T] {
+	if canRetry {
+		return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, sdkgo.FailureTransport, "provider write outcome is unknown"), 0)
+	}
+	return uncertainDocumentMutation[T](operation)
+}
+
+func isDefinitePandaDocRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var envelope struct {
+		ID    string `json:"id"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && envelope.ID == "" && strings.TrimSpace(envelope.Error.Message) != ""
 }
 
 func documentOperationFailure(operation string, kind sdkgo.FailureKind, message string) sdkgo.Failure {

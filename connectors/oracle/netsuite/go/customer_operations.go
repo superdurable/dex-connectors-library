@@ -163,7 +163,7 @@ func (client *Client) requestCustomer(call sdkgo.Call, ctx context.Context, meth
 	defer response.Body.Close()
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if bytes.Contains(body, []byte(accessToken)) {
-		return customerHTTPResult{failure: customerOperationFailure(operationName, sdkgo.FailureAuthentication, "Oracle NetSuite response contained a credential")}
+		return customerHTTPResult{status: response.StatusCode, failure: customerOperationFailure(operationName, sdkgo.FailureAuthentication, "Oracle NetSuite response contained a credential")}
 	}
 	return customerHTTPResult{status: response.StatusCode, location: response.Header.Get("Location"), body: body,
 		retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), err: err}
@@ -236,13 +236,19 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 			if json.Unmarshal(readBack.body, &customer) == nil && customerIDPattern.MatchString(customer.ID) && customer.EntityID == input.EntityID {
 				return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, customer, nil, sdkgo.Receipt{ProviderObjectID: customer.ID})
 			}
-			return sdkgo.NewMutationUncertain(CustomerSummary{}, *customerOperationFailure(operationName, sdkgo.FailureProtocol, "created customer could not be confirmed"), sdkgo.Receipt{})
+			if decision.Kind == singledispatch.ReadBackRequired {
+				return sdkgo.NewMutationUncertain(CustomerSummary{}, *customerOperationFailure(operationName, sdkgo.FailureProtocol, "created customer could not be confirmed"), sdkgo.Receipt{})
+			}
+			return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureProtocol, "customer read-back is invalid"), 0)
 		}
 		if isCustomerRetry(readBack) {
 			return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureAvailability, "customer read-back is unavailable"), readBack.retryAfter)
 		}
-		if readBack.status != http.StatusNotFound || decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
+		if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
 			return sdkgo.NewMutationUncertain(CustomerSummary{}, *customerOperationFailure(operationName, sdkgo.FailureTransport, "customer creation may already have succeeded"), sdkgo.Receipt{})
+		}
+		if readBack.status != http.StatusNotFound {
+			return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureTransport, "customer read-back is inconclusive"), readBack.retryAfter)
 		}
 	}
 	payload := map[string]any{"entityId": input.EntityID, "companyName": input.CompanyName, "externalId": externalID, "subsidiary": map[string]string{"id": input.SubsidiaryID}}
@@ -255,11 +261,17 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureTransport, "customer dispatch did not start"), 0)
 	}
 	if result.failure != nil {
+		if decision.MaximumPriorSends > 0 || result.status != 0 {
+			return sdkgo.NewMutationRetry[CustomerSummary](*result.failure, 0)
+		}
+		if fence.RecordNotSent() != nil {
+			return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateCustomerBranchDefect, CustomerSummary{}, result.failure, sdkgo.Receipt{})
 	}
 	if result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(CustomerSummary{}, *customerOperationFailure(operationName, sdkgo.FailureTransport, "retry checkpoint failed"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureAvailability, "retry checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureAvailability, "NetSuite requested a retry"), result.retryAfter)
 	}
@@ -267,18 +279,27 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureAvailability, "customer creation outcome is unknown"), result.retryAfter)
 	}
 	if result.status != http.StatusNoContent {
+		if result.err != nil || !isDefiniteNetSuiteRefusal(result.status, result.body) {
+			return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureTransport, "customer creation outcome is unknown"), result.retryAfter)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CustomerSummary{}, *customerOperationFailure(operationName, sdkgo.FailureTransport, "an earlier customer create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureTransport, "an earlier customer create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateCustomerBranchProviderRejected, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected customer creation"), sdkgo.Receipt{})
 	}
+	if result.err != nil {
+		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureProtocol, "customer response is unreadable"), 0)
+	}
 	locationURL, parseErr := url.Parse(result.location)
 	if parseErr != nil {
-		return sdkgo.NewMutationUncertain(CustomerSummary{}, *customerOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite returned an invalid customer Location"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite returned an invalid customer Location"), 0)
 	}
 	createdID := strings.TrimPrefix(locationURL.Path, "/services/rest/record/v1/customer/")
 	if !customerIDPattern.MatchString(createdID) {
-		return sdkgo.NewMutationUncertain(CustomerSummary{}, *customerOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite did not return a valid created customer ID"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite did not return a valid created customer ID"), 0)
 	}
 	_ = fence.RecordProviderID(createdID)
 	return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, CustomerSummary{ID: createdID, EntityID: input.EntityID}, nil, sdkgo.Receipt{ProviderObjectID: createdID})
@@ -292,16 +313,22 @@ func (operation UpdateCustomerOperation) Invoke(call sdkgo.Call, input UpdateCus
 	}
 	result := operation.client.requestCustomer(call, call.Context, http.MethodPatch, "/"+url.PathEscape(input.CustomerID), map[string]string{"entityId": input.EntityID}, operationName)
 	if result.failure != nil {
+		if result.status != 0 {
+			return sdkgo.NewMutationRetry[CustomerSummary](*result.failure, 0)
+		}
 		return sdkgo.NewMutationBranch(UpdateCustomerBranchDefect, CustomerSummary{}, result.failure, sdkgo.Receipt{})
 	}
 	if isCustomerRetry(result) {
 		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureAvailability, "customer update is temporarily unavailable"), result.retryAfter)
 	}
-	if result.status == http.StatusNotFound {
+	if result.status == http.StatusNotFound && isDefiniteNetSuiteRefusal(result.status, result.body) {
 		return sdkgo.NewMutationBranch(UpdateCustomerBranchNotFound, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureNotFound, "customer was not found"), sdkgo.Receipt{})
 	}
 	if result.status != http.StatusNoContent {
-		return sdkgo.NewMutationBranch(UpdateCustomerBranchProviderRejected, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected customer update"), sdkgo.Receipt{})
+		if isDefiniteNetSuiteRefusal(result.status, result.body) {
+			return sdkgo.NewMutationBranch(UpdateCustomerBranchProviderRejected, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected customer update"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureTransport, "NetSuite write outcome is unknown"), result.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(UpdateCustomerBranchUpdated, CustomerSummary{ID: input.CustomerID, EntityID: input.EntityID}, nil, sdkgo.Receipt{ProviderObjectID: input.CustomerID})
 }
@@ -314,16 +341,22 @@ func (operation DeleteCustomerOperation) Invoke(call sdkgo.Call, input GetCustom
 	}
 	result := operation.client.requestCustomer(call, call.Context, http.MethodDelete, "/"+url.PathEscape(input.CustomerID), nil, operationName)
 	if result.failure != nil {
+		if result.status != 0 {
+			return sdkgo.NewMutationRetry[CustomerSummary](*result.failure, 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteCustomerBranchDefect, CustomerSummary{}, result.failure, sdkgo.Receipt{})
 	}
 	if isCustomerRetry(result) {
 		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureAvailability, "customer deletion is temporarily unavailable"), result.retryAfter)
 	}
-	if result.status == http.StatusNotFound {
+	if result.status == http.StatusNotFound && isDefiniteNetSuiteRefusal(result.status, result.body) {
 		return sdkgo.NewMutationBranch(DeleteCustomerBranchNotFound, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureNotFound, "customer was not found"), sdkgo.Receipt{})
 	}
 	if result.status != http.StatusNoContent {
-		return sdkgo.NewMutationBranch(DeleteCustomerBranchProviderRejected, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected customer deletion"), sdkgo.Receipt{})
+		if isDefiniteNetSuiteRefusal(result.status, result.body) {
+			return sdkgo.NewMutationBranch(DeleteCustomerBranchProviderRejected, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected customer deletion"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureTransport, "NetSuite write outcome is unknown"), result.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(DeleteCustomerBranchDeleted, CustomerSummary{ID: input.CustomerID}, nil, sdkgo.Receipt{ProviderObjectID: input.CustomerID})
 }

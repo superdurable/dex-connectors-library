@@ -19,6 +19,22 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
+func isDefiniteNetSuiteRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var fields struct {
+		ID         string `json:"id"`
+		ExternalID string `json:"externalId"`
+		Detail     string `json:"detail"`
+	}
+	return json.Unmarshal(body, &fields) == nil && fields.ID == "" && fields.ExternalID == "" && strings.TrimSpace(fields.Detail) != ""
+}
+
 // ListVendorsInput selects one page of vendor records.
 type ListVendorsInput struct {
 	// Limit is the page size from 1 to 1000.
@@ -163,7 +179,7 @@ func (client *Client) requestVendor(call sdkgo.Call, ctx context.Context, method
 	defer response.Body.Close()
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if bytes.Contains(body, []byte(accessToken)) {
-		return vendorHTTPResult{failure: vendorOperationFailure(operationName, sdkgo.FailureAuthentication, "Oracle NetSuite response contained a credential")}
+		return vendorHTTPResult{status: response.StatusCode, failure: vendorOperationFailure(operationName, sdkgo.FailureAuthentication, "Oracle NetSuite response contained a credential")}
 	}
 	return vendorHTTPResult{status: response.StatusCode, location: response.Header.Get("Location"), body: body,
 		retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), err: err}
@@ -236,13 +252,19 @@ func (operation CreateVendorOperation) Invoke(call sdkgo.Call, input CreateVendo
 			if json.Unmarshal(readBack.body, &vendor) == nil && vendorIDPattern.MatchString(vendor.ID) && vendor.EntityID == input.EntityID {
 				return sdkgo.NewMutationBranch(CreateVendorBranchCreated, vendor, nil, sdkgo.Receipt{ProviderObjectID: vendor.ID})
 			}
-			return sdkgo.NewMutationUncertain(VendorSummary{}, *vendorOperationFailure(operationName, sdkgo.FailureProtocol, "created vendor could not be confirmed"), sdkgo.Receipt{})
+			if decision.Kind == singledispatch.ReadBackRequired {
+				return sdkgo.NewMutationUncertain(VendorSummary{}, *vendorOperationFailure(operationName, sdkgo.FailureProtocol, "created vendor could not be confirmed"), sdkgo.Receipt{})
+			}
+			return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureProtocol, "vendor read-back is invalid"), 0)
 		}
 		if isVendorRetry(readBack) {
 			return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureAvailability, "vendor read-back is unavailable"), readBack.retryAfter)
 		}
-		if readBack.status != http.StatusNotFound || decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
+		if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
 			return sdkgo.NewMutationUncertain(VendorSummary{}, *vendorOperationFailure(operationName, sdkgo.FailureTransport, "vendor creation may already have succeeded"), sdkgo.Receipt{})
+		}
+		if readBack.status != http.StatusNotFound {
+			return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureTransport, "vendor read-back is inconclusive"), readBack.retryAfter)
 		}
 	}
 	payload := map[string]any{"entityId": input.EntityID, "companyName": input.CompanyName, "externalId": externalID}
@@ -258,11 +280,17 @@ func (operation CreateVendorOperation) Invoke(call sdkgo.Call, input CreateVendo
 		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureTransport, "vendor dispatch did not start"), 0)
 	}
 	if result.failure != nil {
+		if decision.MaximumPriorSends > 0 || result.status != 0 {
+			return sdkgo.NewMutationRetry[VendorSummary](*result.failure, 0)
+		}
+		if fence.RecordNotSent() != nil {
+			return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateVendorBranchDefect, VendorSummary{}, result.failure, sdkgo.Receipt{})
 	}
 	if result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(VendorSummary{}, *vendorOperationFailure(operationName, sdkgo.FailureTransport, "retry checkpoint failed"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureAvailability, "retry checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureAvailability, "NetSuite requested a retry"), result.retryAfter)
 	}
@@ -270,18 +298,27 @@ func (operation CreateVendorOperation) Invoke(call sdkgo.Call, input CreateVendo
 		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureAvailability, "vendor creation outcome is unknown"), result.retryAfter)
 	}
 	if result.status != http.StatusNoContent {
+		if result.err != nil || !isDefiniteNetSuiteRefusal(result.status, result.body) {
+			return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureTransport, "vendor creation outcome is unknown"), result.retryAfter)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(VendorSummary{}, *vendorOperationFailure(operationName, sdkgo.FailureTransport, "an earlier vendor create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureTransport, "an earlier vendor create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateVendorBranchProviderRejected, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected vendor creation"), sdkgo.Receipt{})
 	}
+	if result.err != nil {
+		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureProtocol, "vendor response is unreadable"), 0)
+	}
 	locationURL, parseErr := url.Parse(result.location)
 	if parseErr != nil {
-		return sdkgo.NewMutationUncertain(VendorSummary{}, *vendorOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite returned an invalid vendor Location"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite returned an invalid vendor Location"), 0)
 	}
 	createdID := strings.TrimPrefix(locationURL.Path, "/services/rest/record/v1/vendor/")
 	if !vendorIDPattern.MatchString(createdID) {
-		return sdkgo.NewMutationUncertain(VendorSummary{}, *vendorOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite did not return a valid created vendor ID"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite did not return a valid created vendor ID"), 0)
 	}
 	_ = fence.RecordProviderID(createdID)
 	return sdkgo.NewMutationBranch(CreateVendorBranchCreated, VendorSummary{ID: createdID, EntityID: input.EntityID}, nil, sdkgo.Receipt{ProviderObjectID: createdID})
@@ -295,16 +332,22 @@ func (operation UpdateVendorOperation) Invoke(call sdkgo.Call, input UpdateVendo
 	}
 	result := operation.client.requestVendor(call, call.Context, http.MethodPatch, "/"+url.PathEscape(input.VendorID), map[string]string{"entityId": input.EntityID}, operationName)
 	if result.failure != nil {
+		if result.status != 0 {
+			return sdkgo.NewMutationRetry[VendorSummary](*result.failure, 0)
+		}
 		return sdkgo.NewMutationBranch(UpdateVendorBranchDefect, VendorSummary{}, result.failure, sdkgo.Receipt{})
 	}
 	if isVendorRetry(result) {
 		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureAvailability, "vendor update is temporarily unavailable"), result.retryAfter)
 	}
-	if result.status == http.StatusNotFound {
+	if result.status == http.StatusNotFound && isDefiniteNetSuiteRefusal(result.status, result.body) {
 		return sdkgo.NewMutationBranch(UpdateVendorBranchNotFound, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureNotFound, "vendor was not found"), sdkgo.Receipt{})
 	}
 	if result.status != http.StatusNoContent {
-		return sdkgo.NewMutationBranch(UpdateVendorBranchProviderRejected, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected vendor update"), sdkgo.Receipt{})
+		if isDefiniteNetSuiteRefusal(result.status, result.body) {
+			return sdkgo.NewMutationBranch(UpdateVendorBranchProviderRejected, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected vendor update"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureTransport, "NetSuite write outcome is unknown"), result.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(UpdateVendorBranchUpdated, VendorSummary{ID: input.VendorID, EntityID: input.EntityID}, nil, sdkgo.Receipt{ProviderObjectID: input.VendorID})
 }
@@ -317,16 +360,22 @@ func (operation DeleteVendorOperation) Invoke(call sdkgo.Call, input GetVendorIn
 	}
 	result := operation.client.requestVendor(call, call.Context, http.MethodDelete, "/"+url.PathEscape(input.VendorID), nil, operationName)
 	if result.failure != nil {
+		if result.status != 0 {
+			return sdkgo.NewMutationRetry[VendorSummary](*result.failure, 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteVendorBranchDefect, VendorSummary{}, result.failure, sdkgo.Receipt{})
 	}
 	if isVendorRetry(result) {
 		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureAvailability, "vendor deletion is temporarily unavailable"), result.retryAfter)
 	}
-	if result.status == http.StatusNotFound {
+	if result.status == http.StatusNotFound && isDefiniteNetSuiteRefusal(result.status, result.body) {
 		return sdkgo.NewMutationBranch(DeleteVendorBranchNotFound, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureNotFound, "vendor was not found"), sdkgo.Receipt{})
 	}
 	if result.status != http.StatusNoContent {
-		return sdkgo.NewMutationBranch(DeleteVendorBranchProviderRejected, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected vendor deletion"), sdkgo.Receipt{})
+		if isDefiniteNetSuiteRefusal(result.status, result.body) {
+			return sdkgo.NewMutationBranch(DeleteVendorBranchProviderRejected, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected vendor deletion"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureTransport, "NetSuite write outcome is unknown"), result.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(DeleteVendorBranchDeleted, VendorSummary{ID: input.VendorID}, nil, sdkgo.Receipt{ProviderObjectID: input.VendorID})
 }

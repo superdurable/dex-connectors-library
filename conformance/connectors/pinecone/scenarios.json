@@ -1036,7 +1036,7 @@
       "callId": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Pinecone refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1139,13 +1139,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "namespace": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1443,7 +1440,7 @@
       "callId": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Pinecone refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1531,13 +1528,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "namespace": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1785,7 +1779,7 @@
       "callId": "a9441e6f-55e1-505b-93c2-687b28bbe400",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Pinecone refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1866,13 +1860,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "namespace": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2480,7 +2471,7 @@
       "callId": "e5dd057a-1a99-599b-94b4-6af18caf74e2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Pinecone refused this request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3162,6 +3153,725 @@
       },
       "name": "queryVectors-invalid-top-k",
       "operation": "queryVectors"
+    },
+    {
+      "callId": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Pinecone refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/update",
+          "requestBody": {
+            "id": "vec-meridian",
+            "namespace": "example",
+            "setMetadata": {
+              "region": "west"
+            },
+            "values": [
+              1,
+              2
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "input": {
+        "id": "vec-meridian",
+        "namespace": "example",
+        "setMetadata": {
+          "region": "west"
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      "name": "updateVector-unknown-409",
+      "operation": "updateVector"
+    },
+    {
+      "callId": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Pinecone refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/update",
+          "requestBody": {
+            "id": "vec-meridian",
+            "namespace": "example",
+            "setMetadata": {
+              "region": "west"
+            },
+            "values": [
+              1,
+              2
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "input": {
+        "id": "vec-meridian",
+        "namespace": "example",
+        "setMetadata": {
+          "region": "west"
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      "name": "updateVector-unknown-405",
+      "operation": "updateVector"
+    },
+    {
+      "callId": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/update",
+          "requestBody": {
+            "id": "vec-meridian",
+            "namespace": "example",
+            "setMetadata": {
+              "region": "west"
+            },
+            "values": [
+              1,
+              2
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "input": {
+        "id": "vec-meridian",
+        "namespace": "example",
+        "setMetadata": {
+          "region": "west"
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      "name": "updateVector-unknown-empty403",
+      "operation": "updateVector"
+    },
+    {
+      "callId": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/update",
+          "requestBody": {
+            "id": "vec-meridian",
+            "namespace": "example",
+            "setMetadata": {
+              "region": "west"
+            },
+            "values": [
+              1,
+              2
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "input": {
+        "id": "vec-meridian",
+        "namespace": "example",
+        "setMetadata": {
+          "region": "west"
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      "name": "updateVector-unknown-contradictory403",
+      "operation": "updateVector"
+    },
+    {
+      "callId": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Pinecone refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/delete",
+          "requestBody": {
+            "ids": [
+              "vec-meridian"
+            ],
+            "namespace": "example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
+      "input": {
+        "ids": [
+          "vec-meridian"
+        ],
+        "namespace": "example"
+      },
+      "name": "deleteVectors-unknown-409",
+      "operation": "deleteVectors"
+    },
+    {
+      "callId": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Pinecone refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/delete",
+          "requestBody": {
+            "ids": [
+              "vec-meridian"
+            ],
+            "namespace": "example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
+      "input": {
+        "ids": [
+          "vec-meridian"
+        ],
+        "namespace": "example"
+      },
+      "name": "deleteVectors-unknown-405",
+      "operation": "deleteVectors"
+    },
+    {
+      "callId": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/delete",
+          "requestBody": {
+            "ids": [
+              "vec-meridian"
+            ],
+            "namespace": "example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
+      "input": {
+        "ids": [
+          "vec-meridian"
+        ],
+        "namespace": "example"
+      },
+      "name": "deleteVectors-unknown-empty403",
+      "operation": "deleteVectors"
+    },
+    {
+      "callId": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/delete",
+          "requestBody": {
+            "ids": [
+              "vec-meridian"
+            ],
+            "namespace": "example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5efac57e-ec34-51ff-b5b3-dd831befee8f",
+      "input": {
+        "ids": [
+          "vec-meridian"
+        ],
+        "namespace": "example"
+      },
+      "name": "deleteVectors-unknown-contradictory403",
+      "operation": "deleteVectors"
+    },
+    {
+      "callId": "a9441e6f-55e1-505b-93c2-687b28bbe400",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Pinecone refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/delete",
+          "requestBody": {
+            "deleteAll": true,
+            "namespace": "example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9441e6f-55e1-505b-93c2-687b28bbe400",
+      "input": {
+        "namespace": "example"
+      },
+      "name": "clearNamespace-unknown-409",
+      "operation": "clearNamespace"
+    },
+    {
+      "callId": "a9441e6f-55e1-505b-93c2-687b28bbe400",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Pinecone refused this request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/delete",
+          "requestBody": {
+            "deleteAll": true,
+            "namespace": "example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9441e6f-55e1-505b-93c2-687b28bbe400",
+      "input": {
+        "namespace": "example"
+      },
+      "name": "clearNamespace-unknown-405",
+      "operation": "clearNamespace"
+    },
+    {
+      "callId": "a9441e6f-55e1-505b-93c2-687b28bbe400",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/delete",
+          "requestBody": {
+            "deleteAll": true,
+            "namespace": "example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9441e6f-55e1-505b-93c2-687b28bbe400",
+      "input": {
+        "namespace": "example"
+      },
+      "name": "clearNamespace-unknown-empty403",
+      "operation": "clearNamespace"
+    },
+    {
+      "callId": "a9441e6f-55e1-505b-93c2-687b28bbe400",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/delete",
+          "requestBody": {
+            "deleteAll": true,
+            "namespace": "example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9441e6f-55e1-505b-93c2-687b28bbe400",
+      "input": {
+        "namespace": "example"
+      },
+      "name": "clearNamespace-unknown-contradictory403",
+      "operation": "clearNamespace"
+    },
+    {
+      "callId": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/update",
+          "requestBody": {
+            "id": "vec-meridian",
+            "namespace": "example",
+            "setMetadata": {
+              "region": "west"
+            },
+            "values": [
+              1,
+              2
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "input": {
+        "id": "vec-meridian",
+        "namespace": "example",
+        "setMetadata": {
+          "region": "west"
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      "name": "updateVector-malformed-success-retry",
+      "operation": "updateVector"
     }
   ],
   "schemaVersion": 1

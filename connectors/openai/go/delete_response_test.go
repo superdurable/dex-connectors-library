@@ -23,9 +23,8 @@ func TestDeleteResponseClassifiesProviderOutcomes(t *testing.T) {
 		wantBranch sdkgo.BranchID
 	}{
 		{"deleted", 200, `{"id":"resp_123","object":"response.deleted","deleted":true}`, openai.DeleteResponseBranchDeleted},
-		{"not found", 404, `{}`, openai.DeleteResponseBranchNotFound},
-		{"rejected", 403, `{}`, openai.DeleteResponseBranchProviderRejected},
-		{"invalid response", 200, `{"id":"resp_other","deleted":true}`, openai.DeleteResponseBranchInvalidResponse},
+		{"not found", 404, `{"error":{"message":"response was not found"}}`, openai.DeleteResponseBranchNotFound},
+		{"rejected", 403, `{"error":{"message":"request was refused"}}`, openai.DeleteResponseBranchProviderRejected},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -44,11 +43,22 @@ func TestDeleteResponseClassifiesProviderOutcomes(t *testing.T) {
 }
 
 func TestDeleteResponseRetriesUnknownOutcomes(t *testing.T) {
-	for _, status := range []int{429, 503, 500} {
-		t.Run(fmt.Sprint(status), func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { response.WriteHeader(status) }))
+	for _, testCase := range []struct {
+		status int
+		body string
+	}{
+		{429, ""}, {503, ""}, {500, ""}, {409, `{"error":{"message":"conflict"}}`},
+		{405, `{"error":{"message":"method not allowed"}}`}, {403, ""},
+		{403, `{"id":"resp_123","error":{"message":"contradictory"}}`},
+		{200, `{"id":"resp_other","deleted":true}`},
+	} {
+		t.Run(fmt.Sprintf("%d-%s", testCase.status, testCase.body), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(testCase.status)
+				_, _ = response.Write([]byte(testCase.body))
+			}))
 			defer server.Close()
-			_, err := sdkgo.RunMutation(testsupport.NewDexContext("delete-flow", fmt.Sprint(status)), newClient(t, server.URL).DeleteResponse(), openAIConnection, openai.DeleteResponseRequest{ResponseID: "resp_123"})
+			_, err := sdkgo.RunMutation(testsupport.NewDexContext("delete-flow", fmt.Sprint(testCase.status)), newClient(t, server.URL).DeleteResponse(), openAIConnection, openai.DeleteResponseRequest{ResponseID: "resp_123"})
 			require.Error(t, err)
 		})
 	}

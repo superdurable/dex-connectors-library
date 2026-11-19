@@ -523,7 +523,7 @@
       "callId": "odoo-listContacts-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -922,7 +922,7 @@
       "callId": "odoo-getContact-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1245,10 +1245,14 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "id": 43
@@ -1271,7 +1275,7 @@
       "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1306,10 +1310,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": 0
@@ -1364,21 +1372,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "id": 0
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
       "input": {
@@ -1428,9 +1437,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1485,9 +1499,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1540,10 +1559,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -1643,7 +1666,7 @@
       "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1700,7 +1723,7 @@
       "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1790,13 +1813,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2047,7 +2067,7 @@
       "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2096,7 +2116,7 @@
       "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2173,13 +2193,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2419,7 +2436,7 @@
       "callId": "odoo-listOpportunities-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2848,7 +2865,7 @@
       "callId": "odoo-getOpportunity-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3172,10 +3189,14 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "id": 73
@@ -3198,7 +3219,7 @@
       "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3234,10 +3255,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": 0
@@ -3293,21 +3318,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "id": 0
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
       "input": {
@@ -3358,9 +3384,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3416,9 +3447,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3472,10 +3508,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -3575,7 +3615,7 @@
       "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3632,7 +3672,7 @@
       "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3722,13 +3762,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3979,7 +4016,7 @@
       "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4028,7 +4065,7 @@
       "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4105,13 +4142,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4347,7 +4381,7 @@
       "callId": "odoo-listRecords-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4760,7 +4794,7 @@
       "callId": "odoo-getRecord-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5087,10 +5121,14 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "id": 42
@@ -5115,7 +5153,7 @@
       "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5148,10 +5186,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": 0
@@ -5206,21 +5248,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "id": 0
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
       "input": {
@@ -5270,9 +5313,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -5327,9 +5375,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -5382,10 +5435,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -5486,7 +5543,7 @@
       "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5542,7 +5599,7 @@
       "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5629,13 +5686,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5884,7 +5938,7 @@
       "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5934,7 +5988,7 @@
       "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -6012,13 +6066,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6254,6 +6305,2118 @@
       },
       "name": "listRecords-activity",
       "operation": "listRecords"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-unknown-409",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-unknown-405",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-unknown-empty403",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-unknown-contradictory403",
+      "operation": "createContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-unknown-409",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-unknown-405",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-unknown-empty403",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-unknown-contradictory403",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-unknown-409",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-unknown-405",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-unknown-empty403",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-unknown-contradictory403",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-unknown-409",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-unknown-405",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-unknown-empty403",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 1,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-unknown-contradictory403",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-unknown-409",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-unknown-405",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-unknown-empty403",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-unknown-contradictory403",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-unknown-409",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-unknown-405",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-unknown-empty403",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-unknown-contradictory403",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-unknown-409",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-unknown-405",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-unknown-empty403",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 1,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-unknown-contradictory403",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-unknown-409",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-unknown-405",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-unknown-empty403",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-unknown-contradictory403",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-unknown-409",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-unknown-405",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-unknown-empty403",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-unknown-contradictory403",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-malformed-success-retry",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-send-cap-uncertain",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 3,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-send-cap-uncertain",
+      "operation": "createOpportunity",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "795eeaed-ca02-54d5-b4e6-336c02a3ba7f": {
+              "attempt": 3,
+              "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-send-cap-uncertain",
+      "operation": "createRecord",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "0bf78a34-b6db-5666-aeae-52ba6efda0a4": {
+              "attempt": 3,
+              "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 1

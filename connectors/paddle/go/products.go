@@ -272,6 +272,10 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		return sdkgo.NewMutationBranch(CreateProductBranchDefect, PaddleProduct{}, productFailure(name, sdkgo.FailureLocalDefect, "product dispatch fence is unavailable"), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
+	}
+	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
 	if decision.Marker.ProviderID != "" {
 		readBack := operation.client.exchange(call, call.Context, http.MethodGet, "/products/"+url.PathEscape(decision.Marker.ProviderID), nil)
 		if readBack.status == http.StatusOK && readBack.err == nil {
@@ -283,13 +287,10 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		if paddleRetryable(readBack) {
 			return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "product read-back is unavailable"), readBack.retryAfter)
 		}
-		return sdkgo.NewMutationUncertain(PaddleProduct{}, *productFailure(name, sdkgo.FailureProtocol, "created product could not be confirmed"), sdkgo.Receipt{})
-	}
-	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
+		return unknownPaddleCreate[PaddleProduct](canResend, productFailure(name, sdkgo.FailureProtocol, "created product could not be confirmed"), 0)
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
-		return sdkgo.NewMutationUncertain(PaddleProduct{}, *productFailure(name, sdkgo.FailureTransport, "product creation outcome is unknown"), sdkgo.Receipt{})
+		return unknownPaddleCreate[PaddleProduct](canResend, productFailure(name, sdkgo.FailureTransport, "product creation outcome is unknown"), 0)
 	}
 	var exchange paddleExchange
 	payload := map[string]string{"name": input.Name, "tax_category": input.TaxCategory}
@@ -304,26 +305,38 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureTransport, "product dispatch did not start"), 0)
 	}
 	if errors.Is(exchange.err, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
+		}
+		if fence.RecordNotSent() != nil {
+			return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateProductBranchDefect, PaddleProduct{}, productFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
 	if exchange.status == http.StatusTooManyRequests || exchange.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(PaddleProduct{}, *productFailure(name, sdkgo.FailureTransport, "product retry checkpoint failed"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "retry checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "Paddle requested a retry"), exchange.retryAfter)
 	}
 	if paddleRetryable(exchange) {
-		return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "product creation outcome is unknown"), exchange.retryAfter)
+		return unknownPaddleCreate[PaddleProduct](canResend, productFailure(name, sdkgo.FailureAvailability, "product creation outcome is unknown"), exchange.retryAfter)
 	}
 	if exchange.status != http.StatusCreated {
+		if !isDefinitePaddleRefusal(exchange) {
+			return unknownPaddleCreate[PaddleProduct](canResend, productFailure(name, sdkgo.FailureTransport, "product creation outcome is unknown"), exchange.retryAfter)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PaddleProduct{}, *productFailure(name, sdkgo.FailureTransport, "an earlier product create may have succeeded"), sdkgo.Receipt{})
+			return unknownPaddleCreate[PaddleProduct](canResend, productFailure(name, sdkgo.FailureTransport, "an earlier product create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateProductBranchProviderRejected, PaddleProduct{}, productFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected product creation"), sdkgo.Receipt{})
 	}
 	product, ok := decodePaddleProduct(exchange.body, "")
 	if !ok || exchange.err != nil || product.Name != input.Name || product.TaxCategory != input.TaxCategory {
-		return sdkgo.NewMutationUncertain(PaddleProduct{}, *productFailure(name, sdkgo.FailureProtocol, "Paddle accepted product creation but returned invalid data"), sdkgo.Receipt{})
+		return unknownPaddleCreate[PaddleProduct](canResend, productFailure(name, sdkgo.FailureProtocol, "Paddle accepted product creation but returned invalid data"), 0)
 	}
 	_ = fence.RecordProviderID(product.ID)
 	return sdkgo.NewMutationBranch(CreateProductBranchCreated, product, nil, sdkgo.Receipt{ProviderObjectID: product.ID})
@@ -337,15 +350,18 @@ func (client *Client) replaceProduct(call sdkgo.Call, name, productID string, pa
 	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureAvailability, "product update is unavailable"), exchange.retryAfter)
 	}
-	if exchange.status == http.StatusNotFound {
+	if exchange.status == http.StatusNotFound && isDefinitePaddleRefusal(exchange) {
 		return sdkgo.NewMutationBranch(notFoundBranch, PaddleProduct{}, productFailure(name, sdkgo.FailureNotFound, "product was not found"), sdkgo.Receipt{})
 	}
 	if exchange.status != http.StatusOK {
-		return sdkgo.NewMutationBranch(rejectedBranch, PaddleProduct{}, productFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected product update"), sdkgo.Receipt{})
+		if isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationBranch(rejectedBranch, PaddleProduct{}, productFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected product update"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureTransport, "Paddle rejected product update"), exchange.retryAfter)
 	}
 	product, ok := decodePaddleProduct(exchange.body, productID)
 	if !ok || exchange.err != nil || expectedStatus != "" && product.Status != expectedStatus {
-		return sdkgo.NewMutationBranch(invalidBranch, PaddleProduct{}, productFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid product"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PaddleProduct](*productFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid product"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, product, nil, sdkgo.Receipt{ProviderObjectID: product.ID})
 }

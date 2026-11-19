@@ -355,11 +355,14 @@ func executeVectorMutation(client *Client, call sdkgo.Call, operation, path stri
 		return sdkgo.NewMutationRetry[VectorAction](*response.failure, response.retryAfter)
 	}
 	if response.failure != nil {
+		if response.branch == "invalidResponse" {
+			return sdkgo.NewMutationRetry[VectorAction](*response.failure, 0)
+		}
 		return sdkgo.NewMutationBranch(response.branch, VectorAction{}, response.failure, sdkgo.Receipt{})
 	}
 	var object map[string]json.RawMessage
 	if json.Unmarshal(response.body, &object) != nil || object == nil {
-		return vectorMutationFailure(operation, "invalidResponse", sdkgo.FailureProtocol, "provider returned invalid action response")
+		return sdkgo.NewMutationRetry[VectorAction](*failure(operation, sdkgo.FailureProtocol, "provider returned invalid action response"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, output, nil, sdkgo.Receipt{IdempotencyKey: call.IdempotencyKey})
 }

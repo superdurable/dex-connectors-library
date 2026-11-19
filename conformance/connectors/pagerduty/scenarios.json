@@ -118,7 +118,7 @@
       "callId": "9714fb85-f1bc-5c5e-93a1-f8944dac42e0",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -400,7 +400,7 @@
       "callId": "ecfe9fc0-87ba-5c4a-9c82-47cd2bf82386",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -593,7 +593,7 @@
       "callId": "d83d5a21-bb63-5945-9e28-7a09223e0f35",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -727,7 +727,7 @@
       "callId": "00000000-0000-4000-8000-000000000002",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -936,7 +936,7 @@
       "callId": "00000000-0000-4000-8000-000000000008",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1034,7 +1034,7 @@
       "callId": "00000000-0000-4000-8000-000000000010",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1340,7 +1340,7 @@
       "callId": "00000000-0000-4000-8000-000000000017",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1555,7 +1555,7 @@
       "callId": "00000000-0000-4000-8000-000000000023",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1639,7 +1639,7 @@
       "callId": "00000000-0000-4000-8000-000000000025",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1854,7 +1854,7 @@
       "callId": "00000000-0000-4000-8000-000000000031",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1953,7 +1953,7 @@
       "callId": "0426e550-68b6-56e0-b895-c9cfba748e11",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2241,7 +2241,7 @@
       "callId": "0426e550-68b6-56e0-b895-c9cfba748e11",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2330,15 +2330,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "status": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2395,10 +2390,14 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "id": "P123456",
@@ -2423,7 +2422,7 @@
       "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2463,10 +2462,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": "",
@@ -2531,9 +2534,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2593,9 +2601,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2653,12 +2666,16 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2714,12 +2731,16 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -2801,23 +2822,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "id": "",
-          "status": "",
-          "title": ""
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
       "input": {
@@ -2996,23 +3016,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-          "sendCount": 3,
-          "state": "claimed"
-        },
-        "output": {
-          "id": "",
-          "status": "",
-          "title": ""
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 3,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 5,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
       "input": {
@@ -3023,23 +3042,31 @@
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+                "attempt": 1,
+                "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
         {
           "exchangeCount": 3,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 2,
-            "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
-            "sendCount": 2,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+                "attempt": 2,
+                "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+                "sendCount": 2,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -3085,10 +3112,14 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "content": "Investigating the alert.",
@@ -3113,7 +3144,7 @@
       "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3147,10 +3178,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "content": "",
@@ -3209,9 +3244,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3265,9 +3305,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3319,12 +3364,16 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3374,12 +3423,16 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -3424,7 +3477,7 @@
       "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3458,10 +3511,14 @@
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "content": "",
@@ -3517,23 +3574,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "content": "",
-          "created_at": "",
-          "id": ""
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "185f660a-6a79-5eb6-8777-34f398a3482a",
       "input": {
@@ -3643,10 +3699,14 @@
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-          "sendCount": 3,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 3,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "content": "",
@@ -3667,29 +3727,875 @@
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "185f660a-6a79-5eb6-8777-34f398a3482a": {
+                "attempt": 1,
+                "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
         {
           "exchangeCount": 2,
-          "failureKind": "AVAILABILITY",
+          "failureKind": "TRANSPORT",
           "heartbeat": {
-            "attempt": 2,
-            "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
-            "sendCount": 2,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "185f660a-6a79-5eb6-8777-34f398a3482a": {
+                "attempt": 2,
+                "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+                "sendCount": 2,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
       ],
       "name": "createIncidentNote-send-cap",
       "operation": "createIncidentNote"
+    },
+    {
+      "callId": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/incidents/P123456",
+          "requestBody": {
+            "incident": {
+              "status": "acknowledged",
+              "type": "incident_reference"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "id": "P123456",
+        "status": "acknowledged"
+      },
+      "name": "updateIncident-unknown-409",
+      "operation": "updateIncident"
+    },
+    {
+      "callId": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/incidents/P123456",
+          "requestBody": {
+            "incident": {
+              "status": "acknowledged",
+              "type": "incident_reference"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "id": "P123456",
+        "status": "acknowledged"
+      },
+      "name": "updateIncident-unknown-405",
+      "operation": "updateIncident"
+    },
+    {
+      "callId": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/incidents/P123456",
+          "requestBody": {
+            "incident": {
+              "status": "acknowledged",
+              "type": "incident_reference"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "id": "P123456",
+        "status": "acknowledged"
+      },
+      "name": "updateIncident-unknown-empty403",
+      "operation": "updateIncident"
+    },
+    {
+      "callId": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/incidents/P123456",
+          "requestBody": {
+            "incident": {
+              "status": "acknowledged",
+              "type": "incident_reference"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "id": "P123456",
+        "status": "acknowledged"
+      },
+      "name": "updateIncident-unknown-contradictory403",
+      "operation": "updateIncident"
+    },
+    {
+      "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/incidents",
+          "requestBody": {
+            "incident": {
+              "incident_key": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "service": {
+                "id": "PWIXJZS",
+                "type": "service_reference"
+              },
+              "title": "API latency",
+              "type": "incident"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "serviceId": "PWIXJZS",
+        "title": "API latency"
+      },
+      "name": "createIncident-unknown-409",
+      "operation": "createIncident"
+    },
+    {
+      "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/incidents",
+          "requestBody": {
+            "incident": {
+              "incident_key": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "service": {
+                "id": "PWIXJZS",
+                "type": "service_reference"
+              },
+              "title": "API latency",
+              "type": "incident"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "serviceId": "PWIXJZS",
+        "title": "API latency"
+      },
+      "name": "createIncident-unknown-405",
+      "operation": "createIncident"
+    },
+    {
+      "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/incidents",
+          "requestBody": {
+            "incident": {
+              "incident_key": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "service": {
+                "id": "PWIXJZS",
+                "type": "service_reference"
+              },
+              "title": "API latency",
+              "type": "incident"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "serviceId": "PWIXJZS",
+        "title": "API latency"
+      },
+      "name": "createIncident-unknown-empty403",
+      "operation": "createIncident"
+    },
+    {
+      "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/incidents",
+          "requestBody": {
+            "incident": {
+              "incident_key": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "service": {
+                "id": "PWIXJZS",
+                "type": "service_reference"
+              },
+              "title": "API latency",
+              "type": "incident"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 1,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "serviceId": "PWIXJZS",
+        "title": "API latency"
+      },
+      "name": "createIncident-unknown-contradictory403",
+      "operation": "createIncident"
+    },
+    {
+      "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/incidents/P123456/notes",
+          "requestBody": {
+            "note": {
+              "content": "Investigating the alert."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "185f660a-6a79-5eb6-8777-34f398a3482a",
+      "input": {
+        "content": "Investigating the alert.",
+        "fromUserEmail": "responder@example.com",
+        "incidentId": "P123456"
+      },
+      "name": "createIncidentNote-unknown-409",
+      "operation": "createIncidentNote"
+    },
+    {
+      "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"PagerDuty refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/incidents/P123456/notes",
+          "requestBody": {
+            "note": {
+              "content": "Investigating the alert."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "185f660a-6a79-5eb6-8777-34f398a3482a",
+      "input": {
+        "content": "Investigating the alert.",
+        "fromUserEmail": "responder@example.com",
+        "incidentId": "P123456"
+      },
+      "name": "createIncidentNote-unknown-405",
+      "operation": "createIncidentNote"
+    },
+    {
+      "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/incidents/P123456/notes",
+          "requestBody": {
+            "note": {
+              "content": "Investigating the alert."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "185f660a-6a79-5eb6-8777-34f398a3482a",
+      "input": {
+        "content": "Investigating the alert.",
+        "fromUserEmail": "responder@example.com",
+        "incidentId": "P123456"
+      },
+      "name": "createIncidentNote-unknown-empty403",
+      "operation": "createIncidentNote"
+    },
+    {
+      "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/incidents/P123456/notes",
+          "requestBody": {
+            "note": {
+              "content": "Investigating the alert."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "185f660a-6a79-5eb6-8777-34f398a3482a": {
+              "attempt": 1,
+              "callId": "185f660a-6a79-5eb6-8777-34f398a3482a",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "185f660a-6a79-5eb6-8777-34f398a3482a",
+      "input": {
+        "content": "Investigating the alert.",
+        "fromUserEmail": "responder@example.com",
+        "incidentId": "P123456"
+      },
+      "name": "createIncidentNote-unknown-contradictory403",
+      "operation": "createIncidentNote"
+    },
+    {
+      "callId": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/incidents/P123456",
+          "requestBody": {
+            "incident": {
+              "status": "acknowledged",
+              "type": "incident_reference"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "id": "P123456",
+        "status": "acknowledged"
+      },
+      "name": "updateIncident-malformed-success-retry",
+      "operation": "updateIncident"
+    },
+    {
+      "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "exchanges": [
+        {
+          "body": "{\"incidents\":[],\"limit\":25,\"offset\":0,\"more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents",
+          "query": {
+            "incident_key": [
+              "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08"
+            ],
+            "service_ids[]": [
+              "PWIXJZS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "serviceId": "PWIXJZS",
+        "title": "API latency"
+      },
+      "name": "createIncident-send-cap-readback-unconfirmed",
+      "operation": "createIncident",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08": {
+              "attempt": 3,
+              "callId": "7ee80d25-4414-5cd8-87d9-a8f8f1fdcb08",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 1

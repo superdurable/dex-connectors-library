@@ -19,15 +19,17 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIKey: sdkgo.NewSecretString("test-secret-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := &pagerDutyConformanceContext{}
+	var priorAttempt int32
 	if len(scenario.PriorHeartbeat) != 0 {
-		context.heartbeat = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
 		var marker struct {
-			Attempt int32 `json:"attempt"`
+			Attempt int32           `json:"attempt"`
+			Value   json.RawMessage `json:"value"`
 		}
 		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
-		context.attempt = marker.Attempt + 1
+		priorAttempt = marker.Attempt
+		context.heartbeat = append(json.RawMessage(nil), marker.Value...)
 	}
-	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = int32(attempt) }, actions: map[string]conformanceOperationInvocation{
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
 		"listIncidents":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListIncidents(), testConnection),
 		"getIncident":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetIncident(), testConnection),
 		"listIncidentNotes":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListIncidentNotes(), testConnection),

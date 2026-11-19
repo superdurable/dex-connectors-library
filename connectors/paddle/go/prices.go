@@ -342,6 +342,10 @@ func (operation CreatePriceOperation) Invoke(call sdkgo.Call, input CreatePriceI
 		return sdkgo.NewMutationBranch(CreatePriceBranchDefect, PaddlePrice{}, priceFailure(name, sdkgo.FailureLocalDefect, "price dispatch fence is unavailable"), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
+	}
+	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
 	if decision.Marker.ProviderID != "" {
 		readBack := operation.client.exchange(call, call.Context, http.MethodGet, "/prices/"+url.PathEscape(decision.Marker.ProviderID), nil)
 		if readBack.status == http.StatusOK && readBack.err == nil {
@@ -353,13 +357,10 @@ func (operation CreatePriceOperation) Invoke(call sdkgo.Call, input CreatePriceI
 		if paddleRetryable(readBack) {
 			return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "price read-back is unavailable"), readBack.retryAfter)
 		}
-		return sdkgo.NewMutationUncertain(PaddlePrice{}, *priceFailure(name, sdkgo.FailureProtocol, "created price could not be confirmed"), sdkgo.Receipt{})
-	}
-	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
+		return unknownPaddleCreate[PaddlePrice](canResend, priceFailure(name, sdkgo.FailureProtocol, "created price could not be confirmed"), 0)
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
-		return sdkgo.NewMutationUncertain(PaddlePrice{}, *priceFailure(name, sdkgo.FailureTransport, "price creation outcome is unknown"), sdkgo.Receipt{})
+		return unknownPaddleCreate[PaddlePrice](canResend, priceFailure(name, sdkgo.FailureTransport, "price creation outcome is unknown"), 0)
 	}
 	payload := map[string]any{"product_id": input.ProductID, "description": input.Description, "unit_price": map[string]string{"amount": input.Amount, "currency_code": input.CurrencyCode}}
 	if input.BillingCycle != nil {
@@ -374,26 +375,38 @@ func (operation CreatePriceOperation) Invoke(call sdkgo.Call, input CreatePriceI
 		return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureTransport, "price dispatch did not start"), 0)
 	}
 	if errors.Is(exchange.err, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAuthentication, "credentials are unavailable for resend"), 0)
+		}
+		if fence.RecordNotSent() != nil {
+			return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "no-send checkpoint failed"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreatePriceBranchDefect, PaddlePrice{}, priceFailure(name, sdkgo.FailureAuthentication, "Paddle credentials are invalid"), sdkgo.Receipt{})
 	}
 	if exchange.status == http.StatusTooManyRequests || exchange.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(PaddlePrice{}, *priceFailure(name, sdkgo.FailureTransport, "price retry checkpoint failed"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "retry checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "Paddle requested a retry"), exchange.retryAfter)
 	}
 	if paddleRetryable(exchange) {
-		return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "price creation outcome is unknown"), exchange.retryAfter)
+		return unknownPaddleCreate[PaddlePrice](canResend, priceFailure(name, sdkgo.FailureAvailability, "price creation outcome is unknown"), exchange.retryAfter)
 	}
 	if exchange.status != http.StatusCreated {
+		if !isDefinitePaddleRefusal(exchange) {
+			return unknownPaddleCreate[PaddlePrice](canResend, priceFailure(name, sdkgo.FailureTransport, "price creation outcome is unknown"), exchange.retryAfter)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PaddlePrice{}, *priceFailure(name, sdkgo.FailureTransport, "an earlier price create may have succeeded"), sdkgo.Receipt{})
+			return unknownPaddleCreate[PaddlePrice](canResend, priceFailure(name, sdkgo.FailureTransport, "an earlier price create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "refusal checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreatePriceBranchProviderRejected, PaddlePrice{}, priceFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected price creation"), sdkgo.Receipt{})
 	}
 	price, ok := decodePaddlePrice(exchange.body, "")
 	if !ok || exchange.err != nil || price.ProductID != input.ProductID || price.Amount != input.Amount {
-		return sdkgo.NewMutationUncertain(PaddlePrice{}, *priceFailure(name, sdkgo.FailureProtocol, "Paddle accepted price creation but returned invalid data"), sdkgo.Receipt{})
+		return unknownPaddleCreate[PaddlePrice](canResend, priceFailure(name, sdkgo.FailureProtocol, "Paddle accepted price creation but returned invalid data"), 0)
 	}
 	_ = fence.RecordProviderID(price.ID)
 	return sdkgo.NewMutationBranch(CreatePriceBranchCreated, price, nil, sdkgo.Receipt{ProviderObjectID: price.ID})
@@ -407,15 +420,18 @@ func (client *Client) replacePrice(call sdkgo.Call, name, priceID string, payloa
 	if paddleRetryable(exchange) {
 		return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureAvailability, "price update is unavailable"), exchange.retryAfter)
 	}
-	if exchange.status == http.StatusNotFound {
+	if exchange.status == http.StatusNotFound && isDefinitePaddleRefusal(exchange) {
 		return sdkgo.NewMutationBranch(notFoundBranch, PaddlePrice{}, priceFailure(name, sdkgo.FailureNotFound, "price was not found"), sdkgo.Receipt{})
 	}
 	if exchange.status != http.StatusOK {
-		return sdkgo.NewMutationBranch(rejectedBranch, PaddlePrice{}, priceFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected price update"), sdkgo.Receipt{})
+		if isDefinitePaddleRefusal(exchange) {
+			return sdkgo.NewMutationBranch(rejectedBranch, PaddlePrice{}, priceFailure(name, sdkgo.FailureProviderRejection, "Paddle rejected price update"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureTransport, "Paddle rejected price update"), exchange.retryAfter)
 	}
 	price, ok := decodePaddlePrice(exchange.body, priceID)
 	if !ok || exchange.err != nil || expectedStatus != "" && price.Status != expectedStatus {
-		return sdkgo.NewMutationBranch(invalidBranch, PaddlePrice{}, priceFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid price"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PaddlePrice](*priceFailure(name, sdkgo.FailureProtocol, "Paddle returned an invalid price"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, price, nil, sdkgo.Receipt{ProviderObjectID: price.ID})
 }

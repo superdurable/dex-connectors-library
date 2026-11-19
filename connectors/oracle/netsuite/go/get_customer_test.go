@@ -22,6 +22,7 @@ var testConnection = sdkgo.ConnectionRef{Provider: "oracle-netsuite", Name: "ora
 type queryContext struct{ dex.Context }
 
 func (queryContext) FlowID() string              { return "oracle-netsuite-provider-test" }
+func (queryContext) Attempt() int32              { return 1 }
 func (queryContext) StepExecutionID() string     { return "get-customer" }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }
 func (queryContext) Done() <-chan struct{}       { return nil }

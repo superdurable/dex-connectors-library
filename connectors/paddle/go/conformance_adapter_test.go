@@ -4,6 +4,7 @@
 package paddle
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -23,6 +24,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := singledispatchtest.NewContext("conformance-flow", "paddle-customer")
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) {
+		require.NoError(t, context.SetPersistedCheckpoint(json.RawMessage(value)))
+	})
+	for range priorAttempt {
+		context.AdvanceAttempt()
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
 			context.AdvanceAttempt()

@@ -342,7 +342,7 @@
       "callId": "00000000-0000-4000-8000-000000000002",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -696,7 +696,7 @@
       "callId": "00000000-0000-4000-8000-000000000010",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -736,7 +736,7 @@
       "callId": "00000000-0000-4000-8000-000000000011",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1003,11 +1003,15 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-          "providerId": "ctm_01hv8wptq8987qeep44cyrewp9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "providerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "email": "customer@example.com",
@@ -1032,7 +1036,7 @@
       "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1062,10 +1066,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "email": "",
@@ -1120,9 +1128,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1171,9 +1184,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1222,10 +1240,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1272,10 +1294,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -1369,7 +1395,7 @@
       "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1419,7 +1445,7 @@
       "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1493,16 +1519,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": "",
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1766,7 +1786,7 @@
       "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1813,7 +1833,7 @@
       "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1883,16 +1903,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": "",
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2168,10 +2182,14 @@
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+                "attempt": 1,
+                "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -2358,10 +2376,14 @@
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+                "attempt": 1,
+                "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
@@ -2369,10 +2391,14 @@
           "exchangeCount": 3,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 2,
-            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-            "sendCount": 2,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+                "attempt": 2,
+                "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+                "sendCount": 2,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
@@ -2380,10 +2406,14 @@
           "exchangeCount": 5,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 3,
-            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-            "sendCount": 3,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+                "attempt": 3,
+                "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+                "sendCount": 3,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -2456,7 +2486,7 @@
       "callId": "00000000-0000-4000-8000-000000000102",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2812,7 +2842,7 @@
       "callId": "00000000-0000-4000-8000-000000000110",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2854,7 +2884,7 @@
       "callId": "00000000-0000-4000-8000-000000000111",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -3129,11 +3159,15 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-          "providerId": "dsc_01gtgztp8fpchantd5g1wrksa3",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "providerId": "dsc_01gtgztp8fpchantd5g1wrksa3",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "amount": "10",
@@ -3161,7 +3195,7 @@
       "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3193,10 +3227,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "amount": "",
@@ -3256,9 +3294,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3310,9 +3353,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3364,10 +3412,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3417,10 +3469,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -3520,7 +3576,7 @@
       "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -3572,7 +3628,7 @@
       "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -3648,18 +3704,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "amount": "",
-          "code": "",
-          "description": "",
-          "id": "",
-          "status": "",
-          "type": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3927,7 +3975,7 @@
       "callId": "50702014-8922-51ee-9653-276144e80737",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -3976,7 +4024,7 @@
       "callId": "50702014-8922-51ee-9653-276144e80737",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -4048,18 +4096,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "amount": "",
-          "code": "",
-          "description": "",
-          "id": "",
-          "status": "",
-          "type": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4342,10 +4382,14 @@
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "ff614be2-9b63-5864-b0d8-3d5004477087": {
+                "attempt": 1,
+                "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -4541,10 +4585,14 @@
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "ff614be2-9b63-5864-b0d8-3d5004477087": {
+                "attempt": 1,
+                "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
@@ -4552,10 +4600,14 @@
           "exchangeCount": 3,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 2,
-            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-            "sendCount": 2,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "ff614be2-9b63-5864-b0d8-3d5004477087": {
+                "attempt": 2,
+                "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+                "sendCount": 2,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         },
@@ -4563,10 +4615,14 @@
           "exchangeCount": 5,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 3,
-            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-            "sendCount": 3,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "ff614be2-9b63-5864-b0d8-3d5004477087": {
+                "attempt": 3,
+                "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+                "sendCount": 3,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -4633,7 +4689,7 @@
       "callId": "00000000-0000-4000-8000-000000000202",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4962,7 +5018,7 @@
       "callId": "00000000-0000-4000-8000-000000000210",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -5002,7 +5058,7 @@
       "callId": "00000000-0000-4000-8000-000000000211",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -5267,11 +5323,15 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
-          "providerId": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "providerId": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
@@ -5297,7 +5357,7 @@
       "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5325,10 +5385,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": "",
@@ -5382,9 +5446,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -5432,9 +5501,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -5482,10 +5556,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -5531,10 +5609,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -5630,7 +5712,7 @@
       "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -5680,7 +5762,7 @@
       "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -5754,16 +5836,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "status": "",
-          "taxCategory": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6027,7 +6103,7 @@
       "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -6074,7 +6150,7 @@
       "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -6144,16 +6220,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "status": "",
-          "taxCategory": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6417,7 +6487,7 @@
       "callId": "00000000-0000-4000-8000-000000000302",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -6775,7 +6845,7 @@
       "callId": "00000000-0000-4000-8000-000000000310",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -6819,7 +6889,7 @@
       "callId": "00000000-0000-4000-8000-000000000311",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -7103,11 +7173,15 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
-          "providerId": "pri_01hv0vax6rv18t4tamj848ne4d",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "providerId": "pri_01hv0vax6rv18t4tamj848ne4d",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "amount": "500",
@@ -7142,7 +7216,7 @@
       "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7177,10 +7251,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "amount": "",
@@ -7250,9 +7328,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -7312,9 +7395,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -7374,10 +7462,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -7435,10 +7527,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -7556,7 +7652,7 @@
       "callId": "b309e7ca-978f-58db-912e-0b7225306154",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -7614,7 +7710,7 @@
       "callId": "b309e7ca-978f-58db-912e-0b7225306154",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -7699,20 +7795,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "amount": "",
-          "billingFrequency": 0,
-          "billingInterval": "",
-          "currencyCode": "",
-          "description": "",
-          "id": "",
-          "productId": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8002,7 +8088,7 @@
       "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -8053,7 +8139,7 @@
       "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -8127,20 +8213,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "amount": "",
-          "billingFrequency": 0,
-          "billingInterval": "",
-          "currencyCode": "",
-          "description": "",
-          "id": "",
-          "productId": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8403,7 +8479,7 @@
       "callId": "00000000-0000-4000-8000-000000000402",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -8748,11 +8824,15 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
-          "providerId": "txn_01hv8wptq8987qeep44cyrewp9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "providerId": "txn_01hv8wptq8987qeep44cyrewp9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "currencyCode": "USD",
@@ -8776,7 +8856,7 @@
       "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -8807,10 +8887,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "currencyCode": "",
@@ -8865,9 +8949,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -8917,9 +9006,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -8969,10 +9063,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -9020,10 +9118,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -9115,7 +9217,7 @@
       "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -9164,7 +9266,7 @@
       "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -9237,15 +9339,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "currencyCode": "",
-          "id": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -9507,7 +9604,7 @@
       "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -9553,7 +9650,7 @@
       "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -9622,15 +9719,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "currencyCode": "",
-          "id": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10162,7 +10254,7 @@
       "callId": "00000000-0000-4000-8000-000000000402",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -10505,7 +10597,7 @@
       "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -10553,7 +10645,7 @@
       "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -10895,18 +10987,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": "",
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
       "input": {
@@ -10918,10 +11004,14 @@
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+                "attempt": 1,
+                "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -10987,20 +11077,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "amount": "",
-          "code": "",
-          "description": "",
-          "id": "",
-          "status": "",
-          "type": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
       "input": {
@@ -11013,10 +11095,14 @@
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "ff614be2-9b63-5864-b0d8-3d5004477087": {
+                "attempt": 1,
+                "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -11053,24 +11139,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "id": "",
-          "name": "",
-          "status": "",
-          "taxCategory": ""
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
       "input": {
@@ -11117,28 +11201,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "amount": "",
-          "billingFrequency": 0,
-          "billingInterval": "",
-          "currencyCode": "",
-          "description": "",
-          "id": "",
-          "productId": "",
-          "status": ""
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
       "input": {
@@ -11186,20 +11264,3281 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-accepted-malformed",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-unknown-409",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-unknown-405",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-unknown-empty403",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+              "attempt": 1,
+              "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "createCustomer-unknown-contradictory403",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-unknown-409",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-unknown-405",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-unknown-empty403",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-unknown-contradictory403",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-unknown-409",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-unknown-405",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-unknown-empty403",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd5658c-ab69-5049-ab4d-45787bdba183",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "archiveCustomer-unknown-contradictory403",
+      "operation": "archiveCustomer"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-unknown-409",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-unknown-405",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-unknown-empty403",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "ff614be2-9b63-5864-b0d8-3d5004477087": {
+              "attempt": 1,
+              "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "name": "createDiscount-unknown-contradictory403",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-unknown-409",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-unknown-405",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-unknown-empty403",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "amount": "10",
+            "description": "Sample discount"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f9e6315-6f9e-5eae-99a1-1408c7e7ffc2",
+      "input": {
+        "amount": "10",
+        "description": "Sample discount",
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "updateDiscount-unknown-contradictory403",
+      "operation": "updateDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-unknown-409",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-unknown-405",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-unknown-empty403",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "50702014-8922-51ee-9653-276144e80737",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/discounts/dsc_01gtgztp8fpchantd5g1wrksa3",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50702014-8922-51ee-9653-276144e80737",
+      "input": {
+        "discountId": "dsc_01gtgztp8fpchantd5g1wrksa3"
+      },
+      "name": "archiveDiscount-unknown-contradictory403",
+      "operation": "archiveDiscount"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-unknown-409",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-unknown-405",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-unknown-empty403",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 1,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-unknown-contradictory403",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-unknown-409",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-unknown-405",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-unknown-empty403",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-unknown-contradictory403",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-unknown-409",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-unknown-405",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-unknown-empty403",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-unknown-contradictory403",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-unknown-409",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-unknown-405",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-unknown-empty403",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 1,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-unknown-contradictory403",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-unknown-409",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-unknown-405",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-unknown-empty403",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-unknown-contradictory403",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-unknown-409",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-unknown-405",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-unknown-empty403",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-unknown-contradictory403",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-unknown-409",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-unknown-405",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-unknown-empty403",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 1,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-unknown-contradictory403",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-unknown-409",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-unknown-405",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-unknown-empty403",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-unknown-contradictory403",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-unknown-409",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-unknown-405",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-unknown-empty403",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-unknown-contradictory403",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-unknown-409",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"detail\":\"Paddle refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-unknown-405",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-unknown-empty403",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-unknown-contradictory403",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-malformed-success-retry",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-malformed-success-retry",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-send-cap-uncertain",
+      "operation": "createPrice",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "1268de32-9ccf-50ac-8dd4-c7db1deb4531": {
+              "attempt": 3,
+              "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-send-cap-uncertain",
+      "operation": "createProduct",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "26872cb1-e8ec-55df-8485-a283f42686b6": {
+              "attempt": 3,
+              "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "currencyCode": "",
           "id": "",
           "status": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -11209,8 +14548,21 @@
         "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
         "quantity": 2
       },
-      "name": "createTransaction-accepted-malformed",
-      "operation": "createTransaction"
+      "name": "createTransaction-send-cap-uncertain",
+      "operation": "createTransaction",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "2c315d92-8967-561a-b01f-0672bda4dad7": {
+              "attempt": 3,
+              "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 1

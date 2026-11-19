@@ -340,7 +340,7 @@
       "callId": "onespan-listPackages-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -632,10 +632,14 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "id": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
@@ -656,7 +660,7 @@
       "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -684,10 +688,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": ""
@@ -733,21 +741,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "id": ""
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
       "input": {
@@ -788,9 +797,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -836,9 +850,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -882,10 +901,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -970,7 +993,7 @@
       "callId": "327ac424-c447-5173-926b-eb96d1755d47",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1016,7 +1039,7 @@
       "callId": "327ac424-c447-5173-926b-eb96d1755d47",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1281,10 +1304,14 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "id": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
@@ -1306,7 +1333,7 @@
       "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1332,10 +1359,14 @@
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": "",
@@ -1357,7 +1388,7 @@
       "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1383,10 +1414,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "id": "",
@@ -1434,9 +1469,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1480,9 +1520,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -1524,10 +1569,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -1611,7 +1660,7 @@
       "callId": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1655,7 +1704,7 @@
       "callId": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1923,7 +1972,7 @@
       "callId": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1961,7 +2010,7 @@
       "callId": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2244,7 +2293,7 @@
       "callId": "onespan-listSignerRoles-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2514,7 +2563,7 @@
       "callId": "onespan-getSignerRole-rejected",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2749,10 +2798,14 @@
         "branch": "added",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "roleId": "Signer1"
@@ -2777,7 +2830,7 @@
       "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2812,10 +2865,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "roleId": ""
@@ -2872,21 +2929,22 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
-          "sendCount": 1,
-          "state": "claimed"
-        },
-        "output": {
-          "roleId": ""
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
       "input": {
@@ -2938,9 +2996,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2997,9 +3060,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -3054,10 +3122,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -3161,7 +3233,7 @@
       "callId": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3218,7 +3290,7 @@
       "callId": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3499,7 +3571,7 @@
       "callId": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3538,7 +3610,7 @@
       "callId": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3729,6 +3801,1544 @@
         "attempt": 3,
         "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
         "state": "claimed"
+      }
+    },
+    {
+      "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages",
+          "requestBody": {
+            "name": "Example agreement",
+            "status": "DRAFT",
+            "type": "PACKAGE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "input": {
+        "name": "Example agreement"
+      },
+      "name": "createDraftPackage-unknown-409",
+      "operation": "createDraftPackage"
+    },
+    {
+      "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages",
+          "requestBody": {
+            "name": "Example agreement",
+            "status": "DRAFT",
+            "type": "PACKAGE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "input": {
+        "name": "Example agreement"
+      },
+      "name": "createDraftPackage-unknown-405",
+      "operation": "createDraftPackage"
+    },
+    {
+      "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages",
+          "requestBody": {
+            "name": "Example agreement",
+            "status": "DRAFT",
+            "type": "PACKAGE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "input": {
+        "name": "Example agreement"
+      },
+      "name": "createDraftPackage-unknown-empty403",
+      "operation": "createDraftPackage"
+    },
+    {
+      "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages",
+          "requestBody": {
+            "name": "Example agreement",
+            "status": "DRAFT",
+            "type": "PACKAGE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "input": {
+        "name": "Example agreement"
+      },
+      "name": "createDraftPackage-unknown-contradictory403",
+      "operation": "createDraftPackage"
+    },
+    {
+      "callId": "327ac424-c447-5173-926b-eb96d1755d47",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "name": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "327ac424-c447-5173-926b-eb96d1755d47",
+      "input": {
+        "name": "Example agreement",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "updatePackageName-unknown-409",
+      "operation": "updatePackageName"
+    },
+    {
+      "callId": "327ac424-c447-5173-926b-eb96d1755d47",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "name": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "327ac424-c447-5173-926b-eb96d1755d47",
+      "input": {
+        "name": "Example agreement",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "updatePackageName-unknown-405",
+      "operation": "updatePackageName"
+    },
+    {
+      "callId": "327ac424-c447-5173-926b-eb96d1755d47",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "name": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "327ac424-c447-5173-926b-eb96d1755d47",
+      "input": {
+        "name": "Example agreement",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "updatePackageName-unknown-empty403",
+      "operation": "updatePackageName"
+    },
+    {
+      "callId": "327ac424-c447-5173-926b-eb96d1755d47",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "name": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "327ac424-c447-5173-926b-eb96d1755d47",
+      "input": {
+        "name": "Example agreement",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "updatePackageName-unknown-contradictory403",
+      "operation": "updatePackageName"
+    },
+    {
+      "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/status",
+          "requestBody": {
+            "status": "SENT"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "sendPackage-unknown-409",
+      "operation": "sendPackage"
+    },
+    {
+      "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/status",
+          "requestBody": {
+            "status": "SENT"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "sendPackage-unknown-405",
+      "operation": "sendPackage"
+    },
+    {
+      "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/status",
+          "requestBody": {
+            "status": "SENT"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "sendPackage-unknown-empty403",
+      "operation": "sendPackage"
+    },
+    {
+      "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/status",
+          "requestBody": {
+            "status": "SENT"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "sendPackage-unknown-contradictory403",
+      "operation": "sendPackage"
+    },
+    {
+      "callId": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "trashed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "trashPackage-unknown-409",
+      "operation": "trashPackage"
+    },
+    {
+      "callId": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "trashed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "trashPackage-unknown-405",
+      "operation": "trashPackage"
+    },
+    {
+      "callId": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "trashed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "trashPackage-unknown-empty403",
+      "operation": "trashPackage"
+    },
+    {
+      "callId": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "trashed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71dab55a-3e9b-5525-9cb1-8cef9c43fe39",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "trashPackage-unknown-contradictory403",
+      "operation": "trashPackage"
+    },
+    {
+      "callId": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "deletePackage-unknown-409",
+      "operation": "deletePackage"
+    },
+    {
+      "callId": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "deletePackage-unknown-405",
+      "operation": "deletePackage"
+    },
+    {
+      "callId": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "deletePackage-unknown-empty403",
+      "operation": "deletePackage"
+    },
+    {
+      "callId": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5a935b14-ddfc-5fc3-be5a-3a082dd89265",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "deletePackage-unknown-contradictory403",
+      "operation": "deletePackage"
+    },
+    {
+      "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "addSigner-unknown-409",
+      "operation": "addSigner"
+    },
+    {
+      "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "addSigner-unknown-405",
+      "operation": "addSigner"
+    },
+    {
+      "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "addSigner-unknown-empty403",
+      "operation": "addSigner"
+    },
+    {
+      "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b": {
+              "attempt": 1,
+              "callId": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "806e2a7d-4c90-5ba1-9a29-82d5d62f5a8b",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "addSigner-unknown-contradictory403",
+      "operation": "addSigner"
+    },
+    {
+      "callId": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "updateSigner-unknown-409",
+      "operation": "updateSigner"
+    },
+    {
+      "callId": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "updateSigner-unknown-405",
+      "operation": "updateSigner"
+    },
+    {
+      "callId": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "updateSigner-unknown-empty403",
+      "operation": "updateSigner"
+    },
+    {
+      "callId": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "updateSigner-unknown-contradictory403",
+      "operation": "updateSigner"
+    },
+    {
+      "callId": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "removeSigner-unknown-409",
+      "operation": "removeSigner"
+    },
+    {
+      "callId": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "removeSigner-unknown-405",
+      "operation": "removeSigner"
+    },
+    {
+      "callId": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "removeSigner-unknown-empty403",
+      "operation": "removeSigner"
+    },
+    {
+      "callId": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"refused\"},\"message\":\"refused\",\"detail\":\"refused\",\"name\":\"INVALID_REQUEST\",\"id\":\"accepted\",\"_id\":\"accepted\",\"result\":\"created\",\"data\":{\"id\":\"accepted\"},\"incident\":{\"id\":\"accepted\"},\"note\":{\"id\":\"accepted\"},\"batch_header\":{\"payout_batch_id\":\"accepted\"},\"upsertedCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3741f016-63b4-5e1b-aff2-6f6652ff333e",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "removeSigner-unknown-contradictory403",
+      "operation": "removeSigner"
+    },
+    {
+      "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "input": {
+        "name": "Example agreement"
+      },
+      "name": "createDraftPackage-send-cap-uncertain",
+      "operation": "createDraftPackage",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 3,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
+        }
       }
     }
   ],
