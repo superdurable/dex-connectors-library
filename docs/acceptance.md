@@ -86,6 +86,13 @@ CI behavior is accepted when:
   on every event, base commit, diff, and scope, unless
   `conformance/exemptions.yaml` exempts its connector;
 - the `ci-summary` check reports a result even when a matrix is empty;
+- a pull request or single-pull-request merge group whose head carries
+  `mac-studio-verified` = `success`, posted by an admin or maintainer through
+  the Mac Studio tooling `remote-test.py attest`, skips the heavy connector
+  jobs and runs `connector-generation` instead; skipped jobs are not re-run on
+  the merge-group commit, as
+  [Mac Studio verified pull requests](architecture.md#mac-studio-verified-pull-requests)
+  describes;
 - scheduled compatibility selects the complete catalog;
 - no matrix creates more than 256 jobs and Connector jobs cap parallelism at 32.
 

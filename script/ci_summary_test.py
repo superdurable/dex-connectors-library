@@ -26,7 +26,7 @@ def results_with(successful: set[str], **overrides: str) -> dict[str, str]:
     return results
 
 
-PLAN_JOBS = {"connector-plan", "database-language-plan", "email-language-plan", "common-repository-checks"}
+PLAN_JOBS = {"connector-plan", "database-language-plan", "email-language-plan", "common-repository-checks", "local-verification"}
 CONNECTOR_PLAN = NOTHING_SELECTED | {"count": "1"}
 CONNECTOR_PULL_REQUEST_JOBS = PLAN_JOBS | {"dex-version-plan", "language-connectors", "connector-conformance", "connectors",
                                            "python-connectors-latest-sdk"}
@@ -146,6 +146,55 @@ class CISummaryTest(unittest.TestCase):
         self.assertEqual(1, failed.returncode)
         self.assertIn("common-root-go: skipped", failed.stderr)
 
+    def test_trusted_local_verification_lets_heavy_jobs_skip_and_requires_generation_checks(self) -> None:
+        plan = NOTHING_SELECTED | {"count": "1", "sdkpython": "true", "sdkts": "true", "sdkgo_integration": "true",
+                                   "database_language_count": "1", "email_language_count": "1"}
+        for event_name in ("pull_request", "merge_group"):
+            with self.subTest(event=event_name):
+                expected = ci_summary.select_expected_jobs(event_name, plan) - ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS
+                trusted_results = results_with(expected | {"connector-generation"})
+                self.assertEqual({}, ci_summary.find_failed_jobs(trusted_results, event_name, plan, True))
+                self.assertEqual({"connector-generation": "skipped"},
+                                 ci_summary.find_failed_jobs(results_with(expected), event_name, plan, True))
+                for result in ("failure", "cancelled"):
+                    failed = ci_summary.find_failed_jobs(results_with(expected | {"connector-generation"}, connectors=result),
+                                                         event_name, plan, True)
+                    self.assertEqual({"connectors": result}, failed)
+
+    def test_untrusted_runs_still_require_every_heavy_job(self) -> None:
+        for event_name, is_locally_verified in (("merge_group", False), ("push", True), ("workflow_dispatch", True), ("schedule", True)):
+            with self.subTest(event=event_name, is_locally_verified=is_locally_verified):
+                expected = ci_summary.select_expected_jobs(event_name, CONNECTOR_PLAN)
+                skipped_heavy = results_with((expected - ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS) | {"connector-generation"})
+                failed = ci_summary.find_failed_jobs(skipped_heavy, event_name, CONNECTOR_PLAN, is_locally_verified)
+                self.assertEqual({job: "skipped" for job in expected & ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS
+                                  if job not in ci_summary.ADVISORY_JOBS}, failed)
+                self.assertTrue(failed)
+
+    def test_trusted_output_is_ignored_unless_local_verification_succeeded(self) -> None:
+        expected = ci_summary.select_expected_jobs("merge_group", CONNECTOR_PLAN) - ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS
+        for result in ("failure", "cancelled", "skipped"):
+            with self.subTest(result=result):
+                results = results_with(expected | {"connector-generation"}, **{"local-verification": result})
+                failed = ci_summary.find_failed_jobs(results, "merge_group", CONNECTOR_PLAN, True)
+                self.assertEqual(result, failed["local-verification"])
+                self.assertEqual("skipped", failed["connectors"])
+
+    def test_main_reads_the_trusted_output(self) -> None:
+        expected = ci_summary.select_expected_jobs("merge_group", CONNECTOR_PLAN) - ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS
+        environment = {**os.environ, "EVENT_NAME": "merge_group", "LOCAL_VERIFICATION_TRUSTED": "true",
+                       "JOB_RESULTS": json.dumps({name: {"result": result}
+                                                  for name, result in results_with(expected | {"connector-generation"}).items()})}
+        environment.update({f"PLAN_{name.upper()}": value for name, value in CONNECTOR_PLAN.items()})
+        script = Path(ci_summary.__file__)
+        passed = subprocess.run([sys.executable, str(script)], env=environment, capture_output=True, text=True, check=False)
+        self.assertEqual(0, passed.returncode, passed.stderr)
+        self.assertIn("A Mac Studio verification trusted this run", passed.stdout)
+        environment["LOCAL_VERIFICATION_TRUSTED"] = "false"
+        failed = subprocess.run([sys.executable, str(script)], env=environment, capture_output=True, text=True, check=False)
+        self.assertEqual(1, failed.returncode)
+        self.assertIn("connectors: skipped", failed.stderr)
+
     def test_workflow_passes_every_plan_output_the_summary_reads(self) -> None:
         summary = workflow_job(WORKFLOW_PATH.read_text(encoding="utf-8"), "ci-summary")
         for output in NOTHING_SELECTED:
@@ -153,6 +202,7 @@ class CISummaryTest(unittest.TestCase):
                 "email-language-plan.outputs.count" if output == "email_language_count" else f"connector-plan.outputs.{output}")
             with self.subTest(output=output):
                 self.assertIn(f"PLAN_{output.upper()}: ${{{{ needs.{source} }}}}", summary)
+        self.assertIn("LOCAL_VERIFICATION_TRUSTED: ${{ needs.local-verification.outputs.trusted }}", summary)
         self.assertIn("run: python3 script/ci_summary.py", summary)
 
 
