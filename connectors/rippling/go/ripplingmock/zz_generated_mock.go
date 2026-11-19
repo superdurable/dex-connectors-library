@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted rippling connection. Script each operation through its accessor.
 type Mock struct {
-	connection rippling.Connection
-	getWorker  *connectormock.Query[rippling.GetWorkerInput, rippling.WorkerSummary]
+	connection  rippling.Connection
+	getWorker   *connectormock.Query[rippling.GetWorkerInput, rippling.WorkerSummary]
+	listWorkers *connectormock.Query[rippling.ListWorkersInput, rippling.WorkerPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +27,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getWorker: connectormock.NewQuery[rippling.GetWorkerInput, rippling.WorkerSummary](t, rippling.GetWorkerDefinition),
+		getWorker:   connectormock.NewQuery[rippling.GetWorkerInput, rippling.WorkerSummary](t, rippling.GetWorkerDefinition),
+		listWorkers: connectormock.NewQuery[rippling.ListWorkersInput, rippling.WorkerPage](t, rippling.ListWorkersDefinition),
 	}
 	mock.getWorker.Default(GetWorkerDefault())
+	mock.listWorkers.Default(ListWorkersDefault())
 	connection, err := rippling.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "rippling", Name: connectionName})
 	if err != nil {
 		t.Fatalf("rippling mock connection: %v", err)
@@ -45,10 +48,18 @@ func (mock *Mock) GetWorker() *connectormock.Query[rippling.GetWorkerInput, ripp
 	return mock.getWorker
 }
 
+// ListWorkers returns the listWorkers script.
+func (mock *Mock) ListWorkers() *connectormock.Query[rippling.ListWorkersInput, rippling.WorkerPage] {
+	return mock.listWorkers
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetWorker() sdkgo.Query[rippling.GetWorkerInput, rippling.WorkerSummary] {
 	return operations.mock.getWorker
+}
+func (operations mockOperations) ListWorkers() sdkgo.Query[rippling.ListWorkersInput, rippling.WorkerPage] {
+	return operations.mock.listWorkers
 }
 
 // GetWorkerFound selects the found branch: Rippling returned the worker.
@@ -89,3 +100,37 @@ func GetWorkerFoundDefault() connectormock.Case[rippling.WorkerSummary] {
 
 // GetWorkerDefault is the manifest default, foundDefault, which New installs.
 func GetWorkerDefault() connectormock.Case[rippling.WorkerSummary] { return GetWorkerFoundDefault() }
+
+// ListWorkersFound selects the found branch: Rippling returned the worker page.
+func ListWorkersFound(value rippling.WorkerPage, failure *sdkgo.Failure) connectormock.Case[rippling.WorkerPage] {
+	return connectormock.Branch(rippling.ListWorkersBranchFound, value, failure)
+}
+
+// ListWorkersProviderRejected selects the providerRejected branch: Rippling conclusively rejected the list request.
+func ListWorkersProviderRejected(value rippling.WorkerPage, failure *sdkgo.Failure) connectormock.Case[rippling.WorkerPage] {
+	return connectormock.Branch(rippling.ListWorkersBranchProviderRejected, value, failure)
+}
+
+// ListWorkersInvalidResponse selects the invalidResponse branch: Rippling returned malformed or oversized JSON.
+func ListWorkersInvalidResponse(value rippling.WorkerPage, failure *sdkgo.Failure) connectormock.Case[rippling.WorkerPage] {
+	return connectormock.Branch(rippling.ListWorkersBranchInvalidResponse, value, failure)
+}
+
+// ListWorkersDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListWorkersDefect(value rippling.WorkerPage, failure *sdkgo.Failure) connectormock.Case[rippling.WorkerPage] {
+	return connectormock.Branch(rippling.ListWorkersBranchDefect, value, failure)
+}
+
+// ListWorkersRetry asks Dex to retry the listWorkers Step, after the delay when it is positive.
+func ListWorkersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[rippling.WorkerPage] {
+	return connectormock.Retry[rippling.WorkerPage](failure, after)
+}
+
+// ListWorkersFoundDefault is the manifest mock foundDefault: One sample worker page is returned.
+func ListWorkersFoundDefault() connectormock.Case[rippling.WorkerPage] {
+	value := connectormock.MustDecodeOutput[rippling.WorkerPage](`{"workers":[{"id":"65699281fb7bc7c3510f44a6","status":"ACTIVE","title":"Engineer"}],"nextCursor":""}`)
+	return connectormock.Branch(rippling.ListWorkersBranchFound, value, nil)
+}
+
+// ListWorkersDefault is the manifest default, foundDefault, which New installs.
+func ListWorkersDefault() connectormock.Case[rippling.WorkerPage] { return ListWorkersFoundDefault() }

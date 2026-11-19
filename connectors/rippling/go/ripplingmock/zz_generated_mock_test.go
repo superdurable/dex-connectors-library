@@ -20,6 +20,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[rippling.WorkerSummary](`{"id":"65699281fb7bc7c3510f44a6","status":"ACTIVE","title":"Engineer"}`)
 			return err
 		}},
+		{name: "listWorkers/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[rippling.WorkerPage](`{"workers":[{"id":"65699281fb7bc7c3510f44a6","status":"ACTIVE","title":"Engineer"}],"nextCursor":""}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +36,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetWorker().Definition().Operation.OperationID != "getWorker" {
 		t.Errorf("getWorker mock has another definition")
+	}
+	if mock.ListWorkers().Definition().Operation.OperationID != "listWorkers" {
+		t.Errorf("listWorkers mock has another definition")
 	}
 }

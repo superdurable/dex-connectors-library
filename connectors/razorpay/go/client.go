@@ -6,6 +6,7 @@ package razorpay
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -66,6 +67,24 @@ type providerResponse struct {
 	status     int
 	retryAfter time.Duration
 	err        error
+}
+
+func isDefiniteRazorpayRefusal(response providerResponse) bool {
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var rejection struct {
+		Error struct {
+			Code        string `json:"code"`
+			Description string `json:"description"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(response.body, &rejection) == nil &&
+		(strings.TrimSpace(rejection.Error.Code) != "" || strings.TrimSpace(rejection.Error.Description) != "")
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {

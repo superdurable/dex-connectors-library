@@ -22,6 +22,8 @@ type Mock struct {
 	getRecord                *connectormock.Query[salesforce.GetRecordInput, salesforce.Record]
 	upsertRecordByExternalID *connectormock.Mutation[salesforce.UpsertRecordByExternalIDInput, salesforce.UpsertRecordByExternalIDOutput]
 	updateRecord             *connectormock.Mutation[salesforce.UpdateRecordInput, salesforce.UpdateRecordOutput]
+	deleteRecord             *connectormock.Mutation[salesforce.DeleteRecordInput, salesforce.DeleteRecordOutput]
+	createRecord             *connectormock.Mutation[salesforce.CreateRecordInput, salesforce.CreateRecordOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,11 +35,15 @@ func New(t testing.TB, connectionName string) *Mock {
 		getRecord:                connectormock.NewQuery[salesforce.GetRecordInput, salesforce.Record](t, salesforce.GetRecordDefinition),
 		upsertRecordByExternalID: connectormock.NewMutation[salesforce.UpsertRecordByExternalIDInput, salesforce.UpsertRecordByExternalIDOutput](t, salesforce.UpsertRecordByExternalIDDefinition),
 		updateRecord:             connectormock.NewMutation[salesforce.UpdateRecordInput, salesforce.UpdateRecordOutput](t, salesforce.UpdateRecordDefinition),
+		deleteRecord:             connectormock.NewMutation[salesforce.DeleteRecordInput, salesforce.DeleteRecordOutput](t, salesforce.DeleteRecordDefinition),
+		createRecord:             connectormock.NewMutation[salesforce.CreateRecordInput, salesforce.CreateRecordOutput](t, salesforce.CreateRecordDefinition),
 	}
 	mock.queryRecords.Default(QueryRecordsDefault())
 	mock.getRecord.Default(GetRecordDefault())
 	mock.upsertRecordByExternalID.Default(UpsertRecordByExternalIDDefault())
 	mock.updateRecord.Default(UpdateRecordDefault())
+	mock.deleteRecord.Default(DeleteRecordDefault())
+	mock.createRecord.Default(CreateRecordDefault())
 	connection, err := salesforce.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "salesforce", Name: connectionName})
 	if err != nil {
 		t.Fatalf("salesforce mock connection: %v", err)
@@ -69,6 +75,16 @@ func (mock *Mock) UpdateRecord() *connectormock.Mutation[salesforce.UpdateRecord
 	return mock.updateRecord
 }
 
+// DeleteRecord returns the deleteRecord script.
+func (mock *Mock) DeleteRecord() *connectormock.Mutation[salesforce.DeleteRecordInput, salesforce.DeleteRecordOutput] {
+	return mock.deleteRecord
+}
+
+// CreateRecord returns the createRecord script.
+func (mock *Mock) CreateRecord() *connectormock.Mutation[salesforce.CreateRecordInput, salesforce.CreateRecordOutput] {
+	return mock.createRecord
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) QueryRecords() sdkgo.Query[salesforce.QueryRecordsInput, salesforce.QueryRecordsOutput] {
@@ -82,6 +98,12 @@ func (operations mockOperations) UpsertRecordByExternalID() sdkgo.Mutation[sales
 }
 func (operations mockOperations) UpdateRecord() sdkgo.Mutation[salesforce.UpdateRecordInput, salesforce.UpdateRecordOutput] {
 	return operations.mock.updateRecord
+}
+func (operations mockOperations) DeleteRecord() sdkgo.Mutation[salesforce.DeleteRecordInput, salesforce.DeleteRecordOutput] {
+	return operations.mock.deleteRecord
+}
+func (operations mockOperations) CreateRecord() sdkgo.Mutation[salesforce.CreateRecordInput, salesforce.CreateRecordOutput] {
+	return operations.mock.createRecord
 }
 
 // QueryRecordsFound selects the found branch: Salesforce returned matching records or reported that more pages remain.
@@ -320,4 +342,98 @@ func UpdateRecordEditAccessDenied() connectormock.Case[salesforce.UpdateRecordOu
 // UpdateRecordDefault is the manifest default, linkedPriyaUpdate, which New installs.
 func UpdateRecordDefault() connectormock.Case[salesforce.UpdateRecordOutput] {
 	return UpdateRecordLinkedPriyaUpdate()
+}
+
+// DeleteRecordDeleted selects the deleted branch: Salesforce removed the record.
+func DeleteRecordDeleted(value salesforce.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.DeleteRecordOutput] {
+	return connectormock.Branch(salesforce.DeleteRecordBranchDeleted, value, failure)
+}
+
+// DeleteRecordNotFound selects the notFound branch: The record was already absent or unavailable.
+func DeleteRecordNotFound(value salesforce.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.DeleteRecordOutput] {
+	return connectormock.Branch(salesforce.DeleteRecordBranchNotFound, value, failure)
+}
+
+// DeleteRecordRecordRejected selects the recordRejected branch: Salesforce rejected deletion because of a record constraint.
+func DeleteRecordRecordRejected(value salesforce.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.DeleteRecordOutput] {
+	return connectormock.Branch(salesforce.DeleteRecordBranchRecordRejected, value, failure)
+}
+
+// DeleteRecordProviderRejected selects the providerRejected branch: Salesforce denied authorization or object access.
+func DeleteRecordProviderRejected(value salesforce.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.DeleteRecordOutput] {
+	return connectormock.Branch(salesforce.DeleteRecordBranchProviderRejected, value, failure)
+}
+
+// DeleteRecordDefect selects the defect branch: Local input or connector configuration is invalid.
+func DeleteRecordDefect(value salesforce.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.DeleteRecordOutput] {
+	return connectormock.Branch(salesforce.DeleteRecordBranchDefect, value, failure)
+}
+
+// DeleteRecordRetry asks Dex to retry the deleteRecord Step, after the delay when it is positive.
+func DeleteRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[salesforce.DeleteRecordOutput] {
+	return connectormock.Retry[salesforce.DeleteRecordOutput](failure, after)
+}
+
+// DeleteRecordDeletedContact is the manifest mock deletedContact: Deleting a Contact removes its record.
+func DeleteRecordDeletedContact() connectormock.Case[salesforce.DeleteRecordOutput] {
+	value := connectormock.MustDecodeOutput[salesforce.DeleteRecordOutput](`{"id":"003RM000001AbcdYAC"}`)
+	return connectormock.Branch(salesforce.DeleteRecordBranchDeleted, value, nil)
+}
+
+// DeleteRecordMissingContactForDelete is the manifest mock missingContactForDelete: The Contact was already absent.
+func DeleteRecordMissingContactForDelete() connectormock.Case[salesforce.DeleteRecordOutput] {
+	var value salesforce.DeleteRecordOutput
+	return connectormock.Branch(salesforce.DeleteRecordBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Salesforce could not find the Contact."})
+}
+
+// DeleteRecordDefault is the manifest default, deletedContact, which New installs.
+func DeleteRecordDefault() connectormock.Case[salesforce.DeleteRecordOutput] {
+	return DeleteRecordDeletedContact()
+}
+
+// CreateRecordCreated selects the created branch: Salesforce created or confirmed the record.
+func CreateRecordCreated(value salesforce.CreateRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.CreateRecordOutput] {
+	return connectormock.Branch(salesforce.CreateRecordBranchCreated, value, failure)
+}
+
+// CreateRecordRecordRejected selects the recordRejected branch: Salesforce rejected the field values.
+func CreateRecordRecordRejected(value salesforce.CreateRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.CreateRecordOutput] {
+	return connectormock.Branch(salesforce.CreateRecordBranchRecordRejected, value, failure)
+}
+
+// CreateRecordProviderRejected selects the providerRejected branch: Salesforce denied authorization or object access.
+func CreateRecordProviderRejected(value salesforce.CreateRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.CreateRecordOutput] {
+	return connectormock.Branch(salesforce.CreateRecordBranchProviderRejected, value, failure)
+}
+
+// CreateRecordUncertain returns an uncertain createRecord outcome.
+func CreateRecordUncertain(value salesforce.CreateRecordOutput, failure sdkgo.Failure) connectormock.Case[salesforce.CreateRecordOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateRecordDefect selects the defect branch: Local input or connector configuration is invalid.
+func CreateRecordDefect(value salesforce.CreateRecordOutput, failure *sdkgo.Failure) connectormock.Case[salesforce.CreateRecordOutput] {
+	return connectormock.Branch(salesforce.CreateRecordBranchDefect, value, failure)
+}
+
+// CreateRecordRetry asks Dex to retry the createRecord Step, after the delay when it is positive.
+func CreateRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[salesforce.CreateRecordOutput] {
+	return connectormock.Retry[salesforce.CreateRecordOutput](failure, after)
+}
+
+// CreateRecordCreatedContact is the manifest mock createdContact: Salesforce created a Contact.
+func CreateRecordCreatedContact() connectormock.Case[salesforce.CreateRecordOutput] {
+	value := connectormock.MustDecodeOutput[salesforce.CreateRecordOutput](`{"id":"003RM000001AbcdYAC"}`)
+	return connectormock.Branch(salesforce.CreateRecordBranchCreated, value, nil)
+}
+
+// CreateRecordRejectedContactCreate is the manifest mock rejectedContactCreate: Salesforce requires a LastName.
+func CreateRecordRejectedContactCreate() connectormock.Case[salesforce.CreateRecordOutput] {
+	value := connectormock.MustDecodeOutput[salesforce.CreateRecordOutput](`{"providerErrors":[{"errorCode":"REQUIRED_FIELD_MISSING","fields":["LastName"]}]}`)
+	return connectormock.Branch(salesforce.CreateRecordBranchRecordRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Salesforce rejected the record values."})
+}
+
+// CreateRecordDefault is the manifest default, createdContact, which New installs.
+func CreateRecordDefault() connectormock.Case[salesforce.CreateRecordOutput] {
+	return CreateRecordCreatedContact()
 }

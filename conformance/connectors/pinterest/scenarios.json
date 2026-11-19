@@ -471,6 +471,1767 @@
       ],
       "name": "listPins-retryThenListed",
       "operation": "listPins"
+    },
+    {
+      "callId": "6e47c55b-5656-4f10-8398-d58ec26d9481",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"987654321\",\"name\":\"Example Board\"}],\"bookmark\":\"following-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "boards": [
+            {
+              "id": "987654321",
+              "name": "Example Board"
+            }
+          ],
+          "nextBookmark": "following-page"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoards-listed",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "7e47c55b-5656-4f10-8398-d58ec26d9482",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "boards": [],
+          "nextBookmark": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoards-providerRejected",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "8e47c55b-5656-4f10-8398-d58ec26d9483",
+      "exchanges": [
+        {
+          "body": "{\"items\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "boards": [],
+          "nextBookmark": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoards-invalidResponse",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "9e47c55b-5656-4f10-8398-d58ec26d9484",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boards": [],
+          "nextBookmark": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 251
+      },
+      "name": "listBoards-defect",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "ae47c55b-5656-4f10-8398-d58ec26d9485",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoards-final429",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "be47c55b-5656-4f10-8398-d58ec26d9486",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoards-final503",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "ce47c55b-5656-4f10-8398-d58ec26d9487",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoards-transportFailure",
+      "operation": "listBoards"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"987654321\",\"name\":\"Example Board\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "987654321",
+          "name": "Example Board"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321"
+      },
+      "name": "getBoard-found",
+      "operation": "getBoard"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321"
+      },
+      "name": "getBoard-notFound",
+      "operation": "getBoard"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321"
+      },
+      "name": "getBoard-providerRejected",
+      "operation": "getBoard"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321"
+      },
+      "name": "getBoard-invalidResponse",
+      "operation": "getBoard"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "bad/id"
+      },
+      "name": "getBoard-defect",
+      "operation": "getBoard"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321"
+      },
+      "name": "getBoard-final429",
+      "operation": "getBoard"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321"
+      },
+      "name": "getBoard-final503",
+      "operation": "getBoard"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321"
+      },
+      "name": "getBoard-transportFailure",
+      "operation": "getBoard"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123456789\",\"board_id\":\"987654321\",\"title\":\"Example Pin\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "boardId": "987654321",
+          "id": "123456789",
+          "title": "Example Pin"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pinId": "123456789"
+      },
+      "name": "getPin-found",
+      "operation": "getPin"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "boardId": "",
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pinId": "123456789"
+      },
+      "name": "getPin-notFound",
+      "operation": "getPin"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "boardId": "",
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pinId": "123456789"
+      },
+      "name": "getPin-providerRejected",
+      "operation": "getPin"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "boardId": "",
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pinId": "123456789"
+      },
+      "name": "getPin-invalidResponse",
+      "operation": "getPin"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boardId": "",
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pinId": "bad/id"
+      },
+      "name": "getPin-defect",
+      "operation": "getPin"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pinId": "123456789"
+      },
+      "name": "getPin-final429",
+      "operation": "getPin"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pinId": "123456789"
+      },
+      "name": "getPin-final503",
+      "operation": "getPin"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pinId": "123456789"
+      },
+      "name": "getPin-transportFailure",
+      "operation": "getPin"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"123456789\",\"board_id\":\"987654321\",\"title\":\"Example Pin\"}],\"bookmark\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextBookmark": "",
+          "pins": [
+            {
+              "boardId": "987654321",
+              "id": "123456789",
+              "title": "Example Pin"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardPins-listed",
+      "operation": "listBoardPins"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardPins-providerRejected",
+      "operation": "listBoardPins"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"items\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardPins-invalidResponse",
+      "operation": "listBoardPins"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "bad/id",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardPins-defect",
+      "operation": "listBoardPins"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardPins-final429",
+      "operation": "listBoardPins"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardPins-final503",
+      "operation": "listBoardPins"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardPins-transportFailure",
+      "operation": "listBoardPins"
+    },
+    {
+      "callId": "40000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"112233445\",\"name\":\"Saved Ideas\"}],\"bookmark\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextBookmark": "",
+          "sections": [
+            {
+              "id": "112233445",
+              "name": "Saved Ideas"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardSections-listed",
+      "operation": "listBoardSections"
+    },
+    {
+      "callId": "40000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextBookmark": "",
+          "sections": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardSections-providerRejected",
+      "operation": "listBoardSections"
+    },
+    {
+      "callId": "40000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"items\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextBookmark": "",
+          "sections": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardSections-invalidResponse",
+      "operation": "listBoardSections"
+    },
+    {
+      "callId": "40000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextBookmark": "",
+          "sections": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "bad/id",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardSections-defect",
+      "operation": "listBoardSections"
+    },
+    {
+      "callId": "40000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardSections-final429",
+      "operation": "listBoardSections"
+    },
+    {
+      "callId": "40000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardSections-final503",
+      "operation": "listBoardSections"
+    },
+    {
+      "callId": "40000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listBoardSections-transportFailure",
+      "operation": "listBoardSections"
+    },
+    {
+      "callId": "50000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"123456789\",\"board_id\":\"987654321\",\"title\":\"Example Pin\"}],\"bookmark\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections/112233445/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextBookmark": "",
+          "pins": [
+            {
+              "boardId": "987654321",
+              "id": "123456789",
+              "title": "Example Pin"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2,
+        "sectionId": "112233445"
+      },
+      "name": "listBoardSectionPins-listed",
+      "operation": "listBoardSectionPins"
+    },
+    {
+      "callId": "50000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections/112233445/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2,
+        "sectionId": "112233445"
+      },
+      "name": "listBoardSectionPins-providerRejected",
+      "operation": "listBoardSectionPins"
+    },
+    {
+      "callId": "50000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"items\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections/112233445/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2,
+        "sectionId": "112233445"
+      },
+      "name": "listBoardSectionPins-invalidResponse",
+      "operation": "listBoardSectionPins"
+    },
+    {
+      "callId": "50000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2,
+        "sectionId": "bad/id"
+      },
+      "name": "listBoardSectionPins-defect",
+      "operation": "listBoardSectionPins"
+    },
+    {
+      "callId": "50000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections/112233445/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2,
+        "sectionId": "112233445"
+      },
+      "name": "listBoardSectionPins-final429",
+      "operation": "listBoardSectionPins"
+    },
+    {
+      "callId": "50000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections/112233445/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2,
+        "sectionId": "112233445"
+      },
+      "name": "listBoardSectionPins-final503",
+      "operation": "listBoardSectionPins"
+    },
+    {
+      "callId": "50000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/boards/987654321/sections/112233445/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "987654321",
+        "bookmark": "next-page",
+        "pageSize": 2,
+        "sectionId": "112233445"
+      },
+      "name": "listBoardSectionPins-transportFailure",
+      "operation": "listBoardSectionPins"
     }
   ],
   "schemaVersion": 1
