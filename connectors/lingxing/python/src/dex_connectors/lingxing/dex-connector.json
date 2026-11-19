@@ -1,0 +1,52 @@
+{
+  "connectorId": "lingxing",
+  "releaseTag": "connectors/lingxing/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-lingxing",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_stores_step",
+      "kind": "query",
+      "operationId": "listStores",
+      "inputType": "ListStoresInput",
+      "description": "List authorized Amazon stores, excluding account identifiers and personal details.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListStoresInput requests all stores authorized to the Lingxing account.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
