@@ -11,3 +11,5 @@ Register or sign in through the [Quanshi developer platform](https://developer.q
 ## Example
 
 The [room directory Flow](go/examples/room-directory/) is a runnable Worker with static Dex connection name `quanshi`. Its mock is synthetic and verified with a real Dex Worker and Client. Live Quanshi authorization, current-domain compatibility of the older room-list path, and room status behavior remain unverified without an approved account.
+
+The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.

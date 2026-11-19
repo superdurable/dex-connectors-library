@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: quanshi
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-quanshi", operations: [listRooms], triggers: []}
   codegen:
     go:
       package: quanshi
