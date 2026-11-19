@@ -8,7 +8,8 @@ import { PandaDocClient } from '../src/client.js';
 import { GetDocumentInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/pandadoc/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/pandadoc/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getDocument');
 const connection = { provider: 'pandadoc', name: 'pandadoc' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePandaDoc, '/public/v1'));
 

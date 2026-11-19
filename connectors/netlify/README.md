@@ -1,6 +1,6 @@
 # Netlify connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/netlify/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/netlify/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/netlify`.
 
@@ -17,8 +17,12 @@ The Python package is [`dex-connector-netlify`](python/README.md), imported as
 | --- | --- | --- | --- | --- | --- |
 | NewListSitesStep | GET /api/v1/sites | empty `ListSitesInput` | `SitesPage.Sites` | `listed` | `providerRejected`, `invalidResponse`, `defect |
 | NewListDeploysStep | GET /api/v1/sites/{site_id}/deploys | `SiteID`, shown as Project ID in Netlify | `DeploysPage.Deploys` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect |
+| NewGetSiteStep | GET /api/v1/sites/{site_id} | `SiteID` | `Site` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewGetDeployStep | GET /api/v1/sites/{site_id}/deploys/{deploy_id} | `SiteID`, `DeployID` | `Deploy` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewDeleteSiteStep | DELETE /api/v1/sites/{site_id} | `SiteID` | `DeletedSite` | `deleted` | `notFound`, `providerRejected`, `defect` |
+| NewCancelDeployStep | POST /api/v1/deploys/{deploy_id}/cancel | `DeployID` | `Deploy` | `cancelled` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-Both operations are read-only Queries. They return the first provider page; Netlify defaults to at most 100 results per page.
+List and get operations are read-only Queries. Delete and cancel are safe-to-repeat Mutations. List operations return the first provider page; Netlify defaults to at most 100 results per page.
 
 ## Authorization
 
@@ -46,7 +50,7 @@ The generated `netlifymock` package installs these default answers:
 - `listSites`: the Meridian Web site.
 - `listDeploys`: one ready deploy for that site.
 
-The [mock-backed example test](go/examples/netlify-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
+The [mock-backed example test](go/examples/netlify-lookup/flow/workflow_mock_integration_test.go) runs the site list and site lookup defaults through a real Dex Worker and Client in CI.
 
 ## Official API references
 

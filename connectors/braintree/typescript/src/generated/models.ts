@@ -16,6 +16,8 @@ export interface Config {
   timeoutMs?: number;
   /** Maximum complete GraphQL JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses. */
   maxResponseBytes?: number;
+  /** Absolute worker-mounted directory containing immutable PNG, JPEG, or PDF dispute evidence files. Blank disables file uploads; mount the same directory on every worker and pass each file basename plus SHA-256 digest to createDisputeFileEvidence. Never put file bytes or credentials in Flow input. */
+  evidenceDirectory?: string;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -24,6 +26,7 @@ export const ConfigSchema = z.object({
   "apiVersion": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "evidenceDirectory": z.string().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

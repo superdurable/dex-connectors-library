@@ -18,6 +18,6 @@ func TestMapToListLeadsInput(t *testing.T) {
 
 func TestFlowRegistersWithMockConnection(t *testing.T) {
 	mock := closemock.New(t, ConnectionName)
-	_, err := dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
+	_, err := dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection()), NewSendDraftsFlow(mock.Connection())})
 	require.NoError(t, err)
 }

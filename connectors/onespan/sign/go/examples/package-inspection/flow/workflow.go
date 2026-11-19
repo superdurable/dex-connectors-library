@@ -47,7 +47,27 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToOperationInput,
 			Found:               sdkgo.GoTo(completeResult{}),
 		})),
+		dex.DefineStep(onespansign.NewListPackagesStep(onespansign.ListPackagesStepConfig[onespansign.GetPackageInput]{
+			StepType: "ListDraftPackages", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "OneSpan Sign", Explanation: "List the first five draft transactions."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(_ onespansign.GetPackageInput) onespansign.ListPackagesInput {
+				return onespansign.ListPackagesInput{From: 1, To: 5, Status: "DRAFT"}
+			},
+			Listed: sdkgo.GoTo(draftsListed{}),
+		})),
+		dex.DefineStep(onespansign.NewListSignerRolesStep(onespansign.ListSignerRolesStepConfig[onespansign.GetPackageInput]{
+			StepType: "ListSignerRoles", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "OneSpan Sign", Explanation: "List signer role IDs without signer identities."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input onespansign.GetPackageInput) onespansign.ListSignerRolesInput {
+				return onespansign.ListSignerRolesInput{PackageID: input.PackageID}
+			},
+			Listed: sdkgo.GoTo(rolesListed{}),
+		})),
 		dex.DefineStep(completeResult{}),
+		dex.DefineStep(draftsListed{}),
+		dex.DefineStep(rolesListed{}),
 	}
 }
 
@@ -99,7 +119,31 @@ func (startRequest) WaitFor(dex.Context, onespansign.GetPackageInput) (*dex.Wait
 	return dex.SkipWaitImmediately(), nil
 }
 func (startRequest) Execute(_ dex.Context, input onespansign.GetPackageInput) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[onespansign.GetPackageInput](operationStepType), input), nil
+	return dex.GoToMany(
+		dex.MovementOf(sdkgo.StepRef[onespansign.GetPackageInput](operationStepType), input),
+		dex.MovementOf(sdkgo.StepRef[onespansign.GetPackageInput]("ListDraftPackages"), input),
+		dex.MovementOf(sdkgo.StepRef[onespansign.GetPackageInput]("ListSignerRoles"), input),
+	), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the draft listing after OneSpan Sign responds."
+type draftsListed struct {
+	dex.StepDefaultsNoWaitFor[onespansign.ListPackagesResult]
+}
+
+func (draftsListed) Execute(_ dex.Context, _ onespansign.ListPackagesResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the role ID listing after OneSpan Sign responds."
+type rolesListed struct {
+	dex.StepDefaultsNoWaitFor[onespansign.ListSignerRolesResult]
+}
+
+func (rolesListed) Execute(_ dex.Context, _ onespansign.ListSignerRolesResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
 }
 
 // dex:group group-id:result group-label:"Result"

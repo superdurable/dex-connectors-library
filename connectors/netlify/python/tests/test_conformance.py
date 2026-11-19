@@ -14,10 +14,16 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/netlify/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/netlify/scenarios.json")
+    if scenario["operation"] in {"listSites", "listDeploys"}
+]
 CONNECTION = sdk.ConnectionRef("netlify", "netlify")
 ADAPTER = conformance.PythonOperationAdapter(
-    "netlify", CONNECTION, netlify,
+    "netlify",
+    CONNECTION,
+    netlify,
     lambda client, recorder: netlify.Client(
         netlify.Config(base_url="http://127.0.0.1:12345"),
         ConformanceCredentials(recorder.scenario["name"] == "sites-missing-credentials"),

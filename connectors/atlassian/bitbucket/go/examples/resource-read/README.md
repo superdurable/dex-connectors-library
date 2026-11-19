@@ -1,14 +1,19 @@
 # Bitbucket resource-read example
 
-This Flow uses the static `bitbucket` connection and `bitbucket.NewListRepositoriesStep` to read one provider resource. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
+This example registers six Flows on the static `bitbucket` connection: `BitbucketResourceRead` lists repositories, `BitbucketPullRequestTitleUpdate` replaces one pull request title, `BitbucketRepositoryCreate` creates a repository, `BitbucketPullRequestCreate` creates a pull request, `BitbucketPullRequestCommentCreate` adds a Markdown comment, and `BitbucketBranchCreate` creates a branch. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
-From `connectors/atlassian/bitbucket`:
+From `connectors/atlassian/bitbucket/go`:
 
 ```sh
 mkdir -p build
 dexcli visualize ./examples/resource-read/flow/workflow.go --schema-version 2.0 --json --out ./build/resource-read
+dexcli visualize ./examples/resource-read/flow/title_workflow.go --schema-version 2.0 --json --out ./build/title-update
+dexcli visualize ./examples/resource-read/flow/repository_workflow.go --schema-version 2.0 --json --out ./build/repository-create
+dexcli visualize ./examples/resource-read/flow/pull_request_create_workflow.go --schema-version 2.0 --json --out ./build/pull-request-create
+dexcli visualize ./examples/resource-read/flow/pull_request_comment_workflow.go --schema-version 2.0 --json --out ./build/pull-request-comment-create
+dexcli visualize ./examples/resource-read/flow/branch_create_workflow.go --schema-version 2.0 --json --out ./build/branch-create
 ```
 
 The command should report `valid: true`. A local unpublished module can produce a release metadata warning.
@@ -19,8 +24,8 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/bitbucket-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/atlassian/bitbucket/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go --version v0.2.0 --tag connectors/atlassian/bitbucket/go/v0.2.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/bitbucket-release/connector-release.json --digest-output /tmp/bitbucket-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/atlassian/bitbucket/go/build" --connector-release-override bitbucket=/tmp/bitbucket-release
+go run ./cmd/connectorctl release-artifact --manifest connectors/atlassian/bitbucket/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go --version v0.3.0 --tag connectors/atlassian/bitbucket/go/v0.3.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/bitbucket-release/connector-release.json --digest-output /tmp/bitbucket-release/connector-release.json.sha256
+dexcli dev -open=false -dex-port 9210 -web-port 9211 --flow-rendering-dir "$PWD/connectors/atlassian/bitbucket/go/build" --connector-release-override bitbucket=/tmp/bitbucket-release
 ```
 
 In Dex Web **Connections**, create the `bitbucket` connection with the manifest's authorization guide. Then start the Worker in another terminal:
@@ -36,6 +41,14 @@ The pull Worker connects outbound to Dex. In **Start Flow**, choose `BitbucketRe
 {"workspace":"meridian"}
 ```
 
-The Flow completes with the provider value. A missing resource selects the unwired `notFound` branch and fails the Flow.
+The Flow completes with the provider value. To exercise the title update, start `BitbucketPullRequestTitleUpdate` with a unique Flow ID and `{"workspace":"meridian","repository":"api","pullRequestId":7,"title":"Add client and contract tests"}`. Grant the workspace token Pull requests > Write and use a disposable pull request for live testing. A missing resource selects the unwired `notFound` branch and fails the Flow.
 
-The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs the manifest default through a real Dex Worker in CI; it is not run during this host's heavy-work pause.
+To create a repository, start `BitbucketRepositoryCreate` with a unique Flow ID and `{"workspace":"meridian","repository":"api","name":"Meridian API","is_private":true}`. Replace the workspace with your Bitbucket workspace slug and choose a unique repository slug under that workspace. Grant the token Repositories Write/Admin and use a disposable workspace for a live run. A blank slug or name fails validation; `is_private` must be explicit. Bitbucket creates a Git repository and assigns the oldest workspace project when no project is supplied.
+
+To create a pull request, start `BitbucketPullRequestCreate` with a unique Flow ID and `{"workspace":"meridian","repository":"api","title":"Add client tests","sourceBranch":"feature/tests","destinationBranch":"main"}`. Find the workspace and repository slugs in the repository URL and the branch names under **Repository > Branches** in Bitbucket. Grant Pull requests Write. The create operation can send at most three times after an unknown outcome; when Bitbucket cannot prove which send succeeded, the Flow selects `uncertain`.
+
+To add a comment, start `BitbucketPullRequestCommentCreate` with a unique Flow ID and `{"workspace":"meridian","repository":"api","pullRequestId":7,"raw":"Looks good"}`. Find the numeric PR ID in its URL, enter Markdown text in `raw`, and grant Pull requests Write. Blank text is invalid. The comment create also uses the limited three-send tier and selects `uncertain` when the outcome remains unconfirmed.
+
+To create a branch, start `BitbucketBranchCreate` with a unique Flow ID and `{"workspace":"meridian","repository":"api","name":"feature/tests","targetHash":"0123456789abcdef0123456789abcdef01234567"}`. Choose a branch name without `refs/heads/` and copy the full 40-character target commit hash from **Repository > Commits > selected commit**. Grant Repositories Write. On a name conflict, the operation confirms that the existing branch points to the same commit before reporting success.
+
+The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs the manifest defaults through a real Dex Worker in CI. Locally, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:9210 GOWORK=off go test -tags=integration ./examples/resource-read/flow -run '^TestBranchCreateUsesManifestMockWithRealDex$' -count=1 -v` while the dedicated Dex stack is running.

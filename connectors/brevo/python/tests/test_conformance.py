@@ -14,14 +14,19 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/brevo/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/brevo/scenarios.json")
+    if scenario["operation"] in {"createOrUpdateContact", "getContact"}
+]
 CONNECTION = sdk.ConnectionRef("brevo", "brevo")
 ADAPTER = conformance.PythonOperationAdapter(
-    "brevo", CONNECTION, brevo,
+    "brevo",
+    CONNECTION,
+    brevo,
     lambda client, _: brevo.Client(
         brevo.Config(base_url="http://127.0.0.1:8848/v3"),
-        conformance.static_credentials(
-            CONNECTION, brevo.Credentials(sdk.SecretString("brevo-test-key"))),
+        conformance.static_credentials(CONNECTION, brevo.Credentials(sdk.SecretString("brevo-test-key"))),
         client,
     ),
 )

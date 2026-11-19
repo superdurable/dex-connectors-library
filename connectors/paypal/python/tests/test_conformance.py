@@ -14,14 +14,21 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/paypal/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/paypal/scenarios.json")
+    if scenario["operation"] in {"getOrder", "listTransactions"}
+]
 CONNECTION = sdk.ConnectionRef("paypal", "paypal")
 ADAPTER = conformance.PythonOperationAdapter(
-    "paypal", CONNECTION, paypal,
+    "paypal",
+    CONNECTION,
+    paypal,
     lambda client, _: paypal.Client(
         paypal.Config(base_url="http://127.0.0.1:8848"),
         conformance.static_credentials(
-            CONNECTION, paypal.Credentials("client-test", sdk.SecretString("secret-test"))),
+            CONNECTION, paypal.Credentials("client-test", sdk.SecretString("secret-test"))
+        ),
         client,
     ),
 )

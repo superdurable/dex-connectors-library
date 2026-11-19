@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: newsapi
   displayName: NewsAPI
-  description: Search recent news articles from the publishers NewsAPI indexes by keyword, title or body fields, sources, domains, language, and publication window.
+  description: Search NewsAPI articles, get breaking headlines, and discover available publishers.
   company: NewsAPI
   categories: [data-search]
-  version: v0.23.1
+  version: v0.24.0
 spec:
   provider: newsapi
   languages:
@@ -81,3 +81,35 @@ spec:
           branch: providerRejected
           description: "Searching with an invalid NewsAPI key is rejected."
           failure: {"kind":"AUTHENTICATION","message":"Searching with an invalid NewsAPI key is rejected."}
+    - name: getTopHeadlines
+      goName: GetTopHeadlines
+      inputType: GetTopHeadlinesInput
+      outputType: ArticlePage
+      kind: query
+      description: Get one page of current top headlines by country, category, source, or keyword.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: NewsAPI returned a headline page.}
+        - {id: providerRejected, goName: ProviderRejected, description: NewsAPI rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: NewsAPI returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: foundDefault, branch: found, description: Example technology headlines., default: true, output: {totalResults: 0, page: 1, hasMore: false, articles: []}}
+    - name: listSources
+      goName: ListSources
+      inputType: ListSourcesInput
+      outputType: SourcesPage
+      kind: query
+      description: List NewsAPI publishers, optionally filtered by category, language, or country.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: NewsAPI returned available publishers.}
+        - {id: providerRejected, goName: ProviderRejected, description: NewsAPI rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: NewsAPI returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: listedDefault, branch: listed, description: Example available publisher., default: true, output: {sources: [{id: meridian-news, name: Meridian News, url: "https://news.example.test", category: technology, language: en, country: us}]}}

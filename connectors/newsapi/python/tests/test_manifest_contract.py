@@ -51,9 +51,11 @@ def test_manifest_operation_and_mock_contract() -> None:
     assert manifest["spec"]["languages"]["python"]["version"] == "v" + package["project"]["version"]
     assert package["project"]["name"] == "dex-connector-newsapi"
 
-    operations = manifest["spec"]["operations"]
-    assert len(operations) == 1
-    operation = operations[0]
+    declared_python_operations = manifest["spec"]["languages"]["python"]["operations"]
+    assert declared_python_operations == [SEARCH_ARTICLES_DEFINITION.operation.operation_id]
+    operations = {operation["name"]: operation for operation in manifest["spec"]["operations"]}
+    assert set(declared_python_operations) <= operations.keys()
+    operation = operations[declared_python_operations[0]]
     assert operation["name"] == SEARCH_ARTICLES_DEFINITION.operation.operation_id
     assert SEARCH_ARTICLES_DEFINITION.operation.connector_id == manifest["metadata"]["name"]
     assert operation["kind"] == "query"

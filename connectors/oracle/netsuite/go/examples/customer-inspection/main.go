@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{customerinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{customerinspection.NewFlow(connection), customerinspection.NewListFlow(connection), customerinspection.NewVendorListFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Oracle NetSuite customer inspection Flow: %w", err)
 	}

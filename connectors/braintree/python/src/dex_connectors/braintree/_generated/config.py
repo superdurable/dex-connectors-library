@@ -14,6 +14,7 @@ class Config:
     api_version: str = "2019-01-01"
     timeout_seconds: float = 15
     max_response_bytes: int = 1048576
+    evidence_directory: str = ""
 
 setattr(Config, '__module__', 'dex_connectors.braintree.client')
 

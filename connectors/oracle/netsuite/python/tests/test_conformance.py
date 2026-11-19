@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/oracle/netsuite/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/oracle/netsuite/scenarios.json")
+    if scenario["operation"] == "getCustomer"
+]
 CONNECTION = sdk.ConnectionRef("oracle-netsuite", "oracle-netsuite")
 ADAPTER = conformance.PythonOperationAdapter(
     "oracle-netsuite",

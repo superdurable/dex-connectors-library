@@ -2,6 +2,1553 @@
   "connector": "coda",
   "scenarios": [
     {
+      "callId": "coda-listDocs-success",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"AbCDeFGH\",\"name\":\"Meridian\"}],\"nextPageToken\":\"later-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "items": [
+            {
+              "id": "AbCDeFGH",
+              "name": "Meridian"
+            }
+          ],
+          "nextPageToken": "later-page"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listDocs-success",
+      "operation": "listDocs"
+    },
+    {
+      "callId": "coda-listDocs-providerRejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "items": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listDocs-providerRejected",
+      "operation": "listDocs"
+    },
+    {
+      "callId": "coda-listDocs-invalidResponse",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "items": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listDocs-invalidResponse",
+      "operation": "listDocs"
+    },
+    {
+      "callId": "coda-listDocs-rateLimit429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listDocs-rateLimit429",
+      "operation": "listDocs"
+    },
+    {
+      "callId": "coda-listDocs-serverUnavailable503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listDocs-serverUnavailable503",
+      "operation": "listDocs"
+    },
+    {
+      "callId": "coda-listDocs-transportFailure",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listDocs-transportFailure",
+      "operation": "listDocs"
+    },
+    {
+      "callId": "coda-getDoc-success",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AbCDeFGH\",\"name\":\"Meridian\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "AbCDeFGH",
+          "name": "Meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH"
+      },
+      "name": "getDoc-success",
+      "operation": "getDoc"
+    },
+    {
+      "callId": "coda-getDoc-providerRejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH"
+      },
+      "name": "getDoc-providerRejected",
+      "operation": "getDoc"
+    },
+    {
+      "callId": "coda-getDoc-invalidResponse",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH"
+      },
+      "name": "getDoc-invalidResponse",
+      "operation": "getDoc"
+    },
+    {
+      "callId": "coda-getDoc-rateLimit429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH"
+      },
+      "name": "getDoc-rateLimit429",
+      "operation": "getDoc"
+    },
+    {
+      "callId": "coda-getDoc-serverUnavailable503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH"
+      },
+      "name": "getDoc-serverUnavailable503",
+      "operation": "getDoc"
+    },
+    {
+      "callId": "coda-getDoc-transportFailure",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH"
+      },
+      "name": "getDoc-transportFailure",
+      "operation": "getDoc"
+    },
+    {
+      "callId": "coda-getDoc-notFound",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH"
+      },
+      "name": "getDoc-notFound",
+      "operation": "getDoc"
+    },
+    {
+      "callId": "coda-listTables-success",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"grid-pqRst-U\",\"name\":\"Accounts\"}],\"nextPageToken\":\"later-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "items": [
+            {
+              "id": "grid-pqRst-U",
+              "name": "Accounts"
+            }
+          ],
+          "nextPageToken": "later-page"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listTables-success",
+      "operation": "listTables"
+    },
+    {
+      "callId": "coda-listTables-providerRejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "items": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listTables-providerRejected",
+      "operation": "listTables"
+    },
+    {
+      "callId": "coda-listTables-invalidResponse",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "items": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listTables-invalidResponse",
+      "operation": "listTables"
+    },
+    {
+      "callId": "coda-listTables-rateLimit429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listTables-rateLimit429",
+      "operation": "listTables"
+    },
+    {
+      "callId": "coda-listTables-serverUnavailable503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listTables-serverUnavailable503",
+      "operation": "listTables"
+    },
+    {
+      "callId": "coda-listTables-transportFailure",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listTables-transportFailure",
+      "operation": "listTables"
+    },
+    {
+      "callId": "coda-listTables-notFound",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "items": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page"
+      },
+      "name": "listTables-notFound",
+      "operation": "listTables"
+    },
+    {
+      "callId": "coda-getTable-success",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"grid-pqRst-U\",\"name\":\"Accounts\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "grid-pqRst-U",
+          "name": "Accounts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "getTable-success",
+      "operation": "getTable"
+    },
+    {
+      "callId": "coda-getTable-providerRejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "getTable-providerRejected",
+      "operation": "getTable"
+    },
+    {
+      "callId": "coda-getTable-invalidResponse",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "getTable-invalidResponse",
+      "operation": "getTable"
+    },
+    {
+      "callId": "coda-getTable-rateLimit429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "getTable-rateLimit429",
+      "operation": "getTable"
+    },
+    {
+      "callId": "coda-getTable-serverUnavailable503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "getTable-serverUnavailable503",
+      "operation": "getTable"
+    },
+    {
+      "callId": "coda-getTable-transportFailure",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "getTable-transportFailure",
+      "operation": "getTable"
+    },
+    {
+      "callId": "coda-getTable-notFound",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "getTable-notFound",
+      "operation": "getTable"
+    },
+    {
+      "callId": "coda-listColumns-success",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"c-Name\",\"name\":\"Name\"}],\"nextPageToken\":\"later-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/columns",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "items": [
+            {
+              "id": "c-Name",
+              "name": "Name"
+            }
+          ],
+          "nextPageToken": "later-page"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "listColumns-success",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "coda-listColumns-providerRejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/columns",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "items": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "listColumns-providerRejected",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "coda-listColumns-invalidResponse",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/columns",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "items": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "listColumns-invalidResponse",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "coda-listColumns-rateLimit429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/columns",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "listColumns-rateLimit429",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "coda-listColumns-serverUnavailable503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/columns",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "listColumns-serverUnavailable503",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "coda-listColumns-transportFailure",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/columns",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "listColumns-transportFailure",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "coda-listColumns-notFound",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/columns",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "items": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "listColumns-notFound",
+      "operation": "listColumns"
+    },
+    {
       "callId": "coda-list-success",
       "exchanges": [
         {

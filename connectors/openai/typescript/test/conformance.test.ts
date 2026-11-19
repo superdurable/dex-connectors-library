@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, HeartbeatContext, invokeProduc
 import { OpenAIClient } from '../src/client.js';
 import { CreateRequestSchema, RetrieveRequestSchema, type Response } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/openai/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/openai/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'createResponse' || scenario.operation === 'retrieveResponse');
 const connection = { provider: 'openai', name: 'openai' };
 const noProgress = { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false };
 

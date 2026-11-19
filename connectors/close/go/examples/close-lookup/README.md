@@ -1,10 +1,12 @@
 # Close lookup example
 
-This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads and getLead` in one typed Flow.
+This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads`, `getLead`, Go `createContact`, Go `listContacts`, Go `listOpportunities`, Go `listTasks`, Go `listNotes`, Go `listCalls`, Go `listEmails`, Go `listSMS`, and Go `listMeetings` in one typed Flow. Each real run creates a new contact named `Ada Example` under the first lead.
+
+The same Worker registers `CloseSendDraftMessages`. Start it with `{"emailId":"acti_...","smsId":"acti_..."}` using the IDs of an existing draft email and draft SMS. It moves both drafts to Close outbox, which sends them; verify the recipient and content in Close before starting. The mock-backed real Dex test exercises both send Steps without delivering messages.
 
 ## Generate and run
 
-From `connectors/close`, generate strict FDG 2.0 from the checked-in Flow source:
+From `connectors/close/go`, generate strict FDG 2.0 from the checked-in Flow source:
 
 ```bash
 mkdir -p /tmp/close-lookup-fdg
@@ -19,15 +21,15 @@ mkdir -p /tmp/close-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/close/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/close/go \
-  --version v0.2.0 --tag connectors/close/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/close/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/close-release/connector-release.json \
   --digest-output /tmp/close-release/connector-release.json.sha256
-dexcli dev \
+dexcli dev -open=false -dex-port 9230 -web-port 9231 \
   --flow-rendering-dir /tmp/close-lookup-fdg \
   --connector-release-override close=/tmp/close-release
 ```
 
 Configure the static `close` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/close-lookup` from `connectors/close` with the project environment described in [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md). Start `CloseLookup` through Dex Web's Start Flow form.
 
-The deterministic mapping unit test runs with `GOWORK=off go test ./examples/close-lookup/...`. CI runs `flow/workflow_mock_integration_test.go` against a real Dex Worker and Client; local integration is left to CI.
+The deterministic mapping unit test runs with `GOWORK=off go test ./examples/close-lookup/...`. The mock-backed real Dex integration test exercises the contact creation Step and subsequent reads, including calls, emails, SMS, and meetings, without a provider credential. Live provider creation remains unverified.

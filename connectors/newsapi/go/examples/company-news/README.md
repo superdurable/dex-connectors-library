@@ -1,13 +1,15 @@
 # NewsAPI company-news example
 
-This example runs one operation-only Flow from Dex Web **Start Flow**:
+This example runs a company news Flow from Dex Web **Start Flow**:
 
 1. `RecordCompanyNewsRequest` validates the typed start input, applies
    defaults, fixes the search window once, and persists the request in the
    `newsapi-company-news-request` Attribute;
 2. `SearchCompanyArticles` calls `newsapi.NewSearchArticlesStep` for the newest
    articles whose titles name the company;
-3. `CompanyArticlesFound` records the page and completes the Flow.
+3. `GetCompanyHeadlines` independently calls `newsapi.NewGetTopHeadlinesStep`
+   with the same company query and finishes its branch;
+4. `CompanyArticlesFound` records the article page and requests Flow completion.
 
 The summary and display RPCs show the request and the outcome in Dex Web.
 Optional branches, including an exhausted key's `providerRejected` outcome,
@@ -49,7 +51,7 @@ mkdir -p /tmp/newsapi-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/newsapi/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/newsapi/go \
-  --version v0.23.1 --tag connectors/newsapi/go/v0.23.1 \
+  --version v0.24.0 --tag connectors/newsapi/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/newsapi-release/connector-release.json \
   --digest-output /tmp/newsapi-release/connector-release.json.sha256

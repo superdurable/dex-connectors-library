@@ -1,10 +1,10 @@
 # Close connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/close/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/close/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/close`.
 
-`github.com/superdurable/dex-connectors-library/connectors/close/go` exposes read-only Dex Query Steps against Close's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
+`github.com/superdurable/dex-connectors-library/connectors/close/go` exposes Dex Query and Mutation Steps against Close's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
 
 ## Connection
 
@@ -22,8 +22,56 @@ imported with operation-specific `newListLeadsStep` and `newGetLeadStep` factori
 | --- | --- |
 | `listLeads` | [Close listLeads](https://developer.close.com/api/resources/leads/list) |
 | `getLead` | [Close getLead](https://developer.close.com/api/resources/leads/get) |
+| `createLead` (Go) | [Close create lead](https://developer.close.com/api/resources/leads/create) |
+| `updateLead` (Go) | [Close update lead](https://developer.close.com/api/resources/leads/update) |
+| `deleteLead` (Go) | [Close delete lead](https://developer.close.com/api/resources/leads/delete) |
+| `listContacts` (Go) | [Close list contacts](https://developer.close.com/api/resources/contacts/list) |
+| `getContact` (Go) | [Close get contact](https://developer.close.com/api/resources/contacts/get) |
+| `createContact` (Go) | [Close create contact](https://developer.close.com/api/resources/contacts/create) |
+| `updateContact` (Go) | [Close update contact](https://developer.close.com/api/resources/contacts/update) |
+| `deleteContact` (Go) | [Close delete contact](https://developer.close.com/api/resources/contacts/delete) |
+| `listOpportunities` (Go) | [Close list opportunities](https://developer.close.com/api/resources/opportunities/list) |
+| `getOpportunity` (Go) | [Close get opportunity](https://developer.close.com/api/resources/opportunities/get) |
+| `createOpportunity` (Go) | [Close create opportunity](https://developer.close.com/api/resources/opportunities/create) |
+| `updateOpportunity` (Go) | [Close update opportunity](https://developer.close.com/api/resources/opportunities/update) |
+| `deleteOpportunity` (Go) | [Close delete opportunity](https://developer.close.com/api/resources/opportunities/delete) |
+| `listTasks` (Go) | [Close list tasks](https://developer.close.com/api/resources/tasks/list) |
+| `getTask` (Go) | [Close get task](https://developer.close.com/api/resources/tasks/get) |
+| `createTask` (Go) | [Close create task](https://developer.close.com/api/resources/tasks/create) |
+| `updateTask` (Go) | [Close update task](https://developer.close.com/api/resources/tasks/update) |
+| `deleteTask` (Go) | [Close delete task](https://developer.close.com/api/resources/tasks/delete) |
+| `listNotes` (Go) | [Close list notes](https://developer.close.com/api/resources/activities/notes/list) |
+| `getNote` (Go) | [Close get note](https://developer.close.com/api/resources/activities/notes/get) |
+| `createNote` (Go) | [Close create note](https://developer.close.com/api/resources/activities/notes/create) |
+| `updateNote` (Go) | [Close update note](https://developer.close.com/api/resources/activities/notes/update) |
+| `deleteNote` (Go) | [Close delete note](https://developer.close.com/api/resources/activities/notes/delete) |
+| `listCalls` (Go) | [Close list calls](https://developer.close.com/api/resources/activities/calls/list) |
+| `getCall` (Go) | [Close get call](https://developer.close.com/api/resources/activities/calls/get) |
+| `logCall` (Go) | [Close log external call](https://developer.close.com/api/resources/activities/calls/create) |
+| `updateCall` (Go) | [Close update call](https://developer.close.com/api/resources/activities/calls/update) |
+| `deleteCall` (Go) | [Close delete call](https://developer.close.com/api/resources/activities/calls/delete) |
+| `listEmails` (Go) | [Close list emails](https://developer.close.com/api/resources/activities/emails/list) |
+| `getEmail` (Go) | [Close get email](https://developer.close.com/api/resources/activities/emails/get) |
+| `createEmail` (Go) | [Close create or send email](https://developer.close.com/api/resources/activities/emails/create) |
+| `updateEmailDraft` (Go) | [Close update draft email](https://developer.close.com/api/resources/activities/emails/update) |
+| `deleteEmail` (Go) | [Close delete email](https://developer.close.com/api/resources/activities/emails/delete) |
+| `sendEmailDraft` (Go) | [Close update draft email to outbox](https://developer.close.com/api/resources/activities/emails/update) |
+| `listSMS` (Go) | [Close list SMS](https://developer.close.com/api/resources/activities/sms/list) |
+| `getSMS` (Go) | [Close get SMS](https://developer.close.com/api/resources/activities/sms/get) |
+| `createSMS` (Go) | [Close create or send SMS](https://developer.close.com/api/resources/activities/sms/create) |
+| `updateSMSDraft` (Go) | [Close update draft SMS](https://developer.close.com/api/resources/activities/sms/update) |
+| `deleteSMS` (Go) | [Close delete SMS](https://developer.close.com/api/resources/activities/sms/delete) |
+| `sendSMSDraft` (Go) | [Close update draft SMS to outbox](https://developer.close.com/api/resources/activities/sms/update) |
+| `listMeetings` (Go) | [Close list meetings](https://developer.close.com/api/resources/activities/meetings/list) |
+| `getMeeting` (Go) | [Close get meeting](https://developer.close.com/api/resources/activities/meetings/get) |
+| `updateMeeting` (Go) | [Close update meeting](https://developer.close.com/api/resources/activities/meetings/update) |
+| `deleteMeeting` (Go) | [Close delete meeting](https://developer.close.com/api/resources/activities/meetings/delete) |
 
-Each operation returns a bounded, typed response. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
+Close's published meeting API documents list, get, update, and delete operations, with no create endpoint. Meeting creation remains with the provider's calendar sync or UI.
+
+Each operation returns a bounded, typed response. A 404 on a single-resource read or update selects `notFound`; a 404 on delete confirms that the record is absent. Definitive 4xx select `providerRejected`; 429 and 503 Retry. Absolute updates and deletes are repeat safe. Malformed and oversized read or update JSON selects `invalidResponse`; an unusable create response selects `uncertain`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
+
+Lead, contact, opportunity, task, note, external call, email, and SMS creation use the `limited` repeat tier and a default cap of three possible sends. Setting `createEmail.status` or `createSMS.status` to `outbox` sends the message through Close; `draft` saves it for review. `sendEmailDraft` and `sendSMSDraft` move an existing draft to outbox with the same bounded retry cap. After an uncertain attempt they read the known activity ID; `outbox` or `sent` confirms success. Draft content updates cannot change status or send. If a response contains a created ID, a later attempt reads that resource before resending. When the outcome stays unknown at the cap, the operation selects `uncertain`; an application must reconcile possible duplicates. Close does not document server-side deduplication for these POST requests. Other activity and webhook subscription operations remain outside this release.
 
 ## Mocks
 
@@ -31,7 +79,7 @@ The generated `closemock` package includes one default Meridian answer per opera
 
 ## Example
 
-The runnable [example](go/examples/close-lookup/README.md) registers a Worker and a Flow using the static `close` connection. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/close-lookup/README.md) registers a Worker and two Flows using the static `close` connection. The lookup Flow reads leads, creates a sample contact on the selected lead, and lists its contacts, opportunities, tasks, notes, calls, emails, SMS, and meetings. The send Flow moves a chosen email and SMS draft to outbox. CI runs their mock-backed real-Dex integration tests; local unit tests verify deterministic mapping.
 
 The [TypeScript lookup example](typescript/examples/close-lookup/README.md) lists
 leads, fetches the first lead, and verifies both provider reads through a real

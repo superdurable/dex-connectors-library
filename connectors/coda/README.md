@@ -1,10 +1,10 @@
 # Coda connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/coda/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/coda/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/coda`.
 
-This Dex connector exposes `listRows`, `getRow`. The runnable [sample Flow](go/examples/sample-coda/flow/workflow.go) uses `listRows` with the static `coda` connection. Each operation uses the generated typed Step factory.
+This Dex connector exposes `listDocs`, `getDoc`, `listTables`, `getTable`, `listColumns`, `listRows`, and `getRow` in Go. The runnable [sample Flow](go/examples/sample-coda/flow/workflow.go) reads table metadata and rows with the static `coda` connection. Each operation uses the generated typed Step factory. The Python and TypeScript packages currently expose `listRows` and `getRow` only.
 
 The Python package is [`dex-connector-coda`](python/README.md), imported as
 `dex_connectors.coda`.
@@ -14,12 +14,12 @@ The TypeScript package is
 [runnable Flow](typescript/examples/list-rows/flow/workflow.ts) uses the static
 `coda` connection and calls `listRows` through the generated Step factory.
 Its Go-recorded [conformance scenarios](../../conformance/connectors/coda/scenarios.json)
-cover both read operations. Live Coda authorization and permissions remain
+cover the operations those packages implement. Live Coda authorization and permissions remain
 unverified for this package.
 
 ## Provider contract
 
-This connector is read-only. Coda accepts upserts asynchronously with HTTP 202, and the public contract does not establish safe deduplication of overlapping queued requests, so `upsertRows` is intentionally absent.
+This connector is read-only. Coda accepts upserts asynchronously with HTTP 202, and the public contract does not establish safe deduplication of overlapping queued requests, so `upsertRows` is intentionally absent. The documented authorization guide requests a read-only token. The new metadata operations follow the provider's opaque `nextPageToken`, with a maximum requested page size of 500.
 
 Official documentation used for the endpoint, authentication, and response contract:
 
@@ -52,7 +52,7 @@ mock := codamock.New(t, ConnectionName)
 flow := NewFlow(mock.Connection())
 ```
 
-The mock defaults represent the same Meridian example resource across both operations.
+The mock defaults represent the same Meridian example resource across the metadata and row operations.
 
 ## Verification limits
 

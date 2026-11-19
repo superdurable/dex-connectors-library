@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: pagerduty
   displayName: PagerDuty
-  description: Read and act through the PagerDuty public API.
+  description: Read and manage incidents and notes, and read log entries and users through PagerDuty.
   company: PagerDuty
   categories: [developer-tools]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: pagerduty
   languages:
@@ -51,16 +51,16 @@ spec:
       type: secretString
       required: true
       description: Secret PagerDuty token. Start at https://support.pagerduty.com/main/docs/api-access-keys,
-        follow Integrations > Developer Tools > API Access Keys. Create a read-only
-        REST API key and copy it. It is an opaque secret string; blank prevents requests.
+        follow Integrations > Developer Tools > API Access Keys. Create a full-access
+        REST API key for incident and note writes, or a read-only key for queries, and copy it. It is an opaque secret string; blank prevents requests.
         It is sent only in the Authorization header.
     guide:
       startURL: https://support.pagerduty.com/main/docs/api-access-keys
       steps:
       - Open https://support.pagerduty.com/main/docs/api-access-keys and sign in or
         create an account.
-      - Follow Integrations > Developer Tools > API Access Keys. Create a read-only
-        REST API key and copy it. It is an opaque secret string; blank prevents requests.
+      - Follow Integrations > Developer Tools > API Access Keys. Create a full-access
+        REST API key for incident and note writes, or a read-only key for queries, and copy it. It is an opaque secret string; blank prevents requests.
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
@@ -144,3 +144,291 @@ spec:
         id: P123456
         title: API latency
         status: triggered
+  - name: listIncidentNotes
+    goName: ListIncidentNotes
+    inputType: ListIncidentNotesInput
+    outputType: IncidentNotes
+    kind: query
+    description: List notes attached to a PagerDuty incident.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: PagerDuty returned incident notes.
+    - id: notFound
+      goName: NotFound
+      description: The incident does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The incident ID or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listIncidentNotesDefault
+      branch: listed
+      description: A representative incident note list.
+      default: true
+      output:
+        notes:
+        - id: PWL7QXS
+          content: Investigating the alert.
+          created_at: '2026-01-01T00:00:00Z'
+  - name: listLogEntries
+    goName: ListLogEntries
+    inputType: ListLogEntriesInput
+    outputType: LogEntryPage
+    kind: query
+    description: List PagerDuty incident log entries across the account.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: PagerDuty returned log entries.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The page request or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listLogEntriesDefault
+      branch: listed
+      description: A representative log entry page.
+      default: true
+      output:
+        log_entries:
+        - id: Q02JTSNZWHSEKV
+          type: trigger_log_entry
+          summary: Triggered through the API
+        limit: 25
+        offset: 0
+        more: false
+  - name: getLogEntry
+    goName: GetLogEntry
+    inputType: GetLogEntryInput
+    outputType: LogEntry
+    kind: query
+    description: Read one PagerDuty incident log entry.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: PagerDuty returned the log entry.
+    - id: notFound
+      goName: NotFound
+      description: The log entry does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The log entry ID or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getLogEntryDefault
+      branch: found
+      description: A representative log entry.
+      default: true
+      output:
+        id: Q02JTSNZWHSEKV
+        type: trigger_log_entry
+        summary: Triggered through the API
+  - name: getUser
+    goName: GetUser
+    inputType: GetUserInput
+    outputType: User
+    kind: query
+    description: Read one PagerDuty user profile.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: PagerDuty returned the user.
+    - id: notFound
+      goName: NotFound
+      description: The user does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The user ID or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getUserDefault
+      branch: found
+      description: A representative user.
+      default: true
+      output:
+        id: PXPGF42
+        name: Example Responder
+        email: responder@example.com
+  - name: updateIncident
+    goName: UpdateIncident
+    inputType: UpdateIncidentInput
+    outputType: Incident
+    kind: mutation
+    description: Set an incident status to acknowledged or resolved.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: updated
+      goName: Updated
+      description: PagerDuty returned the updated incident.
+    - id: notFound
+      goName: NotFound
+      description: The incident does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty definitively rejected the status change.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The incident ID, status, actor email, or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: updateIncidentDefault
+      branch: updated
+      description: An acknowledged incident.
+      default: true
+      output:
+        id: P123456
+        title: API latency
+        status: acknowledged
+  - name: createIncident
+    goName: CreateIncident
+    inputType: CreateIncidentInput
+    outputType: Incident
+    kind: mutation
+    description: Create one incident on a PagerDuty service.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: created
+      goName: Created
+      description: PagerDuty returned the created incident.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty definitively rejected the creation.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: The incident may have been created but cannot be confirmed.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The service, title, actor email, or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: limited
+      maxSends: 3
+      dispatchFence: true
+      executeMethodTimeout: 30s
+      durability: sync
+    mocks:
+    - name: createIncidentDefault
+      branch: created
+      description: A newly created incident.
+      default: true
+      output:
+        id: P123456
+        title: API latency
+        status: triggered
+  - name: createIncidentNote
+    goName: CreateIncidentNote
+    inputType: CreateIncidentNoteInput
+    outputType: IncidentNote
+    kind: mutation
+    description: Add a note to a PagerDuty incident.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: created
+      goName: Created
+      description: PagerDuty returned the created note.
+    - id: notFound
+      goName: NotFound
+      description: The incident does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty definitively rejected the note.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: The note may have been created but cannot be confirmed.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The incident ID, note, actor email, or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: limited
+      maxSends: 3
+      dispatchFence: true
+      executeMethodTimeout: 30s
+      durability: sync
+    mocks:
+    - name: createIncidentNoteDefault
+      branch: created
+      description: A newly created note.
+      default: true
+      output:
+        id: PWL7QXS
+        content: Investigating the alert.
+        created_at: '2026-01-01T00:00:00Z'

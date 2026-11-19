@@ -2,12 +2,17 @@
 
 This runnable Flow calls `getDocument` through the static `pandadoc` connection. It saves the selected document status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
+The same Worker registers `PandaDocSendDocument`, which uses `NewSendDocumentStep`
+to send an existing draft. Its mock-backed real Dex test exercises the new
+limited-tier operation without sending an email to a real recipient.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/pandadoc/go`, run:
 
 ```bash
 dexcli visualize ./examples/document-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/pandadoc-document-inspection-fdg
+dexcli visualize ./examples/document-inspection/flow/send_document.go --schema-version 2.0 --json --out /tmp/pandadoc-send-document-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -23,5 +28,8 @@ GOWORK=off go run ./examples/document-inspection
 ```
 
 Start `PandaDocDocumentInspection` with a unique Flow ID and input `{"documentId":"fANp5wW5EwY7AkiTkTGekZ"}`. Replace the sample with an ID returned by PandaDoc when a document is created. The Worker connects to Dex Server without an inbound listener.
+To send a draft, start `PandaDocSendDocument` with a unique Flow ID and
+`{"documentId":"fANp5wW5EwY7AkiTkTGekZ","subject":"Please sign"}`. PandaDoc
+requires `document.draft` status before this action; check it with `getDocument`.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`.

@@ -28,6 +28,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[openai.Response](`{"id":"resp_mocksummary001","model":"gpt-6-sol","status":"completed","outputText":"The connector shipped today.","usage":{"inputTokens":30,"outputTokens":7,"totalTokens":37}}`)
 			return err
 		}},
+		{name: "deleteResponse/responseDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.DeletedResponse](`{"id":"resp_mocksummary001","deleted":true}`)
+			return err
+		}},
+		{name: "createConversation/conversationCreated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"demo"}}`)
+			return err
+		}},
+		{name: "retrieveConversation/conversationFound/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"demo"}}`)
+			return err
+		}},
+		{name: "updateConversation/conversationUpdated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.Conversation](`{"id":"conv_mock001","createdAt":1741900000,"metadata":{"topic":"updated"}}`)
+			return err
+		}},
+		{name: "deleteConversation/conversationDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.DeletedResponse](`{"id":"conv_mock001","deleted":true}`)
+			return err
+		}},
+		{name: "listFiles/filePage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.FilePage](`{"files":[{"id":"file_mock001","filename":"summary.txt","purpose":"user_data","bytes":24,"createdAt":1741900000}],"hasMore":false,"lastID":"file_mock001"}`)
+			return err
+		}},
+		{name: "deleteFile/fileDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[openai.DeletedResponse](`{"id":"file_mock001","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -43,5 +71,26 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.RetrieveResponse().Definition().Operation.OperationID != "retrieveResponse" {
 		t.Errorf("retrieveResponse mock has another definition")
+	}
+	if mock.DeleteResponse().Definition().Operation.OperationID != "deleteResponse" {
+		t.Errorf("deleteResponse mock has another definition")
+	}
+	if mock.CreateConversation().Definition().Operation.OperationID != "createConversation" {
+		t.Errorf("createConversation mock has another definition")
+	}
+	if mock.RetrieveConversation().Definition().Operation.OperationID != "retrieveConversation" {
+		t.Errorf("retrieveConversation mock has another definition")
+	}
+	if mock.UpdateConversation().Definition().Operation.OperationID != "updateConversation" {
+		t.Errorf("updateConversation mock has another definition")
+	}
+	if mock.DeleteConversation().Definition().Operation.OperationID != "deleteConversation" {
+		t.Errorf("deleteConversation mock has another definition")
+	}
+	if mock.ListFiles().Definition().Operation.OperationID != "listFiles" {
+		t.Errorf("listFiles mock has another definition")
+	}
+	if mock.DeleteFile().Definition().Operation.OperationID != "deleteFile" {
+		t.Errorf("deleteFile mock has another definition")
 	}
 }

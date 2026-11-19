@@ -16,12 +16,36 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createDNSRecord/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudflare.DNSRecord](`{"id":"dns-created-meridian","type":"A","name":"new.meridian.example","content":"192.0.2.30","ttl":3600,"proxied":false}`)
+			return err
+		}},
 		{name: "listZones/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[cloudflare.ZonesPage](`{"success":true,"result":[{"id":"zone-meridian","name":"meridian.example","status":"active"}]}`)
 			return err
 		}},
 		{name: "purgeCacheByURLs/purgedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[cloudflare.CachePurge](`{"success":true,"result":{"id":"purge-meridian"}}`)
+			return err
+		}},
+		{name: "purgeEntireCache/purgedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudflare.CachePurge](`{"success":true,"result":{"id":"purge-meridian"}}`)
+			return err
+		}},
+		{name: "listDNSRecords/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudflare.DNSRecordsPage](`{"records":[{"id":"dns-meridian","type":"A","name":"meridian.example","content":"192.0.2.10","ttl":3600,"proxied":false}],"page":1,"totalPages":1}`)
+			return err
+		}},
+		{name: "getDNSRecord/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudflare.DNSRecord](`{"id":"dns-meridian","type":"A","name":"meridian.example","content":"192.0.2.10","ttl":3600,"proxied":false}`)
+			return err
+		}},
+		{name: "updateDNSRecord/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudflare.DNSRecord](`{"id":"dns-meridian","type":"A","name":"meridian.example","content":"192.0.2.20","ttl":3600,"proxied":false}`)
+			return err
+		}},
+		{name: "deleteDNSRecord/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudflare.DeletedDNSRecord](`{"id":"dns-meridian"}`)
 			return err
 		}},
 	}
@@ -34,10 +58,28 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateDNSRecord().Definition().Operation.OperationID != "createDNSRecord" {
+		t.Errorf("createDNSRecord mock has another definition")
+	}
 	if mock.ListZones().Definition().Operation.OperationID != "listZones" {
 		t.Errorf("listZones mock has another definition")
 	}
 	if mock.PurgeCacheByURLs().Definition().Operation.OperationID != "purgeCacheByURLs" {
 		t.Errorf("purgeCacheByURLs mock has another definition")
+	}
+	if mock.PurgeEntireCache().Definition().Operation.OperationID != "purgeEntireCache" {
+		t.Errorf("purgeEntireCache mock has another definition")
+	}
+	if mock.ListDNSRecords().Definition().Operation.OperationID != "listDNSRecords" {
+		t.Errorf("listDNSRecords mock has another definition")
+	}
+	if mock.GetDNSRecord().Definition().Operation.OperationID != "getDNSRecord" {
+		t.Errorf("getDNSRecord mock has another definition")
+	}
+	if mock.UpdateDNSRecord().Definition().Operation.OperationID != "updateDNSRecord" {
+		t.Errorf("updateDNSRecord mock has another definition")
+	}
+	if mock.DeleteDNSRecord().Definition().Operation.OperationID != "deleteDNSRecord" {
+		t.Errorf("deleteDNSRecord mock has another definition")
 	}
 }

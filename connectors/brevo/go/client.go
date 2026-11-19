@@ -147,7 +147,8 @@ func (operation CreateOrUpdateContactOperation) Invoke(call sdkgo.Call, input Cr
 		return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureAvailability, "Brevo contact request is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
 	if response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusNoContent {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) {
 			// A repeated upsert by email converges, so an ambiguous answer retries.
 			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureAvailability, "Brevo answered the contact request with HTTP "+strconv.Itoa(response.StatusCode)), 0)
 		}
@@ -246,11 +247,29 @@ func validEmail(value string) bool {
 }
 
 // isDefiniteRefusalStatus reports a status that proves Brevo refused the write; any other status is unknown.
-func isDefiniteRefusalStatus(status int) bool {
+func isDefiniteRefusalStatus(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
 		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		var rejection map[string]json.RawMessage
+		if json.Unmarshal(body, &rejection) != nil {
+			return false
+		}
+		if accepted, ok := rejection["success"]; ok && bytes.Equal(bytes.TrimSpace(accepted), []byte("true")) {
+			return false
+		}
+		for _, field := range []string{"data", "result", "results"} {
+			value := bytes.TrimSpace(rejection[field])
+			if len(value) > 0 && !bytes.Equal(value, []byte("null")) && !bytes.Equal(value, []byte("{}")) && !bytes.Equal(value, []byte("[]")) {
+				return false
+			}
+		}
+		for _, field := range []string{"code", "message", "error", "errors"} {
+			value := bytes.TrimSpace(rejection[field])
+			if len(value) > 0 && !bytes.Equal(value, []byte("null")) && !bytes.Equal(value, []byte(`""`)) && !bytes.Equal(value, []byte("[]")) && !bytes.Equal(value, []byte("{}")) {
+				return true
+			}
+		}
 	}
 	return false
 }

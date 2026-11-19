@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Non-secret site-specific API root https://{site}.chargebee.com/api/v2, using the site subdomain shown in the Chargebee console. Match the Test or Live site for the API key. Blank prevents connection creation; use a trusted local gateway only for tests. */
   baseUrl: string;
-  /** Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow subscription reads. Runtime value in milliseconds. */
+  /** Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete subscription response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large subscription metadata. */
+  /** Maximum complete API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large list pages. */
   maxResponseBytes?: number;
 }
 
