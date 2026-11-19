@@ -5,3 +5,5 @@ This connector calls TianAPI's official [holiday API](https://www.tianapi.com/ap
 Register at [TianAPI](https://www.tianapi.com/), apply for 节假日, then copy your secret key from 控制台 > 数据管理 > 我的密钥key into Dex Web Connections. The [official demo](https://www.tianapi.com/demo/api/jiejiari.html) shows this path. The API page documents GET and form POST, so the connector sends `key`, `date`, and `type` in an HTTPS form body, never the URL. It disables redirects and excludes the key, raw message, and unrelated holiday fields from outputs and failures.
 
 TianAPI lists 100 free calls per day for ordinary members. Successful requests count toward quota. `dayCode` is 0 workday, 1 holiday, 2 weekend, or 3 makeup workday; `isNotWork` is 0 working or 1 resting. Use `isNotWork` to decide whether to work, as the official page recommends. Run the [example Flow](go/examples/get-holiday-status/) with the generated mock or a user-controlled connection.
+
+The [TypeScript package and runnable Flow](typescript/) replay the Go provider scenarios and store the selected holiday result in Dex.
