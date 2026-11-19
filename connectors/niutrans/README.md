@@ -7,3 +7,4 @@ NiuTrans bills one point per 2000 source characters, with free daily points and 
 [Run the translation Flow](go/examples/translate/README.md). Its mock is synthetic; live translation and billing have not been verified without a user-controlled API key in Dex Web Connections.
 
 The [Python package](python/README.md) implements the same Query with a checked-in Dex Worker and Client example. Its Go-recorded provider scenarios and local Dex retry path are verified; live provider authorization remains unverified.
+The [TypeScript package](typescript/README.md) exposes `translateText` and includes a runnable Dex Flow, Go scenario replay, and a local provider integration test.
