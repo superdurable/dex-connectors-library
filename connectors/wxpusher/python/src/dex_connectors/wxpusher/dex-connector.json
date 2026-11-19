@@ -1,0 +1,52 @@
+{
+  "connectorId": "wxpusher",
+  "releaseTag": "connectors/wxpusher/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-wxpusher",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_subscriber_count_step",
+      "kind": "query",
+      "operationId": "getSubscriberCount",
+      "inputType": "GetSubscriberCountInput",
+      "description": "Count the application's subscription records without returning UID or user details.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "counted",
+          "field": "counted",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSubscriberCountInput has no user-supplied parameters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

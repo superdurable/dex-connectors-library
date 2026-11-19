@@ -1,0 +1,52 @@
+{
+  "connectorId": "vika",
+  "releaseTag": "connectors/vika/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-vika",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_spaces_step",
+      "kind": "query",
+      "operationId": "listSpaces",
+      "inputType": "ListSpacesInput",
+      "description": "List workspaces the token's user created or joined, returning only IDs, names, and administrator flags.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSpacesInput requires no caller-provided selector; the token identifies the user.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

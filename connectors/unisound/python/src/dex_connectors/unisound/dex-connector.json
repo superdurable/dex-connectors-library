@@ -1,0 +1,52 @@
+{
+  "connectorId": "unisound",
+  "releaseTag": "connectors/unisound/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-unisound",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_system_voices_step",
+      "kind": "query",
+      "operationId": "listSystemVoices",
+      "inputType": "ListSystemVoicesInput",
+      "description": "List up to 25 predefined text-to-speech voices.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSystemVoicesInput requests the predefined voice catalog without parameters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
