@@ -1,0 +1,294 @@
+{
+  "connector": "pingpp",
+  "scenarios": [
+    {
+      "callId": "c0558e54-d176-55eb-b75d-ecc0bc092707",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"ch_sample123\",\"object\":\"charge\",\"paid\":true,\"refunded\":false,\"reversed\":false,\"livemode\":false,\"client_ip\":\"private\",\"order_no\":\"private\",\"credential\":{\"secret\":\"private\"},\"metadata\":{\"secret\":\"private\"},\"transaction_no\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/charges/ch_sample123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9zYW1wbGVTZWNyZXQ6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "chargeId": "ch_sample123",
+          "liveMode": false,
+          "paid": true,
+          "refunded": false,
+          "reversed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "chargeId": "ch_sample123"
+      },
+      "name": "getChargeStatus-fetched",
+      "operation": "getChargeStatus"
+    },
+    {
+      "callId": "8b2ae284-6996-5881-937f-d711f67ff5cf",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/charges/ch_sample123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9zYW1wbGVTZWNyZXQ6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "chargeId": "",
+          "liveMode": false,
+          "paid": false,
+          "refunded": false,
+          "reversed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "chargeId": "ch_sample123"
+      },
+      "name": "getChargeStatus-notFound",
+      "operation": "getChargeStatus"
+    },
+    {
+      "callId": "215e46a7-455e-58f7-80ea-8e37f9ccd557",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/charges/ch_sample123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9zYW1wbGVTZWNyZXQ6"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "chargeId": "",
+          "liveMode": false,
+          "paid": false,
+          "refunded": false,
+          "reversed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "chargeId": "ch_sample123"
+      },
+      "name": "getChargeStatus-providerRejected",
+      "operation": "getChargeStatus"
+    },
+    {
+      "callId": "2d285f46-b25b-56cd-9a83-d0551d0f0184",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"ch_sample123\",\"object\":\"charge\",\"paid\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/charges/ch_sample123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9zYW1wbGVTZWNyZXQ6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "chargeId": "",
+          "liveMode": false,
+          "paid": false,
+          "refunded": false,
+          "reversed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "chargeId": "ch_sample123"
+      },
+      "name": "getChargeStatus-invalidResponse",
+      "operation": "getChargeStatus"
+    },
+    {
+      "callId": "6e57582d-f962-536c-a373-e7c5eeb7137d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/charges/ch_sample123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9zYW1wbGVTZWNyZXQ6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "chargeId": "ch_sample123"
+      },
+      "name": "getChargeStatus-rateLimit",
+      "operation": "getChargeStatus"
+    },
+    {
+      "callId": "87fe918a-c120-56fc-8c2c-0407893375c5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/charges/ch_sample123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9zYW1wbGVTZWNyZXQ6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "chargeId": "ch_sample123"
+      },
+      "name": "getChargeStatus-serverError",
+      "operation": "getChargeStatus"
+    },
+    {
+      "callId": "c6ba2377-91d3-5e7c-8cee-6d011010dea4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "chargeId": "",
+          "liveMode": false,
+          "paid": false,
+          "refunded": false,
+          "reversed": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "chargeId": "bad"
+      },
+      "name": "getChargeStatus-defect",
+      "operation": "getChargeStatus"
+    },
+    {
+      "callId": "836fdf30-14e5-558c-ba7e-cfae26d45513",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/charges/ch_sample123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9zYW1wbGVTZWNyZXQ6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "chargeId": "ch_sample123"
+      },
+      "name": "getChargeStatus-transport",
+      "operation": "getChargeStatus"
+    }
+  ],
+  "schemaVersion": 1
+}
