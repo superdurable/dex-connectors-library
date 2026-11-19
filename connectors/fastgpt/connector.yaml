@@ -8,15 +8,20 @@ metadata:
   categories: [ai]
   version: v0.1.0
 spec:
-  provider: fastgpt
-  codegen:
-    go:
-      package: fastgpt
   languages:
     python:
       version: v0.1.0
       operations: [getDatasetDetails]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-fastgpt"
+      operations: [getDatasetDetails]
+      triggers: []
+  provider: fastgpt
+  codegen:
+    go:
+      package: fastgpt
   configuration:
     fields:
       - name: baseUrl
