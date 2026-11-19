@@ -5,3 +5,5 @@
 The connector obtains a fresh token for each operation call, then fetches one tag page. It does not store or expose the token. The token appears in the provider-required HTTPS query parameter; redirect following is disabled and URL-bearing errors are replaced with fixed messages. HTTP 429, 408 and 5xx, transport failures, and documented busy codes retry. Other provider rejections take optional branches. Each response is bounded to 256 KiB.
 
 The [runnable Dex Flow](go/examples/tags/README.md) demonstrates a static connection, typed result, strict FDG, and mock-backed real Dex integration. Live authorization and production responses remain unverified. The logo uses an [official Weiban page asset](https://assets.weibanzhushou.com/web/we-work-webapp/weiban-logo_logo-no-word-3.45d3d34536da.png).
+
+The TypeScript package under [`typescript/`](typescript/) implements `listTags` with a runnable Dex Flow, Go-recorded conformance replay, and a real Dex integration test.
