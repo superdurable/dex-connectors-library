@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: fofa
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-fofa"
+      operations: [searchDomainAssets]
+      triggers: []
   codegen:
     go:
       package: fofa
