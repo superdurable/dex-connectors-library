@@ -11,6 +11,11 @@ spec:
   provider: navinfo
   languages:
     python: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-navinfo"
+      operations: [lookupIPLocation]
+      triggers: []
   codegen:
     go:
       package: navinfo
