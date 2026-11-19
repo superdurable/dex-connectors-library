@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted mongodb connection. Script each operation through its accessor.
 type Mock struct {
-	connection    mongodb.Connection
-	findDocuments *connectormock.Query[mongodb.FindDocumentsInput, mongodb.DocumentSet]
+	connection         mongodb.Connection
+	findDocuments      *connectormock.Query[mongodb.FindDocumentsInput, mongodb.DocumentSet]
+	aggregateDocuments *connectormock.Query[mongodb.AggregateDocumentsInput, mongodb.DocumentSet]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +27,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		findDocuments: connectormock.NewQuery[mongodb.FindDocumentsInput, mongodb.DocumentSet](t, mongodb.FindDocumentsDefinition),
+		findDocuments:      connectormock.NewQuery[mongodb.FindDocumentsInput, mongodb.DocumentSet](t, mongodb.FindDocumentsDefinition),
+		aggregateDocuments: connectormock.NewQuery[mongodb.AggregateDocumentsInput, mongodb.DocumentSet](t, mongodb.AggregateDocumentsDefinition),
 	}
 	mock.findDocuments.Default(FindDocumentsDefault())
+	mock.aggregateDocuments.Default(AggregateDocumentsDefault())
 	connection, err := mongodb.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "mongodb", Name: connectionName})
 	if err != nil {
 		t.Fatalf("mongodb mock connection: %v", err)
@@ -45,10 +48,18 @@ func (mock *Mock) FindDocuments() *connectormock.Query[mongodb.FindDocumentsInpu
 	return mock.findDocuments
 }
 
+// AggregateDocuments returns the aggregateDocuments script.
+func (mock *Mock) AggregateDocuments() *connectormock.Query[mongodb.AggregateDocumentsInput, mongodb.DocumentSet] {
+	return mock.aggregateDocuments
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) FindDocuments() sdkgo.Query[mongodb.FindDocumentsInput, mongodb.DocumentSet] {
 	return operations.mock.findDocuments
+}
+func (operations mockOperations) AggregateDocuments() sdkgo.Query[mongodb.AggregateDocumentsInput, mongodb.DocumentSet] {
+	return operations.mock.aggregateDocuments
 }
 
 // FindDocumentsFound selects the found branch: MongoDB returned all matching documents within the configured bounds.
@@ -90,4 +101,45 @@ func FindDocumentsFoundDefault() connectormock.Case[mongodb.DocumentSet] {
 // FindDocumentsDefault is the manifest default, foundDefault, which New installs.
 func FindDocumentsDefault() connectormock.Case[mongodb.DocumentSet] {
 	return FindDocumentsFoundDefault()
+}
+
+// AggregateDocumentsAggregated selects the aggregated branch: MongoDB returned bounded aggregation results.
+func AggregateDocumentsAggregated(value mongodb.DocumentSet, failure *sdkgo.Failure) connectormock.Case[mongodb.DocumentSet] {
+	return connectormock.Branch(mongodb.AggregateDocumentsBranchAggregated, value, failure)
+}
+
+// AggregateDocumentsTruncated selects the truncated branch: More documents or bytes were available than configured bounds permit.
+func AggregateDocumentsTruncated(value mongodb.DocumentSet, failure *sdkgo.Failure) connectormock.Case[mongodb.DocumentSet] {
+	return connectormock.Branch(mongodb.AggregateDocumentsBranchTruncated, value, failure)
+}
+
+// AggregateDocumentsProviderRejected selects the providerRejected branch: MongoDB conclusively rejected the aggregation.
+func AggregateDocumentsProviderRejected(value mongodb.DocumentSet, failure *sdkgo.Failure) connectormock.Case[mongodb.DocumentSet] {
+	return connectormock.Branch(mongodb.AggregateDocumentsBranchProviderRejected, value, failure)
+}
+
+// AggregateDocumentsInvalidResponse selects the invalidResponse branch: MongoDB returned a document the connector could not encode safely.
+func AggregateDocumentsInvalidResponse(value mongodb.DocumentSet, failure *sdkgo.Failure) connectormock.Case[mongodb.DocumentSet] {
+	return connectormock.Branch(mongodb.AggregateDocumentsBranchInvalidResponse, value, failure)
+}
+
+// AggregateDocumentsDefect selects the defect branch: Collection, pipeline, connection URI, or settings are invalid.
+func AggregateDocumentsDefect(value mongodb.DocumentSet, failure *sdkgo.Failure) connectormock.Case[mongodb.DocumentSet] {
+	return connectormock.Branch(mongodb.AggregateDocumentsBranchDefect, value, failure)
+}
+
+// AggregateDocumentsRetry asks Dex to retry the aggregateDocuments Step, after the delay when it is positive.
+func AggregateDocumentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[mongodb.DocumentSet] {
+	return connectormock.Retry[mongodb.DocumentSet](failure, after)
+}
+
+// AggregateDocumentsAggregatedDefault is the manifest mock aggregatedDefault: One sample aggregation result is returned.
+func AggregateDocumentsAggregatedDefault() connectormock.Case[mongodb.DocumentSet] {
+	value := connectormock.MustDecodeOutput[mongodb.DocumentSet](`{"documents":[{"status":"active","count":3}]}`)
+	return connectormock.Branch(mongodb.AggregateDocumentsBranchAggregated, value, nil)
+}
+
+// AggregateDocumentsDefault is the manifest default, aggregatedDefault, which New installs.
+func AggregateDocumentsDefault() connectormock.Case[mongodb.DocumentSet] {
+	return AggregateDocumentsAggregatedDefault()
 }

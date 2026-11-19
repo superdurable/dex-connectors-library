@@ -24,8 +24,8 @@ import (
 
 func TestTaskInspectionUsesBothMocksWithRealDex(t *testing.T) {
 	mock := todomock.New(t, listinspection.ConnectionName)
-	listFlow, taskFlow := listinspection.NewListFlow(mock.Connection()), taskinspection.NewTaskFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{listFlow, taskFlow})
+	listFlow, taskFlow, getTaskFlow := listinspection.NewListFlow(mock.Connection()), taskinspection.NewTaskFlow(mock.Connection()), taskinspection.NewGetTaskFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{listFlow, taskFlow, getTaskFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -64,6 +64,15 @@ func TestTaskInspectionUsesBothMocksWithRealDex(t *testing.T) {
 	var taskOutput todo.TasksPage
 	require.NoError(t, tasks.DecodeSingleOutput(&taskOutput))
 	require.Equal(t, "sample-task-1", taskOutput.Tasks[0].ID)
+	_, err = client.StartFlow(ctx, getTaskFlow, "microsoft-todo-get-task-"+nonce, todo.GetTaskInput{ListID: listOutput.Lists[0].ID, TaskID: taskOutput.Tasks[0].ID}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	selectedTask, err := client.WaitForFlow(ctx, "microsoft-todo-get-task-"+nonce, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, selectedTask.Status, selectedTask.ErrorMessage)
+	var selectedTaskOutput todo.Task
+	require.NoError(t, selectedTask.DecodeSingleOutput(&selectedTaskOutput))
+	require.Equal(t, taskOutput.Tasks[0].ID, selectedTaskOutput.ID)
 	require.Len(t, mock.ListTaskLists().Calls(), 1)
 	require.Len(t, mock.ListTasks().Calls(), 1)
+	require.Len(t, mock.GetTask().Calls(), 1)
 }

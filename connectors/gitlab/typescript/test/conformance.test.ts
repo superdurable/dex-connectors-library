@@ -8,7 +8,7 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { GitLabClient } from '../src/client.js';
 import { GetProjectInputSchema, ListIssuesInputSchema, UpdateIssueLabelsInputSchema, type UpdateIssueLabelsInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/gitlab/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/gitlab/scenarios.json', import.meta.url)).filter(scenario => ['getProject', 'listIssues', 'updateIssueLabels'].includes(scenario.operation));
 const connection = { provider: 'gitlab', name: 'gitlab' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGitLab));

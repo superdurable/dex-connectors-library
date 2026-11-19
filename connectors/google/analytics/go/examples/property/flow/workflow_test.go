@@ -24,3 +24,15 @@ func TestPropertyFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestRealtimeFlowIdentityAndMapping(t *testing.T) {
+	input := analytics4.RunRealtimeReportInput{PropertyID: "123456789", Metrics: []string{"activeUsers"}}
+	require.Equal(t, RealtimeFlowType, dex.GetFinalFlowType(NewRealtimeFlow(analytics4.Connection{})))
+	require.Equal(t, "StartRealtimeReport", dex.GetFinalStepType[analytics4.RunRealtimeReportInput](startRealtime{}))
+	wait, err := startRealtime{}.WaitFor(nil, input)
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+	mock := analytics4mock.New(t, ConnectionName)
+	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection()), NewRealtimeFlow(mock.Connection())})
+	require.NoError(t, err)
+}

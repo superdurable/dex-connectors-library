@@ -8,7 +8,7 @@ import { answerRecordedRequest, invokeProductionMutation, loadScenarios, replay,
 import { ContactsClient } from '../src/client.js';
 import { CreateContactInputSchema, GetContactInputSchema, ListContactsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/contacts/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/contacts/scenarios.json', import.meta.url)).filter(scenario => ['listContacts', 'getContact', 'createContact'].includes(scenario.operation));
 const connection = { provider: 'google-contacts', name: 'google-contacts' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeContacts));
 

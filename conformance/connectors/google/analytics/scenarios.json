@@ -1270,6 +1270,1283 @@
       },
       "name": "runReport-tooManyDimensions",
       "operation": "runReport"
+    },
+    {
+      "callId": "774d8dbe-b76e-4a84-a12e-42fec70f1aaf",
+      "exchanges": [
+        {
+          "body": "{\"rows\":[{\"dimensionValues\":[{\"value\":\"US\"}],\"metricValues\":[{\"value\":\"5\"}]}],\"rowCount\":\"1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/properties/123456789:runRealtimeReport",
+          "requestBody": {
+            "dimensions": [
+              {
+                "name": "country"
+              }
+            ],
+            "limit": "10",
+            "metrics": [
+              {
+                "name": "activeUsers"
+              }
+            ],
+            "minuteRanges": [
+              {
+                "endMinutesAgo": 5,
+                "startMinutesAgo": 20
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "reported",
+        "failureKind": "",
+        "output": {
+          "rowCount": 1,
+          "rows": [
+            {
+              "dimensions": [
+                "US"
+              ],
+              "metrics": [
+                "5"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endMinutesAgo": 5,
+        "limit": 10,
+        "metrics": [
+          "activeUsers"
+        ],
+        "propertyId": "123456789",
+        "startMinutesAgo": 20
+      },
+      "name": "runRealtimeReport-reported",
+      "operation": "runRealtimeReport"
+    },
+    {
+      "callId": "774d8dbe-b76e-4a84-a12e-42fec70f1aaf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/properties/123456789:runRealtimeReport",
+          "requestBody": {
+            "dimensions": [
+              {
+                "name": "country"
+              }
+            ],
+            "limit": "10",
+            "metrics": [
+              {
+                "name": "activeUsers"
+              }
+            ],
+            "minuteRanges": [
+              {
+                "endMinutesAgo": 5,
+                "startMinutesAgo": 20
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "rowCount": 0,
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endMinutesAgo": 5,
+        "limit": 10,
+        "metrics": [
+          "activeUsers"
+        ],
+        "propertyId": "123456789",
+        "startMinutesAgo": 20
+      },
+      "name": "runRealtimeReport-providerRejected",
+      "operation": "runRealtimeReport"
+    },
+    {
+      "callId": "774d8dbe-b76e-4a84-a12e-42fec70f1aaf",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/properties/123456789:runRealtimeReport",
+          "requestBody": {
+            "dimensions": [
+              {
+                "name": "country"
+              }
+            ],
+            "limit": "10",
+            "metrics": [
+              {
+                "name": "activeUsers"
+              }
+            ],
+            "minuteRanges": [
+              {
+                "endMinutesAgo": 5,
+                "startMinutesAgo": 20
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rowCount": 0,
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endMinutesAgo": 5,
+        "limit": 10,
+        "metrics": [
+          "activeUsers"
+        ],
+        "propertyId": "123456789",
+        "startMinutesAgo": 20
+      },
+      "name": "runRealtimeReport-invalidResponse",
+      "operation": "runRealtimeReport"
+    },
+    {
+      "callId": "774d8dbe-b76e-4a84-a12e-42fec70f1aaf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rowCount": 0,
+          "rows": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endMinutesAgo": 5,
+        "limit": 10,
+        "metrics": [
+          "activeUsers"
+        ],
+        "propertyId": "",
+        "startMinutesAgo": 20
+      },
+      "name": "runRealtimeReport-defect",
+      "operation": "runRealtimeReport"
+    },
+    {
+      "callId": "774d8dbe-b76e-4a84-a12e-42fec70f1aaf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/properties/123456789:runRealtimeReport",
+          "requestBody": {
+            "dimensions": [
+              {
+                "name": "country"
+              }
+            ],
+            "limit": "10",
+            "metrics": [
+              {
+                "name": "activeUsers"
+              }
+            ],
+            "minuteRanges": [
+              {
+                "endMinutesAgo": 5,
+                "startMinutesAgo": 20
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endMinutesAgo": 5,
+        "limit": 10,
+        "metrics": [
+          "activeUsers"
+        ],
+        "propertyId": "123456789",
+        "startMinutesAgo": 20
+      },
+      "name": "runRealtimeReport-rateLimit",
+      "operation": "runRealtimeReport"
+    },
+    {
+      "callId": "774d8dbe-b76e-4a84-a12e-42fec70f1aaf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/properties/123456789:runRealtimeReport",
+          "requestBody": {
+            "dimensions": [
+              {
+                "name": "country"
+              }
+            ],
+            "limit": "10",
+            "metrics": [
+              {
+                "name": "activeUsers"
+              }
+            ],
+            "minuteRanges": [
+              {
+                "endMinutesAgo": 5,
+                "startMinutesAgo": 20
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endMinutesAgo": 5,
+        "limit": 10,
+        "metrics": [
+          "activeUsers"
+        ],
+        "propertyId": "123456789",
+        "startMinutesAgo": 20
+      },
+      "name": "runRealtimeReport-serviceUnavailable",
+      "operation": "runRealtimeReport"
+    },
+    {
+      "callId": "774d8dbe-b76e-4a84-a12e-42fec70f1aaf",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/properties/123456789:runRealtimeReport",
+          "requestBody": {
+            "dimensions": [
+              {
+                "name": "country"
+              }
+            ],
+            "limit": "10",
+            "metrics": [
+              {
+                "name": "activeUsers"
+              }
+            ],
+            "minuteRanges": [
+              {
+                "endMinutesAgo": 5,
+                "startMinutesAgo": 20
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endMinutesAgo": 5,
+        "limit": 10,
+        "metrics": [
+          "activeUsers"
+        ],
+        "propertyId": "123456789",
+        "startMinutesAgo": 20
+      },
+      "name": "runRealtimeReport-serverError",
+      "operation": "runRealtimeReport"
+    },
+    {
+      "callId": "774d8dbe-b76e-4a84-a12e-42fec70f1aaf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/properties/123456789:runRealtimeReport",
+          "requestBody": {
+            "dimensions": [
+              {
+                "name": "country"
+              }
+            ],
+            "limit": "10",
+            "metrics": [
+              {
+                "name": "activeUsers"
+              }
+            ],
+            "minuteRanges": [
+              {
+                "endMinutesAgo": 5,
+                "startMinutesAgo": 20
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endMinutesAgo": 5,
+        "limit": 10,
+        "metrics": [
+          "activeUsers"
+        ],
+        "propertyId": "123456789",
+        "startMinutesAgo": 20
+      },
+      "name": "runRealtimeReport-transportFailure",
+      "operation": "runRealtimeReport"
+    },
+    {
+      "callId": "52d55a6b-f250-490c-8ca9-39515d9406ef",
+      "exchanges": [
+        {
+          "body": "{\"properties\":[{\"name\":\"properties/123456789\",\"displayName\":\"Example Analytics\",\"timeZone\":\"America/Los_Angeles\",\"currencyCode\":\"USD\"}],\"nextPageToken\":\"later\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties",
+          "query": {
+            "filter": [
+              "parent:accounts/1234"
+            ],
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "later",
+          "properties": [
+            {
+              "currencyCode": "USD",
+              "displayName": "Example Analytics",
+              "name": "properties/123456789",
+              "timeZone": "America/Los_Angeles"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "1234",
+        "pageSize": 20,
+        "pageToken": "next"
+      },
+      "name": "listProperties-listed",
+      "operation": "listProperties"
+    },
+    {
+      "callId": "52d55a6b-f250-490c-8ca9-39515d9406ef",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties",
+          "query": {
+            "filter": [
+              "parent:accounts/1234"
+            ],
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "properties": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "1234",
+        "pageSize": 20,
+        "pageToken": "next"
+      },
+      "name": "listProperties-providerRejected",
+      "operation": "listProperties"
+    },
+    {
+      "callId": "52d55a6b-f250-490c-8ca9-39515d9406ef",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties",
+          "query": {
+            "filter": [
+              "parent:accounts/1234"
+            ],
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "properties": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "1234",
+        "pageSize": 20,
+        "pageToken": "next"
+      },
+      "name": "listProperties-invalidResponse",
+      "operation": "listProperties"
+    },
+    {
+      "callId": "52d55a6b-f250-490c-8ca9-39515d9406ef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "properties": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "",
+        "pageSize": 20,
+        "pageToken": "next"
+      },
+      "name": "listProperties-defect",
+      "operation": "listProperties"
+    },
+    {
+      "callId": "52d55a6b-f250-490c-8ca9-39515d9406ef",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties",
+          "query": {
+            "filter": [
+              "parent:accounts/1234"
+            ],
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "1234",
+        "pageSize": 20,
+        "pageToken": "next"
+      },
+      "name": "listProperties-rateLimit",
+      "operation": "listProperties"
+    },
+    {
+      "callId": "52d55a6b-f250-490c-8ca9-39515d9406ef",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties",
+          "query": {
+            "filter": [
+              "parent:accounts/1234"
+            ],
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "1234",
+        "pageSize": 20,
+        "pageToken": "next"
+      },
+      "name": "listProperties-serviceUnavailable",
+      "operation": "listProperties"
+    },
+    {
+      "callId": "52d55a6b-f250-490c-8ca9-39515d9406ef",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties",
+          "query": {
+            "filter": [
+              "parent:accounts/1234"
+            ],
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "1234",
+        "pageSize": 20,
+        "pageToken": "next"
+      },
+      "name": "listProperties-serverError",
+      "operation": "listProperties"
+    },
+    {
+      "callId": "52d55a6b-f250-490c-8ca9-39515d9406ef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties",
+          "query": {
+            "filter": [
+              "parent:accounts/1234"
+            ],
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "1234",
+        "pageSize": 20,
+        "pageToken": "next"
+      },
+      "name": "listProperties-transportFailure",
+      "operation": "listProperties"
+    },
+    {
+      "callId": "4f793c9e-dda6-421e-9341-698188859083",
+      "exchanges": [
+        {
+          "body": "{\"dataStreams\":[{\"name\":\"properties/123456789/dataStreams/42\",\"displayName\":\"Example Web\",\"type\":\"WEB_DATA_STREAM\"}],\"nextPageToken\":\"later\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties/123456789/dataStreams",
+          "query": {
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "dataStreams": [
+            {
+              "displayName": "Example Web",
+              "name": "properties/123456789/dataStreams/42",
+              "type": "WEB_DATA_STREAM"
+            }
+          ],
+          "nextPageToken": "later"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "next",
+        "propertyId": "123456789"
+      },
+      "name": "listDataStreams-listed",
+      "operation": "listDataStreams"
+    },
+    {
+      "callId": "4f793c9e-dda6-421e-9341-698188859083",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties/123456789/dataStreams",
+          "query": {
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "dataStreams": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "next",
+        "propertyId": "123456789"
+      },
+      "name": "listDataStreams-providerRejected",
+      "operation": "listDataStreams"
+    },
+    {
+      "callId": "4f793c9e-dda6-421e-9341-698188859083",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties/123456789/dataStreams",
+          "query": {
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "dataStreams": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "next",
+        "propertyId": "123456789"
+      },
+      "name": "listDataStreams-invalidResponse",
+      "operation": "listDataStreams"
+    },
+    {
+      "callId": "4f793c9e-dda6-421e-9341-698188859083",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dataStreams": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "next",
+        "propertyId": ""
+      },
+      "name": "listDataStreams-defect",
+      "operation": "listDataStreams"
+    },
+    {
+      "callId": "4f793c9e-dda6-421e-9341-698188859083",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties/123456789/dataStreams",
+          "query": {
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "next",
+        "propertyId": "123456789"
+      },
+      "name": "listDataStreams-rateLimit",
+      "operation": "listDataStreams"
+    },
+    {
+      "callId": "4f793c9e-dda6-421e-9341-698188859083",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties/123456789/dataStreams",
+          "query": {
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "next",
+        "propertyId": "123456789"
+      },
+      "name": "listDataStreams-serviceUnavailable",
+      "operation": "listDataStreams"
+    },
+    {
+      "callId": "4f793c9e-dda6-421e-9341-698188859083",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties/123456789/dataStreams",
+          "query": {
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "next",
+        "propertyId": "123456789"
+      },
+      "name": "listDataStreams-serverError",
+      "operation": "listDataStreams"
+    },
+    {
+      "callId": "4f793c9e-dda6-421e-9341-698188859083",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/properties/123456789/dataStreams",
+          "query": {
+            "pageSize": [
+              "20"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "next",
+        "propertyId": "123456789"
+      },
+      "name": "listDataStreams-transportFailure",
+      "operation": "listDataStreams"
     }
   ],
   "schemaVersion": 1

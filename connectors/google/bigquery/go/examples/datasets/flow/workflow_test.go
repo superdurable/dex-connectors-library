@@ -24,3 +24,15 @@ func TestDatasetsFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestTablesFlowIdentityAndMapping(t *testing.T) {
+	input := bigquery.ListTablesInput{ProjectID: "sample-project", DatasetID: "reporting"}
+	require.Equal(t, TablesFlowType, dex.GetFinalFlowType(NewTablesFlow(bigquery.Connection{})))
+	require.Equal(t, "StartListTables", dex.GetFinalStepType[bigquery.ListTablesInput](startTables{}))
+	wait, err := startTables{}.WaitFor(nil, input)
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+	mock := bigquerymock.New(t, ConnectionName)
+	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection()), NewTablesFlow(mock.Connection())})
+	require.NoError(t, err)
+}
