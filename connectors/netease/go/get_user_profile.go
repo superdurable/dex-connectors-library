@@ -4,11 +4,11 @@
 package netease
 
 import (
-	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -49,11 +49,11 @@ func (operation GetUserProfileOperation) Invoke(call sdkgo.Call, input GetUserPr
 		return userProfileBranch(GetUserProfileBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	nonceBytes := make([]byte, 16)
-	if _, err := rand.Read(nonceBytes); err != nil {
+	if _, err := io.ReadFull(operation.client.nonceReader, nonceBytes); err != nil {
 		return userProfileRetry(sdkgo.FailureAvailability, "request nonce unavailable", 0)
 	}
 	nonce := hex.EncodeToString(nonceBytes)
-	currentTime := strconv.FormatInt(time.Now().UTC().Unix(), 10)
+	currentTime := strconv.FormatInt(operation.client.now().UTC().Unix(), 10)
 	signature := sha1.Sum([]byte(credentials.AppSecret.Reveal() + nonce + currentTime))
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, operation.client.baseURL+"/im/v2/users/"+url.PathEscape(input.AccountID), nil)
 	if err != nil {

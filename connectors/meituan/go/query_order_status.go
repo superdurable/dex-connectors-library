@@ -60,7 +60,7 @@ func (operation QueryOrderStatusOperation) Invoke(call sdkgo.Call, input QueryOr
 	}
 	form := url.Values{
 		"appkey":        {credentials.AppKey},
-		"timestamp":     {strconv.FormatInt(time.Now().Unix(), 10)},
+		"timestamp":     {strconv.FormatInt(operation.client.now().Unix(), 10)},
 		"version":       {"1.0"},
 		"delivery_id":   {strconv.FormatInt(input.DeliveryID, 10)},
 		"mt_peisong_id": {input.MeituanOrderID},
