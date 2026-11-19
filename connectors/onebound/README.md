@@ -7,3 +7,7 @@ This connector searches public 1688 product listings through [Onebound's documen
 Onebound documents that both results and empty searches are billed. The `billedOperation` retry policy caps transient failures at three attempts within one minute. Provider codes `2000` (no result) and `0000` are successful `listed` outcomes; temporary error codes and 429/5xx retry; definite plan, quota, credential, and input failures select optional branches. This is a search data service; confirm API access, request frequency, and charges in your Onebound account before running live calls.
 
 The [runnable Dex Flow](go/examples/product-search/README.md) shows connection setup and typed output. The [official Onebound site logo](https://www.onebound.cn/wp-content/themes/cross-apple/assets/images/logo.png) is embedded without alteration in `logo.svg`. Production authorization, signature acceptance, and live response variants remain unverified because no provider credentials were available.
+
+## Python
+
+The `dex-connector-onebound` Python package implements `searchProducts` with the same signed request and provider decisions as Go. See [its runnable Flow](python/examples/product_search/). Live provider authorization has not been verified.
