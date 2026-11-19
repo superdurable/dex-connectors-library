@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: dedao
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-dedao"
+      operations: [getNoteTaskStatus]
+      triggers: []
   codegen:
     go:
       package: dedao
