@@ -9,3 +9,5 @@ The [runnable Dex example](go/examples/lookup-ip-location/) uses the static `yik
 ## Python
 
 The `python/` package provides the `lookupIPLocation` Query. Run its checked-in example from `python/examples/`.
+
+The [TypeScript package](typescript/README.md) implements `lookupIPLocation` with a [runnable Dex Flow](typescript/examples/basic/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.
