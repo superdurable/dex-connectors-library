@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Resend token. Start at https://resend.com/api-keys, follow API Keys > Create API Key. Create an API key with sending permission, then copy its secret value. It is an opaque secret string; blank prevents requests. It is sent only in the Authorization header. */
+  /** Secret Resend token. Start at https://resend.com/api-keys, follow API Keys > Create API Key. Create a full access API key for all operations, then copy its secret value. It is an opaque secret string; blank prevents requests. It is sent only in the Authorization header. */
   apiKey: SecretString;
 }
 
