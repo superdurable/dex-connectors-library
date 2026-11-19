@@ -7,3 +7,4 @@ This connector implements Moka's read-only [job function list](https://www.mokah
 The runnable [job-function example](go/examples/list-job-functions/README.md) demonstrates the generated operation-specific Step and static `moka` connection. Real Moka authorization remains to be tested with a user-controlled Dex Web Connection.
 
 The [Python package](python/README.md) implements the same Query with a checked-in Dex Worker and Client example. Its Go-recorded provider scenarios and local Dex retry path are verified; live provider authorization remains unverified.
+The [TypeScript package](typescript/README.md) exposes `listJobFunctions` and includes a runnable Dex Flow, Go scenario replay, and a local provider integration test.

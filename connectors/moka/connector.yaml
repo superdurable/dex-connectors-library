@@ -11,6 +11,11 @@ spec:
   provider: moka
   languages:
     python: {version: v0.1.0, operations: [listJobFunctions], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-moka"
+      operations: [listJobFunctions]
+      triggers: []
   codegen:
     go:
       package: moka
