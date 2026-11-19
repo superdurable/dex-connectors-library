@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: jotform
   displayName: Jotform
-  description: List forms and inspect submission metadata through the Jotform API.
+  description: Manage Jotform forms and submissions through the Jotform API.
   company: Jotform
   categories: [productivity]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: jotform
   languages:
@@ -47,14 +47,148 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret provider-issued API key from Jotform My Account > API at https://www.jotform.com/myaccount/api. Create or select a read-only key and copy its full string; blank makes calls select defect. Dex stores it as a secret and sends it only in the APIKEY header.
+        description: Secret provider-issued API key from Jotform My Account > API at https://www.jotform.com/myaccount/api. Select read-only access for Queries or Full Access for form and submission writes; copy the full opaque string. Blank makes calls select defect. Dex stores it as a secret and sends it only in the APIKEY header.
     guide:
       startURL: https://www.jotform.com/myaccount/api
       steps:
         - Sign in at https://www.jotform.com/myaccount/api, then open My Account > API.
-        - Create a read-only API key for forms and submissions, copy the full provider-issued string into the secret api_key field, and save the connection. Revoke it on the same page when retired.
+        - Create a read-only API key for Queries or choose Full Access for create, update, and delete operations. Copy the complete opaque string into secret api_key in Dex Web, save the connection, and revoke the key from the same Jotform page when retired. Blank is invalid.
         - Use the API endpoint for your account region (US, EU, or HIPAA). Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults only when the US endpoint applies.
   operations:
+    - name: createForm
+      goName: CreateForm
+      inputType: CreateFormInput
+      outputType: WriteResult
+      kind: mutation
+      description: Create a form with a title and one header question.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Jotform created the form.}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform conclusively rejected the form., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A possibly created form could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A form was created., output: {id: "123", accepted: true}}
+    - name: updateFormTitle
+      goName: UpdateFormTitle
+      inputType: UpdateFormTitleInput
+      outputType: WriteResult
+      kind: mutation
+      description: Set a form's title to a selected value.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Jotform accepted the title update.}
+        - {id: notFound, goName: NotFound, description: The form does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the title update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A form title was updated., output: {id: "123", accepted: true}}
+    - name: deleteForm
+      goName: DeleteForm
+      inputType: GetFormInput
+      outputType: WriteResult
+      kind: mutation
+      description: Delete one form by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Jotform deleted the form.}
+        - {id: notFound, goName: NotFound, description: The form does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: A form was deleted., output: {id: "123", accepted: true}}
+    - name: createSubmission
+      goName: CreateSubmission
+      inputType: CreateSubmissionInput
+      outputType: WriteResult
+      kind: mutation
+      description: Submit non-secret answers to one form.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Jotform created the submission.}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform conclusively rejected the submission., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A possibly created submission could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A submission was created., output: {id: "456", accepted: true}}
+    - name: updateSubmission
+      goName: UpdateSubmission
+      inputType: UpdateSubmissionInput
+      outputType: WriteResult
+      kind: mutation
+      description: Set selected answers on an existing submission.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Jotform accepted the answer update.}
+        - {id: notFound, goName: NotFound, description: The submission does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the answer update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A submission was updated., output: {id: "456", accepted: true}}
+    - name: deleteSubmission
+      goName: DeleteSubmission
+      inputType: GetSubmissionInput
+      outputType: WriteResult
+      kind: mutation
+      description: Delete one submission by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Jotform deleted the submission.}
+        - {id: notFound, goName: NotFound, description: The submission does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: A submission was deleted., output: {id: "456", accepted: true}}
+    - name: getForm
+      goName: GetForm
+      inputType: GetFormInput
+      outputType: FormMetadata
+      kind: query
+      description: Read one form's identity, title, and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Jotform returned the form.}
+        - {id: notFound, goName: NotFound, description: Jotform did not find the form., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the form lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One example form was found., output: {id: "241234567890123", title: Contact request, status: ENABLED}}
+    - name: listFormSubmissions
+      goName: ListFormSubmissions
+      inputType: ListFormSubmissionsInput
+      outputType: SubmissionsPage
+      kind: query
+      description: List one bounded page of submission metadata for a form.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Jotform returned the submission page.}
+        - {id: notFound, goName: NotFound, description: Jotform did not find the form., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform rejected the submission list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One example submission was listed., output: {submissions: [{id: "456", formId: "123", status: ACTIVE, createdAt: "2026-01-01 00:00:00"}], offset: 0, limit: 20}}
     - name: listForms
       goName: ListForms
       inputType: ListFormsInput

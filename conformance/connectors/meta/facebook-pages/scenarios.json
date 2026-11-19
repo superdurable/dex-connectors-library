@@ -2,6 +2,664 @@
   "connector": "facebook-pages",
   "scenarios": [
     {
+      "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "form": {
+            "message": [
+              "Updated from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "postId": "123456789_987654321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "input": {
+        "message": "Updated from Dex",
+        "postId": "123456789_987654321"
+      },
+      "name": "updatePost-updated",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "message": [
+              "Updated from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "input": {
+        "message": "Updated from Dex",
+        "postId": "123456789_987654321"
+      },
+      "name": "updatePost-notFound",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "message": [
+              "Updated from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "input": {
+        "message": "Updated from Dex",
+        "postId": "123456789_987654321"
+      },
+      "name": "updatePost-providerRejected",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "message": [
+              "Updated from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "input": {
+        "message": "Updated from Dex",
+        "postId": "123456789_987654321"
+      },
+      "name": "updatePost-invalidResponse",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "input": {
+        "message": "Updated from Dex",
+        "postId": "../bad"
+      },
+      "name": "updatePost-defect",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "message": [
+              "Updated from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "input": {
+        "message": "Updated from Dex",
+        "postId": "123456789_987654321"
+      },
+      "name": "updatePost-rateLimit",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "message": [
+              "Updated from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "input": {
+        "message": "Updated from Dex",
+        "postId": "123456789_987654321"
+      },
+      "name": "updatePost-serverUnavailable",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "exchanges": [
+        {
+          "form": {
+            "message": [
+              "Updated from Dex"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e1cac47-3eed-5123-ad27-1d1fd4a79a9c",
+      "input": {
+        "message": "Updated from Dex",
+        "postId": "123456789_987654321"
+      },
+      "name": "updatePost-transportFailure",
+      "operation": "updatePost"
+    },
+    {
+      "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "postId": "123456789_987654321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "deletePost-deleted",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "deletePost-notFound",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "deletePost-providerRejected",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "deletePost-invalidResponse",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "input": {
+        "postId": "../bad"
+      },
+      "name": "deletePost-defect",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "deletePost-rateLimit",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "deletePost-serverUnavailable",
+      "operation": "deletePost"
+    },
+    {
+      "callId": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123456789_987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ba443df-37d6-5b1e-9905-1652406fe899",
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "deletePost-transportFailure",
+      "operation": "deletePost"
+    },
+    {
       "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
       "exchanges": [
         {

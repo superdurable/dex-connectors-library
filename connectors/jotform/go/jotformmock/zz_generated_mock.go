@@ -17,9 +17,17 @@ import (
 
 // Mock is a scripted jotform connection. Script each operation through its accessor.
 type Mock struct {
-	connection    jotform.Connection
-	listForms     *connectormock.Query[jotform.ListFormsInput, jotform.FormsPage]
-	getSubmission *connectormock.Query[jotform.GetSubmissionInput, jotform.SubmissionMetadata]
+	connection          jotform.Connection
+	createForm          *connectormock.Mutation[jotform.CreateFormInput, jotform.WriteResult]
+	updateFormTitle     *connectormock.Mutation[jotform.UpdateFormTitleInput, jotform.WriteResult]
+	deleteForm          *connectormock.Mutation[jotform.GetFormInput, jotform.WriteResult]
+	createSubmission    *connectormock.Mutation[jotform.CreateSubmissionInput, jotform.WriteResult]
+	updateSubmission    *connectormock.Mutation[jotform.UpdateSubmissionInput, jotform.WriteResult]
+	deleteSubmission    *connectormock.Mutation[jotform.GetSubmissionInput, jotform.WriteResult]
+	getForm             *connectormock.Query[jotform.GetFormInput, jotform.FormMetadata]
+	listFormSubmissions *connectormock.Query[jotform.ListFormSubmissionsInput, jotform.SubmissionsPage]
+	listForms           *connectormock.Query[jotform.ListFormsInput, jotform.FormsPage]
+	getSubmission       *connectormock.Query[jotform.GetSubmissionInput, jotform.SubmissionMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +35,25 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listForms:     connectormock.NewQuery[jotform.ListFormsInput, jotform.FormsPage](t, jotform.ListFormsDefinition),
-		getSubmission: connectormock.NewQuery[jotform.GetSubmissionInput, jotform.SubmissionMetadata](t, jotform.GetSubmissionDefinition),
+		createForm:          connectormock.NewMutation[jotform.CreateFormInput, jotform.WriteResult](t, jotform.CreateFormDefinition),
+		updateFormTitle:     connectormock.NewMutation[jotform.UpdateFormTitleInput, jotform.WriteResult](t, jotform.UpdateFormTitleDefinition),
+		deleteForm:          connectormock.NewMutation[jotform.GetFormInput, jotform.WriteResult](t, jotform.DeleteFormDefinition),
+		createSubmission:    connectormock.NewMutation[jotform.CreateSubmissionInput, jotform.WriteResult](t, jotform.CreateSubmissionDefinition),
+		updateSubmission:    connectormock.NewMutation[jotform.UpdateSubmissionInput, jotform.WriteResult](t, jotform.UpdateSubmissionDefinition),
+		deleteSubmission:    connectormock.NewMutation[jotform.GetSubmissionInput, jotform.WriteResult](t, jotform.DeleteSubmissionDefinition),
+		getForm:             connectormock.NewQuery[jotform.GetFormInput, jotform.FormMetadata](t, jotform.GetFormDefinition),
+		listFormSubmissions: connectormock.NewQuery[jotform.ListFormSubmissionsInput, jotform.SubmissionsPage](t, jotform.ListFormSubmissionsDefinition),
+		listForms:           connectormock.NewQuery[jotform.ListFormsInput, jotform.FormsPage](t, jotform.ListFormsDefinition),
+		getSubmission:       connectormock.NewQuery[jotform.GetSubmissionInput, jotform.SubmissionMetadata](t, jotform.GetSubmissionDefinition),
 	}
+	mock.createForm.Default(CreateFormDefault())
+	mock.updateFormTitle.Default(UpdateFormTitleDefault())
+	mock.deleteForm.Default(DeleteFormDefault())
+	mock.createSubmission.Default(CreateSubmissionDefault())
+	mock.updateSubmission.Default(UpdateSubmissionDefault())
+	mock.deleteSubmission.Default(DeleteSubmissionDefault())
+	mock.getForm.Default(GetFormDefault())
+	mock.listFormSubmissions.Default(ListFormSubmissionsDefault())
 	mock.listForms.Default(ListFormsDefault())
 	mock.getSubmission.Default(GetSubmissionDefault())
 	connection, err := jotform.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "jotform", Name: connectionName})
@@ -43,6 +67,46 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() jotform.Connection { return mock.connection }
 
+// CreateForm returns the createForm script.
+func (mock *Mock) CreateForm() *connectormock.Mutation[jotform.CreateFormInput, jotform.WriteResult] {
+	return mock.createForm
+}
+
+// UpdateFormTitle returns the updateFormTitle script.
+func (mock *Mock) UpdateFormTitle() *connectormock.Mutation[jotform.UpdateFormTitleInput, jotform.WriteResult] {
+	return mock.updateFormTitle
+}
+
+// DeleteForm returns the deleteForm script.
+func (mock *Mock) DeleteForm() *connectormock.Mutation[jotform.GetFormInput, jotform.WriteResult] {
+	return mock.deleteForm
+}
+
+// CreateSubmission returns the createSubmission script.
+func (mock *Mock) CreateSubmission() *connectormock.Mutation[jotform.CreateSubmissionInput, jotform.WriteResult] {
+	return mock.createSubmission
+}
+
+// UpdateSubmission returns the updateSubmission script.
+func (mock *Mock) UpdateSubmission() *connectormock.Mutation[jotform.UpdateSubmissionInput, jotform.WriteResult] {
+	return mock.updateSubmission
+}
+
+// DeleteSubmission returns the deleteSubmission script.
+func (mock *Mock) DeleteSubmission() *connectormock.Mutation[jotform.GetSubmissionInput, jotform.WriteResult] {
+	return mock.deleteSubmission
+}
+
+// GetForm returns the getForm script.
+func (mock *Mock) GetForm() *connectormock.Query[jotform.GetFormInput, jotform.FormMetadata] {
+	return mock.getForm
+}
+
+// ListFormSubmissions returns the listFormSubmissions script.
+func (mock *Mock) ListFormSubmissions() *connectormock.Query[jotform.ListFormSubmissionsInput, jotform.SubmissionsPage] {
+	return mock.listFormSubmissions
+}
+
 // ListForms returns the listForms script.
 func (mock *Mock) ListForms() *connectormock.Query[jotform.ListFormsInput, jotform.FormsPage] {
 	return mock.listForms
@@ -55,11 +119,347 @@ func (mock *Mock) GetSubmission() *connectormock.Query[jotform.GetSubmissionInpu
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateForm() sdkgo.Mutation[jotform.CreateFormInput, jotform.WriteResult] {
+	return operations.mock.createForm
+}
+func (operations mockOperations) UpdateFormTitle() sdkgo.Mutation[jotform.UpdateFormTitleInput, jotform.WriteResult] {
+	return operations.mock.updateFormTitle
+}
+func (operations mockOperations) DeleteForm() sdkgo.Mutation[jotform.GetFormInput, jotform.WriteResult] {
+	return operations.mock.deleteForm
+}
+func (operations mockOperations) CreateSubmission() sdkgo.Mutation[jotform.CreateSubmissionInput, jotform.WriteResult] {
+	return operations.mock.createSubmission
+}
+func (operations mockOperations) UpdateSubmission() sdkgo.Mutation[jotform.UpdateSubmissionInput, jotform.WriteResult] {
+	return operations.mock.updateSubmission
+}
+func (operations mockOperations) DeleteSubmission() sdkgo.Mutation[jotform.GetSubmissionInput, jotform.WriteResult] {
+	return operations.mock.deleteSubmission
+}
+func (operations mockOperations) GetForm() sdkgo.Query[jotform.GetFormInput, jotform.FormMetadata] {
+	return operations.mock.getForm
+}
+func (operations mockOperations) ListFormSubmissions() sdkgo.Query[jotform.ListFormSubmissionsInput, jotform.SubmissionsPage] {
+	return operations.mock.listFormSubmissions
+}
 func (operations mockOperations) ListForms() sdkgo.Query[jotform.ListFormsInput, jotform.FormsPage] {
 	return operations.mock.listForms
 }
 func (operations mockOperations) GetSubmission() sdkgo.Query[jotform.GetSubmissionInput, jotform.SubmissionMetadata] {
 	return operations.mock.getSubmission
+}
+
+// CreateFormCreated selects the created branch: Jotform created the form.
+func CreateFormCreated(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.CreateFormBranchCreated, value, failure)
+}
+
+// CreateFormProviderRejected selects the providerRejected branch: Jotform conclusively rejected the form.
+func CreateFormProviderRejected(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.CreateFormBranchProviderRejected, value, failure)
+}
+
+// CreateFormUncertain returns an uncertain createForm outcome.
+func CreateFormUncertain(value jotform.WriteResult, failure sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateFormDefect selects the defect branch: Local input or credentials are invalid.
+func CreateFormDefect(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.CreateFormBranchDefect, value, failure)
+}
+
+// CreateFormRetry asks Dex to retry the createForm Step, after the delay when it is positive.
+func CreateFormRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Retry[jotform.WriteResult](failure, after)
+}
+
+// CreateFormCreatedDefault is the manifest mock createdDefault: A form was created.
+func CreateFormCreatedDefault() connectormock.Case[jotform.WriteResult] {
+	value := connectormock.MustDecodeOutput[jotform.WriteResult](`{"id":"123","accepted":true}`)
+	return connectormock.Branch(jotform.CreateFormBranchCreated, value, nil)
+}
+
+// CreateFormDefault is the manifest default, createdDefault, which New installs.
+func CreateFormDefault() connectormock.Case[jotform.WriteResult] { return CreateFormCreatedDefault() }
+
+// UpdateFormTitleUpdated selects the updated branch: Jotform accepted the title update.
+func UpdateFormTitleUpdated(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateFormTitleBranchUpdated, value, failure)
+}
+
+// UpdateFormTitleNotFound selects the notFound branch: The form does not exist.
+func UpdateFormTitleNotFound(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateFormTitleBranchNotFound, value, failure)
+}
+
+// UpdateFormTitleProviderRejected selects the providerRejected branch: Jotform rejected the title update.
+func UpdateFormTitleProviderRejected(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateFormTitleBranchProviderRejected, value, failure)
+}
+
+// UpdateFormTitleInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+func UpdateFormTitleInvalidResponse(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateFormTitleBranchInvalidResponse, value, failure)
+}
+
+// UpdateFormTitleDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateFormTitleDefect(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateFormTitleBranchDefect, value, failure)
+}
+
+// UpdateFormTitleRetry asks Dex to retry the updateFormTitle Step, after the delay when it is positive.
+func UpdateFormTitleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Retry[jotform.WriteResult](failure, after)
+}
+
+// UpdateFormTitleUpdatedDefault is the manifest mock updatedDefault: A form title was updated.
+func UpdateFormTitleUpdatedDefault() connectormock.Case[jotform.WriteResult] {
+	value := connectormock.MustDecodeOutput[jotform.WriteResult](`{"id":"123","accepted":true}`)
+	return connectormock.Branch(jotform.UpdateFormTitleBranchUpdated, value, nil)
+}
+
+// UpdateFormTitleDefault is the manifest default, updatedDefault, which New installs.
+func UpdateFormTitleDefault() connectormock.Case[jotform.WriteResult] {
+	return UpdateFormTitleUpdatedDefault()
+}
+
+// DeleteFormDeleted selects the deleted branch: Jotform deleted the form.
+func DeleteFormDeleted(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteFormBranchDeleted, value, failure)
+}
+
+// DeleteFormNotFound selects the notFound branch: The form does not exist.
+func DeleteFormNotFound(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteFormBranchNotFound, value, failure)
+}
+
+// DeleteFormProviderRejected selects the providerRejected branch: Jotform rejected the deletion.
+func DeleteFormProviderRejected(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteFormBranchProviderRejected, value, failure)
+}
+
+// DeleteFormInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+func DeleteFormInvalidResponse(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteFormBranchInvalidResponse, value, failure)
+}
+
+// DeleteFormDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteFormDefect(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteFormBranchDefect, value, failure)
+}
+
+// DeleteFormRetry asks Dex to retry the deleteForm Step, after the delay when it is positive.
+func DeleteFormRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Retry[jotform.WriteResult](failure, after)
+}
+
+// DeleteFormDeletedDefault is the manifest mock deletedDefault: A form was deleted.
+func DeleteFormDeletedDefault() connectormock.Case[jotform.WriteResult] {
+	value := connectormock.MustDecodeOutput[jotform.WriteResult](`{"id":"123","accepted":true}`)
+	return connectormock.Branch(jotform.DeleteFormBranchDeleted, value, nil)
+}
+
+// DeleteFormDefault is the manifest default, deletedDefault, which New installs.
+func DeleteFormDefault() connectormock.Case[jotform.WriteResult] { return DeleteFormDeletedDefault() }
+
+// CreateSubmissionCreated selects the created branch: Jotform created the submission.
+func CreateSubmissionCreated(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.CreateSubmissionBranchCreated, value, failure)
+}
+
+// CreateSubmissionProviderRejected selects the providerRejected branch: Jotform conclusively rejected the submission.
+func CreateSubmissionProviderRejected(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.CreateSubmissionBranchProviderRejected, value, failure)
+}
+
+// CreateSubmissionUncertain returns an uncertain createSubmission outcome.
+func CreateSubmissionUncertain(value jotform.WriteResult, failure sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSubmissionDefect selects the defect branch: Local input or credentials are invalid.
+func CreateSubmissionDefect(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.CreateSubmissionBranchDefect, value, failure)
+}
+
+// CreateSubmissionRetry asks Dex to retry the createSubmission Step, after the delay when it is positive.
+func CreateSubmissionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Retry[jotform.WriteResult](failure, after)
+}
+
+// CreateSubmissionCreatedDefault is the manifest mock createdDefault: A submission was created.
+func CreateSubmissionCreatedDefault() connectormock.Case[jotform.WriteResult] {
+	value := connectormock.MustDecodeOutput[jotform.WriteResult](`{"id":"456","accepted":true}`)
+	return connectormock.Branch(jotform.CreateSubmissionBranchCreated, value, nil)
+}
+
+// CreateSubmissionDefault is the manifest default, createdDefault, which New installs.
+func CreateSubmissionDefault() connectormock.Case[jotform.WriteResult] {
+	return CreateSubmissionCreatedDefault()
+}
+
+// UpdateSubmissionUpdated selects the updated branch: Jotform accepted the answer update.
+func UpdateSubmissionUpdated(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateSubmissionBranchUpdated, value, failure)
+}
+
+// UpdateSubmissionNotFound selects the notFound branch: The submission does not exist.
+func UpdateSubmissionNotFound(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateSubmissionBranchNotFound, value, failure)
+}
+
+// UpdateSubmissionProviderRejected selects the providerRejected branch: Jotform rejected the answer update.
+func UpdateSubmissionProviderRejected(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateSubmissionBranchProviderRejected, value, failure)
+}
+
+// UpdateSubmissionInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+func UpdateSubmissionInvalidResponse(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateSubmissionBranchInvalidResponse, value, failure)
+}
+
+// UpdateSubmissionDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateSubmissionDefect(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.UpdateSubmissionBranchDefect, value, failure)
+}
+
+// UpdateSubmissionRetry asks Dex to retry the updateSubmission Step, after the delay when it is positive.
+func UpdateSubmissionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Retry[jotform.WriteResult](failure, after)
+}
+
+// UpdateSubmissionUpdatedDefault is the manifest mock updatedDefault: A submission was updated.
+func UpdateSubmissionUpdatedDefault() connectormock.Case[jotform.WriteResult] {
+	value := connectormock.MustDecodeOutput[jotform.WriteResult](`{"id":"456","accepted":true}`)
+	return connectormock.Branch(jotform.UpdateSubmissionBranchUpdated, value, nil)
+}
+
+// UpdateSubmissionDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSubmissionDefault() connectormock.Case[jotform.WriteResult] {
+	return UpdateSubmissionUpdatedDefault()
+}
+
+// DeleteSubmissionDeleted selects the deleted branch: Jotform deleted the submission.
+func DeleteSubmissionDeleted(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteSubmissionBranchDeleted, value, failure)
+}
+
+// DeleteSubmissionNotFound selects the notFound branch: The submission does not exist.
+func DeleteSubmissionNotFound(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteSubmissionBranchNotFound, value, failure)
+}
+
+// DeleteSubmissionProviderRejected selects the providerRejected branch: Jotform rejected the deletion.
+func DeleteSubmissionProviderRejected(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteSubmissionBranchProviderRejected, value, failure)
+}
+
+// DeleteSubmissionInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+func DeleteSubmissionInvalidResponse(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteSubmissionBranchInvalidResponse, value, failure)
+}
+
+// DeleteSubmissionDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteSubmissionDefect(value jotform.WriteResult, failure *sdkgo.Failure) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Branch(jotform.DeleteSubmissionBranchDefect, value, failure)
+}
+
+// DeleteSubmissionRetry asks Dex to retry the deleteSubmission Step, after the delay when it is positive.
+func DeleteSubmissionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[jotform.WriteResult] {
+	return connectormock.Retry[jotform.WriteResult](failure, after)
+}
+
+// DeleteSubmissionDeletedDefault is the manifest mock deletedDefault: A submission was deleted.
+func DeleteSubmissionDeletedDefault() connectormock.Case[jotform.WriteResult] {
+	value := connectormock.MustDecodeOutput[jotform.WriteResult](`{"id":"456","accepted":true}`)
+	return connectormock.Branch(jotform.DeleteSubmissionBranchDeleted, value, nil)
+}
+
+// DeleteSubmissionDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSubmissionDefault() connectormock.Case[jotform.WriteResult] {
+	return DeleteSubmissionDeletedDefault()
+}
+
+// GetFormFound selects the found branch: Jotform returned the form.
+func GetFormFound(value jotform.FormMetadata, failure *sdkgo.Failure) connectormock.Case[jotform.FormMetadata] {
+	return connectormock.Branch(jotform.GetFormBranchFound, value, failure)
+}
+
+// GetFormNotFound selects the notFound branch: Jotform did not find the form.
+func GetFormNotFound(value jotform.FormMetadata, failure *sdkgo.Failure) connectormock.Case[jotform.FormMetadata] {
+	return connectormock.Branch(jotform.GetFormBranchNotFound, value, failure)
+}
+
+// GetFormProviderRejected selects the providerRejected branch: Jotform rejected the form lookup.
+func GetFormProviderRejected(value jotform.FormMetadata, failure *sdkgo.Failure) connectormock.Case[jotform.FormMetadata] {
+	return connectormock.Branch(jotform.GetFormBranchProviderRejected, value, failure)
+}
+
+// GetFormInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+func GetFormInvalidResponse(value jotform.FormMetadata, failure *sdkgo.Failure) connectormock.Case[jotform.FormMetadata] {
+	return connectormock.Branch(jotform.GetFormBranchInvalidResponse, value, failure)
+}
+
+// GetFormDefect selects the defect branch: Local input or credentials are invalid.
+func GetFormDefect(value jotform.FormMetadata, failure *sdkgo.Failure) connectormock.Case[jotform.FormMetadata] {
+	return connectormock.Branch(jotform.GetFormBranchDefect, value, failure)
+}
+
+// GetFormRetry asks Dex to retry the getForm Step, after the delay when it is positive.
+func GetFormRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[jotform.FormMetadata] {
+	return connectormock.Retry[jotform.FormMetadata](failure, after)
+}
+
+// GetFormFoundDefault is the manifest mock foundDefault: One example form was found.
+func GetFormFoundDefault() connectormock.Case[jotform.FormMetadata] {
+	value := connectormock.MustDecodeOutput[jotform.FormMetadata](`{"id":"241234567890123","title":"Contact request","status":"ENABLED"}`)
+	return connectormock.Branch(jotform.GetFormBranchFound, value, nil)
+}
+
+// GetFormDefault is the manifest default, foundDefault, which New installs.
+func GetFormDefault() connectormock.Case[jotform.FormMetadata] { return GetFormFoundDefault() }
+
+// ListFormSubmissionsListed selects the listed branch: Jotform returned the submission page.
+func ListFormSubmissionsListed(value jotform.SubmissionsPage, failure *sdkgo.Failure) connectormock.Case[jotform.SubmissionsPage] {
+	return connectormock.Branch(jotform.ListFormSubmissionsBranchListed, value, failure)
+}
+
+// ListFormSubmissionsNotFound selects the notFound branch: Jotform did not find the form.
+func ListFormSubmissionsNotFound(value jotform.SubmissionsPage, failure *sdkgo.Failure) connectormock.Case[jotform.SubmissionsPage] {
+	return connectormock.Branch(jotform.ListFormSubmissionsBranchNotFound, value, failure)
+}
+
+// ListFormSubmissionsProviderRejected selects the providerRejected branch: Jotform rejected the submission list.
+func ListFormSubmissionsProviderRejected(value jotform.SubmissionsPage, failure *sdkgo.Failure) connectormock.Case[jotform.SubmissionsPage] {
+	return connectormock.Branch(jotform.ListFormSubmissionsBranchProviderRejected, value, failure)
+}
+
+// ListFormSubmissionsInvalidResponse selects the invalidResponse branch: Jotform returned malformed or oversized JSON.
+func ListFormSubmissionsInvalidResponse(value jotform.SubmissionsPage, failure *sdkgo.Failure) connectormock.Case[jotform.SubmissionsPage] {
+	return connectormock.Branch(jotform.ListFormSubmissionsBranchInvalidResponse, value, failure)
+}
+
+// ListFormSubmissionsDefect selects the defect branch: Local input or credentials are invalid.
+func ListFormSubmissionsDefect(value jotform.SubmissionsPage, failure *sdkgo.Failure) connectormock.Case[jotform.SubmissionsPage] {
+	return connectormock.Branch(jotform.ListFormSubmissionsBranchDefect, value, failure)
+}
+
+// ListFormSubmissionsRetry asks Dex to retry the listFormSubmissions Step, after the delay when it is positive.
+func ListFormSubmissionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[jotform.SubmissionsPage] {
+	return connectormock.Retry[jotform.SubmissionsPage](failure, after)
+}
+
+// ListFormSubmissionsListedDefault is the manifest mock listedDefault: One example submission was listed.
+func ListFormSubmissionsListedDefault() connectormock.Case[jotform.SubmissionsPage] {
+	value := connectormock.MustDecodeOutput[jotform.SubmissionsPage](`{"submissions":[{"id":"456","formId":"123","status":"ACTIVE","createdAt":"2026-01-01 00:00:00"}],"offset":0,"limit":20}`)
+	return connectormock.Branch(jotform.ListFormSubmissionsBranchListed, value, nil)
+}
+
+// ListFormSubmissionsDefault is the manifest default, listedDefault, which New installs.
+func ListFormSubmissionsDefault() connectormock.Case[jotform.SubmissionsPage] {
+	return ListFormSubmissionsListedDefault()
 }
 
 // ListFormsListed selects the listed branch: Jotform returned the selected form page.

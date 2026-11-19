@@ -349,6 +349,2109 @@
       },
       "name": "getUser-transportFailure",
       "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"user\":{\"email\":\"user@example.com\",\"userId\":\"example-user-id\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/byUserId/example-user-id",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "user@example.com",
+          "userId": "example-user-id"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "example-user-id"
+      },
+      "name": "getUserByID-found",
+      "operation": "getUserByID"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/byUserId/example-user-id",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "userId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "example-user-id"
+      },
+      "name": "getUserByID-notFound",
+      "operation": "getUserByID"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/byUserId/example-user-id",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "userId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "example-user-id"
+      },
+      "name": "getUserByID-providerRejected",
+      "operation": "getUserByID"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"user\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/byUserId/example-user-id",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "userId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "example-user-id"
+      },
+      "name": "getUserByID-invalidResponse",
+      "operation": "getUserByID"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "userId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": ""
+      },
+      "name": "getUserByID-defect",
+      "operation": "getUserByID"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/byUserId/example-user-id",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "example-user-id"
+      },
+      "name": "getUserByID-rateLimit",
+      "operation": "getUserByID"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/byUserId/example-user-id",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "example-user-id"
+      },
+      "name": "getUserByID-serverUnavailable",
+      "operation": "getUserByID"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/byUserId/example-user-id",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": "example-user-id"
+      },
+      "name": "getUserByID-transportFailure",
+      "operation": "getUserByID"
+    },
+    {
+      "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"Success\",\"msg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/update",
+          "requestBody": {
+            "dataFields": {
+              "firstName": "Ada"
+            },
+            "email": "user@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "input": {
+        "dataFields": {
+          "firstName": "Ada"
+        },
+        "email": "user@example.com"
+      },
+      "name": "upsertUser-updated",
+      "operation": "upsertUser"
+    },
+    {
+      "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/update",
+          "requestBody": {
+            "dataFields": {
+              "firstName": "Ada"
+            },
+            "email": "user@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "input": {
+        "dataFields": {
+          "firstName": "Ada"
+        },
+        "email": "user@example.com"
+      },
+      "name": "upsertUser-providerRejected",
+      "operation": "upsertUser"
+    },
+    {
+      "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/update",
+          "requestBody": {
+            "dataFields": {
+              "firstName": "Ada"
+            },
+            "email": "user@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "input": {
+        "dataFields": {
+          "firstName": "Ada"
+        },
+        "email": "user@example.com"
+      },
+      "name": "upsertUser-invalidResponse",
+      "operation": "upsertUser"
+    },
+    {
+      "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "input": {
+        "dataFields": {
+          "firstName": "Ada"
+        },
+        "email": ""
+      },
+      "name": "upsertUser-defect",
+      "operation": "upsertUser"
+    },
+    {
+      "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/update",
+          "requestBody": {
+            "dataFields": {
+              "firstName": "Ada"
+            },
+            "email": "user@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "input": {
+        "dataFields": {
+          "firstName": "Ada"
+        },
+        "email": "user@example.com"
+      },
+      "name": "upsertUser-rateLimit",
+      "operation": "upsertUser"
+    },
+    {
+      "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/update",
+          "requestBody": {
+            "dataFields": {
+              "firstName": "Ada"
+            },
+            "email": "user@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "input": {
+        "dataFields": {
+          "firstName": "Ada"
+        },
+        "email": "user@example.com"
+      },
+      "name": "upsertUser-serverUnavailable",
+      "operation": "upsertUser"
+    },
+    {
+      "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/update",
+          "requestBody": {
+            "dataFields": {
+              "firstName": "Ada"
+            },
+            "email": "user@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "input": {
+        "dataFields": {
+          "firstName": "Ada"
+        },
+        "email": "user@example.com"
+      },
+      "name": "upsertUser-transportFailure",
+      "operation": "upsertUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"Success\",\"msg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/user@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "email": "user@example.com"
+      },
+      "name": "deleteUser-deleted",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/user@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "email": "user@example.com"
+      },
+      "name": "deleteUser-notFound",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/user@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "email": "user@example.com"
+      },
+      "name": "deleteUser-providerRejected",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/user@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "email": "user@example.com"
+      },
+      "name": "deleteUser-invalidResponse",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "email": ""
+      },
+      "name": "deleteUser-defect",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/user@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "email": "user@example.com"
+      },
+      "name": "deleteUser-rateLimit",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/user@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "email": "user@example.com"
+      },
+      "name": "deleteUser-serverUnavailable",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/user@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "email": "user@example.com"
+      },
+      "name": "deleteUser-transportFailure",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"Success\",\"msg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/update",
+          "requestBody": {
+            "dataFields": {
+              "firstName": "Ada"
+            },
+            "userId": "example-user-id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd210837-4016-57fd-bde5-e5e4afd08c29",
+      "input": {
+        "dataFields": {
+          "firstName": "Ada"
+        },
+        "userId": "example-user-id"
+      },
+      "name": "upsertUser-byID",
+      "operation": "upsertUser"
+    },
+    {
+      "callId": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"Success\",\"msg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/byUserId/example-user-id",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb48d870-1d94-5e91-95a7-d8d8ad6c3b4c",
+      "input": {
+        "userId": "example-user-id"
+      },
+      "name": "deleteUser-byID",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"Success\",\"msg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/track",
+          "requestBody": {
+            "campaignId": 123,
+            "createdAt": 1700000000,
+            "dataFields": {
+              "source": "site"
+            },
+            "email": "user@example.com",
+            "eventName": "Signup",
+            "id": "3ca1a97b-4a35-5ae6-ab98-914c772290bc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "input": {
+        "campaignId": 123,
+        "createdAt": 1700000000,
+        "dataFields": {
+          "source": "site"
+        },
+        "email": "user@example.com",
+        "eventName": "Signup"
+      },
+      "name": "trackEvent-tracked",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/track",
+          "requestBody": {
+            "campaignId": 123,
+            "createdAt": 1700000000,
+            "dataFields": {
+              "source": "site"
+            },
+            "email": "user@example.com",
+            "eventName": "Signup",
+            "id": "3ca1a97b-4a35-5ae6-ab98-914c772290bc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "input": {
+        "campaignId": 123,
+        "createdAt": 1700000000,
+        "dataFields": {
+          "source": "site"
+        },
+        "email": "user@example.com",
+        "eventName": "Signup"
+      },
+      "name": "trackEvent-providerRejected",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/track",
+          "requestBody": {
+            "campaignId": 123,
+            "createdAt": 1700000000,
+            "dataFields": {
+              "source": "site"
+            },
+            "email": "user@example.com",
+            "eventName": "Signup",
+            "id": "3ca1a97b-4a35-5ae6-ab98-914c772290bc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "input": {
+        "campaignId": 123,
+        "createdAt": 1700000000,
+        "dataFields": {
+          "source": "site"
+        },
+        "email": "user@example.com",
+        "eventName": "Signup"
+      },
+      "name": "trackEvent-invalidResponse",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "input": {
+        "campaignId": 123,
+        "createdAt": 1700000000,
+        "dataFields": {
+          "source": "site"
+        },
+        "email": "",
+        "eventName": "Signup"
+      },
+      "name": "trackEvent-defect",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/track",
+          "requestBody": {
+            "campaignId": 123,
+            "createdAt": 1700000000,
+            "dataFields": {
+              "source": "site"
+            },
+            "email": "user@example.com",
+            "eventName": "Signup",
+            "id": "3ca1a97b-4a35-5ae6-ab98-914c772290bc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "input": {
+        "campaignId": 123,
+        "createdAt": 1700000000,
+        "dataFields": {
+          "source": "site"
+        },
+        "email": "user@example.com",
+        "eventName": "Signup"
+      },
+      "name": "trackEvent-rateLimit",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/track",
+          "requestBody": {
+            "campaignId": 123,
+            "createdAt": 1700000000,
+            "dataFields": {
+              "source": "site"
+            },
+            "email": "user@example.com",
+            "eventName": "Signup",
+            "id": "3ca1a97b-4a35-5ae6-ab98-914c772290bc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "input": {
+        "campaignId": 123,
+        "createdAt": 1700000000,
+        "dataFields": {
+          "source": "site"
+        },
+        "email": "user@example.com",
+        "eventName": "Signup"
+      },
+      "name": "trackEvent-serverUnavailable",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/track",
+          "requestBody": {
+            "campaignId": 123,
+            "createdAt": 1700000000,
+            "dataFields": {
+              "source": "site"
+            },
+            "email": "user@example.com",
+            "eventName": "Signup",
+            "id": "3ca1a97b-4a35-5ae6-ab98-914c772290bc"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "input": {
+        "campaignId": 123,
+        "createdAt": 1700000000,
+        "dataFields": {
+          "source": "site"
+        },
+        "email": "user@example.com",
+        "eventName": "Signup"
+      },
+      "name": "trackEvent-transportFailure",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"Success\",\"msg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/track",
+          "requestBody": {
+            "eventName": "Signup",
+            "id": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+            "userId": "example-user-id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tracked",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ca1a97b-4a35-5ae6-ab98-914c772290bc",
+      "input": {
+        "eventName": "Signup",
+        "userId": "example-user-id"
+      },
+      "name": "trackEvent-byID",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "exchanges": [
+        {
+          "body": "{\"successCount\":1,\"failCount\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/subscribe",
+          "requestBody": {
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "input": {
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "subscribeUserToList-subscribed",
+      "operation": "subscribeUserToList"
+    },
+    {
+      "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/subscribe",
+          "requestBody": {
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "input": {
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "subscribeUserToList-providerRejected",
+      "operation": "subscribeUserToList"
+    },
+    {
+      "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/subscribe",
+          "requestBody": {
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "input": {
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "subscribeUserToList-invalidResponse",
+      "operation": "subscribeUserToList"
+    },
+    {
+      "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "input": {
+        "email": "",
+        "listId": 0
+      },
+      "name": "subscribeUserToList-defect",
+      "operation": "subscribeUserToList"
+    },
+    {
+      "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/subscribe",
+          "requestBody": {
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "input": {
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "subscribeUserToList-rateLimit",
+      "operation": "subscribeUserToList"
+    },
+    {
+      "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/subscribe",
+          "requestBody": {
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "input": {
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "subscribeUserToList-serverUnavailable",
+      "operation": "subscribeUserToList"
+    },
+    {
+      "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/subscribe",
+          "requestBody": {
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "input": {
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "subscribeUserToList-transportFailure",
+      "operation": "subscribeUserToList"
+    },
+    {
+      "callId": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "exchanges": [
+        {
+          "body": "{\"successCount\":1,\"failCount\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/subscribe",
+          "requestBody": {
+            "listId": 123,
+            "subscribers": [
+              {
+                "userId": "example-user-id"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c4edd5aa-0825-59a1-b14d-8ab04f20668d",
+      "input": {
+        "listId": 123,
+        "userId": "example-user-id"
+      },
+      "name": "subscribeUserToList-byID",
+      "operation": "subscribeUserToList"
+    },
+    {
+      "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "exchanges": [
+        {
+          "body": "{\"successCount\":1,\"failCount\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/unsubscribe",
+          "requestBody": {
+            "campaignId": 456,
+            "channelUnsubscribe": true,
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsubscribed",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "input": {
+        "campaignId": 456,
+        "channelUnsubscribe": true,
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "unsubscribeUserFromList-unsubscribed",
+      "operation": "unsubscribeUserFromList"
+    },
+    {
+      "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/unsubscribe",
+          "requestBody": {
+            "campaignId": 456,
+            "channelUnsubscribe": true,
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "input": {
+        "campaignId": 456,
+        "channelUnsubscribe": true,
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "unsubscribeUserFromList-providerRejected",
+      "operation": "unsubscribeUserFromList"
+    },
+    {
+      "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/unsubscribe",
+          "requestBody": {
+            "campaignId": 456,
+            "channelUnsubscribe": true,
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "input": {
+        "campaignId": 456,
+        "channelUnsubscribe": true,
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "unsubscribeUserFromList-invalidResponse",
+      "operation": "unsubscribeUserFromList"
+    },
+    {
+      "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "input": {
+        "campaignId": 456,
+        "channelUnsubscribe": true,
+        "email": "",
+        "listId": 0
+      },
+      "name": "unsubscribeUserFromList-defect",
+      "operation": "unsubscribeUserFromList"
+    },
+    {
+      "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/unsubscribe",
+          "requestBody": {
+            "campaignId": 456,
+            "channelUnsubscribe": true,
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "input": {
+        "campaignId": 456,
+        "channelUnsubscribe": true,
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "unsubscribeUserFromList-rateLimit",
+      "operation": "unsubscribeUserFromList"
+    },
+    {
+      "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/unsubscribe",
+          "requestBody": {
+            "campaignId": 456,
+            "channelUnsubscribe": true,
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "input": {
+        "campaignId": 456,
+        "channelUnsubscribe": true,
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "unsubscribeUserFromList-serverUnavailable",
+      "operation": "unsubscribeUserFromList"
+    },
+    {
+      "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/unsubscribe",
+          "requestBody": {
+            "campaignId": 456,
+            "channelUnsubscribe": true,
+            "listId": 123,
+            "subscribers": [
+              {
+                "email": "user@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "input": {
+        "campaignId": 456,
+        "channelUnsubscribe": true,
+        "email": "user@example.com",
+        "listId": 123
+      },
+      "name": "unsubscribeUserFromList-transportFailure",
+      "operation": "unsubscribeUserFromList"
+    },
+    {
+      "callId": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "exchanges": [
+        {
+          "body": "{\"successCount\":1,\"failCount\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/unsubscribe",
+          "requestBody": {
+            "listId": 123,
+            "subscribers": [
+              {
+                "userId": "example-user-id"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "sample-iterable-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsubscribed",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "acc55b66-6c29-5270-af53-09b5cda06901",
+      "input": {
+        "listId": 123,
+        "userId": "example-user-id"
+      },
+      "name": "unsubscribeUserFromList-byID",
+      "operation": "unsubscribeUserFromList"
     }
   ],
   "schemaVersion": 1

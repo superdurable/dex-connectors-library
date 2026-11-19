@@ -735,6 +735,913 @@
       },
       "name": "listDomains-invalid-input",
       "operation": "listDomains"
+    },
+    {
+      "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"\u003c20261116.example@example.test\u003e\",\"message\":\"Queued. Thank you.\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "Y2NAZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"cc\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "YmNjQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"bcc\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "cmVwbHlAZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"h:Reply-To\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "PHA+RXhhbXBsZSBIVE1MPC9wPg==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"html\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"o:tag\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ZXhhbXBsZQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"h:X-Workflow\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+          "providerId": "\u003c20261116.example@example.test\u003e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "\u003c20261116.example@example.test\u003e"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "input": {
+        "bcc": [
+          "bcc@example.test"
+        ],
+        "cc": [
+          "cc@example.test"
+        ],
+        "customHeaders": [
+          {
+            "name": "X-Workflow",
+            "value": "example"
+          }
+        ],
+        "domainName": "example.test",
+        "from": "sender@example.test",
+        "html": "\u003cp\u003eExample HTML\u003c/p\u003e",
+        "replyTo": "reply@example.test",
+        "subject": "Example subject",
+        "tags": [
+          "example"
+        ],
+        "text": "Example text",
+        "to": [
+          "to@example.test"
+        ]
+      },
+      "name": "sendMessage-sent",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "input": {
+        "domainName": "example.test",
+        "from": "sender@example.test",
+        "subject": "Example subject",
+        "text": "Example text",
+        "to": [
+          "to@example.test"
+        ]
+      },
+      "name": "sendMessage-providerRejected",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "input": {
+        "domainName": "bad/domain",
+        "from": "sender@example.test",
+        "subject": "Example subject",
+        "text": "Example text",
+        "to": [
+          "to@example.test"
+        ]
+      },
+      "name": "sendMessage-defect",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "input": {
+        "domainName": "example.test",
+        "from": "sender@example.test",
+        "subject": "Example subject",
+        "text": "Example text",
+        "to": [
+          "to@example.test"
+        ]
+      },
+      "name": "sendMessage-final429",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "input": {
+        "domainName": "example.test",
+        "from": "sender@example.test",
+        "subject": "Example subject",
+        "text": "Example text",
+        "to": [
+          "to@example.test"
+        ]
+      },
+      "name": "sendMessage-final503",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "input": {
+        "domainName": "example.test",
+        "from": "sender@example.test",
+        "subject": "Example subject",
+        "text": "Example text",
+        "to": [
+          "to@example.test"
+        ]
+      },
+      "name": "sendMessage-transportFailure",
+      "operation": "sendMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "input": {
+        "domainName": "example.test",
+        "from": "sender@example.test",
+        "subject": "Example subject",
+        "text": "Example text",
+        "to": [
+          "to@example.test"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendMessage-uncertainAtCap",
+      "operation": "sendMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":\"\u003c20261116.example@example.test\u003e\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/example.test/messages",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2VuZGVyQGV4YW1wbGUudGVzdA==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"from\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSBzdWJqZWN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"subject\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "dG9AZXhhbXBsZS50ZXN0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"to\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "RXhhbXBsZSB0ZXh0",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"text\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+          "providerId": "\u003c20261116.example@example.test\u003e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "\u003c20261116.example@example.test\u003e"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "23d3e129-246d-5142-ae23-b3154534adb4",
+      "input": {
+        "domainName": "example.test",
+        "from": "sender@example.test",
+        "subject": "Example subject",
+        "text": "Example text",
+        "to": [
+          "to@example.test"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "23d3e129-246d-5142-ae23-b3154534adb4",
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendMessage-retryThenSent",
+      "operation": "sendMessage"
     }
   ],
   "schemaVersion": 1

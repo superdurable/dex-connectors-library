@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: iterable
   displayName: Iterable
-  description: Read selected Iterable user identity by email.
+  description: Read and manage Iterable users, events, and list membership.
   company: Iterable
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: iterable
   languages:
@@ -55,6 +55,104 @@ spec:
         - Sign in to the Iterable project as an org admin or member with Manage Integrations permission. Open Integrations > API Keys > New API Key, name the key, choose Server-side, and click Create. Copy the complete opaque key from Copy Your New API Key, which is shown only once, into the secret api_key field in Dex Web. To revoke it later, use Integrations > API Keys > Disable Key or Delete Key. Blank is invalid.
         - Match baseUrl to the project's data center. Leave it blank for US or enter https://api.eu.iterable.com/api for EU. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the user's non-secret email in Iterable Audience > Users and enter it as the getUser email; blank is invalid.
   operations:
+    - name: trackEvent
+      goName: TrackEvent
+      inputType: TrackEventInput
+      outputType: UserWriteResult
+      kind: mutation
+      description: Track one Iterable custom event with a stable event ID for retry deduplication.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: tracked, goName: Tracked, description: Iterable accepted the event.}
+        - {id: providerRejected, goName: ProviderRejected, description: Iterable conclusively rejected the event., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Iterable returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: trackedDefault, branch: tracked, default: true, description: An event was accepted., output: {accepted: true}}
+    - name: subscribeUserToList
+      goName: SubscribeUserToList
+      inputType: SubscribeUserToListInput
+      outputType: UserWriteResult
+      kind: mutation
+      description: Add an Iterable user to a static list.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: subscribed, goName: Subscribed, description: Iterable accepted the list subscription.}
+        - {id: providerRejected, goName: ProviderRejected, description: Iterable conclusively rejected the subscription., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Iterable returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: subscribedDefault, branch: subscribed, default: true, description: A user was subscribed., output: {accepted: true}}
+    - name: unsubscribeUserFromList
+      goName: UnsubscribeUserFromList
+      inputType: UnsubscribeUserFromListInput
+      outputType: UserWriteResult
+      kind: mutation
+      description: Remove an Iterable user from a static list.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unsubscribed, goName: Unsubscribed, description: Iterable accepted the list unsubscription.}
+        - {id: providerRejected, goName: ProviderRejected, description: Iterable conclusively rejected the unsubscription., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Iterable returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: unsubscribedDefault, branch: unsubscribed, default: true, description: A user was unsubscribed., output: {accepted: true}}
+    - name: upsertUser
+      goName: UpsertUser
+      inputType: UpsertUserInput
+      outputType: UserWriteResult
+      kind: mutation
+      description: Create or update an Iterable user by email or user ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Iterable accepted the user update.}
+        - {id: providerRejected, goName: ProviderRejected, description: Iterable conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Iterable returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A user profile was updated., output: {accepted: true}}
+    - name: deleteUser
+      goName: DeleteUser
+      inputType: DeleteUserInput
+      outputType: UserWriteResult
+      kind: mutation
+      description: Delete an Iterable user identified by email or user ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Iterable accepted the deletion.}
+        - {id: notFound, goName: NotFound, description: Iterable did not find the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Iterable conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Iterable returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: A user was deleted., output: {accepted: true}}
+    - name: getUserByID
+      goName: GetUserByID
+      inputType: GetUserByIDInput
+      outputType: UserIdentity
+      kind: query
+      description: Read one user's email and ID by their stable Iterable user ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Iterable returned the user.}
+        - {id: notFound, goName: NotFound, description: Iterable did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Iterable conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Iterable returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: A user was found by ID., output: {email: user@example.com, userId: example-user-id}}
     - name: getUser
       goName: GetUser
       inputType: GetUserInput
@@ -63,7 +161,7 @@ spec:
       description: Read one user's email and optional user ID without returning profile data fields.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Iterable returned the user.}
         - {id: notFound, goName: NotFound, description: Iterable did not expose the user., optional: true}

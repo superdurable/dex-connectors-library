@@ -17,8 +17,14 @@ import (
 
 // Mock is a scripted iterable connection. Script each operation through its accessor.
 type Mock struct {
-	connection iterable.Connection
-	getUser    *connectormock.Query[iterable.GetUserInput, iterable.UserIdentity]
+	connection              iterable.Connection
+	trackEvent              *connectormock.Mutation[iterable.TrackEventInput, iterable.UserWriteResult]
+	subscribeUserToList     *connectormock.Mutation[iterable.SubscribeUserToListInput, iterable.UserWriteResult]
+	unsubscribeUserFromList *connectormock.Mutation[iterable.UnsubscribeUserFromListInput, iterable.UserWriteResult]
+	upsertUser              *connectormock.Mutation[iterable.UpsertUserInput, iterable.UserWriteResult]
+	deleteUser              *connectormock.Mutation[iterable.DeleteUserInput, iterable.UserWriteResult]
+	getUserByID             *connectormock.Query[iterable.GetUserByIDInput, iterable.UserIdentity]
+	getUser                 *connectormock.Query[iterable.GetUserInput, iterable.UserIdentity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +32,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getUser: connectormock.NewQuery[iterable.GetUserInput, iterable.UserIdentity](t, iterable.GetUserDefinition),
+		trackEvent:              connectormock.NewMutation[iterable.TrackEventInput, iterable.UserWriteResult](t, iterable.TrackEventDefinition),
+		subscribeUserToList:     connectormock.NewMutation[iterable.SubscribeUserToListInput, iterable.UserWriteResult](t, iterable.SubscribeUserToListDefinition),
+		unsubscribeUserFromList: connectormock.NewMutation[iterable.UnsubscribeUserFromListInput, iterable.UserWriteResult](t, iterable.UnsubscribeUserFromListDefinition),
+		upsertUser:              connectormock.NewMutation[iterable.UpsertUserInput, iterable.UserWriteResult](t, iterable.UpsertUserDefinition),
+		deleteUser:              connectormock.NewMutation[iterable.DeleteUserInput, iterable.UserWriteResult](t, iterable.DeleteUserDefinition),
+		getUserByID:             connectormock.NewQuery[iterable.GetUserByIDInput, iterable.UserIdentity](t, iterable.GetUserByIDDefinition),
+		getUser:                 connectormock.NewQuery[iterable.GetUserInput, iterable.UserIdentity](t, iterable.GetUserDefinition),
 	}
+	mock.trackEvent.Default(TrackEventDefault())
+	mock.subscribeUserToList.Default(SubscribeUserToListDefault())
+	mock.unsubscribeUserFromList.Default(UnsubscribeUserFromListDefault())
+	mock.upsertUser.Default(UpsertUserDefault())
+	mock.deleteUser.Default(DeleteUserDefault())
+	mock.getUserByID.Default(GetUserByIDDefault())
 	mock.getUser.Default(GetUserDefault())
 	connection, err := iterable.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "iterable", Name: connectionName})
 	if err != nil {
@@ -40,6 +58,36 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() iterable.Connection { return mock.connection }
 
+// TrackEvent returns the trackEvent script.
+func (mock *Mock) TrackEvent() *connectormock.Mutation[iterable.TrackEventInput, iterable.UserWriteResult] {
+	return mock.trackEvent
+}
+
+// SubscribeUserToList returns the subscribeUserToList script.
+func (mock *Mock) SubscribeUserToList() *connectormock.Mutation[iterable.SubscribeUserToListInput, iterable.UserWriteResult] {
+	return mock.subscribeUserToList
+}
+
+// UnsubscribeUserFromList returns the unsubscribeUserFromList script.
+func (mock *Mock) UnsubscribeUserFromList() *connectormock.Mutation[iterable.UnsubscribeUserFromListInput, iterable.UserWriteResult] {
+	return mock.unsubscribeUserFromList
+}
+
+// UpsertUser returns the upsertUser script.
+func (mock *Mock) UpsertUser() *connectormock.Mutation[iterable.UpsertUserInput, iterable.UserWriteResult] {
+	return mock.upsertUser
+}
+
+// DeleteUser returns the deleteUser script.
+func (mock *Mock) DeleteUser() *connectormock.Mutation[iterable.DeleteUserInput, iterable.UserWriteResult] {
+	return mock.deleteUser
+}
+
+// GetUserByID returns the getUserByID script.
+func (mock *Mock) GetUserByID() *connectormock.Query[iterable.GetUserByIDInput, iterable.UserIdentity] {
+	return mock.getUserByID
+}
+
 // GetUser returns the getUser script.
 func (mock *Mock) GetUser() *connectormock.Query[iterable.GetUserInput, iterable.UserIdentity] {
 	return mock.getUser
@@ -47,9 +95,251 @@ func (mock *Mock) GetUser() *connectormock.Query[iterable.GetUserInput, iterable
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) TrackEvent() sdkgo.Mutation[iterable.TrackEventInput, iterable.UserWriteResult] {
+	return operations.mock.trackEvent
+}
+func (operations mockOperations) SubscribeUserToList() sdkgo.Mutation[iterable.SubscribeUserToListInput, iterable.UserWriteResult] {
+	return operations.mock.subscribeUserToList
+}
+func (operations mockOperations) UnsubscribeUserFromList() sdkgo.Mutation[iterable.UnsubscribeUserFromListInput, iterable.UserWriteResult] {
+	return operations.mock.unsubscribeUserFromList
+}
+func (operations mockOperations) UpsertUser() sdkgo.Mutation[iterable.UpsertUserInput, iterable.UserWriteResult] {
+	return operations.mock.upsertUser
+}
+func (operations mockOperations) DeleteUser() sdkgo.Mutation[iterable.DeleteUserInput, iterable.UserWriteResult] {
+	return operations.mock.deleteUser
+}
+func (operations mockOperations) GetUserByID() sdkgo.Query[iterable.GetUserByIDInput, iterable.UserIdentity] {
+	return operations.mock.getUserByID
+}
 func (operations mockOperations) GetUser() sdkgo.Query[iterable.GetUserInput, iterable.UserIdentity] {
 	return operations.mock.getUser
 }
+
+// TrackEventTracked selects the tracked branch: Iterable accepted the event.
+func TrackEventTracked(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.TrackEventBranchTracked, value, failure)
+}
+
+// TrackEventProviderRejected selects the providerRejected branch: Iterable conclusively rejected the event.
+func TrackEventProviderRejected(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.TrackEventBranchProviderRejected, value, failure)
+}
+
+// TrackEventInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+func TrackEventInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.TrackEventBranchInvalidResponse, value, failure)
+}
+
+// TrackEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func TrackEventDefect(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.TrackEventBranchDefect, value, failure)
+}
+
+// TrackEventRetry asks Dex to retry the trackEvent Step, after the delay when it is positive.
+func TrackEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Retry[iterable.UserWriteResult](failure, after)
+}
+
+// TrackEventTrackedDefault is the manifest mock trackedDefault: An event was accepted.
+func TrackEventTrackedDefault() connectormock.Case[iterable.UserWriteResult] {
+	value := connectormock.MustDecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+	return connectormock.Branch(iterable.TrackEventBranchTracked, value, nil)
+}
+
+// TrackEventDefault is the manifest default, trackedDefault, which New installs.
+func TrackEventDefault() connectormock.Case[iterable.UserWriteResult] {
+	return TrackEventTrackedDefault()
+}
+
+// SubscribeUserToListSubscribed selects the subscribed branch: Iterable accepted the list subscription.
+func SubscribeUserToListSubscribed(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.SubscribeUserToListBranchSubscribed, value, failure)
+}
+
+// SubscribeUserToListProviderRejected selects the providerRejected branch: Iterable conclusively rejected the subscription.
+func SubscribeUserToListProviderRejected(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.SubscribeUserToListBranchProviderRejected, value, failure)
+}
+
+// SubscribeUserToListInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+func SubscribeUserToListInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.SubscribeUserToListBranchInvalidResponse, value, failure)
+}
+
+// SubscribeUserToListDefect selects the defect branch: Local input or connection credentials are invalid.
+func SubscribeUserToListDefect(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.SubscribeUserToListBranchDefect, value, failure)
+}
+
+// SubscribeUserToListRetry asks Dex to retry the subscribeUserToList Step, after the delay when it is positive.
+func SubscribeUserToListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Retry[iterable.UserWriteResult](failure, after)
+}
+
+// SubscribeUserToListSubscribedDefault is the manifest mock subscribedDefault: A user was subscribed.
+func SubscribeUserToListSubscribedDefault() connectormock.Case[iterable.UserWriteResult] {
+	value := connectormock.MustDecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+	return connectormock.Branch(iterable.SubscribeUserToListBranchSubscribed, value, nil)
+}
+
+// SubscribeUserToListDefault is the manifest default, subscribedDefault, which New installs.
+func SubscribeUserToListDefault() connectormock.Case[iterable.UserWriteResult] {
+	return SubscribeUserToListSubscribedDefault()
+}
+
+// UnsubscribeUserFromListUnsubscribed selects the unsubscribed branch: Iterable accepted the list unsubscription.
+func UnsubscribeUserFromListUnsubscribed(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.UnsubscribeUserFromListBranchUnsubscribed, value, failure)
+}
+
+// UnsubscribeUserFromListProviderRejected selects the providerRejected branch: Iterable conclusively rejected the unsubscription.
+func UnsubscribeUserFromListProviderRejected(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.UnsubscribeUserFromListBranchProviderRejected, value, failure)
+}
+
+// UnsubscribeUserFromListInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+func UnsubscribeUserFromListInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.UnsubscribeUserFromListBranchInvalidResponse, value, failure)
+}
+
+// UnsubscribeUserFromListDefect selects the defect branch: Local input or connection credentials are invalid.
+func UnsubscribeUserFromListDefect(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.UnsubscribeUserFromListBranchDefect, value, failure)
+}
+
+// UnsubscribeUserFromListRetry asks Dex to retry the unsubscribeUserFromList Step, after the delay when it is positive.
+func UnsubscribeUserFromListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Retry[iterable.UserWriteResult](failure, after)
+}
+
+// UnsubscribeUserFromListUnsubscribedDefault is the manifest mock unsubscribedDefault: A user was unsubscribed.
+func UnsubscribeUserFromListUnsubscribedDefault() connectormock.Case[iterable.UserWriteResult] {
+	value := connectormock.MustDecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+	return connectormock.Branch(iterable.UnsubscribeUserFromListBranchUnsubscribed, value, nil)
+}
+
+// UnsubscribeUserFromListDefault is the manifest default, unsubscribedDefault, which New installs.
+func UnsubscribeUserFromListDefault() connectormock.Case[iterable.UserWriteResult] {
+	return UnsubscribeUserFromListUnsubscribedDefault()
+}
+
+// UpsertUserUpdated selects the updated branch: Iterable accepted the user update.
+func UpsertUserUpdated(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.UpsertUserBranchUpdated, value, failure)
+}
+
+// UpsertUserProviderRejected selects the providerRejected branch: Iterable conclusively rejected the update.
+func UpsertUserProviderRejected(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.UpsertUserBranchProviderRejected, value, failure)
+}
+
+// UpsertUserInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+func UpsertUserInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.UpsertUserBranchInvalidResponse, value, failure)
+}
+
+// UpsertUserDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpsertUserDefect(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.UpsertUserBranchDefect, value, failure)
+}
+
+// UpsertUserRetry asks Dex to retry the upsertUser Step, after the delay when it is positive.
+func UpsertUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Retry[iterable.UserWriteResult](failure, after)
+}
+
+// UpsertUserUpdatedDefault is the manifest mock updatedDefault: A user profile was updated.
+func UpsertUserUpdatedDefault() connectormock.Case[iterable.UserWriteResult] {
+	value := connectormock.MustDecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+	return connectormock.Branch(iterable.UpsertUserBranchUpdated, value, nil)
+}
+
+// UpsertUserDefault is the manifest default, updatedDefault, which New installs.
+func UpsertUserDefault() connectormock.Case[iterable.UserWriteResult] {
+	return UpsertUserUpdatedDefault()
+}
+
+// DeleteUserDeleted selects the deleted branch: Iterable accepted the deletion.
+func DeleteUserDeleted(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.DeleteUserBranchDeleted, value, failure)
+}
+
+// DeleteUserNotFound selects the notFound branch: Iterable did not find the user.
+func DeleteUserNotFound(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.DeleteUserBranchNotFound, value, failure)
+}
+
+// DeleteUserProviderRejected selects the providerRejected branch: Iterable conclusively rejected the deletion.
+func DeleteUserProviderRejected(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.DeleteUserBranchProviderRejected, value, failure)
+}
+
+// DeleteUserInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+func DeleteUserInvalidResponse(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.DeleteUserBranchInvalidResponse, value, failure)
+}
+
+// DeleteUserDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteUserDefect(value iterable.UserWriteResult, failure *sdkgo.Failure) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Branch(iterable.DeleteUserBranchDefect, value, failure)
+}
+
+// DeleteUserRetry asks Dex to retry the deleteUser Step, after the delay when it is positive.
+func DeleteUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[iterable.UserWriteResult] {
+	return connectormock.Retry[iterable.UserWriteResult](failure, after)
+}
+
+// DeleteUserDeletedDefault is the manifest mock deletedDefault: A user was deleted.
+func DeleteUserDeletedDefault() connectormock.Case[iterable.UserWriteResult] {
+	value := connectormock.MustDecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+	return connectormock.Branch(iterable.DeleteUserBranchDeleted, value, nil)
+}
+
+// DeleteUserDefault is the manifest default, deletedDefault, which New installs.
+func DeleteUserDefault() connectormock.Case[iterable.UserWriteResult] {
+	return DeleteUserDeletedDefault()
+}
+
+// GetUserByIDFound selects the found branch: Iterable returned the user.
+func GetUserByIDFound(value iterable.UserIdentity, failure *sdkgo.Failure) connectormock.Case[iterable.UserIdentity] {
+	return connectormock.Branch(iterable.GetUserByIDBranchFound, value, failure)
+}
+
+// GetUserByIDNotFound selects the notFound branch: Iterable did not expose the user.
+func GetUserByIDNotFound(value iterable.UserIdentity, failure *sdkgo.Failure) connectormock.Case[iterable.UserIdentity] {
+	return connectormock.Branch(iterable.GetUserByIDBranchNotFound, value, failure)
+}
+
+// GetUserByIDProviderRejected selects the providerRejected branch: Iterable conclusively rejected the lookup.
+func GetUserByIDProviderRejected(value iterable.UserIdentity, failure *sdkgo.Failure) connectormock.Case[iterable.UserIdentity] {
+	return connectormock.Branch(iterable.GetUserByIDBranchProviderRejected, value, failure)
+}
+
+// GetUserByIDInvalidResponse selects the invalidResponse branch: Iterable returned malformed or oversized JSON.
+func GetUserByIDInvalidResponse(value iterable.UserIdentity, failure *sdkgo.Failure) connectormock.Case[iterable.UserIdentity] {
+	return connectormock.Branch(iterable.GetUserByIDBranchInvalidResponse, value, failure)
+}
+
+// GetUserByIDDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetUserByIDDefect(value iterable.UserIdentity, failure *sdkgo.Failure) connectormock.Case[iterable.UserIdentity] {
+	return connectormock.Branch(iterable.GetUserByIDBranchDefect, value, failure)
+}
+
+// GetUserByIDRetry asks Dex to retry the getUserByID Step, after the delay when it is positive.
+func GetUserByIDRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[iterable.UserIdentity] {
+	return connectormock.Retry[iterable.UserIdentity](failure, after)
+}
+
+// GetUserByIDFoundDefault is the manifest mock foundDefault: A user was found by ID.
+func GetUserByIDFoundDefault() connectormock.Case[iterable.UserIdentity] {
+	value := connectormock.MustDecodeOutput[iterable.UserIdentity](`{"email":"user@example.com","userId":"example-user-id"}`)
+	return connectormock.Branch(iterable.GetUserByIDBranchFound, value, nil)
+}
+
+// GetUserByIDDefault is the manifest default, foundDefault, which New installs.
+func GetUserByIDDefault() connectormock.Case[iterable.UserIdentity] { return GetUserByIDFoundDefault() }
 
 // GetUserFound selects the found branch: Iterable returned the user.
 func GetUserFound(value iterable.UserIdentity, failure *sdkgo.Failure) connectormock.Case[iterable.UserIdentity] {
