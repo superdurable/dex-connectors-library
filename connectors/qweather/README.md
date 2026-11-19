@@ -7,3 +7,4 @@ Create a project and API KEY credential in the [QWeather Console](https://consol
 The runnable [current-weather example](go/examples/current-weather/README.md) demonstrates the generated operation-specific Step and static `qweather` connection. Real QWeather authorization remains to be tested with a user-controlled Dex Web Connection.
 
 The [Python package](python/) implements `getCurrentWeather` and its [runnable Flow](python/examples/current_query/) verifies retry and persistence with a real local Dex Worker and Client.
+The [TypeScript package](typescript/) provides the same `GetCurrentWeather` operation, Go-recorded conformance, and a runnable Dex Worker and Client example.
