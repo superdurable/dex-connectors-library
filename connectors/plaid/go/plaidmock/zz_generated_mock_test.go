@@ -16,10 +16,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getItem/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[plaid.ItemSummary](`{"itemId":"item_123456","institutionId":"ins_109508","products":["auth"]}`)
+			return err
+		}},
 		{name: "getAccounts/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[plaid.AccountsSnapshot](`{"itemId":"item_123456","accounts":[{"id":"account_123456","type":"depository","subtype":"checking"}]}`)
 			return err
 		}},
+		{name: "removeItem/removedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[plaid.ItemRemoval](`{"removed":true}`); return err }},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -30,7 +35,13 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetItem().Definition().Operation.OperationID != "getItem" {
+		t.Errorf("getItem mock has another definition")
+	}
 	if mock.GetAccounts().Definition().Operation.OperationID != "getAccounts" {
 		t.Errorf("getAccounts mock has another definition")
+	}
+	if mock.RemoveItem().Definition().Operation.OperationID != "removeItem" {
+		t.Errorf("removeItem mock has another definition")
 	}
 }

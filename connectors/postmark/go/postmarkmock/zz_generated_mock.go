@@ -17,9 +17,26 @@ import (
 
 // Mock is a scripted postmark connection. Script each operation through its accessor.
 type Mock struct {
-	connection           postmark.Connection
-	listOutboundMessages *connectormock.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage]
-	getMessageDetails    *connectormock.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails]
+	connection               postmark.Connection
+	listOutboundMessages     *connectormock.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage]
+	getMessageDetails        *connectormock.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails]
+	sendEmail                *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail]
+	listTemplates            *connectormock.Query[postmark.ListTemplatesInput, postmark.TemplatePage]
+	getTemplate              *connectormock.Query[postmark.GetTemplateInput, postmark.Template]
+	createTemplate           *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template]
+	updateTemplate           *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template]
+	deleteTemplate           *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate]
+	listBounces              *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage]
+	getBounce                *connectormock.Query[postmark.GetBounceInput, postmark.Bounce]
+	activateBounce           *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce]
+	listSuppressions         *connectormock.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage]
+	createSuppression        *connectormock.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction]
+	deleteSuppression        *connectormock.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction]
+	sendEmailWithTemplate    *connectormock.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail]
+	listInboundMessages      *connectormock.Query[postmark.ListInboundMessagesInput, postmark.InboundMessagePage]
+	getInboundMessageDetails *connectormock.Query[postmark.GetInboundMessageDetailsInput, postmark.InboundMessage]
+	bypassInboundMessage     *connectormock.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction]
+	retryInboundMessage      *connectormock.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +44,45 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listOutboundMessages: connectormock.NewQuery[postmark.ListOutboundMessagesInput, postmark.MessagePage](t, postmark.ListOutboundMessagesDefinition),
-		getMessageDetails:    connectormock.NewQuery[postmark.GetMessageDetailsInput, postmark.MessageDetails](t, postmark.GetMessageDetailsDefinition),
+		listOutboundMessages:     connectormock.NewQuery[postmark.ListOutboundMessagesInput, postmark.MessagePage](t, postmark.ListOutboundMessagesDefinition),
+		getMessageDetails:        connectormock.NewQuery[postmark.GetMessageDetailsInput, postmark.MessageDetails](t, postmark.GetMessageDetailsDefinition),
+		sendEmail:                connectormock.NewMutation[postmark.SendEmailInput, postmark.SentEmail](t, postmark.SendEmailDefinition),
+		listTemplates:            connectormock.NewQuery[postmark.ListTemplatesInput, postmark.TemplatePage](t, postmark.ListTemplatesDefinition),
+		getTemplate:              connectormock.NewQuery[postmark.GetTemplateInput, postmark.Template](t, postmark.GetTemplateDefinition),
+		createTemplate:           connectormock.NewMutation[postmark.CreateTemplateInput, postmark.Template](t, postmark.CreateTemplateDefinition),
+		updateTemplate:           connectormock.NewMutation[postmark.UpdateTemplateInput, postmark.Template](t, postmark.UpdateTemplateDefinition),
+		deleteTemplate:           connectormock.NewMutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate](t, postmark.DeleteTemplateDefinition),
+		listBounces:              connectormock.NewQuery[postmark.ListBouncesInput, postmark.BouncePage](t, postmark.ListBouncesDefinition),
+		getBounce:                connectormock.NewQuery[postmark.GetBounceInput, postmark.Bounce](t, postmark.GetBounceDefinition),
+		activateBounce:           connectormock.NewMutation[postmark.ActivateBounceInput, postmark.Bounce](t, postmark.ActivateBounceDefinition),
+		listSuppressions:         connectormock.NewQuery[postmark.ListSuppressionsInput, postmark.SuppressionPage](t, postmark.ListSuppressionsDefinition),
+		createSuppression:        connectormock.NewMutation[postmark.CreateSuppressionInput, postmark.SuppressionAction](t, postmark.CreateSuppressionDefinition),
+		deleteSuppression:        connectormock.NewMutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction](t, postmark.DeleteSuppressionDefinition),
+		sendEmailWithTemplate:    connectormock.NewMutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail](t, postmark.SendEmailWithTemplateDefinition),
+		listInboundMessages:      connectormock.NewQuery[postmark.ListInboundMessagesInput, postmark.InboundMessagePage](t, postmark.ListInboundMessagesDefinition),
+		getInboundMessageDetails: connectormock.NewQuery[postmark.GetInboundMessageDetailsInput, postmark.InboundMessage](t, postmark.GetInboundMessageDetailsDefinition),
+		bypassInboundMessage:     connectormock.NewMutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction](t, postmark.BypassInboundMessageDefinition),
+		retryInboundMessage:      connectormock.NewMutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction](t, postmark.RetryInboundMessageDefinition),
 	}
 	mock.listOutboundMessages.Default(ListOutboundMessagesDefault())
 	mock.getMessageDetails.Default(GetMessageDetailsDefault())
+	mock.sendEmail.Default(SendEmailDefault())
+	mock.listTemplates.Default(ListTemplatesDefault())
+	mock.getTemplate.Default(GetTemplateDefault())
+	mock.createTemplate.Default(CreateTemplateDefault())
+	mock.updateTemplate.Default(UpdateTemplateDefault())
+	mock.deleteTemplate.Default(DeleteTemplateDefault())
+	mock.listBounces.Default(ListBouncesDefault())
+	mock.getBounce.Default(GetBounceDefault())
+	mock.activateBounce.Default(ActivateBounceDefault())
+	mock.listSuppressions.Default(ListSuppressionsDefault())
+	mock.createSuppression.Default(CreateSuppressionDefault())
+	mock.deleteSuppression.Default(DeleteSuppressionDefault())
+	mock.sendEmailWithTemplate.Default(SendEmailWithTemplateDefault())
+	mock.listInboundMessages.Default(ListInboundMessagesDefault())
+	mock.getInboundMessageDetails.Default(GetInboundMessageDetailsDefault())
+	mock.bypassInboundMessage.Default(BypassInboundMessageDefault())
+	mock.retryInboundMessage.Default(RetryInboundMessageDefault())
 	connection, err := postmark.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "postmark", Name: connectionName})
 	if err != nil {
 		t.Fatalf("postmark mock connection: %v", err)
@@ -53,6 +104,91 @@ func (mock *Mock) GetMessageDetails() *connectormock.Query[postmark.GetMessageDe
 	return mock.getMessageDetails
 }
 
+// SendEmail returns the sendEmail script.
+func (mock *Mock) SendEmail() *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail] {
+	return mock.sendEmail
+}
+
+// ListTemplates returns the listTemplates script.
+func (mock *Mock) ListTemplates() *connectormock.Query[postmark.ListTemplatesInput, postmark.TemplatePage] {
+	return mock.listTemplates
+}
+
+// GetTemplate returns the getTemplate script.
+func (mock *Mock) GetTemplate() *connectormock.Query[postmark.GetTemplateInput, postmark.Template] {
+	return mock.getTemplate
+}
+
+// CreateTemplate returns the createTemplate script.
+func (mock *Mock) CreateTemplate() *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template] {
+	return mock.createTemplate
+}
+
+// UpdateTemplate returns the updateTemplate script.
+func (mock *Mock) UpdateTemplate() *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template] {
+	return mock.updateTemplate
+}
+
+// DeleteTemplate returns the deleteTemplate script.
+func (mock *Mock) DeleteTemplate() *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate] {
+	return mock.deleteTemplate
+}
+
+// ListBounces returns the listBounces script.
+func (mock *Mock) ListBounces() *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage] {
+	return mock.listBounces
+}
+
+// GetBounce returns the getBounce script.
+func (mock *Mock) GetBounce() *connectormock.Query[postmark.GetBounceInput, postmark.Bounce] {
+	return mock.getBounce
+}
+
+// ActivateBounce returns the activateBounce script.
+func (mock *Mock) ActivateBounce() *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce] {
+	return mock.activateBounce
+}
+
+// ListSuppressions returns the listSuppressions script.
+func (mock *Mock) ListSuppressions() *connectormock.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage] {
+	return mock.listSuppressions
+}
+
+// CreateSuppression returns the createSuppression script.
+func (mock *Mock) CreateSuppression() *connectormock.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction] {
+	return mock.createSuppression
+}
+
+// DeleteSuppression returns the deleteSuppression script.
+func (mock *Mock) DeleteSuppression() *connectormock.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction] {
+	return mock.deleteSuppression
+}
+
+// SendEmailWithTemplate returns the sendEmailWithTemplate script.
+func (mock *Mock) SendEmailWithTemplate() *connectormock.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail] {
+	return mock.sendEmailWithTemplate
+}
+
+// ListInboundMessages returns the listInboundMessages script.
+func (mock *Mock) ListInboundMessages() *connectormock.Query[postmark.ListInboundMessagesInput, postmark.InboundMessagePage] {
+	return mock.listInboundMessages
+}
+
+// GetInboundMessageDetails returns the getInboundMessageDetails script.
+func (mock *Mock) GetInboundMessageDetails() *connectormock.Query[postmark.GetInboundMessageDetailsInput, postmark.InboundMessage] {
+	return mock.getInboundMessageDetails
+}
+
+// BypassInboundMessage returns the bypassInboundMessage script.
+func (mock *Mock) BypassInboundMessage() *connectormock.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction] {
+	return mock.bypassInboundMessage
+}
+
+// RetryInboundMessage returns the retryInboundMessage script.
+func (mock *Mock) RetryInboundMessage() *connectormock.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction] {
+	return mock.retryInboundMessage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage] {
@@ -60,6 +196,57 @@ func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.Lis
 }
 func (operations mockOperations) GetMessageDetails() sdkgo.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails] {
 	return operations.mock.getMessageDetails
+}
+func (operations mockOperations) SendEmail() sdkgo.Mutation[postmark.SendEmailInput, postmark.SentEmail] {
+	return operations.mock.sendEmail
+}
+func (operations mockOperations) ListTemplates() sdkgo.Query[postmark.ListTemplatesInput, postmark.TemplatePage] {
+	return operations.mock.listTemplates
+}
+func (operations mockOperations) GetTemplate() sdkgo.Query[postmark.GetTemplateInput, postmark.Template] {
+	return operations.mock.getTemplate
+}
+func (operations mockOperations) CreateTemplate() sdkgo.Mutation[postmark.CreateTemplateInput, postmark.Template] {
+	return operations.mock.createTemplate
+}
+func (operations mockOperations) UpdateTemplate() sdkgo.Mutation[postmark.UpdateTemplateInput, postmark.Template] {
+	return operations.mock.updateTemplate
+}
+func (operations mockOperations) DeleteTemplate() sdkgo.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate] {
+	return operations.mock.deleteTemplate
+}
+func (operations mockOperations) ListBounces() sdkgo.Query[postmark.ListBouncesInput, postmark.BouncePage] {
+	return operations.mock.listBounces
+}
+func (operations mockOperations) GetBounce() sdkgo.Query[postmark.GetBounceInput, postmark.Bounce] {
+	return operations.mock.getBounce
+}
+func (operations mockOperations) ActivateBounce() sdkgo.Mutation[postmark.ActivateBounceInput, postmark.Bounce] {
+	return operations.mock.activateBounce
+}
+func (operations mockOperations) ListSuppressions() sdkgo.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage] {
+	return operations.mock.listSuppressions
+}
+func (operations mockOperations) CreateSuppression() sdkgo.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction] {
+	return operations.mock.createSuppression
+}
+func (operations mockOperations) DeleteSuppression() sdkgo.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction] {
+	return operations.mock.deleteSuppression
+}
+func (operations mockOperations) SendEmailWithTemplate() sdkgo.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail] {
+	return operations.mock.sendEmailWithTemplate
+}
+func (operations mockOperations) ListInboundMessages() sdkgo.Query[postmark.ListInboundMessagesInput, postmark.InboundMessagePage] {
+	return operations.mock.listInboundMessages
+}
+func (operations mockOperations) GetInboundMessageDetails() sdkgo.Query[postmark.GetInboundMessageDetailsInput, postmark.InboundMessage] {
+	return operations.mock.getInboundMessageDetails
+}
+func (operations mockOperations) BypassInboundMessage() sdkgo.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction] {
+	return operations.mock.bypassInboundMessage
+}
+func (operations mockOperations) RetryInboundMessage() sdkgo.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction] {
+	return operations.mock.retryInboundMessage
 }
 
 // ListOutboundMessagesListed selects the listed branch: Postmark returned the requested result.
@@ -137,4 +324,612 @@ func GetMessageDetailsGetMessageDetailsDefault() connectormock.Case[postmark.Mes
 // GetMessageDetailsDefault is the manifest default, getMessageDetailsDefault, which New installs.
 func GetMessageDetailsDefault() connectormock.Case[postmark.MessageDetails] {
 	return GetMessageDetailsGetMessageDetailsDefault()
+}
+
+// SendEmailSent selects the sent branch: Postmark accepted the email.
+func SendEmailSent(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailBranchSent, value, failure)
+}
+
+// SendEmailProviderRejected selects the providerRejected branch: Postmark definitively refused the email.
+func SendEmailProviderRejected(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailBranchProviderRejected, value, failure)
+}
+
+// SendEmailUncertain returns an uncertain sendEmail outcome.
+func SendEmailUncertain(value postmark.SentEmail, failure sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEmailDefect selects the defect branch: Local email input or connection credentials are invalid.
+func SendEmailDefect(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailBranchDefect, value, failure)
+}
+
+// SendEmailRetry asks Dex to retry the sendEmail Step, after the delay when it is positive.
+func SendEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Retry[postmark.SentEmail](failure, after)
+}
+
+// SendEmailSendEmailDefault is the manifest mock sendEmailDefault: Postmark accepted one transactional email.
+func SendEmailSendEmailDefault() connectormock.Case[postmark.SentEmail] {
+	value := connectormock.MustDecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
+	return connectormock.Branch(postmark.SendEmailBranchSent, value, nil)
+}
+
+// SendEmailDefault is the manifest default, sendEmailDefault, which New installs.
+func SendEmailDefault() connectormock.Case[postmark.SentEmail] { return SendEmailSendEmailDefault() }
+
+// ListTemplatesListed selects the listed branch: ListTemplates listed outcome.
+func ListTemplatesListed(value postmark.TemplatePage, failure *sdkgo.Failure) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Branch(postmark.ListTemplatesBranchListed, value, failure)
+}
+
+// ListTemplatesProviderRejected selects the providerRejected branch: ListTemplates providerRejected outcome.
+func ListTemplatesProviderRejected(value postmark.TemplatePage, failure *sdkgo.Failure) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Branch(postmark.ListTemplatesBranchProviderRejected, value, failure)
+}
+
+// ListTemplatesInvalidResponse selects the invalidResponse branch: ListTemplates invalidResponse outcome.
+func ListTemplatesInvalidResponse(value postmark.TemplatePage, failure *sdkgo.Failure) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Branch(postmark.ListTemplatesBranchInvalidResponse, value, failure)
+}
+
+// ListTemplatesDefect selects the defect branch: ListTemplates defect outcome.
+func ListTemplatesDefect(value postmark.TemplatePage, failure *sdkgo.Failure) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Branch(postmark.ListTemplatesBranchDefect, value, failure)
+}
+
+// ListTemplatesRetry asks Dex to retry the listTemplates Step, after the delay when it is positive.
+func ListTemplatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.TemplatePage] {
+	return connectormock.Retry[postmark.TemplatePage](failure, after)
+}
+
+// ListTemplatesListTemplatesDefault is the manifest mock listTemplatesDefault: Representative Postmark template response.
+func ListTemplatesListTemplatesDefault() connectormock.Case[postmark.TemplatePage] {
+	value := connectormock.MustDecodeOutput[postmark.TemplatePage](`{"totalCount":1,"templates":[{"templateId":1234,"name":"Welcome","alias":"welcome-v1","active":true}]}`)
+	return connectormock.Branch(postmark.ListTemplatesBranchListed, value, nil)
+}
+
+// ListTemplatesDefault is the manifest default, listTemplatesDefault, which New installs.
+func ListTemplatesDefault() connectormock.Case[postmark.TemplatePage] {
+	return ListTemplatesListTemplatesDefault()
+}
+
+// GetTemplateFound selects the found branch: GetTemplate found outcome.
+func GetTemplateFound(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.GetTemplateBranchFound, value, failure)
+}
+
+// GetTemplateProviderRejected selects the providerRejected branch: GetTemplate providerRejected outcome.
+func GetTemplateProviderRejected(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.GetTemplateBranchProviderRejected, value, failure)
+}
+
+// GetTemplateInvalidResponse selects the invalidResponse branch: GetTemplate invalidResponse outcome.
+func GetTemplateInvalidResponse(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.GetTemplateBranchInvalidResponse, value, failure)
+}
+
+// GetTemplateDefect selects the defect branch: GetTemplate defect outcome.
+func GetTemplateDefect(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.GetTemplateBranchDefect, value, failure)
+}
+
+// GetTemplateRetry asks Dex to retry the getTemplate Step, after the delay when it is positive.
+func GetTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Template] {
+	return connectormock.Retry[postmark.Template](failure, after)
+}
+
+// GetTemplateGetTemplateDefault is the manifest mock getTemplateDefault: Representative Postmark template response.
+func GetTemplateGetTemplateDefault() connectormock.Case[postmark.Template] {
+	value := connectormock.MustDecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome","alias":"welcome-v1","active":true}`)
+	return connectormock.Branch(postmark.GetTemplateBranchFound, value, nil)
+}
+
+// GetTemplateDefault is the manifest default, getTemplateDefault, which New installs.
+func GetTemplateDefault() connectormock.Case[postmark.Template] {
+	return GetTemplateGetTemplateDefault()
+}
+
+// CreateTemplateCreated selects the created branch: CreateTemplate created outcome.
+func CreateTemplateCreated(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.CreateTemplateBranchCreated, value, failure)
+}
+
+// CreateTemplateProviderRejected selects the providerRejected branch: CreateTemplate providerRejected outcome.
+func CreateTemplateProviderRejected(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.CreateTemplateBranchProviderRejected, value, failure)
+}
+
+// CreateTemplateUncertain returns an uncertain createTemplate outcome.
+func CreateTemplateUncertain(value postmark.Template, failure sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTemplateDefect selects the defect branch: CreateTemplate defect outcome.
+func CreateTemplateDefect(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.CreateTemplateBranchDefect, value, failure)
+}
+
+// CreateTemplateRetry asks Dex to retry the createTemplate Step, after the delay when it is positive.
+func CreateTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Template] {
+	return connectormock.Retry[postmark.Template](failure, after)
+}
+
+// CreateTemplateCreateTemplateDefault is the manifest mock createTemplateDefault: Representative Postmark template response.
+func CreateTemplateCreateTemplateDefault() connectormock.Case[postmark.Template] {
+	value := connectormock.MustDecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome","alias":"dex-1234","active":true}`)
+	return connectormock.Branch(postmark.CreateTemplateBranchCreated, value, nil)
+}
+
+// CreateTemplateDefault is the manifest default, createTemplateDefault, which New installs.
+func CreateTemplateDefault() connectormock.Case[postmark.Template] {
+	return CreateTemplateCreateTemplateDefault()
+}
+
+// UpdateTemplateUpdated selects the updated branch: UpdateTemplate updated outcome.
+func UpdateTemplateUpdated(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.UpdateTemplateBranchUpdated, value, failure)
+}
+
+// UpdateTemplateProviderRejected selects the providerRejected branch: UpdateTemplate providerRejected outcome.
+func UpdateTemplateProviderRejected(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.UpdateTemplateBranchProviderRejected, value, failure)
+}
+
+// UpdateTemplateInvalidResponse selects the invalidResponse branch: UpdateTemplate invalidResponse outcome.
+func UpdateTemplateInvalidResponse(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.UpdateTemplateBranchInvalidResponse, value, failure)
+}
+
+// UpdateTemplateDefect selects the defect branch: UpdateTemplate defect outcome.
+func UpdateTemplateDefect(value postmark.Template, failure *sdkgo.Failure) connectormock.Case[postmark.Template] {
+	return connectormock.Branch(postmark.UpdateTemplateBranchDefect, value, failure)
+}
+
+// UpdateTemplateRetry asks Dex to retry the updateTemplate Step, after the delay when it is positive.
+func UpdateTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Template] {
+	return connectormock.Retry[postmark.Template](failure, after)
+}
+
+// UpdateTemplateUpdateTemplateDefault is the manifest mock updateTemplateDefault: Representative Postmark template response.
+func UpdateTemplateUpdateTemplateDefault() connectormock.Case[postmark.Template] {
+	value := connectormock.MustDecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome revised","alias":"welcome-v1","active":true}`)
+	return connectormock.Branch(postmark.UpdateTemplateBranchUpdated, value, nil)
+}
+
+// UpdateTemplateDefault is the manifest default, updateTemplateDefault, which New installs.
+func UpdateTemplateDefault() connectormock.Case[postmark.Template] {
+	return UpdateTemplateUpdateTemplateDefault()
+}
+
+// DeleteTemplateDeleted selects the deleted branch: DeleteTemplate deleted outcome.
+func DeleteTemplateDeleted(value postmark.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[postmark.DeletedTemplate] {
+	return connectormock.Branch(postmark.DeleteTemplateBranchDeleted, value, failure)
+}
+
+// DeleteTemplateProviderRejected selects the providerRejected branch: DeleteTemplate providerRejected outcome.
+func DeleteTemplateProviderRejected(value postmark.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[postmark.DeletedTemplate] {
+	return connectormock.Branch(postmark.DeleteTemplateBranchProviderRejected, value, failure)
+}
+
+// DeleteTemplateDefect selects the defect branch: DeleteTemplate defect outcome.
+func DeleteTemplateDefect(value postmark.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[postmark.DeletedTemplate] {
+	return connectormock.Branch(postmark.DeleteTemplateBranchDefect, value, failure)
+}
+
+// DeleteTemplateRetry asks Dex to retry the deleteTemplate Step, after the delay when it is positive.
+func DeleteTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.DeletedTemplate] {
+	return connectormock.Retry[postmark.DeletedTemplate](failure, after)
+}
+
+// DeleteTemplateDeleteTemplateDefault is the manifest mock deleteTemplateDefault: Representative Postmark template response.
+func DeleteTemplateDeleteTemplateDefault() connectormock.Case[postmark.DeletedTemplate] {
+	value := connectormock.MustDecodeOutput[postmark.DeletedTemplate](`{"deleted":true}`)
+	return connectormock.Branch(postmark.DeleteTemplateBranchDeleted, value, nil)
+}
+
+// DeleteTemplateDefault is the manifest default, deleteTemplateDefault, which New installs.
+func DeleteTemplateDefault() connectormock.Case[postmark.DeletedTemplate] {
+	return DeleteTemplateDeleteTemplateDefault()
+}
+
+// ListBouncesListed selects the listed branch: Postmark returned the requested bounce outcome.
+func ListBouncesListed(value postmark.BouncePage, failure *sdkgo.Failure) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Branch(postmark.ListBouncesBranchListed, value, failure)
+}
+
+// ListBouncesProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func ListBouncesProviderRejected(value postmark.BouncePage, failure *sdkgo.Failure) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Branch(postmark.ListBouncesBranchProviderRejected, value, failure)
+}
+
+// ListBouncesInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func ListBouncesInvalidResponse(value postmark.BouncePage, failure *sdkgo.Failure) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Branch(postmark.ListBouncesBranchInvalidResponse, value, failure)
+}
+
+// ListBouncesDefect selects the defect branch: Postmark defect outcome.
+func ListBouncesDefect(value postmark.BouncePage, failure *sdkgo.Failure) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Branch(postmark.ListBouncesBranchDefect, value, failure)
+}
+
+// ListBouncesRetry asks Dex to retry the listBounces Step, after the delay when it is positive.
+func ListBouncesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.BouncePage] {
+	return connectormock.Retry[postmark.BouncePage](failure, after)
+}
+
+// ListBouncesListBouncesDefault is the manifest mock listBouncesDefault: Representative Postmark bounce response.
+func ListBouncesListBouncesDefault() connectormock.Case[postmark.BouncePage] {
+	value := connectormock.MustDecodeOutput[postmark.BouncePage](`{"totalCount":1,"bounces":[{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":true,"canActivate":true}]}`)
+	return connectormock.Branch(postmark.ListBouncesBranchListed, value, nil)
+}
+
+// ListBouncesDefault is the manifest default, listBouncesDefault, which New installs.
+func ListBouncesDefault() connectormock.Case[postmark.BouncePage] {
+	return ListBouncesListBouncesDefault()
+}
+
+// GetBounceFound selects the found branch: Postmark returned the requested bounce outcome.
+func GetBounceFound(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.GetBounceBranchFound, value, failure)
+}
+
+// GetBounceProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func GetBounceProviderRejected(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.GetBounceBranchProviderRejected, value, failure)
+}
+
+// GetBounceInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func GetBounceInvalidResponse(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.GetBounceBranchInvalidResponse, value, failure)
+}
+
+// GetBounceDefect selects the defect branch: Postmark defect outcome.
+func GetBounceDefect(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.GetBounceBranchDefect, value, failure)
+}
+
+// GetBounceRetry asks Dex to retry the getBounce Step, after the delay when it is positive.
+func GetBounceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Bounce] {
+	return connectormock.Retry[postmark.Bounce](failure, after)
+}
+
+// GetBounceGetBounceDefault is the manifest mock getBounceDefault: Representative Postmark bounce response.
+func GetBounceGetBounceDefault() connectormock.Case[postmark.Bounce] {
+	value := connectormock.MustDecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":true,"canActivate":true}`)
+	return connectormock.Branch(postmark.GetBounceBranchFound, value, nil)
+}
+
+// GetBounceDefault is the manifest default, getBounceDefault, which New installs.
+func GetBounceDefault() connectormock.Case[postmark.Bounce] { return GetBounceGetBounceDefault() }
+
+// ActivateBounceActivated selects the activated branch: Postmark returned the requested bounce outcome.
+func ActivateBounceActivated(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.ActivateBounceBranchActivated, value, failure)
+}
+
+// ActivateBounceProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func ActivateBounceProviderRejected(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.ActivateBounceBranchProviderRejected, value, failure)
+}
+
+// ActivateBounceInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func ActivateBounceInvalidResponse(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.ActivateBounceBranchInvalidResponse, value, failure)
+}
+
+// ActivateBounceDefect selects the defect branch: Postmark defect outcome.
+func ActivateBounceDefect(value postmark.Bounce, failure *sdkgo.Failure) connectormock.Case[postmark.Bounce] {
+	return connectormock.Branch(postmark.ActivateBounceBranchDefect, value, failure)
+}
+
+// ActivateBounceRetry asks Dex to retry the activateBounce Step, after the delay when it is positive.
+func ActivateBounceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.Bounce] {
+	return connectormock.Retry[postmark.Bounce](failure, after)
+}
+
+// ActivateBounceActivateBounceDefault is the manifest mock activateBounceDefault: Representative Postmark bounce response.
+func ActivateBounceActivateBounceDefault() connectormock.Case[postmark.Bounce] {
+	value := connectormock.MustDecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":false,"canActivate":true}`)
+	return connectormock.Branch(postmark.ActivateBounceBranchActivated, value, nil)
+}
+
+// ActivateBounceDefault is the manifest default, activateBounceDefault, which New installs.
+func ActivateBounceDefault() connectormock.Case[postmark.Bounce] {
+	return ActivateBounceActivateBounceDefault()
+}
+
+// ListSuppressionsListed selects the listed branch: Postmark confirmed the suppression outcome.
+func ListSuppressionsListed(value postmark.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Branch(postmark.ListSuppressionsBranchListed, value, failure)
+}
+
+// ListSuppressionsProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func ListSuppressionsProviderRejected(value postmark.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Branch(postmark.ListSuppressionsBranchProviderRejected, value, failure)
+}
+
+// ListSuppressionsInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func ListSuppressionsInvalidResponse(value postmark.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Branch(postmark.ListSuppressionsBranchInvalidResponse, value, failure)
+}
+
+// ListSuppressionsDefect selects the defect branch: Postmark defect outcome.
+func ListSuppressionsDefect(value postmark.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Branch(postmark.ListSuppressionsBranchDefect, value, failure)
+}
+
+// ListSuppressionsRetry asks Dex to retry the listSuppressions Step, after the delay when it is positive.
+func ListSuppressionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Retry[postmark.SuppressionPage](failure, after)
+}
+
+// ListSuppressionsListSuppressionsDefault is the manifest mock listSuppressionsDefault: Representative Postmark suppression response.
+func ListSuppressionsListSuppressionsDefault() connectormock.Case[postmark.SuppressionPage] {
+	value := connectormock.MustDecodeOutput[postmark.SuppressionPage](`{"suppressions":[{"emailAddress":"recipient@example.com","suppressionReason":"ManualSuppression","origin":"Customer"}]}`)
+	return connectormock.Branch(postmark.ListSuppressionsBranchListed, value, nil)
+}
+
+// ListSuppressionsDefault is the manifest default, listSuppressionsDefault, which New installs.
+func ListSuppressionsDefault() connectormock.Case[postmark.SuppressionPage] {
+	return ListSuppressionsListSuppressionsDefault()
+}
+
+// CreateSuppressionSuppressed selects the suppressed branch: Postmark confirmed the suppression outcome.
+func CreateSuppressionSuppressed(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.CreateSuppressionBranchSuppressed, value, failure)
+}
+
+// CreateSuppressionProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func CreateSuppressionProviderRejected(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.CreateSuppressionBranchProviderRejected, value, failure)
+}
+
+// CreateSuppressionInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func CreateSuppressionInvalidResponse(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.CreateSuppressionBranchInvalidResponse, value, failure)
+}
+
+// CreateSuppressionDefect selects the defect branch: Postmark defect outcome.
+func CreateSuppressionDefect(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.CreateSuppressionBranchDefect, value, failure)
+}
+
+// CreateSuppressionRetry asks Dex to retry the createSuppression Step, after the delay when it is positive.
+func CreateSuppressionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Retry[postmark.SuppressionAction](failure, after)
+}
+
+// CreateSuppressionCreateSuppressionDefault is the manifest mock createSuppressionDefault: Representative Postmark suppression response.
+func CreateSuppressionCreateSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
+	value := connectormock.MustDecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Suppressed"}`)
+	return connectormock.Branch(postmark.CreateSuppressionBranchSuppressed, value, nil)
+}
+
+// CreateSuppressionDefault is the manifest default, createSuppressionDefault, which New installs.
+func CreateSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
+	return CreateSuppressionCreateSuppressionDefault()
+}
+
+// DeleteSuppressionDeleted selects the deleted branch: Postmark confirmed the suppression outcome.
+func DeleteSuppressionDeleted(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.DeleteSuppressionBranchDeleted, value, failure)
+}
+
+// DeleteSuppressionProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func DeleteSuppressionProviderRejected(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.DeleteSuppressionBranchProviderRejected, value, failure)
+}
+
+// DeleteSuppressionInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func DeleteSuppressionInvalidResponse(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.DeleteSuppressionBranchInvalidResponse, value, failure)
+}
+
+// DeleteSuppressionDefect selects the defect branch: Postmark defect outcome.
+func DeleteSuppressionDefect(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.DeleteSuppressionBranchDefect, value, failure)
+}
+
+// DeleteSuppressionRetry asks Dex to retry the deleteSuppression Step, after the delay when it is positive.
+func DeleteSuppressionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Retry[postmark.SuppressionAction](failure, after)
+}
+
+// DeleteSuppressionDeleteSuppressionDefault is the manifest mock deleteSuppressionDefault: Representative Postmark suppression response.
+func DeleteSuppressionDeleteSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
+	value := connectormock.MustDecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Deleted"}`)
+	return connectormock.Branch(postmark.DeleteSuppressionBranchDeleted, value, nil)
+}
+
+// DeleteSuppressionDefault is the manifest default, deleteSuppressionDefault, which New installs.
+func DeleteSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
+	return DeleteSuppressionDeleteSuppressionDefault()
+}
+
+// SendEmailWithTemplateSent selects the sent branch: Postmark accepted the templated email.
+func SendEmailWithTemplateSent(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailWithTemplateBranchSent, value, failure)
+}
+
+// SendEmailWithTemplateProviderRejected selects the providerRejected branch: Postmark definitively refused the templated email.
+func SendEmailWithTemplateProviderRejected(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailWithTemplateBranchProviderRejected, value, failure)
+}
+
+// SendEmailWithTemplateUncertain returns an uncertain sendEmailWithTemplate outcome.
+func SendEmailWithTemplateUncertain(value postmark.SentEmail, failure sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEmailWithTemplateDefect selects the defect branch: Local template input or connection credentials are invalid.
+func SendEmailWithTemplateDefect(value postmark.SentEmail, failure *sdkgo.Failure) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Branch(postmark.SendEmailWithTemplateBranchDefect, value, failure)
+}
+
+// SendEmailWithTemplateRetry asks Dex to retry the sendEmailWithTemplate Step, after the delay when it is positive.
+func SendEmailWithTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SentEmail] {
+	return connectormock.Retry[postmark.SentEmail](failure, after)
+}
+
+// SendEmailWithTemplateSendEmailWithTemplateDefault is the manifest mock sendEmailWithTemplateDefault: Postmark accepted one templated email.
+func SendEmailWithTemplateSendEmailWithTemplateDefault() connectormock.Case[postmark.SentEmail] {
+	value := connectormock.MustDecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
+	return connectormock.Branch(postmark.SendEmailWithTemplateBranchSent, value, nil)
+}
+
+// SendEmailWithTemplateDefault is the manifest default, sendEmailWithTemplateDefault, which New installs.
+func SendEmailWithTemplateDefault() connectormock.Case[postmark.SentEmail] {
+	return SendEmailWithTemplateSendEmailWithTemplateDefault()
+}
+
+// ListInboundMessagesListed selects the listed branch: Postmark returned the requested inbound outcome.
+func ListInboundMessagesListed(value postmark.InboundMessagePage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Branch(postmark.ListInboundMessagesBranchListed, value, failure)
+}
+
+// ListInboundMessagesProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func ListInboundMessagesProviderRejected(value postmark.InboundMessagePage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Branch(postmark.ListInboundMessagesBranchProviderRejected, value, failure)
+}
+
+// ListInboundMessagesInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func ListInboundMessagesInvalidResponse(value postmark.InboundMessagePage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Branch(postmark.ListInboundMessagesBranchInvalidResponse, value, failure)
+}
+
+// ListInboundMessagesDefect selects the defect branch: Postmark defect outcome.
+func ListInboundMessagesDefect(value postmark.InboundMessagePage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Branch(postmark.ListInboundMessagesBranchDefect, value, failure)
+}
+
+// ListInboundMessagesRetry asks Dex to retry the listInboundMessages Step, after the delay when it is positive.
+func ListInboundMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Retry[postmark.InboundMessagePage](failure, after)
+}
+
+// ListInboundMessagesListInboundMessagesDefault is the manifest mock listInboundMessagesDefault: Representative Postmark inbound response.
+func ListInboundMessagesListInboundMessagesDefault() connectormock.Case[postmark.InboundMessagePage] {
+	value := connectormock.MustDecodeOutput[postmark.InboundMessagePage](`{"totalCount":1,"inboundMessages":[{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","from":"sender@example.com","to":"inbox@example.com","subject":"Request","status":"Processed"}]}`)
+	return connectormock.Branch(postmark.ListInboundMessagesBranchListed, value, nil)
+}
+
+// ListInboundMessagesDefault is the manifest default, listInboundMessagesDefault, which New installs.
+func ListInboundMessagesDefault() connectormock.Case[postmark.InboundMessagePage] {
+	return ListInboundMessagesListInboundMessagesDefault()
+}
+
+// GetInboundMessageDetailsFound selects the found branch: Postmark returned the requested inbound outcome.
+func GetInboundMessageDetailsFound(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchFound, value, failure)
+}
+
+// GetInboundMessageDetailsNotFound selects the notFound branch: Postmark notFound outcome.
+func GetInboundMessageDetailsNotFound(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchNotFound, value, failure)
+}
+
+// GetInboundMessageDetailsProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func GetInboundMessageDetailsProviderRejected(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchProviderRejected, value, failure)
+}
+
+// GetInboundMessageDetailsInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func GetInboundMessageDetailsInvalidResponse(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchInvalidResponse, value, failure)
+}
+
+// GetInboundMessageDetailsDefect selects the defect branch: Postmark defect outcome.
+func GetInboundMessageDetailsDefect(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchDefect, value, failure)
+}
+
+// GetInboundMessageDetailsRetry asks Dex to retry the getInboundMessageDetails Step, after the delay when it is positive.
+func GetInboundMessageDetailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Retry[postmark.InboundMessage](failure, after)
+}
+
+// GetInboundMessageDetailsGetInboundMessageDetailsDefault is the manifest mock getInboundMessageDetailsDefault: Representative Postmark inbound response.
+func GetInboundMessageDetailsGetInboundMessageDetailsDefault() connectormock.Case[postmark.InboundMessage] {
+	value := connectormock.MustDecodeOutput[postmark.InboundMessage](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","from":"sender@example.com","to":"inbox@example.com","subject":"Request","status":"Processed"}`)
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchFound, value, nil)
+}
+
+// GetInboundMessageDetailsDefault is the manifest default, getInboundMessageDetailsDefault, which New installs.
+func GetInboundMessageDetailsDefault() connectormock.Case[postmark.InboundMessage] {
+	return GetInboundMessageDetailsGetInboundMessageDetailsDefault()
+}
+
+// BypassInboundMessageBypassed selects the bypassed branch: Postmark returned the requested inbound outcome.
+func BypassInboundMessageBypassed(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.BypassInboundMessageBranchBypassed, value, failure)
+}
+
+// BypassInboundMessageProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func BypassInboundMessageProviderRejected(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.BypassInboundMessageBranchProviderRejected, value, failure)
+}
+
+// BypassInboundMessageUncertain returns an uncertain bypassInboundMessage outcome.
+func BypassInboundMessageUncertain(value postmark.InboundMessageAction, failure sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// BypassInboundMessageDefect selects the defect branch: Postmark defect outcome.
+func BypassInboundMessageDefect(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.BypassInboundMessageBranchDefect, value, failure)
+}
+
+// BypassInboundMessageRetry asks Dex to retry the bypassInboundMessage Step, after the delay when it is positive.
+func BypassInboundMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Retry[postmark.InboundMessageAction](failure, after)
+}
+
+// BypassInboundMessageBypassInboundMessageDefault is the manifest mock bypassInboundMessageDefault: Representative Postmark inbound response.
+func BypassInboundMessageBypassInboundMessageDefault() connectormock.Case[postmark.InboundMessageAction] {
+	value := connectormock.MustDecodeOutput[postmark.InboundMessageAction](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","accepted":true}`)
+	return connectormock.Branch(postmark.BypassInboundMessageBranchBypassed, value, nil)
+}
+
+// BypassInboundMessageDefault is the manifest default, bypassInboundMessageDefault, which New installs.
+func BypassInboundMessageDefault() connectormock.Case[postmark.InboundMessageAction] {
+	return BypassInboundMessageBypassInboundMessageDefault()
+}
+
+// RetryInboundMessageRetried selects the retried branch: Postmark returned the requested inbound outcome.
+func RetryInboundMessageRetried(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.RetryInboundMessageBranchRetried, value, failure)
+}
+
+// RetryInboundMessageProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func RetryInboundMessageProviderRejected(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.RetryInboundMessageBranchProviderRejected, value, failure)
+}
+
+// RetryInboundMessageUncertain returns an uncertain retryInboundMessage outcome.
+func RetryInboundMessageUncertain(value postmark.InboundMessageAction, failure sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// RetryInboundMessageDefect selects the defect branch: Postmark defect outcome.
+func RetryInboundMessageDefect(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.RetryInboundMessageBranchDefect, value, failure)
+}
+
+// RetryInboundMessageRetry asks Dex to retry the retryInboundMessage Step, after the delay when it is positive.
+func RetryInboundMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Retry[postmark.InboundMessageAction](failure, after)
+}
+
+// RetryInboundMessageRetryInboundMessageDefault is the manifest mock retryInboundMessageDefault: Representative Postmark inbound response.
+func RetryInboundMessageRetryInboundMessageDefault() connectormock.Case[postmark.InboundMessageAction] {
+	value := connectormock.MustDecodeOutput[postmark.InboundMessageAction](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","accepted":true}`)
+	return connectormock.Branch(postmark.RetryInboundMessageBranchRetried, value, nil)
+}
+
+// RetryInboundMessageDefault is the manifest default, retryInboundMessageDefault, which New installs.
+func RetryInboundMessageDefault() connectormock.Case[postmark.InboundMessageAction] {
+	return RetryInboundMessageRetryInboundMessageDefault()
 }

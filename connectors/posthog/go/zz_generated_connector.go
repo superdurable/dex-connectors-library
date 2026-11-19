@@ -42,12 +42,28 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateAlias() sdkgo.Mutation[CreateAliasInput, CapturedEvent]
+	IdentifyPerson() sdkgo.Mutation[IdentifyPersonInput, CapturedEvent]
+	TrackPageView() sdkgo.Mutation[TrackPageViewInput, CapturedEvent]
+	TrackScreenView() sdkgo.Mutation[TrackScreenViewInput, CapturedEvent]
 	CaptureEvent() sdkgo.Mutation[CaptureEventInput, CapturedEvent]
 	ListInsights() sdkgo.Query[ListInsightsInput, InsightsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateAlias() sdkgo.Mutation[CreateAliasInput, CapturedEvent] {
+	return operations.client.CreateAlias()
+}
+func (operations clientOperations) IdentifyPerson() sdkgo.Mutation[IdentifyPersonInput, CapturedEvent] {
+	return operations.client.IdentifyPerson()
+}
+func (operations clientOperations) TrackPageView() sdkgo.Mutation[TrackPageViewInput, CapturedEvent] {
+	return operations.client.TrackPageView()
+}
+func (operations clientOperations) TrackScreenView() sdkgo.Mutation[TrackScreenViewInput, CapturedEvent] {
+	return operations.client.TrackScreenView()
+}
 func (operations clientOperations) CaptureEvent() sdkgo.Mutation[CaptureEventInput, CapturedEvent] {
 	return operations.client.CaptureEvent()
 }
@@ -202,6 +218,290 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential project_token is required")
 	}
 	return nil
+}
+
+const CreateAliasBranchAccepted sdkgo.BranchID = "accepted"
+const CreateAliasBranchQuotaLimited sdkgo.BranchID = "quotaLimited"
+const CreateAliasBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAliasBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateAliasDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAlias"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAliasBranchAccepted, Description: "PostHog accepted the alias event for processing."},
+		{ID: CreateAliasBranchQuotaLimited, Description: "PostHog reported an event quota limit.", Optional: true},
+		{ID: CreateAliasBranchProviderRejected, Description: "PostHog conclusively rejected the alias event.", Optional: true},
+		{ID: CreateAliasBranchDefect, Description: "Alias input or project token is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreateAliasResult = sdkgo.MutationResult[CapturedEvent]
+
+type CreateAliasStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=posthog"`
+	operationID                       struct{}                                            `connector:"operationId=createAlias"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAliasInput                           `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[CreateAliasResult]                     `connector:"branch=accepted"`
+	QuotaLimited                      sdkgo.Target[CreateAliasResult]                     `connector:"branch=quotaLimited,optional"`
+	ProviderRejected                  sdkgo.Target[CreateAliasResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateAliasResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CapturedEvent]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewCreateAliasStep[IN any](config CreateAliasStepConfig[IN]) sdkgo.MutationStep[IN, CreateAliasInput, CapturedEvent] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("posthog connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAliasInput, CapturedEvent]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAlias(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAliasResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAliasResult], 0, 4)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(CreateAliasBranchAccepted))
+			}
+			if config.QuotaLimited.HasStep() {
+				branches = append(branches, config.QuotaLimited.BranchTarget(CreateAliasBranchQuotaLimited))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAliasBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAliasBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const IdentifyPersonBranchAccepted sdkgo.BranchID = "accepted"
+const IdentifyPersonBranchQuotaLimited sdkgo.BranchID = "quotaLimited"
+const IdentifyPersonBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const IdentifyPersonBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var IdentifyPersonDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "identifyPerson"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: IdentifyPersonBranchAccepted, Description: "PostHog accepted the identify event for processing."},
+		{ID: IdentifyPersonBranchQuotaLimited, Description: "PostHog reported an event quota limit.", Optional: true},
+		{ID: IdentifyPersonBranchProviderRejected, Description: "PostHog conclusively rejected the identify event.", Optional: true},
+		{ID: IdentifyPersonBranchDefect, Description: "Person input or project token is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type IdentifyPersonResult = sdkgo.MutationResult[CapturedEvent]
+
+type IdentifyPersonStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=posthog"`
+	operationID                       struct{}                                            `connector:"operationId=identifyPerson"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) IdentifyPersonInput                        `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[IdentifyPersonResult]                  `connector:"branch=accepted"`
+	QuotaLimited                      sdkgo.Target[IdentifyPersonResult]                  `connector:"branch=quotaLimited,optional"`
+	ProviderRejected                  sdkgo.Target[IdentifyPersonResult]                  `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[IdentifyPersonResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CapturedEvent]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewIdentifyPersonStep[IN any](config IdentifyPersonStepConfig[IN]) sdkgo.MutationStep[IN, IdentifyPersonInput, CapturedEvent] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("posthog connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, IdentifyPersonInput, CapturedEvent]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.IdentifyPerson(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[IdentifyPersonResult] {
+			branches := make([]sdkgo.BranchTarget[IdentifyPersonResult], 0, 4)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(IdentifyPersonBranchAccepted))
+			}
+			if config.QuotaLimited.HasStep() {
+				branches = append(branches, config.QuotaLimited.BranchTarget(IdentifyPersonBranchQuotaLimited))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(IdentifyPersonBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(IdentifyPersonBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const TrackPageViewBranchAccepted sdkgo.BranchID = "accepted"
+const TrackPageViewBranchQuotaLimited sdkgo.BranchID = "quotaLimited"
+const TrackPageViewBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrackPageViewBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrackPageViewDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trackPageView"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrackPageViewBranchAccepted, Description: "PostHog accepted the page view for processing."},
+		{ID: TrackPageViewBranchQuotaLimited, Description: "PostHog reported an event quota limit.", Optional: true},
+		{ID: TrackPageViewBranchProviderRejected, Description: "PostHog conclusively rejected the page view.", Optional: true},
+		{ID: TrackPageViewBranchDefect, Description: "Page view input or project token is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type TrackPageViewResult = sdkgo.MutationResult[CapturedEvent]
+
+type TrackPageViewStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=posthog"`
+	operationID                       struct{}                                            `connector:"operationId=trackPageView"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrackPageViewInput                         `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[TrackPageViewResult]                   `connector:"branch=accepted"`
+	QuotaLimited                      sdkgo.Target[TrackPageViewResult]                   `connector:"branch=quotaLimited,optional"`
+	ProviderRejected                  sdkgo.Target[TrackPageViewResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TrackPageViewResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CapturedEvent]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewTrackPageViewStep[IN any](config TrackPageViewStepConfig[IN]) sdkgo.MutationStep[IN, TrackPageViewInput, CapturedEvent] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("posthog connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrackPageViewInput, CapturedEvent]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrackPageView(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrackPageViewResult] {
+			branches := make([]sdkgo.BranchTarget[TrackPageViewResult], 0, 4)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(TrackPageViewBranchAccepted))
+			}
+			if config.QuotaLimited.HasStep() {
+				branches = append(branches, config.QuotaLimited.BranchTarget(TrackPageViewBranchQuotaLimited))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrackPageViewBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrackPageViewBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const TrackScreenViewBranchAccepted sdkgo.BranchID = "accepted"
+const TrackScreenViewBranchQuotaLimited sdkgo.BranchID = "quotaLimited"
+const TrackScreenViewBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrackScreenViewBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrackScreenViewDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trackScreenView"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrackScreenViewBranchAccepted, Description: "PostHog accepted the screen view for processing."},
+		{ID: TrackScreenViewBranchQuotaLimited, Description: "PostHog reported an event quota limit.", Optional: true},
+		{ID: TrackScreenViewBranchProviderRejected, Description: "PostHog conclusively rejected the screen view.", Optional: true},
+		{ID: TrackScreenViewBranchDefect, Description: "Screen view input or project token is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type TrackScreenViewResult = sdkgo.MutationResult[CapturedEvent]
+
+type TrackScreenViewStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=posthog"`
+	operationID                       struct{}                                            `connector:"operationId=trackScreenView"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrackScreenViewInput                       `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[TrackScreenViewResult]                 `connector:"branch=accepted"`
+	QuotaLimited                      sdkgo.Target[TrackScreenViewResult]                 `connector:"branch=quotaLimited,optional"`
+	ProviderRejected                  sdkgo.Target[TrackScreenViewResult]                 `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TrackScreenViewResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CapturedEvent]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewTrackScreenViewStep[IN any](config TrackScreenViewStepConfig[IN]) sdkgo.MutationStep[IN, TrackScreenViewInput, CapturedEvent] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("posthog connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrackScreenViewInput, CapturedEvent]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrackScreenView(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrackScreenViewResult] {
+			branches := make([]sdkgo.BranchTarget[TrackScreenViewResult], 0, 4)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(TrackScreenViewBranchAccepted))
+			}
+			if config.QuotaLimited.HasStep() {
+				branches = append(branches, config.QuotaLimited.BranchTarget(TrackScreenViewBranchQuotaLimited))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrackScreenViewBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrackScreenViewBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CaptureEventBranchAccepted sdkgo.BranchID = "accepted"

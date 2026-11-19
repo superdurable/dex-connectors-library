@@ -69,6 +69,10 @@ type providerResponse struct {
 }
 
 func (client *Client) getAccounts(call sdkgo.Call) providerResponse {
+	return client.postItem(call, "/accounts/get")
+}
+
+func (client *Client) postItem(call sdkgo.Call, path string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -85,7 +89,7 @@ func (client *Client) getAccounts(call sdkgo.Call) providerResponse {
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/accounts/get", bytes.NewReader(requestBody))
+	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, bytes.NewReader(requestBody))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

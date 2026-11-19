@@ -1,10 +1,12 @@
 # Salesforce record-sync example
 
 This example runs one operation-only Flow from Dex Web **Start Flow** and uses
-every Salesforce operation. It links a record in another system to Salesforce:
+the record lookup, upsert, update, read, and delete operations. It links a record in another system to Salesforce:
 find the record by a human identifier such as an email address, stamp the
 other system's ID on the one match, or create the record by that ID when
 nothing matches.
+
+Set `deleteAfterReadBack` in the Start Flow input to remove the synced record after read-back confirms its external ID. Blank or false leaves the record in place. `TestRecordSyncDeletesOnlyAfterRequestedReadBackWithRealDex` exercises this cleanup through a real Dex Worker and the connector mock.
 
 1. `RecordSyncRequest` validates and persists the match value, external ID,
    and field values;

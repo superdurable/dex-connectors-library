@@ -57,4 +57,5 @@ func TestPinsUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "123456789", output.Pins[0].ID)
 	require.Equal(t, "Example Pin", output.Pins[0].Title)
 	require.Len(t, mock.ListPins().Calls(), 1)
+	require.Len(t, mock.ListBoards().Calls(), 1)
 }

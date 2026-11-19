@@ -1,4 +1,6 @@
-# PostHog event-capture Flow
+# PostHog event and identity Flows
+
+The worker also registers `PostHogIdentifyPerson`, a separate Flow that accepts `IdentifyPersonInput` and sends non-secret person properties through the same project token. Its start Step fixes a blank timestamp once before dispatch, and its accepted outcome is stored in `posthog-identity-outcome`.
 
 This runnable Flow captures one event with the static `posthog` connection. Its start Step fixes an omitted timestamp once, and `captureEvent` derives a stable UUID from Dex's call identity. The `accepted` branch completes after PostHog acknowledges processing; it does not prove later ingestion. Optional branches are unwired and fail the Flow. A repeated event may briefly appear in downstream live destinations before PostHog's eventual deduplication.
 
