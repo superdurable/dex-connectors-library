@@ -1858,15 +1858,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "removed": false,
-          "subscriberId": 0,
-          "tagId": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1876,6 +1871,78 @@
         "tagId": 12
       },
       "name": "removeTagFromSubscriber-invalidResponse",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-acceptedUnknown",
+      "operation": "removeTagFromSubscriber"
+    },
+    {
+      "callId": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/tags/12/subscribers/204",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2997788e-8f1b-536f-9554-5a5e16d82146",
+      "input": {
+        "subscriberId": 204,
+        "tagId": 12
+      },
+      "name": "removeTagFromSubscriber-redirectUnknown",
       "operation": "removeTagFromSubscriber"
     },
     {
@@ -3022,14 +3089,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "customFieldId": 0,
-          "deleted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3038,6 +3101,76 @@
         "customFieldId": 8
       },
       "name": "deleteCustomField-invalidResponse",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-acceptedUnknown",
+      "operation": "deleteCustomField"
+    },
+    {
+      "callId": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/custom_fields/8",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "77b25572-4c7e-5f38-88a5-a5476b4b6026",
+      "input": {
+        "customFieldId": 8
+      },
+      "name": "deleteCustomField-redirectUnknown",
       "operation": "deleteCustomField"
     },
     {

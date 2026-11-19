@@ -257,7 +257,7 @@ func (operation RemoveTagFromSubscriberOperation) Invoke(call sdkgo.Call, input 
 		return outcome
 	}
 	if status != http.StatusNoContent {
-		return kitMutationBranch("removeTagFromSubscriber", branches.invalid, TagRemoval{}, sdkgo.FailureProtocol, "Kit returned unexpected tag-removal response")
+		return sdkgo.NewMutationRetry[TagRemoval](kitFailure("removeTagFromSubscriber", sdkgo.FailureProtocol, "Kit tag-removal response did not confirm the result"), retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.success, TagRemoval{TagID: input.TagID, SubscriberID: input.SubscriberID, Removed: true}, nil, sdkgo.Receipt{})
 }

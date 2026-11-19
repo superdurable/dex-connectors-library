@@ -186,7 +186,7 @@ func (operation DeleteCustomFieldOperation) Invoke(call sdkgo.Call, input Custom
 		return outcome
 	}
 	if status != http.StatusNoContent {
-		return kitMutationBranch("deleteCustomField", branches.invalid, CustomFieldDeletion{}, sdkgo.FailureProtocol, "Kit returned unexpected deletion response")
+		return sdkgo.NewMutationRetry[CustomFieldDeletion](kitFailure("deleteCustomField", sdkgo.FailureProtocol, "Kit deletion response did not confirm the result"), retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.success, CustomFieldDeletion{CustomFieldID: input.CustomFieldID, Deleted: true}, nil, sdkgo.Receipt{})
 }

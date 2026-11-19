@@ -46,3 +46,41 @@ func TestSafeWriteRetriesUnconfirmedSuccessBody(t *testing.T) {
 		})
 	}
 }
+
+func TestSafeDeletesRetryUnconfirmedResponses(t *testing.T) {
+	for _, operation := range []struct {
+		name string
+		run  func(*Client) error
+	}{
+		{"deleteCustomField", func(client *Client) error {
+			_, err := sdkgo.RunMutation(queryContext{}, client.DeleteCustomField(), testConnection, CustomFieldIDInput{CustomFieldID: 8})
+			return err
+		}},
+		{"removeTagFromSubscriber", func(client *Client) error {
+			_, err := sdkgo.RunMutation(queryContext{}, client.RemoveTagFromSubscriber(), testConnection, TagSubscriberInput{TagID: 12, SubscriberID: 204})
+			return err
+		}},
+	} {
+		for _, status := range []int{http.StatusOK, http.StatusAccepted, http.StatusFound} {
+			t.Run(operation.name+"/"+http.StatusText(status), func(t *testing.T) {
+				requests := 0
+				server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+					requests++
+					writer.WriteHeader(status)
+				}))
+				defer server.Close()
+				client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIKey: sdkgo.NewSecretString(testAPIKey)}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				var retry *sdkgo.RetryError
+				if err := operation.run(client); !errors.As(err, &retry) {
+					t.Fatalf("expected Retry for unconfirmed deletion, got %v", err)
+				}
+				if requests != 1 {
+					t.Fatalf("sent %d requests, want one", requests)
+				}
+			})
+		}
+	}
+}
