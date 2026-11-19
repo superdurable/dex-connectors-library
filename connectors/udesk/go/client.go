@@ -5,11 +5,14 @@
 package udesk
 
 import (
+	"crypto/rand"
 	"errors"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // Option supplies a non-serializable client dependency to New.
@@ -29,6 +32,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	requestClock     func() time.Time
+	requestRandom    io.Reader
 }
 
 // New validates the account subdomain without contacting Udesk. Rotated credentials take effect on the next call.
@@ -50,7 +55,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if !isValidAccountOrigin(baseURL) {
 		return nil, errors.New("Udesk base URL must be an HTTPS account subdomain of udesk.cn")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, requestClock: time.Now, requestRandom: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Udesk client option is required")
