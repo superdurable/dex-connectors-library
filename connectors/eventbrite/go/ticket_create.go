@@ -107,13 +107,16 @@ func (operation CreateTicketClassOperation) Invoke(call sdkgo.Call, input Create
 		return ticketCreationUncertain(call, sdkgo.FailureAvailability, "ticket class creation outcome unknown after send cap", "")
 	}
 	if status < 200 || status >= 300 {
-		if !isDefiniteEventbriteRefusal(status, responseBody) {
+		if sendErr != nil || !isDefiniteEventbriteRefusal(status, responseBody) {
 			if canResendUnknown {
 				return ticketCreationRetry(sdkgo.FailureAvailability, "ticket class response does not prove refusal", delay)
 			}
 			return ticketCreationUncertain(call, sdkgo.FailureAvailability, "ticket class response remains unknown after the send cap", "")
 		}
 		if hasPriorSend {
+			if canResendUnknown {
+				return ticketCreationRetry(sdkgo.FailureProviderRejection, "earlier ticket class creation may have succeeded", delay)
+			}
 			return ticketCreationUncertain(call, sdkgo.FailureProviderRejection, "earlier ticket class creation may have succeeded", "")
 		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -122,10 +125,16 @@ func (operation CreateTicketClassOperation) Invoke(call sdkgo.Call, input Create
 		return ticketCreationBranch(CreateTicketClassBranchProviderRejected, sdkgo.FailureProviderRejection, "Eventbrite rejected HTTP "+strconv.Itoa(status))
 	}
 	if sendErr != nil {
+		if canResendUnknown {
+			return ticketCreationRetry(sdkgo.FailureProtocol, "ticket class accepted but identity is unavailable", 0)
+		}
 		return ticketCreationUncertain(call, sdkgo.FailureProtocol, "ticket class accepted but identity is unavailable", "")
 	}
 	created, decodeErr := decodeTicketClass(responseBody)
 	if decodeErr != nil || created.EventID != input.EventID {
+		if canResendUnknown {
+			return ticketCreationRetry(sdkgo.FailureProtocol, "ticket class accepted but identity is unusable", 0)
+		}
 		return ticketCreationUncertain(call, sdkgo.FailureProtocol, "ticket class accepted but identity is unusable", "")
 	}
 	_ = fence.RecordProviderID(created.ID)

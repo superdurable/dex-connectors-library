@@ -75,13 +75,16 @@ func invokeLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path
 		return createUncertain[T](call, operation, sdkgo.FailureAvailability, "create outcome unknown after send cap", "")
 	}
 	if status < 200 || status >= 300 {
-		if !isDefiniteFreshsalesRefusal(status, body) {
+		if sendErr != nil || !isDefiniteFreshsalesRefusal(status, body) {
 			if canResendUnknown {
 				return createRetry[T](operation, sdkgo.FailureAvailability, "create response does not prove refusal", delay)
 			}
 			return createUncertain[T](call, operation, sdkgo.FailureAvailability, "create response remains unknown after send cap", "")
 		}
 		if hasPriorSend {
+			if canResendUnknown {
+				return createRetry[T](operation, sdkgo.FailureProviderRejection, "earlier creation may have succeeded", delay)
+			}
 			return createUncertain[T](call, operation, sdkgo.FailureProviderRejection, "earlier creation may have succeeded", "")
 		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -90,10 +93,16 @@ func invokeLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path
 		return createBranch[T](operation, branches.rejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
 	}
 	if sendErr != nil {
+		if canResendUnknown {
+			return createRetry[T](operation, sdkgo.FailureProtocol, "created resource identity unavailable", 0)
+		}
 		return createUncertain[T](call, operation, sdkgo.FailureProtocol, "created resource identity unavailable", "")
 	}
 	created, decodeErr := decode(body)
 	if decodeErr != nil || providerID(created) == "" {
+		if canResendUnknown {
+			return createRetry[T](operation, sdkgo.FailureProtocol, "created resource identity unusable", 0)
+		}
 		return createUncertain[T](call, operation, sdkgo.FailureProtocol, "created resource identity unusable", "")
 	}
 	_ = fence.RecordProviderID(providerID(created))
@@ -105,20 +114,14 @@ func isDefiniteFreshsalesRefusal(status int, body []byte) bool {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		var rejection struct {
-			Errors []struct {
+		var refusal struct {
+			Errors struct {
+				Code    string `json:"code"`
 				Message string `json:"message"`
 			} `json:"errors"`
-			ID            json.RawMessage `json:"id"`
-			Success       bool            `json:"success"`
-			Contact       json.RawMessage `json:"contact"`
-			Account       json.RawMessage `json:"sales_account"`
-			Deal          json.RawMessage `json:"deal"`
-			Note          json.RawMessage `json:"note"`
-			Appointment   json.RawMessage `json:"appointment"`
-			SalesActivity json.RawMessage `json:"sales_activity"`
+			ID any `json:"id"`
 		}
-		return json.Unmarshal(body, &rejection) == nil && len(rejection.Errors) > 0 && rejection.Errors[0].Message != "" && len(rejection.ID) == 0 && !rejection.Success && len(rejection.Contact) == 0 && len(rejection.Account) == 0 && len(rejection.Deal) == 0 && len(rejection.Note) == 0 && len(rejection.Appointment) == 0 && len(rejection.SalesActivity) == 0
+		return json.Unmarshal(body, &refusal) == nil && refusal.ID == nil && refusal.Errors.Code != "" && refusal.Errors.Message != ""
 	default:
 		return false
 	}

@@ -4,6 +4,7 @@
 package cloudstorage
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -49,7 +50,18 @@ func TestObjectMetadataUpdateAndDeletion(t *testing.T) {
 func TestObjectMetadataBranchesAndRetries(t *testing.T) {
 	var status atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(int(status.Load()))
+		code := int(status.Load())
+		w.WriteHeader(code)
+		if code == http.StatusForbidden || code == http.StatusNotFound {
+			message := "Permission denied"
+			if code == http.StatusNotFound {
+				message = "Object not found"
+			}
+			body, err := json.Marshal(map[string]any{"error": map[string]any{"code": code, "message": message}})
+			require.NoError(t, err)
+			_, err = w.Write(body)
+			require.NoError(t, err)
+		}
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)

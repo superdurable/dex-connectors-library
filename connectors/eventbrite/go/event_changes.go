@@ -120,7 +120,7 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 	}
 	payload := map[string]any{"event": map[string]any{"name": map[string]string{"html": html.EscapeString(input.Name)}}}
 	body, status, delay, err := operation.client.requestJSON(call, http.MethodPost, path, payload)
-	if attempt := classifyEventChangeResponse("updateEvent", branches, status, delay, err); attempt != nil {
+	if attempt := classifyEventChangeResponse("updateEvent", branches, body, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	updated, err := decodeEvent(body)
@@ -162,7 +162,7 @@ func (client *Client) changeEventState(call sdkgo.Call, operation, eventID, acti
 		return eventChangeSuccess(call, branches.success, current)
 	}
 	body, status, delay, err := client.request(call, http.MethodPost, path+action+"/")
-	if attempt := classifyEventChangeResponse(operation, branches, status, delay, err); attempt != nil {
+	if attempt := classifyEventChangeResponse(operation, branches, body, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	var answer map[string]bool
@@ -181,7 +181,7 @@ func (client *Client) changeEventState(call sdkgo.Call, operation, eventID, acti
 
 func (client *Client) readEventForChange(call sdkgo.Call, operation, path string, branches eventChangeBranches) (EventMetadata, *sdkgo.MutationAttempt[EventMetadata]) {
 	body, status, delay, err := client.get(call, path)
-	if attempt := classifyEventChangeResponse(operation, branches, status, delay, err); attempt != nil {
+	if attempt := classifyEventChangeResponse(operation, branches, body, status, delay, err); attempt != nil {
 		return EventMetadata{}, attempt
 	}
 	event, err := decodeEvent(body)
@@ -192,7 +192,7 @@ func (client *Client) readEventForChange(call sdkgo.Call, operation, path string
 	return event, nil
 }
 
-func classifyEventChangeResponse(operation string, branches eventChangeBranches, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[EventMetadata] {
+func classifyEventChangeResponse(operation string, branches eventChangeBranches, body []byte, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[EventMetadata] {
 	var result sdkgo.MutationAttempt[EventMetadata]
 	switch {
 	case errors.Is(err, errCredential):
@@ -201,10 +201,14 @@ func classifyEventChangeResponse(operation string, branches eventChangeBranches,
 		result = eventChangeRetry(operation, sdkgo.FailureRateLimit, "Eventbrite rate limited the event request", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		result = eventChangeRetry(operation, sdkgo.FailureAvailability, "Eventbrite event outcome is not yet confirmed", delay)
-	case status == http.StatusNotFound && branches.notFound != "":
+	case status == http.StatusNotFound && branches.notFound != "" && err == nil && isDefiniteEventbriteRefusal(status, body):
 		result = eventChangeBranch(operation, branches.notFound, sdkgo.FailureNotFound, "Eventbrite did not find the event")
 	case status != http.StatusOK:
-		result = eventChangeBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, "Eventbrite rejected HTTP "+strconv.Itoa(status))
+		if err != nil || !isDefiniteEventbriteRefusal(status, body) {
+			result = eventChangeRetry(operation, sdkgo.FailureAvailability, "event response does not prove refusal", delay)
+		} else {
+			result = eventChangeBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, "Eventbrite rejected HTTP "+strconv.Itoa(status))
+		}
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
 		result = eventChangeRetry(operation, sdkgo.FailureResponseTooLarge, "Eventbrite event response exceeded the configured limit", 0)
 	case err != nil:
@@ -244,6 +248,9 @@ func (operation DeleteEventOperation) Invoke(call sdkgo.Call, input DeleteEventI
 	case status == http.StatusNotFound, status == http.StatusNoContent:
 		return deleteEventSuccess(call, input.EventID)
 	case status != http.StatusOK:
+		if err != nil || !isDefiniteEventbriteRefusal(status, body) {
+			return deleteEventRetry(sdkgo.FailureAvailability, "event deletion response does not prove refusal", delay)
+		}
 		return deleteEventBranch(DeleteEventBranchProviderRejected, sdkgo.FailureProviderRejection, fmt.Sprintf("Eventbrite rejected deletion with HTTP %d", status))
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
 		return deleteEventRetry(sdkgo.FailureResponseTooLarge, "Eventbrite deletion answer exceeded the configured limit", 0)

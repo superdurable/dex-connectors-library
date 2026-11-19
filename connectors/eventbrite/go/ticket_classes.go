@@ -118,7 +118,7 @@ func (operation UpdateTicketClassOperation) Invoke(call sdkgo.Call, input Update
 	}
 	path := ticketClassPath(input.EventID, input.TicketClassID)
 	body, status, delay, err := operation.client.requestJSON(call, http.MethodPost, path, map[string]any{"ticket_class": map[string]string{"name": input.Name}})
-	if attempt := classifyTicketChange(status, delay, err); attempt != nil {
+	if attempt := classifyTicketChange(body, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	updated, err := decodeTicketClass(body)
@@ -126,7 +126,7 @@ func (operation UpdateTicketClassOperation) Invoke(call sdkgo.Call, input Update
 		return ticketChangeRetry(sdkgo.FailureProtocol, "Eventbrite ticket class update answer is unconfirmed", 0)
 	}
 	confirmedBody, status, delay, err := operation.client.get(call, path)
-	if attempt := classifyTicketChange(status, delay, err); attempt != nil {
+	if attempt := classifyTicketChange(confirmedBody, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	confirmed, err := decodeTicketClass(confirmedBody)
@@ -178,7 +178,7 @@ func decodeTicketClassesPage(body []byte) (TicketClassesPage, error) {
 	return page, nil
 }
 
-func classifyTicketChange(status int, delay time.Duration, err error) *sdkgo.MutationAttempt[TicketClassMetadata] {
+func classifyTicketChange(body []byte, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[TicketClassMetadata] {
 	var result sdkgo.MutationAttempt[TicketClassMetadata]
 	switch {
 	case errors.Is(err, errCredential):
@@ -187,10 +187,14 @@ func classifyTicketChange(status int, delay time.Duration, err error) *sdkgo.Mut
 		result = ticketChangeRetry(sdkgo.FailureRateLimit, "Eventbrite rate limited the ticket class request", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		result = ticketChangeRetry(sdkgo.FailureAvailability, "Eventbrite ticket class outcome is unconfirmed", delay)
-	case status == http.StatusNotFound:
+	case status == http.StatusNotFound && err == nil && isDefiniteEventbriteRefusal(status, body):
 		result = ticketChangeBranch(UpdateTicketClassBranchNotFound, sdkgo.FailureNotFound, "Eventbrite did not find the ticket class")
 	case status != http.StatusOK:
-		result = ticketChangeBranch(UpdateTicketClassBranchProviderRejected, sdkgo.FailureProviderRejection, "Eventbrite rejected HTTP "+strconv.Itoa(status))
+		if err != nil || !isDefiniteEventbriteRefusal(status, body) {
+			result = ticketChangeRetry(sdkgo.FailureAvailability, "ticket class response does not prove refusal", delay)
+		} else {
+			result = ticketChangeBranch(UpdateTicketClassBranchProviderRejected, sdkgo.FailureProviderRejection, "Eventbrite rejected HTTP "+strconv.Itoa(status))
+		}
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
 		result = ticketChangeRetry(sdkgo.FailureResponseTooLarge, "Eventbrite ticket class response exceeded the limit", 0)
 	case err != nil:

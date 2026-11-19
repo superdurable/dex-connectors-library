@@ -154,8 +154,11 @@ func (client *Client) invokeEventCreation(call sdkgo.Call, operation, method, pa
 		}
 		return eventCreationUncertain(call, operation, sdkgo.FailureAvailability, "event creation outcome is unknown after the send cap", "")
 	}
-	if status == http.StatusNotFound && branches.notFound != "" && isDefiniteEventbriteRefusal(status, responseBody) {
+	if status == http.StatusNotFound && branches.notFound != "" && sendErr == nil && isDefiniteEventbriteRefusal(status, responseBody) {
 		if hasPriorSend {
+			if canResendUnknown {
+				return eventCreationRetry(operation, sdkgo.FailureNotFound, "an earlier copy may have succeeded", retryAfter)
+			}
 			return eventCreationUncertain(call, operation, sdkgo.FailureNotFound, "source event disappeared after an earlier copy may have succeeded", "")
 		}
 		if err := fence.RecordCanResend(); err != nil {
@@ -164,13 +167,16 @@ func (client *Client) invokeEventCreation(call sdkgo.Call, operation, method, pa
 		return eventCreationBranch(operation, branches.notFound, sdkgo.FailureNotFound, "Eventbrite did not find the source event")
 	}
 	if status < 200 || status >= 300 {
-		if !isDefiniteEventbriteRefusal(status, responseBody) {
+		if sendErr != nil || !isDefiniteEventbriteRefusal(status, responseBody) {
 			if canResendUnknown {
 				return eventCreationRetry(operation, sdkgo.FailureAvailability, "event response does not prove refusal", retryAfter)
 			}
 			return eventCreationUncertain(call, operation, sdkgo.FailureAvailability, "event response remains unknown after the send cap", "")
 		}
 		if hasPriorSend {
+			if canResendUnknown {
+				return eventCreationRetry(operation, sdkgo.FailureProviderRejection, "an earlier event creation may have succeeded", retryAfter)
+			}
 			return eventCreationUncertain(call, operation, sdkgo.FailureProviderRejection, "an earlier event creation may have succeeded before this rejection", "")
 		}
 		if err := fence.RecordCanResend(); err != nil {
@@ -179,10 +185,16 @@ func (client *Client) invokeEventCreation(call sdkgo.Call, operation, method, pa
 		return eventCreationBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, fmt.Sprintf("Eventbrite rejected HTTP %d", status))
 	}
 	if errors.Is(sendErr, providerhttp.ErrBodyTooLarge) || sendErr != nil {
+		if canResendUnknown {
+			return eventCreationRetry(operation, sdkgo.FailureProtocol, "Eventbrite accepted the event but its identity was not returned", 0)
+		}
 		return eventCreationUncertain(call, operation, sdkgo.FailureProtocol, "Eventbrite accepted the event but its identity was not returned", "")
 	}
 	created, err := decodeEvent(responseBody)
 	if err != nil {
+		if canResendUnknown {
+			return eventCreationRetry(operation, sdkgo.FailureProtocol, "Eventbrite accepted the event but returned no usable identity", 0)
+		}
 		return eventCreationUncertain(call, operation, sdkgo.FailureProtocol, "Eventbrite accepted the event but returned no usable identity", "")
 	}
 	_ = fence.RecordProviderID(created.ID)
@@ -194,13 +206,14 @@ func isDefiniteEventbriteRefusal(status int, body []byte) bool {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		var rejection struct {
-			Error       string          `json:"error"`
-			Description string          `json:"error_description"`
-			ID          json.RawMessage `json:"id"`
-			Success     bool            `json:"success"`
+		var refusal struct {
+			Error       string `json:"error"`
+			Description string `json:"error_description"`
+			StatusCode  int    `json:"status_code"`
+			ID          any    `json:"id"`
+			Event       any    `json:"event"`
 		}
-		return json.Unmarshal(body, &rejection) == nil && rejection.Error != "" && rejection.Description != "" && len(rejection.ID) == 0 && !rejection.Success
+		return json.Unmarshal(body, &refusal) == nil && refusal.Error != "" && refusal.Description != "" && refusal.StatusCode == status && refusal.ID == nil && refusal.Event == nil
 	default:
 		return false
 	}

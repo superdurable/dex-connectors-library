@@ -178,7 +178,7 @@ func TestUpdateIssueLabelsRetriesUnknownAnswers(t *testing.T) {
 		"redirect":     {status: http.StatusFound},
 		"unlisted":     {status: http.StatusTooEarly, body: `{}`},
 		"malformed":    {status: http.StatusOK, body: `{"id":1,"iid":0}`},
-		"definite 422": {status: http.StatusUnprocessableEntity, body: `{}`, isRejected: true},
+		"definite 422": {status: http.StatusUnprocessableEntity, body: `{"message":"Invalid labels"}`, isRejected: true},
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 			writer.WriteHeader(testCase.status)

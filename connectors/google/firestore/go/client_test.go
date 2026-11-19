@@ -62,6 +62,8 @@ func TestCreateDocumentPriorSendConflictNeedsConfirmation(t *testing.T) {
 						w.WriteHeader(http.StatusInternalServerError)
 					} else {
 						w.WriteHeader(http.StatusConflict)
+						_, err := w.Write([]byte(`{"error":{"code":409,"message":"Document already exists","status":"ALREADY_EXISTS"}}`))
+						require.NoError(t, err)
 					}
 				case http.MethodGet:
 					if getCount.Add(1) == 1 {

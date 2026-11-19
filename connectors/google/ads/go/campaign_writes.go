@@ -158,6 +158,9 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 	if response.status == http.StatusOK {
 		result, decodeErr := decodeCampaignMutation(response.body)
 		if decodeErr != nil {
+			if decision.MaximumPriorSends+1 < call.MaxSends() {
+				return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure("createCampaign", sdkgo.FailureProtocol, "Google Ads accepted a campaign but returned invalid JSON"), 0)
+			}
 			return uncertainCampaign(call, "Google Ads accepted a campaign but returned invalid JSON")
 		}
 		_ = fence.RecordProviderID(result.ResourceName)
@@ -170,6 +173,9 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 		return uncertainCampaign(call, "campaign response remains unknown after the send limit")
 	}
 	if decision.MaximumPriorSends > 0 {
+		if decision.MaximumPriorSends+1 < call.MaxSends() {
+			return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure("createCampaign", sdkgo.FailureAvailability, "a previous create may have succeeded"), response.retryAfter)
+		}
 		return uncertainCampaign(call, "a previous create may have succeeded")
 	}
 	if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -183,15 +189,15 @@ func isDefiniteAdsRefusal(status int, body []byte) bool {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		var rejection struct {
+		var refusal struct {
 			Error struct {
 				Code    int    `json:"code"`
 				Message string `json:"message"`
+				Status  string `json:"status"`
 			} `json:"error"`
-			ResourceName string          `json:"resourceName"`
-			Results      json.RawMessage `json:"results"`
+			Results any `json:"results"`
 		}
-		return json.Unmarshal(body, &rejection) == nil && rejection.Error.Code == status && rejection.Error.Message != "" && rejection.ResourceName == "" && len(rejection.Results) == 0
+		return json.Unmarshal(body, &refusal) == nil && refusal.Error.Code == status && refusal.Error.Message != "" && refusal.Error.Status != "" && refusal.Results == nil
 	default:
 		return false
 	}
@@ -257,6 +263,9 @@ func safeCampaignMutation(response providerResponse, call sdkgo.Call, operation 
 		return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure(operation, kind, "Google Ads asked to retry"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteAdsRefusal(response.status, response.body) {
+			return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure(operation, sdkgo.FailureAvailability, "campaign response does not prove refusal"), response.retryAfter)
+		}
 		return campaignMutationBranch(rejected, operation, sdkgo.FailureProviderRejection, "Google Ads rejected HTTP "+strconv.Itoa(response.status))
 	}
 	result, err := decodeCampaignMutation(response.body)

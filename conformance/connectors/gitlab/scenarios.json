@@ -625,7 +625,7 @@
       "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Not found\"}",
           "form": {
             "labels": [
               "review,ready"
@@ -680,7 +680,7 @@
       "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"Forbidden\"}",
           "form": {
             "labels": [
               "review,ready"
@@ -2423,7 +2423,7 @@
       "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Not found\"}",
           "form": {
             "description": [
               "Updated text"
@@ -2483,7 +2483,7 @@
       "callId": "91c5ef38-bc37-5aef-8649-21c3384c355a",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Forbidden\"}",
           "form": {
             "description": [
               "Updated text"
@@ -2835,7 +2835,7 @@
       "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Not found\"}",
           "form": {
             "discussion_locked": [
               "true"
@@ -2886,7 +2886,7 @@
       "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Forbidden\"}",
           "form": {
             "discussion_locked": [
               "true"
@@ -3177,7 +3177,7 @@
       "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3217,7 +3217,7 @@
       "callId": "393f9663-f686-59bc-afbd-cf35de68e85b",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Forbidden\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4504,7 +4504,7 @@
       "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4554,7 +4554,7 @@
       "callId": "75b2d368-fc8c-5710-abfb-1b96e2f4fd29",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Forbidden\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4893,7 +4893,7 @@
       "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4933,7 +4933,7 @@
       "callId": "d15a4638-7330-52b6-a62e-3e3c34cf6ed2",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"message\":\"Forbidden\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",

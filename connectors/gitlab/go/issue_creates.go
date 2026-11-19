@@ -154,18 +154,18 @@ func (request *limitedWrite[T]) invoke(call sdkgo.Call) sdkgo.MutationAttempt[T]
 	if request.status == http.StatusCreated {
 		value, decodeErr := request.decode(request.body)
 		if decodeErr != nil {
-			return request.uncertain(call, "GitLab accepted a write but returned invalid JSON")
+			return request.retryUnknown(call, decision.MaximumPriorSends, "GitLab accepted a write but returned invalid JSON")
 		}
 		id := request.providerID(value)
 		// The accepted result is valid even if the optional recovery checkpoint fails.
 		_ = fence.RecordProviderID(id)
 		return sdkgo.NewMutationBranch(request.created, value, nil, request.receipt(call, id))
 	}
-	if !isDefiniteRefusalStatus(request.status) || !hasGitLabRefusalBody(request.body) {
+	if !isDefiniteGitLabRefusal(request.status, request.body) {
 		return request.retryUnknown(call, decision.MaximumPriorSends, "write response does not prove refusal")
 	}
 	if decision.MaximumPriorSends > 0 {
-		return request.uncertain(call, "a previous write may have succeeded")
+		return request.retryUnknown(call, decision.MaximumPriorSends, "a previous write may have succeeded")
 	}
 	if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 		return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "gitlab", Operation: request.operation, Message: "refusal checkpoint is unavailable"}, 0)
@@ -173,15 +173,20 @@ func (request *limitedWrite[T]) invoke(call sdkgo.Call) sdkgo.MutationAttempt[T]
 	return limitedBranch(request.rejected, zero, request.operation, sdkgo.FailureProviderRejection, "GitLab rejected HTTP "+strconv.Itoa(request.status))
 }
 
-func hasGitLabRefusalBody(body []byte) bool {
-	var rejection struct {
-		Message json.RawMessage `json:"message"`
-		ID      json.RawMessage `json:"id"`
-		IID     json.RawMessage `json:"iid"`
-		TagName json.RawMessage `json:"tag_name"`
-		Success bool            `json:"success"`
+func isDefiniteGitLabRefusal(status int, body []byte) bool {
+	if !isDefiniteRefusalStatus(status) {
+		return false
 	}
-	return json.Unmarshal(body, &rejection) == nil && len(rejection.Message) > 2 && string(rejection.Message) != "null" && string(rejection.Message) != `""` && string(rejection.Message) != "{}" && string(rejection.Message) != "[]" && len(rejection.ID) == 0 && len(rejection.IID) == 0 && len(rejection.TagName) == 0 && !rejection.Success
+	var refusal struct {
+		Message json.RawMessage `json:"message"`
+		ID      any             `json:"id"`
+		IID     any             `json:"iid"`
+		TagName any             `json:"tag_name"`
+	}
+	if json.Unmarshal(body, &refusal) != nil || refusal.ID != nil || refusal.IID != nil || refusal.TagName != nil {
+		return false
+	}
+	return len(refusal.Message) > 0 && string(refusal.Message) != `""` && string(refusal.Message) != `null`
 }
 
 func (request *limitedWrite[T]) send(ctx context.Context) error {

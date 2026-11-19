@@ -117,7 +117,7 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 	if errors.Is(response.err, errCredential) {
 		return contactUpdateBranch("defect", Contact{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
-	if response.status == http.StatusNotFound && response.err == nil {
+	if response.status == http.StatusNotFound && response.err == nil && isDefiniteContactsWriteRefusal(response.status, response.body) {
 		return contactUpdateBranch("notFound", Contact{}, sdkgo.FailureProviderRejection, "contact was not found")
 	}
 	if response.status == http.StatusPreconditionFailed || (response.status == http.StatusBadRequest && bytes.Contains(response.body, []byte("failedPrecondition"))) {
@@ -127,6 +127,9 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 		return contactUpdateRetry(sdkgo.FailureAvailability, "Google Contacts update is temporarily unavailable", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteContactsWriteRefusal(response.status, response.body) {
+			return contactUpdateRetry(sdkgo.FailureAvailability, "contact response does not prove refusal", response.retryAfter)
+		}
 		return contactUpdateBranch("providerRejected", Contact{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
 	}
 	var person personWire
@@ -186,7 +189,29 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 		if response.status >= 500 {
 			return contactDeleteRetry(sdkgo.FailureAvailability, "contact deletion is temporarily unavailable", response.retryAfter)
 		}
+		if !isDefiniteContactsWriteRefusal(response.status, response.body) {
+			return contactDeleteRetry(sdkgo.FailureAvailability, "contact deletion response does not prove refusal", response.retryAfter)
+		}
 		return contactDeleteBranch("providerRejected", DeletedContact{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
+	}
+}
+
+func isDefiniteContactsWriteRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		var refusal struct {
+			Error struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+				Status  string `json:"status"`
+			} `json:"error"`
+			ResourceName any `json:"resourceName"`
+		}
+		return json.Unmarshal(body, &refusal) == nil && refusal.Error.Code == status && refusal.Error.Message != "" && refusal.Error.Status != "" && refusal.ResourceName == nil
+	default:
+		return false
 	}
 }
 

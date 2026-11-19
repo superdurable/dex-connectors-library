@@ -105,13 +105,16 @@ func (operation UpdateObjectMetadataOperation) Invoke(call sdkgo.Call, input Upd
 	if errors.Is(response.err, errCredential) {
 		return objectMutationBranch("updateObjectMetadata", "defect", Object{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
-	if response.status == http.StatusNotFound && response.err == nil {
+	if response.status == http.StatusNotFound && response.err == nil && isDefiniteGoogleStorageRefusal(response.status, response.body) {
 		return objectMutationBranch("updateObjectMetadata", "notFound", Object{}, sdkgo.FailureProviderRejection, "object was not found")
 	}
 	if response.err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
 		return objectMutationRetry("updateObjectMetadata", sdkgo.FailureAvailability, "object metadata update is temporarily unavailable", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteGoogleStorageRefusal(response.status, response.body) {
+			return objectMutationRetry("updateObjectMetadata", sdkgo.FailureAvailability, "object response does not prove refusal", response.retryAfter)
+		}
 		return objectMutationBranch("updateObjectMetadata", "providerRejected", Object{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
 	}
 	var object Object
@@ -147,6 +150,9 @@ func (operation DeleteObjectOperation) Invoke(call sdkgo.Call, input DeleteObjec
 	default:
 		if response.status >= 500 {
 			return objectDeleteRetry(sdkgo.FailureAvailability, "object deletion is temporarily unavailable", response.retryAfter)
+		}
+		if !isDefiniteGoogleStorageRefusal(response.status, response.body) {
+			return objectDeleteRetry(sdkgo.FailureAvailability, "object deletion response does not prove refusal", response.retryAfter)
 		}
 		return objectDeleteBranch("providerRejected", DeletedObject{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
 	}

@@ -42,9 +42,15 @@ func (operation PublishEventOperation) Invoke(call sdkgo.Call, input PublishEven
 		return publishRetry(sdkgo.FailureAvailability, "Eventbrite publication outcome is not yet confirmed", retryAfter)
 	}
 	if status == http.StatusNotFound {
+		if err != nil || !isDefiniteEventbriteRefusal(status, body) {
+			return publishRetry(sdkgo.FailureAvailability, "publication response does not prove refusal", retryAfter)
+		}
 		return publishBranch(PublishEventBranchNotFound, sdkgo.FailureNotFound, "Eventbrite did not find the event")
 	}
 	if status != http.StatusOK {
+		if err != nil || !isDefiniteEventbriteRefusal(status, body) {
+			return publishRetry(sdkgo.FailureAvailability, "publication response does not prove refusal", retryAfter)
+		}
 		return publishBranch(PublishEventBranchProviderRejected, sdkgo.FailureProviderRejection, "Eventbrite rejected publication with HTTP "+strconv.Itoa(status))
 	}
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

@@ -109,12 +109,18 @@ func (operation SendNewMessageOperation) Invoke(call sdkgo.Call, input SendNewMe
 	if result.outcome == exchangeSucceeded {
 		uid, _ := decodeReplyIdentity(result.response.body, false)
 		if uid == "" {
+			if decision.MaximumPriorSends+1 < call.MaxSends() {
+				return sdkgo.NewMutationRetry[SentMessage](frontFailure(sdkgo.FailureProtocol, operationID, "Front accepted the message without a usable UID"), 0)
+			}
 			return operation.uncertain(call, "Front accepted the message without a usable UID", "")
 		}
 		_ = fence.RecordProviderID(uid)
 		return sdkgo.NewMutationBranch(SendNewMessageBranchSent, SentMessage{MessageUID: uid}, nil, operation.client.receipt(call, uid))
 	}
 	if result.response.statusCode >= 200 && result.response.statusCode < 300 {
+		if decision.MaximumPriorSends+1 < call.MaxSends() {
+			return sdkgo.NewMutationRetry[SentMessage](frontFailure(sdkgo.FailureProtocol, operationID, "Front accepted the message without a trustworthy response"), 0)
+		}
 		return operation.uncertain(call, "Front accepted the message without a trustworthy response", "")
 	}
 	switch result.outcome {
@@ -140,13 +146,16 @@ func (operation SendNewMessageOperation) Invoke(call sdkgo.Call, input SendNewMe
 		}
 		return sdkgo.NewMutationBranch(SendNewMessageBranchDefect, SentMessage{}, &result.failure, sdkgo.Receipt{})
 	case exchangeRejected, exchangeNotFound:
-		if !isDefiniteRefusalStatus(result.response.statusCode) || result.isErrorBodyUnreadable || !hasDefiniteFrontMessageRefusal(result.response) {
+		if !isDefiniteFrontMessageRefusal(result.response) || result.isErrorBodyUnreadable {
 			if decision.MaximumPriorSends+1 < call.MaxSends() {
 				return sdkgo.NewMutationRetry[SentMessage](result.failure, result.retryAfter)
 			}
 			return operation.uncertain(call, "message response remains unknown after the send cap", "")
 		}
 		if decision.MaximumPriorSends > 0 {
+			if decision.MaximumPriorSends+1 < call.MaxSends() {
+				return sdkgo.NewMutationRetry[SentMessage](result.failure, result.retryAfter)
+			}
 			return operation.uncertain(call, "an earlier message send may have succeeded", "")
 		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -158,16 +167,19 @@ func (operation SendNewMessageOperation) Invoke(call sdkgo.Call, input SendNewMe
 	}
 }
 
-func hasDefiniteFrontMessageRefusal(response frontResponse) bool {
-	var rejection struct {
+func isDefiniteFrontMessageRefusal(response frontResponse) bool {
+	if !isDefiniteRefusalStatus(response.statusCode) {
+		return false
+	}
+	var refusal struct {
 		Error struct {
 			Status  int    `json:"status"`
 			Title   string `json:"title"`
 			Message string `json:"message"`
 		} `json:"_error"`
-		MessageUID string `json:"message_uid"`
+		UID any `json:"uid"`
 	}
-	return json.Unmarshal(response.body, &rejection) == nil && rejection.Error.Status == response.statusCode && rejection.Error.Title != "" && rejection.Error.Message != "" && rejection.MessageUID == ""
+	return json.Unmarshal(response.body, &refusal) == nil && refusal.Error.Status == response.statusCode && refusal.Error.Title != "" && refusal.Error.Message != "" && refusal.UID == nil
 }
 
 func (operation SendNewMessageOperation) readBack(call sdkgo.Call, uid string) sdkgo.MutationAttempt[SentMessage] {

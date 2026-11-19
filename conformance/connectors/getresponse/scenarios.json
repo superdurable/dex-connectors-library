@@ -644,7 +644,7 @@
       "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
       "exchanges": [
         {
-          "body": "{\"code\":400,\"message\":\"Invalid contact\"}",
+          "body": "{\"codeDescription\":\"Invalid request\",\"message\":\"Contact request was rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1357,7 +1357,7 @@
       "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"codeDescription\":\"Not found\",\"message\":\"Contact not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1404,7 +1404,7 @@
       "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"codeDescription\":\"Forbidden\",\"message\":\"Contact update denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1679,7 +1679,7 @@
       "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"codeDescription\":\"Not found\",\"message\":\"Contact not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1717,7 +1717,7 @@
       "callId": "de57cec3-e5c9-57d2-835f-3416be8433fb",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"codeDescription\":\"Forbidden\",\"message\":\"Contact deletion denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",

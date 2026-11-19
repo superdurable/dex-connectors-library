@@ -182,12 +182,15 @@ func (operation DeleteReleaseOperation) Invoke(call sdkgo.Call, input GetRelease
 		return sdkgo.NewMutationRetry[DeleteReleaseOutput](retry, after)
 	}
 	if response.StatusCode == http.StatusNotFound {
-		if call.Context.Attempt() > 1 {
-			return sdkgo.NewMutationBranch(DeleteReleaseBranchDeleted, DeleteReleaseOutput{ProjectID: input.ProjectID, TagName: input.TagName}, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "gitlab", ProviderObjectID: input.TagName})
+		if !operation.client.hasDefiniteMutationRefusal(response) {
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureAvailability, "deleteRelease", "release deletion outcome is unknown"), 0)
 		}
 		return sdkgo.NewMutationBranch(DeleteReleaseBranchNotFound, DeleteReleaseOutput{}, failure(sdkgo.FailureNotFound, "deleteRelease", "release not found"), sdkgo.Receipt{})
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent {
+		if !operation.client.hasDefiniteMutationRefusal(response) {
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureAvailability, "deleteRelease", "release deletion outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteReleaseBranchProviderRejected, DeleteReleaseOutput{}, failure(sdkgo.FailureProviderRejection, "deleteRelease", "GitLab rejected HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
 	}
 	if response.StatusCode == http.StatusOK {

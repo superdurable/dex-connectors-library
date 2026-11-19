@@ -304,7 +304,13 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input WriteDocu
 		}
 		return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureRateLimit, "Firestore deferred creation", response.retryAfter)
 	}
-	if response.status == http.StatusConflict && response.err == nil {
+	if response.status == http.StatusConflict && response.err == nil && isDefiniteFirestoreConflict(response.body) {
+		if decision.MaximumPriorSends == 0 {
+			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+				return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureAvailability, "conflict checkpoint is unavailable", 0)
+			}
+			return firestoreMutationBranch("createDocument", "alreadyExists", FirestoreDocument{}, sdkgo.FailureProviderRejection, "document ID already exists")
+		}
 		document, confirmed, _ := operation.readBackCreatedDocument(call, input, name, body)
 		if confirmed {
 			return sdkgo.NewMutationBranch(sdkgo.BranchID("created"), withoutFirestoreCreateMarker(document), nil, sdkgo.Receipt{})
@@ -321,7 +327,7 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input WriteDocu
 		return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureAvailability, "creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteFirestoreRefusal(response.status, response.body) {
+		if response.err != nil || !isDefiniteFirestoreRefusal(response.status, response.body) {
 			if decision.MaximumPriorSends+1 >= call.MaxSends() {
 				return uncertainDocumentCreate()
 			}
@@ -363,17 +369,26 @@ func isDefiniteFirestoreRefusal(status int, body []byte) bool {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		var rejection struct {
-			Error struct {
-				Code    int    `json:"code"`
-				Message string `json:"message"`
-			} `json:"error"`
-			Name string `json:"name"`
-		}
-		return json.Unmarshal(body, &rejection) == nil && rejection.Error.Code == status && rejection.Error.Message != "" && rejection.Name == ""
+		return hasFirestoreErrorStatus(status, body, "")
 	default:
 		return false
 	}
+}
+
+func isDefiniteFirestoreConflict(body []byte) bool {
+	return hasFirestoreErrorStatus(http.StatusConflict, body, "ALREADY_EXISTS")
+}
+
+func hasFirestoreErrorStatus(status int, body []byte, requiredStatus string) bool {
+	var refusal struct {
+		Error struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+			Status  string `json:"status"`
+		} `json:"error"`
+		Name any `json:"name"`
+	}
+	return json.Unmarshal(body, &refusal) == nil && refusal.Error.Code == status && refusal.Error.Message != "" && refusal.Error.Status != "" && (requiredStatus == "" || refusal.Error.Status == requiredStatus) && refusal.Name == nil
 }
 
 func (operation CreateDocumentOperation) readBackCreatedDocument(call sdkgo.Call, input WriteDocumentInput, name string, body []byte) (FirestoreDocument, bool, bool) {
@@ -416,8 +431,8 @@ func (operation PutDocumentOperation) Invoke(call sdkgo.Call, input WriteDocumen
 	}
 	patchPath, _, _ := documentPath(GetDocumentInput{input.ProjectID, input.CollectionID, input.DocumentID})
 	response := operation.client.request(call, call.Context, http.MethodPatch, patchPath, body)
-	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return firestoreMutationRetry[FirestoreDocument]("putDocument", sdkgo.FailureResponseTooLarge, "Firestore response exceeded the configured limit", 0)
+	if response.status != http.StatusOK && response.err == nil && !isDefiniteFirestoreRefusal(response.status, response.body) {
+		return firestoreMutationRetry[FirestoreDocument]("putDocument", sdkgo.FailureAvailability, "document response does not prove refusal", response.retryAfter)
 	}
 	if failure, done := classifyFirestoreResponse(response, "putDocument", http.StatusOK); done {
 		return firestoreMutationDecision[FirestoreDocument](failure)
@@ -441,6 +456,9 @@ func (operation DeleteDocumentOperation) Invoke(call sdkgo.Call, input GetDocume
 	}
 	if response.status == http.StatusNotFound && response.err == nil {
 		return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), FirestoreDocument{Name: name}, nil, sdkgo.Receipt{})
+	}
+	if response.status != http.StatusOK && response.err == nil && !isDefiniteFirestoreRefusal(response.status, response.body) {
+		return firestoreMutationRetry[FirestoreDocument]("deleteDocument", sdkgo.FailureAvailability, "document response does not prove refusal", response.retryAfter)
 	}
 	if failure, done := classifyFirestoreResponse(response, "deleteDocument", http.StatusOK); done {
 		return firestoreMutationDecision[FirestoreDocument](failure)
@@ -620,7 +638,7 @@ func firestoreQueryDecision[T any](decision firestoreFailureDecision) sdkgo.Quer
 	return firestoreQueryBranch(decision.operation, decision.branch, *new(T), decision.kind, decision.message)
 }
 func firestoreMutationDecision[T any](decision firestoreFailureDecision) sdkgo.MutationAttempt[T] {
-	if decision.retry {
+	if decision.retry || decision.branch == "invalidResponse" {
 		return firestoreMutationRetry[T](decision.operation, decision.kind, decision.message, decision.delay)
 	}
 	return firestoreMutationBranch(decision.operation, decision.branch, *new(T), decision.kind, decision.message)

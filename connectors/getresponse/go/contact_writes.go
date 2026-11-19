@@ -116,13 +116,16 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	if dispatch.status == http.StatusAccepted || dispatch.status == http.StatusCreated {
 		return sdkgo.NewMutationBranch(CreateContactBranchAccepted, output, nil, createContactReceipt(call))
 	}
-	if !isDefiniteGetResponseRefusal(dispatch.status, dispatch.body) {
+	if err != nil || !isDefiniteGetResponseRefusal(dispatch.status, dispatch.body) {
 		if decision.MaximumPriorSends+1 < call.MaxSends() {
 			return sdkgo.NewMutationRetry[CreateContactOutput](queryFailure("createContact", sdkgo.FailureAvailability, "contact response does not prove refusal"), dispatch.retryAfter)
 		}
 		return createContactUncertain(output, "contact response remains unknown after the send limit")
 	}
 	if decision.MaximumPriorSends > 0 {
+		if decision.MaximumPriorSends+1 < call.MaxSends() {
+			return sdkgo.NewMutationRetry[CreateContactOutput](queryFailure("createContact", sdkgo.FailureAvailability, "a previous contact request may have been accepted"), dispatch.retryAfter)
+		}
 		return createContactUncertain(output, "a previous contact request may have been accepted")
 	}
 	if checkpointError := fence.RecordCanResend(); checkpointError != nil {
@@ -136,13 +139,12 @@ func isDefiniteGetResponseRefusal(status int, body []byte) bool {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		var rejection struct {
-			Code      json.RawMessage `json:"code"`
-			Message   string          `json:"message"`
-			ContactID json.RawMessage `json:"contactId"`
-			Success   bool            `json:"success"`
+		var refusal struct {
+			CodeDescription string `json:"codeDescription"`
+			Message         string `json:"message"`
+			ContactID       any    `json:"contactId"`
 		}
-		return json.Unmarshal(body, &rejection) == nil && len(rejection.Code) > 0 && string(rejection.Code) != "null" && string(rejection.Code) != `""` && rejection.Message != "" && len(rejection.ContactID) == 0 && !rejection.Success
+		return json.Unmarshal(body, &refusal) == nil && refusal.CodeDescription != "" && refusal.Message != "" && refusal.ContactID == nil
 	default:
 		return false
 	}
@@ -180,14 +182,17 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 	if status == http.StatusTooManyRequests || status == http.StatusRequestTimeout || status == http.StatusServiceUnavailable || status >= 500 {
 		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureAvailability, "GetResponse is temporarily unavailable"), retryAfter)
 	}
-	if status == http.StatusNotFound {
+	if status == http.StatusNotFound && err == nil && isDefiniteGetResponseRefusal(status, response) {
 		return contactWriteBranch(UpdateContactBranchNotFound, ContactMetadata{}, "updateContact", sdkgo.FailureNotFound, "contact was not found")
 	}
 	if status != http.StatusOK {
+		if err != nil || !isDefiniteGetResponseRefusal(status, response) {
+			return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureAvailability, "contact response does not prove refusal"), retryAfter)
+		}
 		return contactWriteBranch(UpdateContactBranchProviderRejected, ContactMetadata{}, "updateContact", sdkgo.FailureProviderRejection, "GetResponse rejected HTTP "+strconv.Itoa(status))
 	}
 	if err != nil {
-		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureProtocol, "GetResponse update response could not be read"), 0)
+		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureProtocol, "GetResponse returned an invalid response"), 0)
 	}
 	contact, err := decodeContact(response)
 	if err != nil {
@@ -201,7 +206,7 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 	if !contactIDPattern.MatchString(input.ContactID) {
 		return contactWriteBranch(DeleteContactBranchDefect, DeleteContactOutput{}, "deleteContact", sdkgo.FailureValidation, "contact ID is invalid")
 	}
-	_, status, retryAfter, err := operation.client.write(call, call.Context, http.MethodDelete, "/contacts/"+input.ContactID, nil)
+	response, status, retryAfter, err := operation.client.write(call, call.Context, http.MethodDelete, "/contacts/"+input.ContactID, nil)
 	if errors.Is(err, errCredential) {
 		return contactWriteBranch(DeleteContactBranchDefect, DeleteContactOutput{}, "deleteContact", sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -211,10 +216,13 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 	if status == http.StatusTooManyRequests || status == http.StatusRequestTimeout || status == http.StatusServiceUnavailable || status >= 500 {
 		return sdkgo.NewMutationRetry[DeleteContactOutput](queryFailure("deleteContact", sdkgo.FailureAvailability, "GetResponse is temporarily unavailable"), retryAfter)
 	}
-	if status == http.StatusNotFound {
+	if status == http.StatusNotFound && err == nil && isDefiniteGetResponseRefusal(status, response) {
 		return contactWriteBranch(DeleteContactBranchNotFound, DeleteContactOutput{}, "deleteContact", sdkgo.FailureNotFound, "contact was not found")
 	}
 	if status != http.StatusNoContent {
+		if err != nil || !isDefiniteGetResponseRefusal(status, response) {
+			return sdkgo.NewMutationRetry[DeleteContactOutput](queryFailure("deleteContact", sdkgo.FailureAvailability, "contact deletion response does not prove refusal"), retryAfter)
+		}
 		return contactWriteBranch(DeleteContactBranchProviderRejected, DeleteContactOutput{}, "deleteContact", sdkgo.FailureProviderRejection, "GetResponse rejected HTTP "+strconv.Itoa(status))
 	}
 	return sdkgo.NewMutationBranch(DeleteContactBranchDeleted, DeleteContactOutput{ContactID: input.ContactID}, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "getresponse", ProviderObjectID: input.ContactID})
@@ -226,6 +234,7 @@ type createContactDispatch struct {
 	payload    []byte
 	body       []byte
 	status     int
+	body       []byte
 	retryAfter time.Duration
 }
 

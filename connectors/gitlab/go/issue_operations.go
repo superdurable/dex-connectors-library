@@ -180,9 +180,15 @@ func (operation DeleteIssueOperation) Invoke(call sdkgo.Call, input GetIssueInpu
 		return sdkgo.NewMutationRetry[DeleteIssueOutput](retry, after)
 	}
 	if response.StatusCode == http.StatusNotFound {
+		if !operation.client.hasDefiniteMutationRefusal(response) {
+			return sdkgo.NewMutationRetry[DeleteIssueOutput](*failure(sdkgo.FailureAvailability, "deleteIssue", "issue deletion outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteIssueBranchNotFound, DeleteIssueOutput{}, failure(sdkgo.FailureNotFound, "deleteIssue", "issue not found"), sdkgo.Receipt{})
 	}
 	if response.StatusCode != http.StatusNoContent {
+		if !operation.client.hasDefiniteMutationRefusal(response) {
+			return sdkgo.NewMutationRetry[DeleteIssueOutput](*failure(sdkgo.FailureAvailability, "deleteIssue", "issue deletion outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteIssueBranchProviderRejected, DeleteIssueOutput{}, failure(sdkgo.FailureProviderRejection, "deleteIssue", "GitLab rejected HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(DeleteIssueBranchDeleted, DeleteIssueOutput{ProjectID: input.ProjectID, IssueIID: input.IssueIID}, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "gitlab"})

@@ -1008,7 +1008,7 @@
       "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
       "exchanges": [
         {
-          "body": "{\"errors\":[{\"message\":\"Invalid contact\"}]}",
+          "body": "{\"errors\":{\"code\":\"400\",\"message\":\"Invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1211,7 +1211,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -1219,16 +1219,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "lastName": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
       "input": {
@@ -3621,7 +3615,7 @@
       "callId": "dbbc4d76-cf97-543e-9781-ad0224d01964",
       "exchanges": [
         {
-          "body": "{\"errors\":[{\"message\":\"Invalid account\"}]}",
+          "body": "{\"errors\":{\"code\":\"400\",\"message\":\"Invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3704,7 +3698,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -3712,14 +3706,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": 0,
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "dbbc4d76-cf97-543e-9781-ad0224d01964",
       "input": {
@@ -5946,7 +5936,7 @@
       "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
       "exchanges": [
         {
-          "body": "{\"errors\":[{\"message\":\"Invalid deal\"}]}",
+          "body": "{\"errors\":{\"code\":\"400\",\"message\":\"Invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -6035,7 +6025,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -6043,14 +6033,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": 0,
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
       "input": {
@@ -7293,7 +7279,7 @@
       "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
       "exchanges": [
         {
-          "body": "{\"errors\":[{\"message\":\"Invalid note\"}]}",
+          "body": "{\"errors\":{\"code\":\"400\",\"message\":\"Invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7382,7 +7368,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -7390,14 +7376,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "description": "",
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
       "input": {
@@ -9275,7 +9257,7 @@
       "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
       "exchanges": [
         {
-          "body": "{\"errors\":[{\"message\":\"Invalid appointment\"}]}",
+          "body": "{\"errors\":{\"code\":\"400\",\"message\":\"Invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -9372,7 +9354,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -9380,16 +9362,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "endDate": "",
-          "fromDate": "",
-          "id": 0,
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "d20c7213-732a-5e1d-8053-792d0d4b362c",
       "input": {
@@ -11359,7 +11335,7 @@
       "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
       "exchanges": [
         {
-          "body": "{\"errors\":[{\"message\":\"Invalid activity\"}]}",
+          "body": "{\"errors\":{\"code\":\"400\",\"message\":\"Invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -11462,7 +11438,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -11470,16 +11446,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "endDate": "",
-          "id": 0,
-          "startDate": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
       "input": {
