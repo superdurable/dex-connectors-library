@@ -7,3 +7,5 @@ Sign in at [Miyang Gateway](https://miyang.cn/model), open API Keys in the conso
 The [runnable Dex example](go/examples/list-models/) uses a synthetic mock. Live account authorization and current model visibility have not been verified without a user-controlled provider key.
 
 The [Python listModels example](python/examples/) provides a runnable Dex Worker and local conformance replay.
+
+The [TypeScript listModels example](typescript/examples/basic/) runs a Dex Worker and Client, with Go-recorded provider scenarios replayed by the package tests.
