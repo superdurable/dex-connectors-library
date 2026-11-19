@@ -1,0 +1,60 @@
+{
+  "connectorId": "zto",
+  "releaseTag": "connectors/zto/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-zto",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_query_waybill_trace_step",
+      "kind": "query",
+      "operationId": "queryWaybillTrace",
+      "inputType": "QueryWaybillTraceInput",
+      "description": "Read tracking scans for one waybill under a bound ZTO electronic-waybill account.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryWaybillTraceInput identifies a ZTO waybill under the application's bound electronic-waybill account.",
+        "properties": {
+          "billCode": {
+            "description": "BillCode is the ZTO waybill number.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "billCode"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
