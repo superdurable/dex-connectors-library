@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: gitee
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-gitee"
+      operations: [getRepository]
+      triggers: []
   codegen:
     go:
       package: gitee
