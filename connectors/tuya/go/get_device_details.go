@@ -5,13 +5,13 @@ package tuya
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -100,12 +100,12 @@ func (operation GetDeviceDetailsOperation) Invoke(call sdkgo.Call, input GetDevi
 }
 func (client *Client) signedGET(call sdkgo.Call, credentials Credentials, path, accessToken string) ([]byte, int, *sdkgo.QueryAttempt[GetDeviceDetailsOutput]) {
 	nonceBytes := make([]byte, 16)
-	if _, err := rand.Read(nonceBytes); err != nil {
+	if _, err := io.ReadFull(client.nonceReader, nonceBytes); err != nil {
 		attempt := deviceRetry(sdkgo.FailureAvailability, "request nonce could not be generated", 0)
 		return nil, 0, &attempt
 	}
 	nonce := hex.EncodeToString(nonceBytes)
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(client.now().UnixMilli(), 10)
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.endpoint+path, nil)
 	if err != nil {
 		attempt := deviceBranch(GetDeviceDetailsBranchDefect, sdkgo.FailureValidation, "Tuya request is invalid", GetDeviceDetailsOutput{})
@@ -126,7 +126,7 @@ func (client *Client) signedGET(call sdkgo.Call, credentials Credentials, path, 
 		return nil, 0, &attempt
 	}
 	defer func() { _ = response.Body.Close() }()
-	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now())
 	if response.StatusCode == http.StatusTooManyRequests {
 		attempt := deviceRetry(sdkgo.FailureRateLimit, "Tuya rate limited the request", retryAfter)
 		return nil, 0, &attempt

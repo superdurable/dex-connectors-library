@@ -6,6 +6,7 @@ package vercel
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // Option supplies an HTTP transport without serializing it into a Dex Flow.
@@ -218,6 +220,10 @@ func executeQuery[T any](client *Client, call sdkgo.Call, operation string, spec
 }
 
 func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) (*http.Response, *sdkgo.Failure, error) {
+	return client.sendWithContext(call, call.Context, operation, spec, false)
+}
+
+func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Context, operation string, spec requestSpec, fenced bool) (*http.Response, *sdkgo.Failure, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, failure(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), nil
@@ -229,9 +235,14 @@ func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) 
 	if len(spec.query) != 0 {
 		endpoint += "?" + spec.query.Encode()
 	}
-	request, err := http.NewRequestWithContext(call.Context, spec.method, endpoint, bytes.NewReader(spec.body))
+	request, err := http.NewRequestWithContext(requestContext, spec.method, endpoint, bytes.NewReader(spec.body))
 	if err != nil {
 		return nil, failure(sdkgo.FailureLocalDefect, operation, "request could not be built"), nil
+	}
+	if fenced {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return nil, failure(sdkgo.FailureLocalDefect, operation, "request could not be prepared"), nil
+		}
 	}
 	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
 	request.Header.Set("Accept", "application/json")
@@ -255,6 +266,60 @@ func statusFailure(response *http.Response, operation string) sdkgo.Failure {
 		kind = sdkgo.FailureValidation
 	}
 	return sdkgo.Failure{Kind: kind, Provider: "vercel", Operation: operation, Message: fmt.Sprintf("Vercel returned HTTP %d", response.StatusCode)}
+}
+
+func isDefiniteWriteRefusal(response *http.Response, maximumResponseBytes int64) bool {
+	switch response.StatusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, maximumResponseBytes)
+	if err != nil {
+		return false
+	}
+	var rejection struct {
+		ID      json.RawMessage `json:"id"`
+		Project json.RawMessage `json:"project"`
+		Domain  json.RawMessage `json:"domain"`
+		Error   struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(body, &rejection) == nil && len(rejection.ID) == 0 && len(rejection.Project) == 0 && len(rejection.Domain) == 0 && (rejection.Error.Code != "" || rejection.Error.Message != "")
+}
+
+func isConfirmedDeletionResponse(response *http.Response, maximumResponseBytes int64) bool {
+	if response.StatusCode == http.StatusNoContent {
+		return true
+	}
+	if response.StatusCode != http.StatusOK {
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, maximumResponseBytes)
+	if err != nil || len(body) == 0 {
+		return false
+	}
+	var result map[string]json.RawMessage
+	if json.Unmarshal(body, &result) != nil || result == nil {
+		return false
+	}
+	if _, hasError := result["error"]; hasError {
+		return false
+	}
+	if success, hasSuccess := result["success"]; hasSuccess && string(success) != "true" {
+		return false
+	}
+	if deleted, hasDeleted := result["deleted"]; hasDeleted && string(deleted) == "false" {
+		return false
+	}
+	if removed, hasRemoved := result["removed"]; hasRemoved && string(removed) == "false" {
+		return false
+	}
+	return true
 }
 
 func shouldRetry(response *http.Response) bool {

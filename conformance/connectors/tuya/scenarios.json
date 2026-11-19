@@ -1,0 +1,970 @@
+{
+  "connector": "tuya",
+  "scenarios": [
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"access_token\":\"sample-access-token\",\"expire_time\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "75ad4ae9851a9240029b2975917bc1c7"
+            ],
+            "Sign": [
+              "CFEC8BB44BA9FB3BBFF9905C03288B5B2E66D18C5E001D627484906BA7B97A5B"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"result\":{\"id\":\"device123\",\"name\":\"Body fat scale\",\"online\":true,\"category\":\"qt\",\"product_id\":\"product42\",\"create_time\":1560827137,\"update_time\":1589764585}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/devices/device123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access_token": [
+              "sample-access-token"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "e0d68d73dbd8755455a670e8144dc8bb"
+            ],
+            "Sign": [
+              "456ABC9F8017C79DE91F412F015D5C33AB46E4425B11D8FAD10C2BD186EE0151"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "category": "qt",
+          "createdAtUnix": 1560827137,
+          "deviceId": "device123",
+          "name": "Body fat scale",
+          "online": true,
+          "productId": "product42",
+          "updatedAtUnix": 1589764585
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-found",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_FOUND"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "category": "",
+          "createdAtUnix": 0,
+          "deviceId": "",
+          "name": "",
+          "online": false,
+          "productId": "",
+          "updatedAtUnix": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "bad/device"
+      },
+      "name": "getDeviceDetails-invalid-input",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_INVALID_INPUT"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":1001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "f9e747d85b1731ec8afadc9b82cdd959"
+            ],
+            "Sign": [
+              "92B63CAEEEDE59DD26D95694CC4F140BC2EC9EB3583FA64935F9F180F03EE41B"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "category": "",
+          "createdAtUnix": 0,
+          "deviceId": "",
+          "name": "",
+          "online": false,
+          "productId": "",
+          "updatedAtUnix": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-token-rejected",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_TOKEN_REJECTED"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "feddb7ca62b38be375e12110496bb711"
+            ],
+            "Sign": [
+              "C59F9C8D4AC1F0DF31598CAC8FFDAE9D5F5BF9634D36C88F03B6AA3E770AB997"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "category": "",
+          "createdAtUnix": 0,
+          "deviceId": "",
+          "name": "",
+          "online": false,
+          "productId": "",
+          "updatedAtUnix": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-token-malformed",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_TOKEN_MALFORMED"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "0db49b3c32af3536bc25779547acfff7"
+            ],
+            "Sign": [
+              "7E0C0D2F1A7A851893CC351E301139AF5CFB982FA5224B8BC0F681C0E71CFBC4"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-token-rate-limited",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_TOKEN_RATE_LIMITED"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "84c1717eb07a5ed79bb18bd9a99c545e"
+            ],
+            "Sign": [
+              "AF624B495D3100C5D2BC1DE338A2C94431795B298EE4D02A245A1624841FE458"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-token-unavailable",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_TOKEN_UNAVAILABLE"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "3ba78a9884a5a3cbe7c1242c7df97257"
+            ],
+            "Sign": [
+              "B7C7DB2A476731581B37F52EE60F24F6F7CC7C000E0D8122D2A5DE8A578BAE51"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-token-transport",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_TOKEN_TRANSPORT"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":500}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "453d0123374dd6f61c4124e7d5bea7d2"
+            ],
+            "Sign": [
+              "673F63BF5FAF189A7ECF3844AA41D1A15D80210DFCAB10AE564D6E502FB6F1C7"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-token-system-error",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_TOKEN_SYSTEM_ERROR"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"access_token\":\"sample-access-token\",\"expire_time\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "e4dab8b92f4982266ad6c1faeac8e3ef"
+            ],
+            "Sign": [
+              "C8683B021169ACCD76FD8934B78E1FDB9CFA98E55330CFFEEB2A33B1998FE0C8"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":false,\"code\":1000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/devices/device123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access_token": [
+              "sample-access-token"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "e88445f4858bec4f8fd08a437d5bbaa4"
+            ],
+            "Sign": [
+              "9EFDE08FC41225E14666CFBAD6A601646919EAF4ACDD6C4FF1B5C88618F1B596"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "category": "",
+          "createdAtUnix": 0,
+          "deviceId": "",
+          "name": "",
+          "online": false,
+          "productId": "",
+          "updatedAtUnix": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-device-missing",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_DEVICE_MISSING"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"access_token\":\"sample-access-token\",\"expire_time\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "6f8c4e8da1329ffb775d3a270280b1fc"
+            ],
+            "Sign": [
+              "FAE168687F66AA680C747C295E7D09E03C67FC58FE0978400507D04F066ACFC4"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/devices/device123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access_token": [
+              "sample-access-token"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "d9ae2d94bbfd2c3d92309123b13f6248"
+            ],
+            "Sign": [
+              "893262F109C0FC6012E9276BBFA6E8F54845F327B1CBABD12C88C04DB572A33D"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "category": "",
+          "createdAtUnix": 0,
+          "deviceId": "",
+          "name": "",
+          "online": false,
+          "productId": "",
+          "updatedAtUnix": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-device-forbidden",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_DEVICE_FORBIDDEN"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"access_token\":\"sample-access-token\",\"expire_time\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "ea9bddfc09e08ca6eeadc056865dfcef"
+            ],
+            "Sign": [
+              "692177F9FAEDB7C521D7664811175501FC024E5528B479A3853DB739D6E58713"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/devices/device123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access_token": [
+              "sample-access-token"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "543304cd02ee9671f144c07d50d3d78e"
+            ],
+            "Sign": [
+              "70AA45C7C93E7615F2EA6BC537DBF60022265B29D9B81ACC665B12E2637B912F"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-device-unavailable",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_DEVICE_UNAVAILABLE"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"access_token\":\"sample-access-token\",\"expire_time\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "2b4604d6e3ad567c5457fc504fddea3e"
+            ],
+            "Sign": [
+              "3B68658AAB3E97C610B3ED5C1CAEAB2A194F7459A883D3987CAF9F60957B3E83"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":false,\"code\":1010}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/devices/device123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access_token": [
+              "sample-access-token"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "9953fedfd3679aa49b5f50953321ce2f"
+            ],
+            "Sign": [
+              "07A2E6E5763DDD1B3329ECDA6BF6693ADD58D6173727098932B2EB6572EA13B0"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-device-token-expired",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_DEVICE_TOKEN_EXPIRED"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"access_token\":\"sample-access-token\",\"expire_time\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "b3af7028ef94fc0fe94111fc1deed5e6"
+            ],
+            "Sign": [
+              "AA0DB80121168C9A6390849165BF347CF72C73534B904E97AB9F80D23C17C329"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"result\":{\"id\":\"other\",\"name\":\"Other\",\"online\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/devices/device123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access_token": [
+              "sample-access-token"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "378aa5daf9aaab196078a95188274e05"
+            ],
+            "Sign": [
+              "FB4AE991C3984E67983FC338F960069A3D1ECA86F35566F2DF11B7D503E81FDA"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "category": "",
+          "createdAtUnix": 0,
+          "deviceId": "",
+          "name": "",
+          "online": false,
+          "productId": "",
+          "updatedAtUnix": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-device-mismatch",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_DEVICE_MISMATCH"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1.0/token",
+          "query": {
+            "grant_type": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Client_id": [
+              "sample-client-id"
+            ],
+            "Nonce": [
+              "c0ed3b289a01c0f06a57140695af2240"
+            ],
+            "Sign": [
+              "6261378E1F15895271D8EC91764EF2613D4D3B2853B15A3D09F8412BCC3534B2"
+            ],
+            "Sign_method": [
+              "HMAC-SHA256"
+            ],
+            "T": [
+              "1767323045000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "category": "",
+          "createdAtUnix": 0,
+          "deviceId": "",
+          "name": "",
+          "online": false,
+          "productId": "",
+          "updatedAtUnix": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {
+        "deviceId": "device123"
+      },
+      "name": "getDeviceDetails-oversize",
+      "operation": "getDeviceDetails",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TUYA_OVERSIZE"
+    }
+  ],
+  "schemaVersion": 1
+}

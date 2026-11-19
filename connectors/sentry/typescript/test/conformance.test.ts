@@ -9,7 +9,8 @@ import { SentryClient } from '../src/client.js';
 import { GetIssueInputSchema, ListIssuesInputSchema, UpdateIssueStatusInputSchema, type UpdateIssueStatusInput } from '../src/generated/models.js';
 import type { Issue } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/sentry/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/sentry/scenarios.json', import.meta.url))
+  .filter(scenario => ['listIssues', 'getIssue', 'updateIssueStatus'].includes(scenario.operation));
 const connection = { provider: 'sentry', name: 'sentry-issue-review' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSentry));
 

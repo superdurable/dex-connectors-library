@@ -7,3 +7,5 @@ The [REST authentication contract](https://doc.yuntongxun.com/p/5a533ac73b8496dd
 `getBalance` selects `fetched`, `providerRejected`, `invalidResponse`, or `defect`. HTTP 429, temporary 5xx, transport failures, and documented concurrency or internal errors retry. Optional branches fail the example Flow unless wired by an application.
 
 [Run the balance Flow](go/examples/balance/README.md). Its mock is synthetic; live balance lookup has not been verified without user-controlled credentials in Dex Web Connections.
+
+The [TypeScript package](typescript/README.md) implements `getBalance` and includes a [runnable Dex Flow](typescript/examples/balance/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.

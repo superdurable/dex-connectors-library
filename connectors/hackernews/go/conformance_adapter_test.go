@@ -21,9 +21,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint, SearchBaseURL: endpoint}, nil, WithHTTPClient(transport), conformanceClockOption{conformanceFixedClock(t, scenario)})
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listStoryIDs":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListStoryIDs(), connection),
-		"getItem":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetItem(), connection),
-		"searchStories": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchStories(), connection),
+		"listStoryIDs":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListStoryIDs(), connection),
+		"getItem":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetItem(), connection),
+		"getUser":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetUser(), connection),
+		"searchItems":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchItems(), connection),
+		"getArticleThread": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetArticleThread(), connection),
+		"searchStories":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchStories(), connection),
 	}}
 }
 

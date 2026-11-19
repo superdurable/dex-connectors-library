@@ -17,6 +17,7 @@ func TestFileDownloadFlowIdentityAndMapping(t *testing.T) {
 	require.Equal(t, input, MapToOperationInput(input))
 	require.Equal(t, FlowType, dex.GetFinalFlowType(NewFlow(box.Connection{})))
 	require.Equal(t, "StartDownloadFile", dex.GetFinalStepType[box.DownloadFileInput](startRequest{}))
+	require.Equal(t, "RouteToDownload", dex.GetFinalStepType[box.GetFileResult](routeToDownload{}))
 	wait, err := startRequest{}.WaitFor(nil, input)
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

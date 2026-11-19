@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret WooCommerce consumer key from your store admin at WooCommerce > Settings > Advanced > REST API > Add key. Choose Read permission; key normally starts ck_. Pair with consumer_secret. Blank prevents calls. */
+  /** Secret WooCommerce consumer key from your store admin at WooCommerce > Settings > Advanced > REST API > Add key. Choose Read/Write permission for mutations; key normally starts ck_. Pair with consumer_secret. Blank prevents calls. */
   consumerKey: SecretString;
   /** Secret cs_ value generated beside consumer_key at your store admin > WooCommerce > Settings > Advanced > REST API. Stored only in Dex credentials; blank prevents calls. */
   consumerSecret: SecretString;

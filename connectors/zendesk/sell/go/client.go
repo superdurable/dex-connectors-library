@@ -5,6 +5,8 @@
 package sell
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -60,6 +62,10 @@ var errCredential = errors.New("Zendesk Sell credential unavailable")
 var errRequest = errors.New("Zendesk Sell request failed")
 
 func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Duration, error) {
+	return client.request(call.Context, call, http.MethodGet, path, nil)
+}
+
+func (client *Client) request(ctx context.Context, call sdkgo.Call, method, path string, payload []byte) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return nil, 0, 0, errCredential
@@ -68,13 +74,16 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	if !providerhttp.IsHeaderSafeCredential(apiKey) {
 		return nil, 0, 0, errCredential
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(ctx, method, client.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
 	request.Header.Set("Authorization", "Bearer "+apiKey)
+	if payload != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return nil, 0, 0, errRequest

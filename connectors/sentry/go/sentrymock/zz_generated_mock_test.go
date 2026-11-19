@@ -16,6 +16,60 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createTeam/createTeamDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Team](`{"id":"51","slug":"core","name":"Core"}`)
+			return err
+		}},
+		{name: "getTeam/getTeamDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Team](`{"id":"51","slug":"core","name":"Core"}`)
+			return err
+		}},
+		{name: "listTeams/listTeamsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.TeamPage](`{"teams":[{"id":"51","slug":"core","name":"Core"}]}`)
+			return err
+		}},
+		{name: "updateTeam/updateTeamDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Team](`{"id":"51","slug":"core-platform","name":"Core Platform"}`)
+			return err
+		}},
+		{name: "deleteTeam/deleteTeamDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[sentry.DeletedTeam](`{"slug":"core"}`); return err }},
+		{name: "createRelease/createReleaseDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
+			return err
+		}},
+		{name: "getRelease/getReleaseDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
+			return err
+		}},
+		{name: "listReleases/listReleasesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.ReleasePage](`{"releases":[{"version":"app@1.0.0","status":"open"}]}`)
+			return err
+		}},
+		{name: "updateRelease/updateReleaseDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"archived"}`)
+			return err
+		}},
+		{name: "deleteRelease/deleteReleaseDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.DeletedRelease](`{"version":"app@1.0.0"}`)
+			return err
+		}},
+		{name: "createProject/createProjectDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
+			return err
+		}},
+		{name: "assignIssue/assignIssueDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Issue](`{"id":"42","shortId":"APP-42","title":"Example","status":"unresolved"}`)
+			return err
+		}},
+		{name: "deleteIssue/deleteIssueDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[sentry.DeletedIssue](`{"id":"42"}`); return err }},
+		{name: "renameProject/renameProjectDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"New name"}`)
+			return err
+		}},
+		{name: "deleteProject/deleteProjectDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.DeletedProject](`{"slug":"app"}`)
+			return err
+		}},
 		{name: "listIssues/listIssuesDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sentry.IssuePage](`{"issues":[{"id":"123","shortId":"APP-1","title":"ExampleError","status":"unresolved"}]}`)
 			return err
@@ -28,6 +82,54 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sentry.Issue](`{"id":"123","shortId":"APP-1","title":"ExampleError","status":"resolved"}`)
 			return err
 		}},
+		{name: "listIssueEvents/listIssueEventsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.IssueEventPage](`{"events":[{"id":"event-1","title":"ExampleError"}]}`)
+			return err
+		}},
+		{name: "getIssueEvent/getIssueEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.IssueEvent](`{"id":"event-1","title":"ExampleError"}`)
+			return err
+		}},
+		{name: "listProjects/listProjectsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.ProjectPage](`{"projects":[{"id":"456","slug":"example","name":"Example"}]}`)
+			return err
+		}},
+		{name: "getProject/getProjectDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Project](`{"id":"456","slug":"example","name":"Example"}`)
+			return err
+		}},
+		{name: "listOrganizations/listOrganizationsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.OrganizationPage](`{"organizations":[{"id":"789","slug":"acme","name":"Acme"}]}`)
+			return err
+		}},
+		{name: "createOrganization/createOrganizationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+			return err
+		}},
+		{name: "getOrganization/getOrganizationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+			return err
+		}},
+		{name: "updateOrganization/updateOrganizationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+			return err
+		}},
+		{name: "updateIssue/updateIssueDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Issue](`{"id":"42","shortId":"APP-42","title":"Example","status":"resolved"}`)
+			return err
+		}},
+		{name: "updateProject/updateProjectDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
+			return err
+		}},
+		{name: "listProjectEvents/listProjectEventsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.IssueEventPage](`{"events":[{"id":"aabbccddeeff00112233445566778899","title":"Example","message":"Error"}]}`)
+			return err
+		}},
+		{name: "getProjectEvent/getProjectEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.IssueEvent](`{"id":"aabbccddeeff00112233445566778899","title":"Example","message":"Error"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -38,6 +140,51 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateTeam().Definition().Operation.OperationID != "createTeam" {
+		t.Errorf("createTeam mock has another definition")
+	}
+	if mock.GetTeam().Definition().Operation.OperationID != "getTeam" {
+		t.Errorf("getTeam mock has another definition")
+	}
+	if mock.ListTeams().Definition().Operation.OperationID != "listTeams" {
+		t.Errorf("listTeams mock has another definition")
+	}
+	if mock.UpdateTeam().Definition().Operation.OperationID != "updateTeam" {
+		t.Errorf("updateTeam mock has another definition")
+	}
+	if mock.DeleteTeam().Definition().Operation.OperationID != "deleteTeam" {
+		t.Errorf("deleteTeam mock has another definition")
+	}
+	if mock.CreateRelease().Definition().Operation.OperationID != "createRelease" {
+		t.Errorf("createRelease mock has another definition")
+	}
+	if mock.GetRelease().Definition().Operation.OperationID != "getRelease" {
+		t.Errorf("getRelease mock has another definition")
+	}
+	if mock.ListReleases().Definition().Operation.OperationID != "listReleases" {
+		t.Errorf("listReleases mock has another definition")
+	}
+	if mock.UpdateRelease().Definition().Operation.OperationID != "updateRelease" {
+		t.Errorf("updateRelease mock has another definition")
+	}
+	if mock.DeleteRelease().Definition().Operation.OperationID != "deleteRelease" {
+		t.Errorf("deleteRelease mock has another definition")
+	}
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.AssignIssue().Definition().Operation.OperationID != "assignIssue" {
+		t.Errorf("assignIssue mock has another definition")
+	}
+	if mock.DeleteIssue().Definition().Operation.OperationID != "deleteIssue" {
+		t.Errorf("deleteIssue mock has another definition")
+	}
+	if mock.RenameProject().Definition().Operation.OperationID != "renameProject" {
+		t.Errorf("renameProject mock has another definition")
+	}
+	if mock.DeleteProject().Definition().Operation.OperationID != "deleteProject" {
+		t.Errorf("deleteProject mock has another definition")
+	}
 	if mock.ListIssues().Definition().Operation.OperationID != "listIssues" {
 		t.Errorf("listIssues mock has another definition")
 	}
@@ -46,5 +193,41 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdateIssueStatus().Definition().Operation.OperationID != "updateIssueStatus" {
 		t.Errorf("updateIssueStatus mock has another definition")
+	}
+	if mock.ListIssueEvents().Definition().Operation.OperationID != "listIssueEvents" {
+		t.Errorf("listIssueEvents mock has another definition")
+	}
+	if mock.GetIssueEvent().Definition().Operation.OperationID != "getIssueEvent" {
+		t.Errorf("getIssueEvent mock has another definition")
+	}
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.ListOrganizations().Definition().Operation.OperationID != "listOrganizations" {
+		t.Errorf("listOrganizations mock has another definition")
+	}
+	if mock.CreateOrganization().Definition().Operation.OperationID != "createOrganization" {
+		t.Errorf("createOrganization mock has another definition")
+	}
+	if mock.GetOrganization().Definition().Operation.OperationID != "getOrganization" {
+		t.Errorf("getOrganization mock has another definition")
+	}
+	if mock.UpdateOrganization().Definition().Operation.OperationID != "updateOrganization" {
+		t.Errorf("updateOrganization mock has another definition")
+	}
+	if mock.UpdateIssue().Definition().Operation.OperationID != "updateIssue" {
+		t.Errorf("updateIssue mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.ListProjectEvents().Definition().Operation.OperationID != "listProjectEvents" {
+		t.Errorf("listProjectEvents mock has another definition")
+	}
+	if mock.GetProjectEvent().Definition().Operation.OperationID != "getProjectEvent" {
+		t.Errorf("getProjectEvent mock has another definition")
 	}
 }

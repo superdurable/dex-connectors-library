@@ -74,6 +74,9 @@ func TestCustomerIssueExampleRunsOnSupportMockWithRealDex(t *testing.T) {
 	require.Equal(t, int64(35436), outcome.Ticket.ID)
 	require.Zero(t, outcome.SkippedTicketID)
 	require.Empty(t, mock.CreateTicket().Calls(), "the existing matching ticket is followed up")
+	require.Len(t, mock.CountOrganizations().Calls(), 1)
+	require.Len(t, mock.SearchUsers().Calls(), 1)
+	require.Len(t, mock.ListTickets().Calls(), 1)
 
 	searchCalls := mock.SearchTickets().Calls()
 	require.Len(t, searchCalls, 1)

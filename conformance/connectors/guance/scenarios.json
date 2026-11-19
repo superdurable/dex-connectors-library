@@ -1,0 +1,498 @@
+{
+  "connector": "guance",
+  "scenarios": [
+    {
+      "callId": "29d3f9e9-dedd-5343-bed9-bf2f703c7409",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"content\":[{\"uuid\":\"dashboard-1\",\"name\":\"Operations\",\"owner\":\"private\"}],\"pageInfo\":{\"count\":1,\"pageIndex\":2,\"pageSize\":20,\"totalCount\":21}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "dashboards": [
+            {
+              "name": "Operations",
+              "uuid": "dashboard-1"
+            }
+          ],
+          "pageIndex": 2,
+          "pageSize": 20,
+          "totalCount": 21
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-listed",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "d67b8451-1ff6-59a9-a819-3dd9d21ffefa",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"content\":[],\"pageInfo\":{\"count\":0,\"pageIndex\":1,\"pageSize\":10,\"totalCount\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "dashboards": [],
+          "pageIndex": 1,
+          "pageSize": 10,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDashboardsPage-empty",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "9a6f8c49-e52a-57cd-a07e-19f9597004c8",
+      "exchanges": [
+        {
+          "body": "{\"code\":403,\"success\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "dashboards": [],
+          "pageIndex": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-providerRejected",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "e7730d8b-f348-534c-a093-02995cbc2dd6",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "dashboards": [],
+          "pageIndex": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-unauthorized",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "901a0b73-f6cf-5d79-aa25-f6c1afc171b8",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"content\":[],\"pageInfo\":{\"count\":1,\"pageIndex\":2,\"pageSize\":20,\"totalCount\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "dashboards": [],
+          "pageIndex": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-invalidResponse",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "900ba482-e199-5ac0-af2c-3af4448de649",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dashboards": [],
+          "pageIndex": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 101
+      },
+      "name": "listDashboardsPage-defect",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "5088cb5c-7c9c-59fc-93f5-0d86bd8295fb",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"success\":true,\"content\":[],\"pageInfo\":{\"count\":0,\"pageIndex\":2,\"pageSize\":20,\"totalCount\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "dashboards": [],
+          "pageIndex": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-oversized",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "e97d5cf0-d094-592b-ae3e-d716d27eb7a8",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-retry429",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "c4817898-c7a5-5f41-ae0f-68b51df50a0c",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-retry503",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "c9a3f3b7-9919-5543-a887-56e2e509d8e6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-transportBefore",
+      "operation": "listDashboardsPage"
+    },
+    {
+      "callId": "16c68c6b-07db-5169-9250-cba8b8a77116",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/dashboards/list",
+          "query": {
+            "pageIndex": [
+              "2"
+            ],
+            "pageSize": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Df-Api-Key": [
+              "api-secret"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 2,
+        "pageSize": 20
+      },
+      "name": "listDashboardsPage-transportAfter",
+      "operation": "listDashboardsPage"
+    }
+  ],
+  "schemaVersion": 1
+}

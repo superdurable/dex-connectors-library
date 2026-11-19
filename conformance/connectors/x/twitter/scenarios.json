@@ -353,6 +353,601 @@
       },
       "name": "getPost-notAuthorizedInErrors",
       "operation": "getPost"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"1845123456789012345\",\"text\":\"Example public Post\"}],\"meta\":{\"result_count\":1,\"next_token\":\"NEXT123\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/search/recent",
+          "query": {
+            "max_results": [
+              "10"
+            ],
+            "next_token": [
+              "ABC123"
+            ],
+            "query": [
+              "from:ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": "1845123456789012345",
+              "text": "Example public Post"
+            }
+          ],
+          "nextToken": "NEXT123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "nextToken": "ABC123",
+        "query": "from:ada"
+      },
+      "name": "searchRecentPosts-success",
+      "operation": "searchRecentPosts"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/search/recent",
+          "query": {
+            "max_results": [
+              "10"
+            ],
+            "next_token": [
+              "ABC123"
+            ],
+            "query": [
+              "from:ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "nextToken": "ABC123",
+        "query": "from:ada"
+      },
+      "name": "searchRecentPosts-provider-rejected",
+      "operation": "searchRecentPosts"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000003",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/search/recent",
+          "query": {
+            "max_results": [
+              "10"
+            ],
+            "next_token": [
+              "ABC123"
+            ],
+            "query": [
+              "from:ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "nextToken": "ABC123",
+        "query": "from:ada"
+      },
+      "name": "searchRecentPosts-invalid-response",
+      "operation": "searchRecentPosts"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/search/recent",
+          "query": {
+            "max_results": [
+              "10"
+            ],
+            "next_token": [
+              "ABC123"
+            ],
+            "query": [
+              "from:ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "nextToken": "ABC123",
+        "query": "from:ada"
+      },
+      "name": "searchRecentPosts-rate-limited",
+      "operation": "searchRecentPosts"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/search/recent",
+          "query": {
+            "max_results": [
+              "10"
+            ],
+            "next_token": [
+              "ABC123"
+            ],
+            "query": [
+              "from:ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "nextToken": "ABC123",
+        "query": "from:ada"
+      },
+      "name": "searchRecentPosts-unavailable",
+      "operation": "searchRecentPosts"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000006",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/search/recent",
+          "query": {
+            "max_results": [
+              "10"
+            ],
+            "next_token": [
+              "ABC123"
+            ],
+            "query": [
+              "from:ada"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "nextToken": "ABC123",
+        "query": "from:ada"
+      },
+      "name": "searchRecentPosts-transport-before-send",
+      "operation": "searchRecentPosts"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000007",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "nextToken": "ABC123",
+        "query": "from:ada"
+      },
+      "name": "searchRecentPosts-defect",
+      "operation": "searchRecentPosts"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"123456789\",\"name\":\"Ada Lovelace\",\"username\":\"ada\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/by/username/ada",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "123456789",
+          "name": "Ada Lovelace",
+          "username": "ada"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "ada"
+      },
+      "name": "getUser-success",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/by/username/ada",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "username": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "ada"
+      },
+      "name": "getUser-not-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000010",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/by/username/ada",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "username": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "ada"
+      },
+      "name": "getUser-provider-rejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000011",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/by/username/ada",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "username": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "ada"
+      },
+      "name": "getUser-invalid-response",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/by/username/ada",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "ada"
+      },
+      "name": "getUser-rate-limited",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000013",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/by/username/ada",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "ada"
+      },
+      "name": "getUser-unavailable",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000014",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/by/username/ada",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "ada"
+      },
+      "name": "getUser-transport-before-send",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a491c220-7777-47cb-a498-000000000015",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "username": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "../bad"
+      },
+      "name": "getUser-defect",
+      "operation": "getUser"
     }
   ],
   "schemaVersion": 1

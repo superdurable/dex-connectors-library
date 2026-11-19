@@ -149,6 +149,8 @@ type zendeskResponse struct {
 	hasTicketIdentity bool
 	// hasCredentialEcho means a non-2xx body contains the API token, so it cannot prove a refusal.
 	hasCredentialEcho bool
+	hasReadableError bool
+	hasOtherProviderIdentity bool
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Zendesk request that each operation maps to a branch.
@@ -260,6 +262,11 @@ func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string)
 	return Credentials{}, zendeskFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials could not be read"), false
 }
 
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+	credentials, failure, _ := client.resolveWriteCredentials(call, operation)
+	return credentials, failure
+}
+
 // isTerminalCredentialError reports a credential failure that a later attempt cannot recover from.
 func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
@@ -359,6 +366,8 @@ func (client *Client) buildRequest(ctx context.Context, credentials Credentials,
 func (client *Client) classifyFailureStatus(response zendeskResponse, credentials Credentials, operation string) zendeskExchange {
 	summary := describeZendeskError(response.body, credentials)
 	response.hasTicketIdentity = hasTicketIdentity(response.body)
+	response.hasReadableError = summary.errorCode != ""
+	response.hasOtherProviderIdentity = hasOtherProviderIdentity(response.body)
 	apiToken := credentials.APIToken.Reveal()
 	response.hasCredentialEcho = apiToken != "" && bytes.Contains(response.body, []byte(apiToken))
 	response.body = nil
@@ -440,6 +449,19 @@ func hasTicketIdentity(body []byte) bool {
 		} `json:"ticket"`
 	}
 	return json.Unmarshal(body, &envelope) == nil && envelope.Ticket.ID > 0
+}
+
+func hasOtherProviderIdentity(body []byte) bool {
+	var envelope struct {
+		ID int64 `json:"id"`
+		User struct { ID int64 `json:"id"` } `json:"user"`
+		Organization struct { ID int64 `json:"id"` } `json:"organization"`
+		Data json.RawMessage `json:"data"`
+	}
+	if json.Unmarshal(body, &envelope) != nil {
+		return true
+	}
+	return envelope.ID > 0 || envelope.User.ID > 0 || envelope.Organization.ID > 0 || len(envelope.Data) > 0 && string(envelope.Data) != "null"
 }
 
 // isCredentialFreeToken rejects an error token that echoes the API token back.

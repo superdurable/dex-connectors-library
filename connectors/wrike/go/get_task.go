@@ -32,6 +32,52 @@ type TaskStatus struct {
 	Status string `json:"status"`
 }
 
+// ListTasksInput selects tasks in one folder.
+type ListTasksInput struct {
+	// FolderID is the non-secret folder ID from Wrike.
+	FolderID string `json:"folderId"`
+	// Title filters tasks by a contained title fragment.
+	Title string `json:"title,omitempty"`
+	// PageSize is the requested page size; zero uses Wrike's default.
+	PageSize int `json:"pageSize,omitempty"`
+	// NextPageToken continues a previous page; blank starts at the first page.
+	NextPageToken string `json:"nextPageToken,omitempty"`
+}
+
+// TaskPage contains one page of task summaries.
+type TaskPage struct {
+	// Data contains the tasks returned by Wrike.
+	Data []TaskStatus `json:"data"`
+	// NextPageToken continues pagination when nonempty.
+	NextPageToken string `json:"nextPageToken,omitempty"`
+}
+
+// CreateTaskInput supplies a parent folder and task title.
+type CreateTaskInput struct {
+	// FolderID is the destination folder's non-secret Wrike ID.
+	FolderID string `json:"folderId"`
+	// Title is the nonempty task title.
+	Title string `json:"title"`
+	// Description is optional task text.
+	Description string `json:"description,omitempty"`
+}
+
+// UpdateTaskInput replaces a task title or status.
+type UpdateTaskInput struct {
+	// TaskID is the target task's non-secret Wrike ID.
+	TaskID string `json:"taskId"`
+	// Title replaces the current title when nonempty.
+	Title string `json:"title,omitempty"`
+	// Status replaces the current status when nonempty.
+	Status string `json:"status,omitempty"`
+}
+
+// DeleteTaskInput identifies the task to move to the Recycle Bin.
+type DeleteTaskInput struct {
+	// TaskID is the target task's non-secret Wrike ID.
+	TaskID string `json:"taskId"`
+}
+
 // GetTaskOperation reads one task's identity and state.
 type GetTaskOperation struct{ client *Client }
 

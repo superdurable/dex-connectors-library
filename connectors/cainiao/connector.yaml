@@ -10,6 +10,11 @@ metadata:
 spec:
   provider: cainiao
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-cainiao
+      operations: [queryWaybillTrace]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-cainiao"
