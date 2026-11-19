@@ -1,0 +1,441 @@
+{
+  "connector": "fiftyonetracking",
+  "scenarios": [
+    {
+      "callId": "97f2abc5-a8c3-5ef2-ae69-6642106f7a1c",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"pending\":1,\"notfound\":2,\"transit\":3,\"pickup\":4,\"delivered\":5,\"expired\":6,\"undelivered\":7,\"exception\":8,\"private\":\"discard\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "counted",
+        "failureKind": "",
+        "output": {
+          "delivered": 5,
+          "exception": 8,
+          "expired": 6,
+          "inTransit": 3,
+          "notFound": 2,
+          "pending": 1,
+          "pickup": 4,
+          "undelivered": 7
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-counted",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "3b2e41b2-2df9-5c3d-a44a-24d50ff97baf",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"pending\":0,\"notfound\":0,\"transit\":0,\"pickup\":0,\"delivered\":0,\"expired\":0,\"undelivered\":0,\"exception\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "counted",
+        "failureKind": "",
+        "output": {
+          "delivered": 0,
+          "exception": 0,
+          "expired": 0,
+          "inTransit": 0,
+          "notFound": 0,
+          "pending": 0,
+          "pickup": 0,
+          "undelivered": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-zero",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "e2d73b1e-cd83-5c26-b021-e84cb7b4d647",
+      "exchanges": [
+        {
+          "body": "{\"code\":400,\"message\":\"private provider message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "delivered": 0,
+          "exception": 0,
+          "expired": 0,
+          "inTransit": 0,
+          "notFound": 0,
+          "pending": 0,
+          "pickup": 0,
+          "undelivered": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-providerRejected",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "008f7ab3-fcfd-58b2-a611-9933dcb55126",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "delivered": 0,
+          "exception": 0,
+          "expired": 0,
+          "inTransit": 0,
+          "notFound": 0,
+          "pending": 0,
+          "pickup": 0,
+          "undelivered": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-unauthorized",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "f8eafa92-93b1-59ff-b591-94e3040836d0",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"pending\":-1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "delivered": 0,
+          "exception": 0,
+          "expired": 0,
+          "inTransit": 0,
+          "notFound": 0,
+          "pending": 0,
+          "pickup": 0,
+          "undelivered": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-invalidResponse",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "9496e2da-ef8e-50a0-a89b-6a8cb381474b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "delivered": 0,
+          "exception": 0,
+          "expired": 0,
+          "inTransit": 0,
+          "notFound": 0,
+          "pending": 0,
+          "pickup": 0,
+          "undelivered": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-defect",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "a134f548-bebd-5f68-97b3-f7bfb1c83450",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"pending\":1,\"notfound\":2,\"transit\":3,\"pickup\":4,\"delivered\":5,\"expired\":6,\"undelivered\":7,\"exception\":8,\"private\":\"discard\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "delivered": 0,
+          "exception": 0,
+          "expired": 0,
+          "inTransit": 0,
+          "notFound": 0,
+          "pending": 0,
+          "pickup": 0,
+          "undelivered": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-oversized",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "f43792ae-8e17-5770-a7c8-084b66e49443",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-retry429",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "af621c72-a42e-5289-a35e-4bd5cb6bc3d5",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-retry503",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "a6a960ac-4928-538f-a002-5803a9a6a5cd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-transportBefore",
+      "operation": "getShipmentStatusCounts"
+    },
+    {
+      "callId": "20023483-9f2a-5212-9174-58a0ea37b20c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/trackings/status",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Tracking-Api-Key": [
+              "secretTestKey"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShipmentStatusCounts-transportAfter",
+      "operation": "getShipmentStatusCounts"
+    }
+  ],
+  "schemaVersion": 1
+}
