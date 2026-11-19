@@ -1,9 +1,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { expect, it, vi } from 'vitest';
+import { DispatchNotAllowedError, Fence } from '@superdurable/connectors-sdk/singledispatch';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { GitHubClient, PublicAuthMethodID, RepositoryAuthMethodID } from '../src/client.js';
 import { CreateIssueCommentDefinition, CreateIssueDefinition, ReplaceIssueLabelsDefinition, SetIssueStateDefinition } from '../src/generated/definitions.js';
 import { issueCallMarker } from '../src/issues.js';
@@ -50,6 +52,65 @@ it('never sends again with a Step maxSends of 1', async () => {
   expect(requests.filter(request => request.startsWith('POST'))).toHaveLength(1);
 });
 
+it('returns Retry without sending for an untrusted checkpoint', async () => {
+  const requests: string[] = [];
+  const context = new FenceContext();
+  context.attempt = 2;
+  context.marker = { callId: 'another-call', attempt: 1, state: 'notSent' };
+  const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context } as unknown as Call;
+  expect((await client([201], requests).createIssue().invoke(call, { owner: 'octocat', repository: 'hello-world', title: 'Crash' })).kind).toBe('retry');
+  expect(requests).toHaveLength(0);
+});
+
+it('records canResend for a definite first-send refusal and treats an unlisted status as unknown', async () => {
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  const refusedContext = new FenceContext();
+  const refused = await client([422], []).createIssue().invoke({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context: refusedContext } as unknown as Call, input);
+  expect(refused).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+  expect(refusedContext.marker).toMatchObject({ state: 'canResend' });
+  const gone = await client([410], []).createIssue().invoke({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context: new FenceContext() } as unknown as Call, input);
+  expect(gone.kind).toBe('retry');
+});
+
+it('treats an oversized or interrupted refusal body as an unknown outcome', async () => {
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  for (const operationId of ['createIssue', 'createIssueComment'] as const) {
+    for (const broken of [new BodyTooLargeError(422, {}), new ProviderTransportError(false, 422, {})]) {
+      const requests: string[] = [];
+      const github = new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, new StaticCredentialProvider([[connection, { authMethodId: RepositoryAuthMethodID, accessToken: new SecretString('token'), oauthClientId: 'id', oauthClientSecret: new SecretString('secret') }]]), {
+        send: async (request: ProviderRequest) => {
+          requests.push(request.method);
+          if (request.method === 'POST') throw broken;
+          return { status: 200, headers: { 'x-oauth-scopes': 'repo' }, body: new TextEncoder().encode(JSON.stringify(new URL(request.url).pathname === '/user' ? { login: 'octocat' } : [])) };
+        },
+      });
+      const run = (context: FenceContext, maxSendsOverride?: number) => {
+        const call = { id: callId, connection, operation: { connectorId: 'github', operationId }, context, ...(maxSendsOverride ? { maxSendsOverride } : {}) } as unknown as Call;
+        return operationId === 'createIssue' ? github.createIssue().invoke(call, input) : github.createIssueComment().invoke(call, { owner: 'octocat', repository: 'hello-world', issueNumber: 7, body: 'Note' });
+      };
+      const context = new FenceContext();
+      expect((await run(context)).kind).toBe('retry');
+      expect(context.marker).toMatchObject({ state: 'claimed' });
+      expect((await run(new FenceContext(), 1)).kind).toBe('uncertain');
+      expect(requests.filter(method => method === 'POST')).toHaveLength(2);
+    }
+  }
+});
+
+it('never resends an issue whose 2xx body stalled', async () => {
+  const requests: string[] = [];
+  const github = new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, new StaticCredentialProvider([[connection, { authMethodId: RepositoryAuthMethodID, accessToken: new SecretString('token'), oauthClientId: 'id', oauthClientSecret: new SecretString('secret') }]]), {
+    send: async (request: ProviderRequest) => {
+      requests.push(request.method);
+      if (request.method === 'POST') throw new ProviderStalledError(201, {});
+      return { status: 200, headers: { 'x-oauth-scopes': 'repo' }, body: new TextEncoder().encode(JSON.stringify(new URL(request.url).pathname === '/user' ? { login: 'octocat' } : [])) };
+    },
+  });
+  const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context: new FenceContext() } as unknown as Call;
+  expect((await github.createIssue().invoke(call, { owner: 'octocat', repository: 'hello-world', title: 'Crash' })).kind).toBe('uncertain');
+  expect(requests.filter(method => method === 'POST')).toHaveLength(1);
+});
+
 it('reads back before sending again below the cap', async () => {
   const requests: string[] = [];
   const context = new FenceContext();
@@ -61,6 +122,79 @@ it('reads back before sending again below the cap', async () => {
   expect((await github.createIssue().invoke(call(), input)).kind).toBe('retry');
   expect(requests).toEqual(['POST /repos/octocat/hello-world/issues', 'GET /user', 'GET /repos/octocat/hello-world/issues',
     'GET /user', 'GET /repos/octocat/hello-world/issues', 'POST /repos/octocat/hello-world/issues']);
+});
+
+it('selects uncertain, not defect, when the Fence refuses a resend after a possible send', async () => {
+  for (const operationId of ['createIssue', 'createIssueComment'] as const) {
+    const invoke = (github: GitHubClient, call: Call) => operationId === 'createIssue'
+      ? github.createIssue().invoke(call, { owner: 'octocat', repository: 'hello-world', title: 'Crash' })
+      : github.createIssueComment().invoke(call, { owner: 'octocat', repository: 'hello-world', issueNumber: 7, body: 'Thanks' });
+    const context = new FenceContext();
+    const call = () => ({ id: callId, connection, operation: { connectorId: 'github', operationId }, context }) as unknown as Call;
+    const github = client([502], []);
+    expect((await invoke(github, call())).kind).toBe('retry');
+    context.attempt++;
+    const refusal = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(new DispatchNotAllowedError());
+    try { expect(await invoke(github, call())).toMatchObject({ kind: 'uncertain' }); }
+    finally { refusal.mockRestore(); }
+    const firstRefusal = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(new DispatchNotAllowedError());
+    try { expect(await invoke(client([], []), { id: callId, connection, operation: { connectorId: 'github', operationId }, context: new FenceContext() } as unknown as Call)).toMatchObject({ kind: 'branch', branch: 'defect' }); }
+    finally { firstRefusal.mockRestore(); }
+  }
+});
+
+it('reads back after a 429 that followed an unknown send', async () => {
+  const requests: string[] = [];
+  const context = new FenceContext();
+  const github = client([502, 429], requests);
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  const call = () => ({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context }) as unknown as Call;
+  for (let attempt = 1; attempt <= 2; attempt++, context.attempt++) expect((await github.createIssue().invoke(call(), input)).kind).toBe('retry');
+  expect(context.marker).toMatchObject({ state: 'canResend' });
+  requests.length = 0;
+  await github.createIssue().invoke(call(), input);
+  expect(requests.slice(0, 3)).toEqual(['GET /user', 'GET /repos/octocat/hello-world/issues', 'POST /repos/octocat/hello-world/issues']);
+});
+
+it('retries a transient credential failure after a possible send and selects uncertain for a revoked one', async () => {
+  const requests: string[] = [];
+  const context = new FenceContext();
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  const call = () => ({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context }) as unknown as Call;
+  expect((await client([502], requests).createIssue().invoke(call(), input)).kind).toBe('retry');
+  context.attempt++;
+  const failing = (error: Error) => new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } }, { send: async () => { throw new Error('no request may be sent'); } });
+  for (const transient of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new TypeError('fetch failed')]) {
+    expect((await failing(transient).createIssue().invoke(call(), input)).kind).toBe('retry');
+  }
+  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), new TypeError('project credential decoding failed')]) {
+    expect((await failing(terminal).createIssue().invoke(call(), input)).kind).toBe('uncertain');
+  }
+});
+
+it('classifies credential failures before any send', async () => {
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  const failing = (error: Error) => new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } }, { send: async () => { throw new Error('no request may be sent'); } });
+  for (const transient of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new TypeError('fetch failed')]) {
+    const context = new FenceContext();
+    const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context } as unknown as Call;
+    expect((await failing(transient).createIssue().invoke(call, input)).kind).toBe('retry');
+  }
+  // The SDK project provider replaces a malformed-material decoder error with the decoding TypeError.
+  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), new TypeError('project credential decoding failed')]) {
+    const context = new FenceContext();
+    const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context } as unknown as Call;
+    expect(await failing(terminal).createIssue().invoke(call, input)).toMatchObject({ kind: 'branch', branch: 'defect' });
+  }
+});
+
+it('retries a repeat-safe write whose answer is oversized or unusable', async () => {
+  const input = { owner: 'octocat', repository: 'hello-world', issueNumber: 7, state: 'closed' };
+  for (const send of [async () => { throw new BodyTooLargeError(200, {}); }, async () => ({ status: 200, headers: {}, body: new TextEncoder().encode('{"number":8}') })]) {
+    const github = new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, new StaticCredentialProvider([[connection, { authMethodId: RepositoryAuthMethodID, accessToken: new SecretString('token'), oauthClientId: 'id', oauthClientSecret: new SecretString('secret') }]]), { send });
+    expect((await github.setIssueState().invoke(stateCall(), input)).kind).toBe('retry');
+    expect((await github.replaceIssueLabels().invoke(stateCall(), { owner: 'octocat', repository: 'hello-world', issueNumber: 7, labels: ['bug'] })).kind).toBe('retry');
+  }
 });
 
 function stateClient(statuses: number[], sent: string[], authMethodId = RepositoryAuthMethodID): GitHubClient {

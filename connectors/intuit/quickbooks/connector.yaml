@@ -3,20 +3,20 @@ kind: Connector
 metadata:
   name: quickbooks
   displayName: QuickBooks Online
-  description: "Find or create QuickBooks Online customers, raise invoices with exact decimal amounts, list and read them page by page, email them, record payments against them, and receive each invoice created or changed in the company, with every write sent under a QuickBooks requestid derived from the Step."
+  description: "Find or create QuickBooks Online customers, raise invoices with exact decimal amounts, list and read them page by page, email them, record payments against them, and receive each invoice created or changed in the company, with every write sent under a QuickBooks requestid derived from the Step and resent after an unknown outcome only below the Step's send cap."
   company: Intuit
   categories: [finance-payments]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: quickbooks
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-intuit-quickbooks
       operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
       triggers: [invoiceChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-intuit-quickbooks"
       operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
       triggers: [invoiceChanged]
@@ -172,11 +172,15 @@ spec:
         - {id: created, goName: Created, description: "QuickBooks created the customer, or returned the customer this Step already created."}
         - {id: nameConflict, goName: NameConflict, description: "A customer, vendor, or employee already uses the display name (QuickBooks error 6240); resolve it with findCustomer by display name, including a possible earlier attempt.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable customer that read-back could not confirm; look it up with findCustomer before creating again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks may have created the customer, but the last send the cap allows had an unknown outcome, or an accepted customer could not be confirmed by read-back; look it up with findCustomer before creating again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync with a dispatch fence: an async fallback attempt would send outside the send count.
       execution:
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
       mocks:
         - name: newBuyerCustomer
           branch: created
@@ -202,11 +206,15 @@ spec:
       branches:
         - {id: created, goName: Created, description: "QuickBooks created the invoice, or returned the invoice this Step already created, with its number, total, and balance."}
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; look it up by document number before creating again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks may have created the invoice, but the last send the cap allows had an unknown outcome, or an accepted invoice could not be confirmed by read-back; look it up by document number before creating again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync with a dispatch fence: an async fallback attempt would send outside the send count.
       execution:
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not document requestid retention, so a replay after its key expires could create another invoice."}}
       mocks:
         - name: newBuyerOrderInvoice
@@ -294,11 +302,15 @@ spec:
       branches:
         - {id: sent, goName: Sent, description: "QuickBooks emailed the invoice, or returned the delivery this Step already made, with EmailStatus EmailSent."}
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; check its EmailStatus with getInvoice before sending again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks may have emailed the invoice, but the last send the cap allows had an unknown outcome, or an accepted delivery could not be confirmed by read-back; check its EmailStatus with getInvoice before sending again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync with a dispatch fence: an async fallback attempt would send outside the send count.
       execution:
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not confirm that /send honors requestid or how long it does, so a retry could email the invoice twice."}}
       mocks:
         - name: cityAgencyInvoiceDelivery
@@ -321,11 +333,15 @@ spec:
       branches:
         - {id: recorded, goName: Recorded, description: "QuickBooks recorded the payment, or returned the payment this Step already recorded, with the invoices it applies to."}
         - {id: providerRejected, goName: ProviderRejected, description: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "QuickBooks accepted the request but returned an unusable payment that read-back could not confirm; inspect the invoice before paying again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "QuickBooks may have recorded the payment, but the last send the cap allows had an unknown outcome, or an accepted payment could not be confirmed by read-back; inspect the invoice before paying again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # Sync with a dispatch fence: an async fallback attempt would send outside the send count.
       execution:
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not document requestid retention, so a replay after its key expires could record a second payment."}}
       mocks:
         - name: cityAgencyOrderPayment

@@ -225,7 +225,10 @@ func TestEveryOperationKeepsOneRequiredBranchNoUncertaintyAndAsyncDurability(t *
 	} {
 		required := 0
 		for _, branch := range shape.branches {
-			require.NotEqual(t, sdkgo.UncertainBranchID, branch.ID, "%s retries ambiguous outcomes safely instead", operation)
+			if operation != "createEvent" {
+				// Only createEvent can duplicate, so only it selects uncertain at its send cap.
+				require.NotEqual(t, sdkgo.UncertainBranchID, branch.ID, "%s retries ambiguous outcomes safely instead", operation)
+			}
 			if !branch.Optional {
 				required++
 			}

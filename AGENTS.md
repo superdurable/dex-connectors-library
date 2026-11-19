@@ -156,16 +156,23 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   unwired optional branch fails the Flow when selected. Wire another branch
   only to show a required business reaction, and put a comment at that wiring
   naming the reaction.
-- A connector selects a branch for a definite business outcome, such as a bad
-  request, invalid input, or a provider refusal, and never repeats it. An
-  unknown outcome, such as a timeout, a connection lost after dispatch, or a
-  5xx, repeats as the operation's `execution.repeatOnUnknown` tier allows, until
-  the retry budget runs out, when the Flow fails. A transport failure before the
-  request left the process, 429, and 503 return Retry; exhausted retries never
-  become uncertainty. The tiers:
+- A connector selects a branch only for a definite outcome and never repeats
+  it: invalid input or configuration found before dispatch, HTTP 400, 401, 403,
+  404, 411, 413, 414, 415, or 422 whose body shows no acceptance, or a
+  documented provider business error code. Every other outcome after dispatch
+  is unknown, such as a timeout, a lost connection, any 5xx, 408, 409, any other
+  4xx, or an unparseable, oversized, or contradictory response. It repeats as
+  the operation's `execution.repeatOnUnknown` tier allows, until the retry
+  budget runs out, when the Flow fails. A transport failure before the request
+  left the process, 429, 503, and a Fence `FailClosed` decision return Retry;
+  exhausted retries never become uncertainty. After a possible earlier send,
+  select only the happy path or `uncertain`, never `defect`,
+  `providerRejected`, or another refusal. On a definite refusal of a first
+  send, record `canResend` on the Fence before selecting the branch. The tiers:
   - `safe`: a read, an idempotency key, an absolute replacement, upsert, or
     delete, or a harmless repeat. Retry within the Step retry policy. Every Query
-    is `safe`.
+    is `safe`. A safe Mutation's factory keeps `MaxSends` for compatibility and
+    ignores it.
   - `limited`: not idempotent, but a duplicate is acceptable, such as an email,
     a chat message, a ticket, an SMS, or a billed LLM call. Read back first when
     possible, then resend while possible sends stay below `execution.maxSends`
@@ -177,6 +184,10 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
     adding one requires a GitHub issue that mentions @longquanzheng and explains
     why. Read back only and never resend; an unconfirmed write selects
     `uncertain`.
+- One Step may make several fenced writes, each with its own Call ID; it makes
+  them in a deterministic order, because a repeated operation's Call ID depends
+  on its position in the attempt. Hosts such as Dex Agents and the Connectors
+  MCP server classify results by branch and never parse Fence markers.
 - When an operation's repeat safety depends on application-supplied content,
   such as SQL `execute` or a generic HTTP `sendRequest`, the generic operation
   is `safe`, and a separate `*NonIdempotent` operation, such as
@@ -217,9 +228,12 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   mode writes complete requests, exact outputs, production idempotency keys,
   and retry decisions. CI verifies a nonzero value for every input field, each
   declared branch, separate final-attempt 429 and 5xx Retry scenarios and a
-  transport failure per operation, uncertainty when declared, SDK-encoded exact
-  outputs, and exact Go recordings. Pending scenarios are rejected; other recovery paths
-  remain a review requirement.
+  transport failure per operation, uncertainty when a non-safe operation
+  declares it, SDK-encoded exact outputs, and exact Go recordings. A safe
+  Mutation may leave `uncertain` and `invalidResponse` unreplayed. The runners
+  present a recorded heartbeat in the installed SDK's checkpoint format.
+  Pending scenarios are rejected; other recovery paths remain a review
+  requirement.
 - The reviewed `conformance/exemptions.yaml` exempts only `connectors/postgresql`,
   `connectors/mysql`, `connectors/mongodb`, `connectors/microsoft/sql-server`, and
   `connectors/superdurable/email`: their native wire protocols cannot be recorded

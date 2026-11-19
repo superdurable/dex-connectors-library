@@ -5,8 +5,7 @@
 import html
 import json
 import re
-from dataclasses import dataclass
-from dataclasses import field as dataclass_field
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from email._header_value_parser import get_addr_spec
 from email.errors import HeaderParseError
@@ -18,6 +17,7 @@ from urllib.parse import quote
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -25,6 +25,14 @@ from dex_connectors.sdk import (
     QueryAttempt,
     QueryDefinition,
     Receipt,
+)
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    Decision,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
 )
 
 from ._generated.definitions import (
@@ -34,7 +42,7 @@ from ._generated.definitions import (
     SEARCH_CONVERSATIONS_DEFINITION,
     UPDATE_CONVERSATION_STATE_DEFINITION,
 )
-from .client import Client, Exchange
+from .client import Client, CredentialProblem, Exchange
 from .models import (
     Contact,
     Conversation,
@@ -337,26 +345,22 @@ def _query_failure(
     )
 
 
-def _mutation_failure(
-    client: Client, call: Call, exchange: Exchange, empty: Any, object_id: str
+def _pre_write_read_failure(
+    client: Client, call: Call, exchange: Exchange, empty: Any, object_id: str, operation: str
 ) -> MutationAttempt[Any] | None:
+    """Map the read before a safe write: only a readable listed refusal selects a branch."""
+    exchange = exchange.with_untrusted_refusal_as_unknown(operation)
     if exchange.outcome == "succeeded":
         return None
-    if _retryable(exchange):
-        assert exchange.failure is not None
-        return MutationAttempt.retry(exchange.failure, exchange.retry_after.total_seconds())
-    branch = (
-        "notFound"
-        if exchange.outcome == "notFound"
-        else "invalidResponse"
-        if exchange.outcome == "invalid"
-        else "defect"
-        if exchange.outcome == "defect"
-        else "providerRejected"
-    )
-    return MutationAttempt.branch_result(
-        branch, empty, client.receipt(call, object_id, exchange.request_id), exchange.failure
-    )
+    assert exchange.failure is not None
+    receipt = client.receipt(call, object_id, exchange.request_id)
+    if exchange.outcome == "defect":
+        return MutationAttempt.branch_result("defect", empty, receipt, exchange.failure)
+    if exchange.outcome == "notFound" and exchange.status == 404:
+        return MutationAttempt.branch_result("notFound", empty, receipt, exchange.failure)
+    if exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+        return MutationAttempt.branch_result("providerRejected", empty, receipt, exchange.failure)
+    return MutationAttempt.retry(exchange.failure, exchange.retry_after.total_seconds())
 
 
 def _bare_email(value: str) -> bool:
@@ -688,10 +692,14 @@ class FindContactByEmailOperation:
             )
 
 
-@dataclass(frozen=True, slots=True)
-class _ReplyDispatchMarker:
-    dispatched_call_id: str = dataclass_field(metadata={"dex_json_name": "intercomReplyDispatchedCallId"})
-    dispatched_at: int = dataclass_field(metadata={"dex_json_name": "intercomReplyDispatchedAt"})
+# Only these statuses prove Intercom applied nothing; any other non-2xx answer may have been applied.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+# The reply read-back tolerates a difference between the Worker's and Intercom's clocks.
+_REPLY_RECONCILIATION_SKEW_SECONDS = 300
+
+# The checkpoint provider ID of a reply Intercom accepted without a usable part.
+_ACCEPTED_REPLY_WITHOUT_PART_ID = "dex:acceptedWithoutPartId"
 
 
 def _reply_problem(input: ReplyToConversationInput) -> str:
@@ -763,8 +771,19 @@ def _find_reply_part(
     )[1]
 
 
+@dataclass(frozen=True)
+class _ReplyReadBack:
+    """One read-back: found, absent, retryable, or unconfirmed; failure explains all but found."""
+
+    outcome: str
+    output: ReplyToConversationOutput
+    receipt: Receipt
+    failure: Failure | None = None
+    retry_after_seconds: float = 0.0
+
+
 class ReplyToConversationOperation:
-    """Send an admin reply at most once for a Dex mutation call."""
+    """Send an admin reply under the send cap, reading back before every resend."""
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -780,7 +799,7 @@ class ReplyToConversationOperation:
     async def invoke(
         self, call: Call, input: ReplyToConversationInput
     ) -> MutationAttempt[ReplyToConversationOutput]:
-        """Checkpoint before send, then reconcile any prior uncertain dispatch."""
+        """Fence the reply under the send cap, reading back before any resend."""
         operation = "replyToConversation"
         output = ReplyToConversationOutput(conversation_id=input.conversation_id)
         problem = _reply_problem(input)
@@ -788,154 +807,371 @@ class ReplyToConversationOperation:
             return MutationAttempt.branch_result(
                 "defect", output, Receipt(), self.client.failure(operation, FailureKind.VALIDATION, problem)
             )
-        credentials, failure = await self.client.resolve_credentials(call, operation)
-        if failure:
-            return MutationAttempt.branch_result("defect", output, Receipt(), failure)
-        assert credentials is not None
-        assert call.context is not None
         try:
-            marker = (
-                call.context.get_last_heartbeat_value(_ReplyDispatchMarker)
-                if call.context.has_last_heartbeat_value()
-                else None
+            fence = Fence(
+                call,
+                REPLY_TO_CONVERSATION_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
             )
-        except (ValueError, TypeError):
-            marker = _ReplyDispatchMarker("", 0)
-        if marker is not None:
-            return await self._reconcile(call, input, credentials, marker)
-        dispatched_at = int(self.client.now().timestamp())
-        try:
-            await call.context.heartbeat(_ReplyDispatchMarker(str(call.id), dispatched_at))
-        except (ValueError, TypeError, OSError):
+        except ValueError as error:
+            return MutationAttempt.branch_result(
+                "defect",
+                output,
+                Receipt(),
+                self.client.failure(operation, FailureKind.LOCAL_DEFECT, str(error)),
+            )
+        decision = await fence.decide()
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
             return MutationAttempt.retry(
                 self.client.failure(
                     operation,
                     FailureKind.AVAILABILITY,
-                    "Dex did not record the dispatch checkpoint; nothing was sent",
+                    "dispatch checkpoint could not be read; nothing was sent in this attempt",
                 )
             )
-        exchange = await self.client.exchange(
-            call,
-            credentials,
-            operation,
-            "POST",
-            "/conversations/" + quote(input.conversation_id, safe="-._~$&+=:@") + "/reply",
-            {
-                "message_type": input.message_type,
-                "type": "admin",
-                "admin_id": input.admin_id,
-                "body": _reply_html(input.body),
-            },
-        )
-        receipt = self.client.receipt(call, input.conversation_id, exchange.request_id)
-        if exchange.outcome in ("notSent", "rateLimited", "defect"):
-            try:
-                await call.context.heartbeat()
-            except (ValueError, TypeError, OSError):
-                pass  # A retained checkpoint forces safe read back on the next attempt.
-        if exchange.outcome in ("notSent", "rateLimited", "unconfirmed"):
-            assert exchange.failure is not None
-            return MutationAttempt.retry(exchange.failure, exchange.retry_after.total_seconds())
-        if exchange.outcome != "succeeded":
-            branch = {"notFound": "notFound", "invalid": "invalidResponse", "defect": "defect"}.get(
-                exchange.outcome, "providerRejected"
+        has_possible_earlier_send = _has_possible_earlier_reply_send(decision)
+        credentials, credential_problem = await self.client.resolve_write_credentials(call, operation)
+        if credential_problem:
+            return await _reply_credential_failure_attempt(
+                self.client, fence, has_possible_earlier_send, credential_problem, output
             )
-            return MutationAttempt.branch_result(branch, output, receipt, exchange.failure)
+        assert credentials is not None
+        if has_possible_earlier_send:
+            read_back = await self._read_back(call, input, credentials)
+            if read_back.outcome == "found":
+                found = read_back.output
+                return MutationAttempt.branch_result(
+                    "replied",
+                    ReplyToConversationOutput(
+                        found.conversation_id, found.part, found.conversation_state, True
+                    ),
+                    read_back.receipt,
+                )
+            assert read_back.failure is not None
+            if read_back.outcome == "retryable":
+                return MutationAttempt.retry(read_back.failure, read_back.retry_after_seconds)
+            if read_back.outcome != "absent" or not _can_resend_after_absent_read_back(decision):
+                return MutationAttempt.uncertain(
+                    read_back.output,
+                    self.client.failure(
+                        operation,
+                        read_back.failure.kind,
+                        "an earlier attempt of this Step may have sent the reply, and "
+                        + read_back.failure.message,
+                    ),
+                    read_back.receipt,
+                )
+            # The read-back found no matching part, so this attempt resends below the cap.
+        is_first_send = decision.prior_send_upper_bound == 0
+        dispatched_at = int(self.client.now().timestamp())
+        observed_statuses: list[int] = []
+        try:
+            exchange = await fence.dispatch(
+                lambda _: self.client.exchange(
+                    call,
+                    credentials,
+                    operation,
+                    "POST",
+                    "/conversations/" + quote(input.conversation_id, safe="-._~$&+=:@") + "/reply",
+                    {
+                        "message_type": input.message_type,
+                        "type": "admin",
+                        "admin_id": input.admin_id,
+                        "body": _reply_html(input.body),
+                    },
+                    on_response_status=observed_statuses.append,
+                )
+            )
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            # Dispatch refused before sending, so nothing reached Intercom in this attempt.
+            return MutationAttempt.retry(
+                self.client.failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the reply was not sent before the attempt deadline or checkpoint",
+                )
+            )
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[0] < 300:
+                return await self._confirm_accepted(
+                    call,
+                    fence,
+                    input,
+                    credentials,
+                    self.client.failure(
+                        operation,
+                        FailureKind.TRANSPORT,
+                        "Intercom accepted the reply, but its answer did not arrive within the write window",
+                    ),
+                )
+            # The claim stays, so the next attempt counts this send and reads back first.
+            return MutationAttempt.retry(
+                self.client.failure(
+                    operation, FailureKind.TRANSPORT, "Intercom request failed before a response arrived"
+                )
+            )
+        exchange = exchange.with_untrusted_refusal_as_unknown(operation)
+        receipt = self.client.receipt(call, input.conversation_id, exchange.request_id)
+        if exchange.outcome != "succeeded" and exchange.has_success_status():
+            # An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
+            assert exchange.failure is not None
+            return await self._confirm_accepted(call, fence, input, credentials, exchange.failure)
+        classified = await _classify_sent_reply(self.client, fence, is_first_send, exchange, output, receipt)
+        if classified is not None:
+            return classified
+        since = dispatched_at - _REPLY_RECONCILIATION_SKEW_SECONDS
         try:
             wire = _envelope(exchange, input.conversation_id)
-            part_wire = _find_reply_part(wire, input, dispatched_at - 300, True)
+            part_wire = _find_reply_part(wire, input, since, True)
             if part_wire is None:
-                part_wire = _find_reply_part(wire, input, dispatched_at - 300, True, False)
-            if part_wire is not None:
-                part = _part(part_wire)
-                output = ReplyToConversationOutput(
-                    input.conversation_id, part, _string(wire.get("state")) or None
-                )
-                receipt = self.client.receipt(call, input.conversation_id, exchange.request_id)
-                from dataclasses import replace
-
-                receipt = replace(receipt, metadata={"partId": part.id})
-            else:
-                output = ReplyToConversationOutput(
-                    input.conversation_id, conversation_state=_string(wire.get("state")) or None
-                )
-            return MutationAttempt.branch_result("replied", output, receipt)
+                part_wire = _find_reply_part(wire, input, since, True, False)
         except (ValueError, TypeError, OverflowError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                output,
-                receipt,
+            return await self._confirm_accepted(
+                call,
+                fence,
+                input,
+                credentials,
                 self.client.failure(
                     operation,
                     FailureKind.PROTOCOL,
                     "Intercom accepted the reply but returned an invalid conversation: " + str(error),
                 ),
             )
+        state = _string(wire.get("state")) or None
+        if part_wire is None:
+            return MutationAttempt.branch_result(
+                "replied", ReplyToConversationOutput(input.conversation_id, conversation_state=state), receipt
+            )
+        try:
+            part = _part(part_wire)
+        except (ValueError, TypeError, OverflowError) as error:
+            return await self._confirm_accepted(
+                call,
+                fence,
+                input,
+                credentials,
+                self.client.failure(
+                    operation,
+                    FailureKind.PROTOCOL,
+                    "Intercom accepted the reply but returned an invalid part: " + str(error),
+                ),
+            )
+        return MutationAttempt.branch_result(
+            "replied",
+            ReplyToConversationOutput(input.conversation_id, part, state),
+            replace(receipt, metadata={"partId": part.id}),
+        )
 
-    async def _reconcile(
-        self, call: Call, input: ReplyToConversationInput, credentials: Any, marker: _ReplyDispatchMarker
+    async def _confirm_accepted(
+        self,
+        call: Call,
+        fence: Fence,
+        input: ReplyToConversationInput,
+        credentials: Any,
+        answer_failure: Failure,
     ) -> MutationAttempt[ReplyToConversationOutput]:
+        """Never resend a 2xx; a retryable read-back saves an acceptance marker and retries."""
+        read_back = await self._read_back(call, input, credentials)
+        if read_back.outcome == "found":
+            return MutationAttempt.branch_result("replied", read_back.output, read_back.receipt)
+        assert read_back.failure is not None
+        if read_back.outcome == "retryable":
+            try:
+                await fence.record_provider_id(_ACCEPTED_REPLY_WITHOUT_PART_ID)
+                return MutationAttempt.retry(
+                    self.client.failure(
+                        "replyToConversation",
+                        read_back.failure.kind,
+                        answer_failure.message
+                        + "; the reply was accepted and is never resent, and "
+                        + read_back.failure.message,
+                    ),
+                    read_back.retry_after_seconds,
+                )
+            except Exception:
+                pass  # Without the marker a later attempt could resend, so this one selects uncertain.
+        return MutationAttempt.uncertain(
+            read_back.output,
+            self.client.failure(
+                "replyToConversation",
+                answer_failure.kind,
+                answer_failure.message
+                + "; the reply was accepted and is never resent, and "
+                + read_back.failure.message,
+            ),
+            read_back.receipt,
+        )
+
+    async def _read_back(
+        self, call: Call, input: ReplyToConversationInput, credentials: Any
+    ) -> _ReplyReadBack:
+        """Never send; look for a part by the input's admin, type, and words since the first attempt."""
         operation = "replyToConversation"
         output = ReplyToConversationOutput(conversation_id=input.conversation_id)
         exchange = await self.client.read_conversation(call, credentials, operation, input.conversation_id)
         receipt = self.client.receipt(call, input.conversation_id, exchange.request_id)
         if _retryable(exchange):
-            assert exchange.failure is not None
-            return MutationAttempt.retry(exchange.failure, exchange.retry_after.total_seconds())
-        if exchange.outcome == "notFound":
-            return MutationAttempt.branch_result("notFound", output, receipt, exchange.failure)
+            return _ReplyReadBack(
+                "retryable", output, receipt, exchange.failure, exchange.retry_after.total_seconds()
+            )
         if exchange.outcome != "succeeded":
             assert exchange.failure is not None
-            return MutationAttempt.uncertain(
+            return _ReplyReadBack(
+                "unconfirmed",
                 output,
+                receipt,
                 self.client.failure(
                     operation,
                     exchange.failure.kind,
-                    "an earlier attempt of this Step sent the reply, and the conversation "
-                    "could not be read back: " + exchange.failure.message,
+                    "the conversation could not be read back: " + exchange.failure.message,
                 ),
-                receipt,
             )
         try:
             wire = _envelope(exchange, input.conversation_id)
             output = ReplyToConversationOutput(
                 input.conversation_id, conversation_state=_string(wire.get("state")) or None
             )
-            part_wire = _find_reply_part(
-                wire, input, marker.dispatched_at - 300 if marker.dispatched_at else 0, False
+            # Every send of this Step happened after its first attempt began.
+            first_attempt_at = call.context.first_attempt_at if call.context is not None else None
+            since = (
+                int(first_attempt_at.timestamp()) - _REPLY_RECONCILIATION_SKEW_SECONDS
+                if first_attempt_at is not None
+                else 0
             )
-            if part_wire is None:
-                return MutationAttempt.uncertain(
-                    output,
-                    self.client.failure(
-                        operation,
-                        FailureKind.TRANSPORT,
-                        "an earlier attempt of this Step sent the reply without a confirmed outcome, "
-                        "and the conversation shows no matching part, so it is not sent again",
-                    ),
-                    receipt,
-                )
-            part = _part(part_wire)
-            from dataclasses import replace
-
-            return MutationAttempt.branch_result(
-                "replied",
-                ReplyToConversationOutput(
-                    input.conversation_id, part, _string(wire.get("state")) or None, True
-                ),
-                replace(receipt, metadata={"partId": part.id}),
-            )
+            part_wire = _find_reply_part(wire, input, since, False)
         except (ValueError, TypeError, OverflowError) as error:
-            return MutationAttempt.uncertain(
+            return _ReplyReadBack(
+                "unconfirmed",
                 output,
+                receipt,
+                self.client.failure(
+                    operation, FailureKind.PROTOCOL, "the conversation read back is invalid: " + str(error)
+                ),
+            )
+        if part_wire is None:
+            return _ReplyReadBack(
+                "absent",
+                output,
+                receipt,
+                self.client.failure(
+                    operation, FailureKind.TRANSPORT, "the conversation shows no matching part"
+                ),
+            )
+        try:
+            part = _part(part_wire)
+        except (ValueError, TypeError, OverflowError) as error:
+            return _ReplyReadBack(
+                "unconfirmed",
+                output,
+                receipt,
                 self.client.failure(
                     operation,
                     FailureKind.PROTOCOL,
-                    "an earlier attempt of this Step sent the reply, and the conversation "
-                    "read back is invalid: " + str(error),
+                    "the conversation shows the reply, but its part is invalid: " + str(error),
                 ),
-                receipt,
             )
+        return _ReplyReadBack(
+            "found",
+            ReplyToConversationOutput(input.conversation_id, part, output.conversation_state),
+            replace(receipt, metadata={"partId": part.id}),
+        )
+
+
+def _has_possible_earlier_reply_send(decision: Decision) -> bool:
+    """Report that an earlier attempt may have sent, so the conversation is read back first."""
+    return (
+        decision.kind != DecisionKind.SEND_ALLOWED
+        or decision.prior_send_upper_bound > 0
+        or (decision.marker is not None and bool(decision.marker.provider_id))
+    )
+
+
+def _can_resend_after_absent_read_back(decision: Decision) -> bool:
+    """Report room under the cap and no saved ID proving Intercom accepted a send."""
+    return decision.kind != DecisionKind.READ_BACK_REQUIRED and not (
+        decision.marker is not None and decision.marker.provider_id
+    )
+
+
+async def _reply_credential_failure_attempt(
+    client: Client,
+    fence: Fence,
+    has_possible_earlier_send: bool,
+    problem: CredentialProblem,
+    output: ReplyToConversationOutput,
+) -> MutationAttempt[ReplyToConversationOutput]:
+    """Map unusable credentials before this send; after a possible send record nothing and never defect."""
+    if has_possible_earlier_send:
+        if problem.is_transient:
+            return MutationAttempt.retry(problem.failure)
+        return MutationAttempt.uncertain(
+            output,
+            client.failure(
+                "replyToConversation",
+                problem.failure.kind,
+                "an earlier attempt of this Step may have sent the reply, and the connection credentials "
+                "cannot read it back",
+            ),
+            Receipt(),
+        )
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        return MutationAttempt.retry(
+            client.failure(
+                "replyToConversation",
+                FailureKind.AVAILABILITY,
+                "credential checkpoint could not be recorded; nothing was sent",
+            )
+        )
+    if problem.is_transient:
+        return MutationAttempt.retry(problem.failure)
+    return MutationAttempt.branch_result("defect", output, Receipt(), problem.failure)
+
+
+async def _classify_sent_reply(
+    client: Client,
+    fence: Fence,
+    is_first_send: bool,
+    exchange: Exchange,
+    output: ReplyToConversationOutput,
+    receipt: Receipt,
+) -> MutationAttempt[ReplyToConversationOutput] | None:
+    """Map a sent reply; any outcome but a definite refusal retries, and the next attempt reads back."""
+    if exchange.outcome == "succeeded":
+        return None
+    assert exchange.failure is not None
+    if exchange.outcome in ("notSent", "rateLimited") or (
+        exchange.outcome == "unconfirmed" and exchange.status == 503
+    ):
+        try:
+            await fence.record_can_resend()
+        except Exception:
+            pass  # A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
+    branch = ""
+    if exchange.outcome == "notFound" and exchange.status == 404:
+        branch = "notFound"
+    elif exchange.outcome == "defect" and is_first_send:
+        branch = "defect"
+    elif exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+        branch = "providerRejected"
+    if not branch:
+        # A 3xx, 408, 409, 410, 5xx, unlisted status, or lost answer may follow an applied reply.
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after.total_seconds())
+    if not is_first_send:
+        return MutationAttempt.uncertain(output, exchange.failure, receipt)
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        return MutationAttempt.retry(
+            client.failure(
+                "replyToConversation", FailureKind.AVAILABILITY, "refusal checkpoint could not be recorded"
+            )
+        )
+    return MutationAttempt.branch_result(
+        branch, output, Receipt() if branch == "defect" else receipt, exchange.failure
+    )
 
 
 class UpdateConversationStateOperation:
@@ -985,27 +1221,26 @@ class UpdateConversationStateOperation:
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), self.client.failure(operation, FailureKind.VALIDATION, problem)
             )
-        credentials, failure = await self.client.resolve_credentials(call, operation)
-        if failure:
-            return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
+        credentials, credential_problem = await self.client.resolve_write_credentials(call, operation)
+        if credential_problem and credential_problem.is_transient:
+            return MutationAttempt.retry(credential_problem.failure)
+        if credential_problem:
+            return MutationAttempt.branch_result("defect", empty, Receipt(), credential_problem.failure)
         assert credentials is not None
         first = await self.client.read_conversation(call, credentials, operation, input.conversation_id)
-        bad = _mutation_failure(self.client, call, first, empty, input.conversation_id)
+        bad = _pre_write_read_failure(self.client, call, first, empty, input.conversation_id, operation)
         if bad:
             return bad
-        first_receipt = self.client.receipt(call, input.conversation_id, first.request_id)
         try:
             current = _conversation(_envelope(first, input.conversation_id))
         except (ValueError, TypeError, OverflowError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                first_receipt,
+            # An unusable 2xx read before the change proves nothing, so the attempt repeats.
+            return MutationAttempt.retry(
                 self.client.failure(
                     operation,
                     FailureKind.PROTOCOL,
                     "Intercom returned an invalid conversation: " + str(error),
-                ),
+                )
             )
         if _state_matches(current, input.state, snoozed_until):
             return MutationAttempt.branch_result(
@@ -1033,25 +1268,24 @@ class UpdateConversationStateOperation:
             "/conversations/" + quote(input.conversation_id, safe="-._~$&+=:@") + "/parts",
             payload,
         )
+        write = write.with_untrusted_refusal_as_unknown(operation)
         write_receipt = self.client.receipt(call, input.conversation_id, write.request_id)
-        if write.outcome == "rejected":
+        if write.outcome == "rejected" and write.status in _DEFINITE_REFUSAL_STATUSES:
             reread = await self.client.read_conversation(call, credentials, operation, input.conversation_id)
-            bad = _mutation_failure(self.client, call, reread, empty, input.conversation_id)
-            if bad:
-                return bad
-            reread_receipt = self.client.receipt(call, input.conversation_id, reread.request_id)
+            if reread.outcome != "succeeded":
+                # A failed reread retries, because the absolute change is safe to repeat.
+                assert reread.failure is not None
+                return MutationAttempt.retry(reread.failure, reread.retry_after.total_seconds())
             try:
                 after = _conversation(_envelope(reread, input.conversation_id))
             except (ValueError, TypeError, OverflowError) as error:
-                return MutationAttempt.branch_result(
-                    "invalidResponse",
-                    empty,
-                    reread_receipt,
+                return MutationAttempt.retry(
                     self.client.failure(
                         operation,
                         FailureKind.PROTOCOL,
-                        "Intercom returned an invalid conversation: " + str(error),
-                    ),
+                        "Intercom returned an invalid conversation when read again after rejecting "
+                        "the change: " + str(error),
+                    )
                 )
             if _state_matches(after, input.state, snoozed_until):
                 return MutationAttempt.branch_result(
@@ -1060,29 +1294,33 @@ class UpdateConversationStateOperation:
             return MutationAttempt.branch_result(
                 "providerRejected", UpdateConversationStateOutput(after), write_receipt, write.failure
             )
-        bad = _mutation_failure(
-            self.client, call, write, UpdateConversationStateOutput(current), input.conversation_id
-        )
-        if bad:
-            return bad
+        if write.outcome == "notFound" and write.status == 404:
+            return MutationAttempt.branch_result(
+                "notFound", UpdateConversationStateOutput(current), write_receipt, write.failure
+            )
+        if write.outcome == "defect":
+            # The request could not be built, so nothing was sent.
+            return MutationAttempt.branch_result(
+                "defect", UpdateConversationStateOutput(current), write_receipt, write.failure
+            )
+        if write.outcome != "succeeded":
+            # A lost answer, 3xx, 408, 409, 410, 5xx, or unlisted status may follow an applied change.
+            assert write.failure is not None
+            return MutationAttempt.retry(write.failure, write.retry_after.total_seconds())
         try:
             updated = _conversation(_envelope(write, input.conversation_id))
             if not _state_matches(updated, input.state, snoozed_until):
                 raise ValueError("conversation returned after the change is not in the requested state")
-            return MutationAttempt.branch_result(
-                "updated", UpdateConversationStateOutput(updated), write_receipt
-            )
         except (ValueError, TypeError, OverflowError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                UpdateConversationStateOutput(current),
-                write_receipt,
+            # The change is absolute, so the next attempt reads again and writes only if still needed.
+            return MutationAttempt.retry(
                 self.client.failure(
                     operation,
                     FailureKind.PROTOCOL,
-                    "Intercom returned an invalid conversation: " + str(error),
-                ),
+                    "Intercom returned an invalid conversation after the change: " + str(error),
+                )
             )
+        return MutationAttempt.branch_result("updated", UpdateConversationStateOutput(updated), write_receipt)
 
 
 def _state_matches(conversation: Conversation, state: str, snoozed_until: int) -> bool:

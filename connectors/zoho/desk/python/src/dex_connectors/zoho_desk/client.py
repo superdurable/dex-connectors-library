@@ -9,13 +9,25 @@ import ipaddress
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote_plus, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -59,11 +71,37 @@ class Exchange:
     failure: Failure | None = None
     retry_after_seconds: float = 0
     field_errors: tuple[str, ...] = ()
+    is_error_body_unreadable: bool = False
+    """A non-2xx body was oversized or reflected the credential."""
+    accepted_provider_id: str = ""
+    """A created object's id carried by a non-2xx body."""
+
+
+@dataclass
+class ResponseObservation:
+    """The status of the last response whose headers arrived, kept when a timeout cuts its body read."""
+
+    status: int = 0
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Build a secret-safe Zoho Desk failure."""
     return Failure(kind, "zoho-desk", operation, message)
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure no later attempt resolves without a person."""
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _loopback(host: str | None) -> bool:
@@ -103,6 +141,19 @@ def _summary(body: bytes) -> tuple[str, list[str]]:
                 name += "=" + error_type
             details.append(name)
     return code, sorted(details)[:5]
+
+
+def accepted_provider_id(body: bytes) -> str:
+    """Return the valid numeric id of a JSON object body, or an empty string."""
+    try:
+        document = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    value = document.get("id") if isinstance(document, dict) else None
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        return ""
+    text = str(value)
+    return text if _ID.fullmatch(text) else ""
 
 
 def _with_summary(message: str, body: bytes) -> str:
@@ -200,7 +251,8 @@ class Client:
         """Resolve generated OAuth credentials and the matching Desk data center."""
         clock = asyncio.get_running_loop()
         self._operation_deadlines = {
-            call_id: deadline for call_id, deadline in self._operation_deadlines.items()
+            call_id: deadline
+            for call_id, deadline in self._operation_deadlines.items()
             if deadline > clock.time()
         }
         self._operation_deadlines[str(call.id)] = clock.time() + 25
@@ -209,9 +261,7 @@ class Client:
                 self.credentials.resolve(call), self._remaining_seconds(call)
             )
         except Exception as error:
-            from dex_connectors.sdk import ReauthorizationRequiredError
-
-            return None, None, "rejected" if isinstance(error, ReauthorizationRequiredError) else "retry"
+            return None, None, "rejected" if _is_terminal_credential_error(error) else "retry"
         if not isinstance(credentials, Credentials):
             return None, None, "defect"
         token = credentials.access_token.reveal() if credentials.access_token else ""
@@ -230,36 +280,44 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        resend_after_unauthorized: bool = True,
+        observation: ResponseObservation | None = None,
     ) -> Exchange:
-        """Send once, or refresh and resend once after HTTP 401."""
+        """Send once, or refresh and resend once after HTTP 401.
+
+        A fenced write passes ``resend_after_unauthorized=False`` and refreshes outside the fence,
+        and passes ``observation`` to learn the status of a response a timeout cut short.
+        """
         target = base_url + path
         if query:
             target += "?" + "&".join(
                 f"{_query_escape(key)}={_query_escape(value)}" for key, value in sorted(query.items())
             )
+        observation = observation or ResponseObservation()
         for attempt in range(2):
+            observation.status = 0
             if self._remaining_seconds(call) <= 0:
                 return Exchange(
                     "not_sent",
                     failure=failure(
-                        operation, FailureKind.TRANSPORT,
+                        operation,
+                        FailureKind.TRANSPORT,
                         "the operation deadline passed before Zoho Desk could send a request",
                     ),
                 )
             try:
                 result = await asyncio.wait_for(
-                    self._exchange_once(operation, credentials, method, target, payload),
+                    self._exchange_once(operation, credentials, method, target, payload, observation),
                     self._remaining_seconds(call),
                 )
             except TimeoutError:
-                return Exchange(
-                    "unavailable",
-                    failure=failure(
-                        operation, FailureKind.TRANSPORT,
-                        "the operation deadline passed before Zoho Desk answered",
-                    ),
-                )
-            if result.status != 401 or attempt or not hasattr(self.credentials, "resolve_after_rejection"):
+                return deadline_exchange(operation, observation)
+            if (
+                result.status != 401
+                or attempt
+                or not resend_after_unauthorized
+                or not hasattr(self.credentials, "resolve_after_rejection")
+            ):
                 return result
             try:
                 replacement = await asyncio.wait_for(
@@ -277,6 +335,33 @@ class Client:
                 return result
         return result
 
+    async def replace_rejected_credentials(self, call: Call, rejected: Credentials) -> str:
+        """Refresh after a 401 on a fenced write without resending it.
+
+        Returns ``"replacement"`` for a changed, usable token in the same data
+        center, ``"unavailable"`` for a transient refresh failure, and
+        ``"reconnect"`` otherwise.
+        """
+        if not hasattr(self.credentials, "resolve_after_rejection"):
+            return "reconnect"
+        try:
+            replacement = await asyncio.wait_for(
+                self.credentials.resolve_after_rejection(call), self._remaining_seconds(call)
+            )
+        except Exception as error:
+            return "reconnect" if _is_terminal_credential_error(error) else "unavailable"
+        rejected_token = rejected.access_token.reveal() if rejected.access_token else ""
+        if (
+            isinstance(replacement, Credentials)
+            and replacement.auth_method_id == rejected.auth_method_id
+            and replacement.auth_method_id in _DATA_CENTERS
+            and replacement.access_token
+            and _safe_token(replacement.access_token.reveal())
+            and replacement.access_token.reveal() != rejected_token
+        ):
+            return "replacement"
+        return "reconnect"
+
     async def _exchange_once(
         self,
         operation: str,
@@ -284,6 +369,7 @@ class Client:
         method: str,
         target: str,
         payload: dict[str, Any] | None,
+        observation: ResponseObservation,
     ) -> Exchange:
         token = credentials.access_token.reveal() if credentials.access_token else ""
         headers = {
@@ -293,6 +379,7 @@ class Client:
         }
         if payload is not None:
             headers["Content-Type"] = "application/json"
+        is_error_body_unreadable = False
         try:
             request = self.http_client.build_request(
                 method,
@@ -305,6 +392,7 @@ class Client:
             )
             response, _ = await send_traced(self.http_client, request)
             status = response.status_code
+            observation.status = status
             response_headers = response.headers
             try:
                 body = await read_bounded_body(
@@ -322,14 +410,19 @@ class Client:
                             "Zoho Desk response exceeds the configured maxResponseBytes limit",
                         ),
                     )
-                body = b""
+                body, is_error_body_unreadable = b"", True
             except (httpx.HTTPError, ProviderTransportError):
-                return Exchange(
-                    "unavailable",
-                    status,
-                    headers=response_headers,
-                    failure=failure(operation, FailureKind.TRANSPORT, "Zoho Desk response could not be read"),
-                )
+                if status != 429:
+                    return Exchange(
+                        "unavailable",
+                        status,
+                        headers=response_headers,
+                        failure=failure(
+                            operation, FailureKind.TRANSPORT, "Zoho Desk response could not be read"
+                        ),
+                    )
+                # A 429 status proves Zoho Desk did not process the request, even when its body broke.
+                body = b""
         except ProviderTransportError as error:
             outcome = "not_sent" if error.provably_not_sent else "unavailable"
             message = (
@@ -357,9 +450,21 @@ class Client:
                         "Zoho Desk response reflected the connection credential",
                     ),
                 )
-            body = b""
+            body, is_error_body_unreadable = b"", True
         if 200 <= status < 300:
             return Exchange("success", status, body, response_headers)
+        classified = self._classify_error_status(operation, status, body, response_headers)
+        # A write refusal is definite only with a trusted body and no created id; write callers check both.
+        return replace(
+            classified,
+            is_error_body_unreadable=is_error_body_unreadable,
+            accepted_provider_id=accepted_provider_id(body),
+        )
+
+    def _classify_error_status(
+        self, operation: str, status: int, body: bytes, response_headers: httpx.Headers
+    ) -> Exchange:
+        """Classify a non-2xx status by its errorCode and field errors, never its message text."""
         code, field_errors = _summary(body)
         delay = parse_retry_after(response_headers.get("Retry-After", ""), self._now())
         if status == 429:
@@ -447,6 +552,22 @@ class Client:
         return Receipt(
             call.id, "zoho-desk", datetime.now(UTC), call.idempotency_key, object_id, metadata=metadata
         )
+
+
+def deadline_exchange(operation: str, observation: ResponseObservation) -> Exchange:
+    """Classify a request a timeout cut short, keeping a status whose headers had arrived."""
+    if observation.status:
+        return Exchange(
+            "unavailable",
+            observation.status,
+            failure=failure(operation, FailureKind.TRANSPORT, "Zoho Desk response could not be read"),
+        )
+    return Exchange(
+        "unavailable",
+        failure=failure(
+            operation, FailureKind.TRANSPORT, "the operation deadline passed before Zoho Desk answered"
+        ),
+    )
 
 
 def _query_escape(value: str) -> str:

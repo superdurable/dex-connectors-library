@@ -210,7 +210,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: replyToDuplicateStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "intercom", GroupLabel: "Intercom",
-				Explanation: "Reply once to the duplicate, pointing the customer to the earlier conversation; an unconfirmed reply is never resent.",
+				Explanation: "Reply once to the duplicate, pointing the customer to the earlier conversation; an unconfirmed reply is read back before any resend.",
 			},
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 				ID: "replyingAdmin", UnitID: intercom.UIUnitAdminPicker, Label: "Replying admin", Required: true,

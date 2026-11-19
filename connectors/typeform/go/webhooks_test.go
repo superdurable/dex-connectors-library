@@ -5,8 +5,10 @@ package typeform_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/typeform/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -137,6 +140,47 @@ func TestUpsertWebhookSelectsDefectBeforeAnyRequest(t *testing.T) {
 	}
 }
 
+func TestUpsertWebhookClassifiesEveryCredentialResolveFailure(t *testing.T) {
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"reauthorization required":         {err: sdkgo.ErrReauthorizationRequired, isTerminal: true},
+		"project reauthorization required": {err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		"connection object not found":      {err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		"connection not selected":          {err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		"broker rejected":                  {err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		"broker unavailable":               {err: projectconfig.ErrCredentialBrokerUnavailable},
+		"connection not configured":        {err: errors.New("connection is not configured")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeTypeform(t, nil)
+			client := newTestClient(t, fake.redirectingClient(), failingTypeformCredentials{err: test.err}, typeform.Config{})
+			input := typeform.UpsertWebhookInput{FormID: testFormID, Tag: testWebhookTag, URL: testWebhookURL}
+			result, err := sdkgo.RunMutation(newStepContext("upsert"), client.UpsertWebhook(), testConnection, input)
+			var retry *sdkgo.RetryError
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, typeform.UpsertWebhookBranchDefect, result.Branch)
+				later := newStepContext("upsert-later")
+				later.laterAttempt = 2
+				_, err = sdkgo.RunMutation(later, client.UpsertWebhook(), testConnection, input)
+				require.ErrorAs(t, err, &retry, "an earlier attempt's PUT may have applied")
+			} else {
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Empty(t, fake.recordedRequests())
+		})
+	}
+}
+
+// failingTypeformCredentials fails every resolution with err.
+type failingTypeformCredentials struct{ err error }
+
+func (credentials failingTypeformCredentials) Resolve(sdkgo.Call) (typeform.Credentials, error) {
+	return typeform.Credentials{}, credentials.err
+}
+
 func TestUpsertWebhookClassifiesTypeformAnswers(t *testing.T) {
 	for _, test := range []struct {
 		name           string
@@ -145,11 +189,9 @@ func TestUpsertWebhookClassifiesTypeformAnswers(t *testing.T) {
 		expectedKind   sdkgo.FailureKind
 	}{
 		{"http URL refused", respondJSON(http.StatusBadRequest, providerError("webhook_url_https_required")), typeform.UpsertWebhookBranchProviderRejected, sdkgo.FailureValidation},
-		{"plan without webhooks", respondJSON(http.StatusPaymentRequired, providerError("PAYMENT_REQUIRED")), typeform.UpsertWebhookBranchProviderRejected, sdkgo.FailureProviderRejection},
 		{"missing scope", respondJSON(http.StatusForbidden, providerError("AUTHENTICATION_ERROR")), typeform.UpsertWebhookBranchProviderRejected, sdkgo.FailureAuthorization},
 		{"missing form", respondJSON(http.StatusNotFound, providerError("NOT_EXISTING_ID")), typeform.UpsertWebhookBranchNotFound, sdkgo.FailureNotFound},
-		{"unreadable 2xx", respondJSON(http.StatusOK, `{"id":`), typeform.UpsertWebhookBranchInvalidResponse, sdkgo.FailureProtocol},
-		{"another tag in the answer", newFakeWebhooks().upsertRoute(testFormID, "other-tag"), typeform.UpsertWebhookBranchInvalidResponse, sdkgo.FailureProtocol},
+		{"plan feature", respondJSON(http.StatusPaymentRequired, providerError("PAYMENT_REQUIRED")), typeform.UpsertWebhookBranchProviderRejected, sdkgo.FailureProviderRejection},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeTypeform(t, map[string]http.HandlerFunc{"PUT " + testWebhookPath: test.handler})
@@ -159,6 +201,7 @@ func TestUpsertWebhookClassifiesTypeformAnswers(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, test.expectedBranch, result.Branch)
 			require.Equal(t, test.expectedKind, result.Failure.Kind)
+			require.Len(t, fake.recordedRequests(), 1)
 			requireSecretFree(t, result)
 		})
 	}
@@ -171,6 +214,12 @@ func TestUpsertWebhookRetriesAServerErrorOrALostAnswerBecauseThePutIsIdempotent(
 		expectedKind sdkgo.FailureKind
 	}{
 		{"server error", respondJSON(http.StatusInternalServerError, providerError("SERVER_ERROR")), sdkgo.FailureAvailability},
+		{"unlisted refusal status", respondJSON(http.StatusMethodNotAllowed, providerError("METHOD_NOT_ALLOWED")), sdkgo.FailureProtocol},
+		{"conflict", respondJSON(http.StatusConflict, providerError("CONFLICT")), sdkgo.FailureProtocol},
+		{"refusal status carrying a webhook", respondJSON(http.StatusBadRequest, `{"id":"webhook_1","code":"VALIDATION_ERROR"}`), sdkgo.FailureProtocol},
+		{"oversized refusal body", respondJSON(http.StatusForbidden, `{"code":"`+strings.Repeat("x", 70000)+`"}`), sdkgo.FailureProtocol},
+		{"unreadable 2xx", respondJSON(http.StatusOK, `{"id":`), sdkgo.FailureProtocol},
+		{"another tag in the answer", newFakeWebhooks().upsertRoute(testFormID, "other-tag"), sdkgo.FailureProtocol},
 		{"lost answer", func(response http.ResponseWriter, _ *http.Request) {
 			connection, _, err := response.(http.Hijacker).Hijack()
 			if err == nil {

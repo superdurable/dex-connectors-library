@@ -218,7 +218,7 @@ func ReplyToConversationReplied(value front.ConversationReply, failure *sdkgo.Fa
 	return connectormock.Branch(front.ReplyToConversationBranchReplied, value, failure)
 }
 
-// ReplyToConversationNotFound selects the notFound branch: The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.
+// ReplyToConversationNotFound selects the notFound branch: The conversation does not exist or is not visible to the API token (HTTP 404); nothing was sent. A merged conversation's 301 is an unknown outcome instead.
 func ReplyToConversationNotFound(value front.ConversationReply, failure *sdkgo.Failure) connectormock.Case[front.ConversationReply] {
 	return connectormock.Branch(front.ReplyToConversationBranchNotFound, value, failure)
 }
@@ -233,7 +233,7 @@ func ReplyToConversationUncertain(value front.ConversationReply, failure sdkgo.F
 	return connectormock.Uncertain(value, failure)
 }
 
-// ReplyToConversationDefect selects the defect branch: Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.
+// ReplyToConversationDefect selects the defect branch: Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry.
 func ReplyToConversationDefect(value front.ConversationReply, failure *sdkgo.Failure) connectormock.Case[front.ConversationReply] {
 	return connectormock.Branch(front.ReplyToConversationBranchDefect, value, failure)
 }
@@ -281,12 +281,12 @@ func UpdateConversationProviderRejected(value front.UpdateConversationOutput, fa
 	return connectormock.Branch(front.UpdateConversationBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationInvalidResponse selects the invalidResponse branch: Front returned a malformed or oversized conversation, so the change may have been applied.
+// UpdateConversationInvalidResponse selects the invalidResponse branch: Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized conversation on any read is retried.
 func UpdateConversationInvalidResponse(value front.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[front.UpdateConversationOutput] {
 	return connectormock.Branch(front.UpdateConversationBranchInvalidResponse, value, failure)
 }
 
-// UpdateConversationDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// UpdateConversationDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.
 func UpdateConversationDefect(value front.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[front.UpdateConversationOutput] {
 	return connectormock.Branch(front.UpdateConversationBranchDefect, value, failure)
 }
@@ -314,7 +314,7 @@ func UpdateConversationInvalidTag() connectormock.Case[front.UpdateConversationO
 	return connectormock.Branch(front.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Front rejected the tag ID (HTTP 400)."})
 }
 
-// UpdateConversationOversizedReadBack is the manifest mock oversizedReadBack: The read-back of cnv_100 exceeds maxResponseBytes after routing.
+// UpdateConversationOversizedReadBack is the manifest mock oversizedReadBack: Kept for compatibility: the read of cnv_100 before routing exceeds maxResponseBytes, which the connector now retries.
 func UpdateConversationOversizedReadBack() connectormock.Case[front.UpdateConversationOutput] {
 	var value front.UpdateConversationOutput
 	return connectormock.Branch(front.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureResponseTooLarge, Message: "The Front response exceeds maxResponseBytes."})

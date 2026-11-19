@@ -1,6 +1,6 @@
 # Zoho Desk Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoho/desk`.
 
@@ -265,7 +265,8 @@ cannot clear an assignee.
 `contentType: plainText` and `isPublic` stated explicitly. A public comment is
 shown to the customer in the help center; a private one only to agents. Zoho
 Desk fixes visibility when the comment is added, and a response with another
-visibility selects `uncertain`. Content is at most 32,000 characters.
+visibility selects `uncertain` without a resend, because the comment exists.
+Content is at most 32,000 characters.
 
 ## ticketChanged Trigger
 
@@ -374,32 +375,68 @@ Dex re-dispatches an async Step whose local attempt passes about seven
 seconds, and retries a Step after a lost Worker, so the operations take these
 positions:
 
-- **updateTicket** is safe to repeat. Its write sets absolute values computed
-  from a fresh read, so a second dispatch sends the same values or finds them
-  applied. It keeps async durability, and every unconfirmed outcome, including
-  a 5xx or a lost response, is retried.
-- **createTicket** and **addComment** run with sync durability, so Dex never
-  sends a second attempt while the first is in flight. Before sending, the
-  operation records a Dex heartbeat checkpoint naming the Step's Call ID. A
-  later attempt of the same Step execution that finds the checkpoint, after a
-  lost Worker or an Execute timeout, selects `uncertain` without sending. The
-  checkpoint is read before credentials, so a revoked authorization on that
-  later attempt still reports `uncertain`, not "nothing was created".
-- A 429 or 503 is retried, as required by the connector retry contract. A DNS,
+- **updateTicket** declares `repeatOnUnknown: safe`. Its write sets absolute
+  values computed from a fresh read, so a second dispatch sends the same values
+  or finds them applied. It keeps async durability, and every unknown outcome of
+  the `PATCH`, including a 5xx, a 409, a lost response, or an invalid or oversized
+  answer, is retried. An invalid or oversized answer to the read before the
+  change retries too, because an earlier attempt may have sent the change;
+  `invalidResponse` stays declared but is not selected.
+- **createTicket** and **addComment** are `limited` with the default send cap of
+  three, and run with sync durability under the SDK single-dispatch fence, so
+  Dex never sends a second attempt while the first is in flight. Before sending,
+  the fence records a heartbeat claim naming the Step's Call ID and counting the
+  possible sends. Zoho Desk offers no ticket or comment lookup by Call ID, so a
+  later attempt after an unknown outcome resends while the possible sends stay
+  below the cap, and selects `uncertain` once the cap is reached. Each resend
+  below the cap may create another ticket or add another comment. The fence is
+  read before credentials, and every attempt after a possible send, including
+  one after a 429 recorded `canResend`, counts that send: a revoked
+  authorization reports `uncertain`, not "nothing was created", and a
+  credential outage retries without recording anything.
+- A 2xx is accepted and never resent. A ticket or comment ID in the answer is
+  checkpointed, even when the rest of the answer is invalid, and read back in
+  the same attempt with `GET /api/v1/tickets/{id}` or
+  `GET /api/v1/tickets/{ticketId}/comments/{commentId}`, selecting `created` or
+  `added`. A later attempt that finds the checkpointed ID, even at the send cap,
+  reads it back the same way. A 429, 503, 5xx, or lost answer to that read
+  retries the read, only when the ID was checkpointed; a 404, 401, 403, or
+  another unconfirmed answer selects `uncertain`. A 2xx without a readable ID,
+  such as an oversized or credential-reflecting answer or one whose body breaks
+  after the headers, selects `uncertain`. A comment stored with another
+  visibility selects `uncertain`.
+- A 429 or 503 is retried, as required by the connector retry contract, even
+  when its body breaks while reading. A DNS,
   connect, or TLS failure before any connection was obtained (traced with
-  `httptrace`), an operation deadline before sending, and a 401 followed by one
-  refresh when the recorded expiry has passed are retried too. The checkpoint
-  is cleared first.
-- A 408, other 5xx, a lost or unreadable response, and an invalid, oversized,
-  or credential-reflecting 2xx select `uncertain`: the ticket or comment may
-  exist, and the connector never resends it. The example leaves the branch
+  `httptrace`) and an operation deadline before sending are retried too. The
+  fence records `canResend` first, so the retry may send.
+- A 401 on createTicket or addComment is not resent inside the attempt. The
+  connector forces one credential refresh; a changed access token records
+  `canResend` and retries with it. A transient refresh failure retries, and
+  records `canResend` only on a first send. A revoked refresh selects
+  `providerRejected` on a first send and `uncertain` after an earlier possible
+  send. Reads and updateTicket refresh and resend once inside the attempt.
+- A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of a
+  first send records `canResend` and selects its branch. After an earlier
+  possible send the same refusal selects `uncertain`, because the earlier send
+  may have created the ticket or comment. A refusal status is definite only
+  when its body is trusted: one whose body exceeds the 64 KiB error body
+  limit, breaks while reading, or contains the access token is an unknown
+  outcome, resent within the cap (updateTicket repeats its change). A refusal
+  whose body carries a ticket or comment `id` is treated as accepted: the ID is
+  checkpointed and read back by ID, never resent.
+- A 408, 409, other 5xx, an unlisted status, a 3xx, and a response lost before
+  its status arrived are unknown outcomes and are resent within the cap. The example leaves `uncertain`
   unwired, so the Flow fails and a person can check Zoho Desk before another run.
+- A dispatch checkpoint that cannot be read or trusted sends nothing and
+  retries. Markers written by v0.25.0 and earlier, and by Python and TypeScript
+  0.2.0, are untrusted by the SDK fence: an attempt that was in flight during
+  the upgrade retries without sending until its retry budget runs out.
 
 Keep these two Steps sync. A Worker failure or retry can dispatch a Step again
-under either durability mode. Dex can acknowledge a heartbeat
-before it stores it, so a checkpoint lost before Dex stored it, or a crash
-before the request left, can make an attempt report `uncertain` for a request
-Zoho Desk never received; that direction is safe.
+under either durability mode. Dex can acknowledge a heartbeat before it stores
+it, so a lost claim counts as a possible send; that direction never exceeds the
+cap.
 
 ## Errors
 
@@ -409,22 +446,29 @@ A Failure repeats only Zoho Desk's machine-readable `errorCode` and up to five
 `Zoho Desk rejected the request (HTTP 422) [INVALID_DATA; errors: /departmentId=invalid]`.
 A body that contains the access token is dropped.
 
+"First send" means no earlier attempt of the Step execution may have sent the
+write; "at the cap" means this send is the third possible one.
+
 | Response | Reads and updateTicket | createTicket and addComment |
 | --- | --- | --- |
-| 400, 422 (`INVALID_DATA`, `UNPROCESSABLE_ENTITY`) | `providerRejected`, `VALIDATION` | same |
-| 401 (`INVALID_OAUTH`), after one refresh and resend only when the stored token has expired | `providerRejected`, `AUTHENTICATION` | same |
-| 403 (`OAUTH_ORG_MISMATCH`, `SCOPE_MISMATCH`, `FORBIDDEN`, `LICENSE_ACCESS_LIMITED`) | `providerRejected`, `AUTHORIZATION` | same |
-| 404 (`URL_NOT_FOUND`) | `notFound` where declared, otherwise `providerRejected` | same |
-| 405, 409, 413, 415, other 4xx | `providerRejected` | `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
+| 400, 411, 413, 414, 415, 422 (`INVALID_DATA`, `UNPROCESSABLE_ENTITY`) | `providerRejected`, `VALIDATION` for 400 and 422 | `providerRejected` on a first send, otherwise `uncertain` |
+| 401 (`INVALID_OAUTH`) | `providerRejected`, `AUTHENTICATION`, after one refresh and resend | Retry after a refresh that changed the token or failed transiently; otherwise `providerRejected` on a first send, or `uncertain` |
+| 403 (`OAUTH_ORG_MISMATCH`, `SCOPE_MISMATCH`, `FORBIDDEN`, `LICENSE_ACCESS_LIMITED`) | `providerRejected`, `AUTHORIZATION` | `providerRejected` on a first send, otherwise `uncertain` |
+| 404 (`URL_NOT_FOUND`) | `notFound` where declared, otherwise `providerRejected` | `notFound` or `providerRejected` on a first send, otherwise `uncertain` |
+| 405, 409, other 4xx | `providerRejected` for a read; Retry for updateTicket's change | Retry, or `uncertain` at the cap |
+| 3xx | `providerRejected`, `PROTOCOL`, for a read; Retry for updateTicket's change; redirects are never followed | Retry, or `uncertain` at the cap |
 | 429 (`THRESHOLD_EXCEEDED`, `TOO_MANY_REQUESTS`) | Retry, after `Retry-After` when present | Retry, after `Retry-After` when present |
 | 503 | Retry, after `Retry-After` when present | Retry, after `Retry-After` when present |
 | DNS, connect, or TLS failure before a connection, or the deadline passed before sending | Retry | Retry |
-| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
-| revoked authorization (`invalid_code` on refresh) | `providerRejected`, `AUTHENTICATION` | same |
-| token refresh outage | Retry | Retry |
-| invalid input, unknown data center, or unusable token | `defect`, with no request | `defect`, with no request |
+| 408, other 5xx, response lost before its status | Retry, after `Retry-After` when present | Retry, or `uncertain` at the cap |
+| oversized, malformed, credential-reflecting, or unreadable 2xx | `invalidResponse` for a Query; Retry for updateTicket's read and change | never resent: a valid ID is read back and selects `created` or `added`, otherwise `uncertain` |
+| refusal status (400, 401, 403, 404, 411, 413, 414, 415, 422) whose body is oversized, broken, or contains the token | as above for a read; Retry for updateTicket's change | Retry, or `uncertain` at the cap |
+| refusal status whose body carries a ticket or comment `id` | Retry for updateTicket's change | read back by ID, never resent, as for an accepted 2xx |
+| saved ticket or comment ID from an earlier attempt | not applicable | read back by ID, never resent: `created` or `added`, Retry on a 429, 5xx, or lost read, otherwise `uncertain` |
+| unreadable or untrusted dispatch checkpoint | not applicable | Retry, with no request |
+| revoked authorization (`invalid_code` on refresh), a missing or unselected connection, or a credential broker refusal | `providerRejected`, `AUTHENTICATION`; updateTicket retries after its first attempt, because an earlier `PATCH` may have applied | `providerRejected` on a first send, otherwise `uncertain` |
+| any other credential failure, such as a token refresh or broker outage or a connection the static provider does not configure | Retry | Retry |
+| invalid input, unknown data center, or unusable token | `defect`, with no request | `defect` on a first send, otherwise `uncertain`, with no request |
 
 Zoho Desk meters API credits per day and concurrent calls per edition. It sends
 `Retry-After` only when the daily credits are exhausted, often hours ahead;
@@ -512,7 +556,9 @@ center's own Zoho Desk and Zoho Accounts hosts, the one refresh and resend
 after a 401, non-rotating refresh tokens and terminal refresh codes, search
 parameter building and value rejection, the contact-email check, `from` and
 `limit` paging and 204 pages, string IDs and counts, newest-first threads and
-comments, escaped HTML descriptions, the dispatch checkpoint and its clearing,
+comments, escaped HTML descriptions, the fence claim, `canResend` after a 429,
+503, or refusal, resends below the send cap and `uncertain` at it, untrusted
+checkpoints, the 401 refresh without an in-attempt resend for fenced writes,
 only-changed-field updates, error codes and field tokens without message text,
 `Retry-After`, redirects, and oversized, malformed, and credential-reflecting
 responses.
@@ -537,8 +583,8 @@ department ID.
 
 ## Python
 
-The Python package under `python/` v0.2.0 implements all five ticket operations with the generated OAuth refresh wiring and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go, sharing its cursor documents byte for byte. Its [runnable search Flow](python/examples/search_tickets/README.md) uses the static `zoho-desk-helpdesk` connection and is verified through a local Dex Worker and Client with a generated mock. Its [ticket change Flow](python/examples/ticket_changed/README.md) is verified through a local Dex Worker and Client against a stand-in for Zoho Desk ticket search. The Go-recorded conformance fixture covers provider requests, branches, retry, uncertainty, and heartbeat behavior, and Go-recorded ticket search fetches cover the Trigger's requests, cursors, and events. Live Zoho authorization, provider calls, and ticket search polling have not been verified for this language port.
+The Python package under `python/` v0.2.1 implements all five ticket operations with the generated OAuth refresh wiring, from 0.2.1 with createTicket and addComment under the SDK single-dispatch fence and send cap as in Go, and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go, sharing its cursor documents byte for byte. Its [runnable search Flow](python/examples/search_tickets/README.md) uses the static `zoho-desk-helpdesk` connection and is verified through a local Dex Worker and Client with a generated mock. Its [ticket change Flow](python/examples/ticket_changed/README.md) is verified through a local Dex Worker and Client against a stand-in for Zoho Desk ticket search. The Go-recorded conformance fixture covers provider requests, branches, retry, uncertainty, and heartbeat behavior, and Go-recorded ticket search fetches cover the Trigger's requests, cursors, and events. Live Zoho authorization, provider calls, and ticket search polling have not been verified for this language port.
 
 ## TypeScript
 
-The TypeScript package under `typescript/` v0.2.0 implements all five ticket operations with generated OAuth refresh wiring and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go, sharing its cursor documents byte for byte. Its [runnable search Flow](typescript/examples/search-tickets/README.md) uses the static `zoho-desk-helpdesk` connection. Its [ticket change Flow](typescript/examples/ticket-changed/README.md) is verified through a local Dex Worker and Client against a stand-in for Zoho Desk ticket search. Go-recorded replay covers provider requests, branches, retry, uncertainty, and heartbeat behavior, and Go-recorded ticket search fetches cover the Trigger's requests, cursors, and events. Live Zoho authorization, provider calls, and ticket search polling have not been verified for this language port.
+The TypeScript package under `typescript/` v0.2.1 implements all five ticket operations with generated OAuth refresh wiring, from 0.2.1 with createTicket and addComment under the SDK single-dispatch fence and send cap as in Go, and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go, sharing its cursor documents byte for byte. Its [runnable search Flow](typescript/examples/search-tickets/README.md) uses the static `zoho-desk-helpdesk` connection. Its [ticket change Flow](typescript/examples/ticket-changed/README.md) is verified through a local Dex Worker and Client against a stand-in for Zoho Desk ticket search. Go-recorded replay covers provider requests, branches, retry, uncertainty, and heartbeat behavior, and Go-recorded ticket search fetches cover the Trigger's requests, cursors, and events. Live Zoho authorization, provider calls, and ticket search polling have not been verified for this language port.

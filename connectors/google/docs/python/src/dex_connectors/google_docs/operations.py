@@ -23,7 +23,16 @@ from ._generated.definitions import (
     GET_DOCUMENT_TEXT_DEFINITION,
     REPLACE_DOCUMENT_TEXT_DEFINITION,
 )
-from .client import DRIVE_ID, Client, Exchange, failure, google_error_tokens, retryable, status_kind
+from .client import (
+    DEFINITE_REFUSAL_STATUSES,
+    DRIVE_ID,
+    Client,
+    Exchange,
+    failure,
+    google_error_tokens,
+    retryable,
+    status_kind,
+)
 from .document import (
     body_text,
     decode_document,
@@ -130,7 +139,15 @@ class GetDocumentTextOperation:
                     "documentId must be a Google Docs document ID and format must be markdown or plainText",
                 ),
             )
-        credential = await self.client.credential(call)
+        credential, is_credential_failure_retryable = await self.client.write_credential(call)
+        if credential is None and is_credential_failure_retryable:
+            return QueryAttempt.retry(
+                failure(
+                    "getDocumentText",
+                    FailureKind.AUTHENTICATION,
+                    "connection credentials are temporarily unavailable",
+                )
+            )
         if credential is None:
             return QueryAttempt.branch_result(
                 "defect",
@@ -298,14 +315,15 @@ class _GuardedWrite:
             return MutationAttempt.branch_result(
                 "defect", zero, Receipt(), failure(self.operation, FailureKind.VALIDATION, str(error))
             )
-        credential = await self.client.credential(call)
+        credential, is_credential_failure_retryable = await self.client.write_credential(call)
         if credential is None:
-            return MutationAttempt.branch_result(
-                "defect",
-                zero,
-                Receipt(),
-                failure(self.operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
+            problem = failure(
+                self.operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
             )
+            if is_credential_failure_retryable or (call.context is not None and call.context.attempt > 1):
+                # A transient outage clears later; after an earlier write, defect could hide it.
+                return MutationAttempt.retry(problem)
+            return MutationAttempt.branch_result("defect", zero, Receipt(), problem)
         return await self._read_and_write(call, input, credential)
 
     async def _read_and_write(self, call: Call, input: Any, credential: Any) -> MutationAttempt[Any]:
@@ -571,11 +589,20 @@ class _GuardedWrite:
                     "document was not found or is not visible to the connection",
                 ),
             )
-        return MutationAttempt.branch_result(
-            "providerRejected",
-            zero,
-            receipt,
-            failure(self.operation, status_kind(exchange.status, tokens), "provider rejected the update"),
+        if exchange.status in DEFINITE_REFUSAL_STATUSES:
+            return MutationAttempt.branch_result(
+                "providerRejected",
+                zero,
+                receipt,
+                failure(self.operation, status_kind(exchange.status, tokens), "provider rejected the update"),
+            )
+        # The revision guard makes a repeated batch harmless, so an unknown outcome repeats.
+        return MutationAttempt.retry(
+            failure(
+                self.operation,
+                status_kind(exchange.status, tokens),
+                "provider update outcome is unknown; the next attempt reads the revision",
+            )
         )
 
 

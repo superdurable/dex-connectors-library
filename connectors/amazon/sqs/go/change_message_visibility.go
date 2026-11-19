@@ -71,7 +71,10 @@ func (operation ChangeMessageVisibilityOperation) Invoke(call sdkgo.Call, input 
 		return sdkgo.NewMutationBranch(ChangeMessageVisibilityBranchDefect, ChangedMessageVisibility{},
 			defectFailure(changeMessageVisibilityOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, failure := client.startSession(call, changeMessageVisibilityOperationID)
+	session, cancel, failure, shouldRetry := client.startSession(call, changeMessageVisibilityOperationID)
+	if shouldRetry {
+		return sdkgo.NewMutationRetry[ChangedMessageVisibility](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(ChangeMessageVisibilityBranchDefect, ChangedMessageVisibility{}, failure, sdkgo.Receipt{})
 	}
@@ -80,6 +83,11 @@ func (operation ChangeMessageVisibilityOperation) Invoke(call sdkgo.Call, input 
 	requestID, classified := client.sendAcknowledgement(session, changeMessageVisibilityOperationID, "visibility change", "ChangeMessageVisibility",
 		changeMessageVisibilityRequest{QueueURL: queue.url, ReceiptHandle: input.ReceiptHandle, VisibilityTimeout: input.VisibilityTimeoutSeconds})
 	receipt := client.receipt(call, requestID, messageObjectID(queue, input.MessageID))
+	if classified != nil && classified.outcome == outcomeReceiptHandleInvalid && input.VisibilityTimeoutSeconds == 0 && call.Context.Attempt() > 1 {
+		// An earlier release may have taken effect, and a released message is no longer in flight.
+		changed.VisibleAfter = receipt.ObservedAt
+		return sdkgo.NewMutationBranch(ChangeMessageVisibilityBranchChanged, changed, nil, receipt)
+	}
 	if classified != nil {
 		return mutationAttemptForFailure(*classified, receipt, ChangeMessageVisibilityBranchReceiptHandleInvalid,
 			ChangeMessageVisibilityBranchProviderRejected, ChangeMessageVisibilityBranchDefect, changed)

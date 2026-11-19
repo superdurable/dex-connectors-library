@@ -40,6 +40,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -279,12 +280,24 @@ func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, o
 		credentials, err = client.credentials.Resolve(call)
 	}
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "the Airtable connection must be authorized again", sdkgo.Receipt{})
-	case err != nil || !providerhttp.IsHeaderSafeCredential(credentials.PersonalAccessToken.Reveal()):
+	case isTerminalCredentialError(err):
+		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "Airtable connection credentials are unavailable", sdkgo.Receipt{})
+	case err != nil:
+		// A write may have applied in an earlier attempt, so a passing outage must not select defect.
+		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "Airtable connection credentials are temporarily unavailable", sdkgo.Receipt{})
+	case !providerhttp.IsHeaderSafeCredential(credentials.PersonalAccessToken.Reveal()):
 		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "Airtable connection credentials are unavailable", sdkgo.Receipt{})
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) outcome(disposition outcomeDisposition, operation string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) *providerOutcome {
@@ -383,13 +396,29 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 	return sdkgo.NewQueryBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
 }
 
-// mutationAttemptForOutcome maps an unsuccessful exchange to Retry or a branch; both writes are repeat-safe.
-func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
+// mutationAttemptForOutcome maps an unsuccessful write exchange to Retry or a branch. Both writes are
+// repeat-safe, so any HTTP status that does not prove a refusal, such as 409, 501, or a redirect, and
+// an oversized error body are retried.
+func mutationAttemptForOutcome[T any](outcome providerOutcome, response providerResponse, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	if outcome.disposition == outcomeRetry {
+	isHTTPOutcome := response.statusCode != 0
+	isUnknownStatus := isHTTPOutcome && (response.statusCode < 200 || response.statusCode >= 300) && !isDefiniteRefusalStatus(response.statusCode)
+	// Both writes are safe to repeat, so an oversized or unusable response retries instead of failing.
+	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
+}
+
+// isDefiniteRefusalStatus reports a status that proves Airtable refused a write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func (branches operationBranches) branchFor(disposition outcomeDisposition) sdkgo.BranchID {

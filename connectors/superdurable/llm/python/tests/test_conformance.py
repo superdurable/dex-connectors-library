@@ -18,10 +18,22 @@ SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/superdurab
 CONNECTION = sdk.ConnectionRef("llm", "llm-conformance")
 
 
+def _connection_config(scenario_name: str) -> llm.Config:
+    """Select the connection by scenario name, as the Go adapter does."""
+    if scenario_name.startswith("anthropic-compatible-"):
+        return llm.Config("anthropic-compatible", "https://gateway.example/anthropic", "gateway-model", "", 0)
+    if scenario_name.startswith("openai-compatible-responses-"):
+        gateway_url = "https://gateway.example/v1"
+        return llm.Config(
+            "openai-compatible", gateway_url, "gateway-model", "", 0, openai_compatible_api="responses"
+        )
+    return llm.Config("openai", "", "gpt-6-sol", "", 0)
+
+
 def _client(http_client, recorder):
     base_url = "http://127.0.0.1/v1"
     return llm.Client(
-        llm.Config("openai", "", "gpt-6-sol", "", 0),
+        _connection_config(str(recorder.scenario["name"])),
         conformance.static_credentials(
             CONNECTION, llm.Credentials(sdk.SecretString("sk-llm-conformance-key"))
         ),

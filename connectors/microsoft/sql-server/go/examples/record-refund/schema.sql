@@ -14,5 +14,12 @@ CREATE TABLE dbo.refund_ledger (
   recorded_at datetime2(6) NOT NULL CONSTRAINT df_refund_ledger_recorded_at DEFAULT SYSUTCDATETIME()
 );
 
+-- One running refund total per UTC day. Adding a refund is not idempotent: a repeat counts it twice.
+CREATE TABLE dbo.refund_daily_totals (
+  refund_date date NOT NULL CONSTRAINT pk_refund_daily_totals PRIMARY KEY,
+  total_usd decimal(14, 2) NOT NULL CONSTRAINT ck_refund_daily_totals_total_nonnegative CHECK (total_usd >= 0)
+);
+
 -- Grant the Dex user only what the example needs, for example:
 -- GRANT SELECT, INSERT ON dbo.refund_ledger TO dex_app;
+-- GRANT SELECT, INSERT, UPDATE ON dbo.refund_daily_totals TO dex_app;

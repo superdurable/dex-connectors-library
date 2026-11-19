@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -30,6 +31,7 @@ LISTED = "listed"
 NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
 QUERIED = "queried"
+UNCERTAIN = "uncertain"
 UPDATED = "updated"
 
 LIST_EVENTS_DEFINITION = QueryDefinition(
@@ -69,14 +71,17 @@ CREATE_EVENT_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "The event that carries the Step's idempotency key exists.", False),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the event.", True),
-        BranchDefinition(INVALID_RESPONSE, "Microsoft Graph returned an invalid or oversized event response.", True),
+        BranchDefinition(INVALID_RESPONSE, "The marker lookup before any send returned a malformed or oversized answer, so nothing was sent; an unusable POST answer is read back or selects uncertain instead.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+        BranchDefinition(UNCERTAIN, "An earlier send may have created the event, the marker lookup cannot confirm it, and the send cap allows no further POST.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_EVENT_DEFINITION = MutationDefinition(
@@ -85,7 +90,7 @@ UPDATE_EVENT_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The event holds the requested values.", False),
         BranchDefinition(NOT_FOUND, "The event does not exist, is cancelled, or is not visible to the connection.", True),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the event change.", True),
-        BranchDefinition(INVALID_RESPONSE, "Microsoft Graph returned an invalid or oversized event response.", True),
+        BranchDefinition(INVALID_RESPONSE, "Retained for compatibility and no longer selected: an invalid or oversized response now retries from the read.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -93,6 +98,7 @@ UPDATE_EVENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 QUERY_FREE_BUSY_DEFINITION = QueryDefinition(

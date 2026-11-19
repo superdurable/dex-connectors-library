@@ -274,7 +274,7 @@ func UpsertObjectUpserted(value pipedrive.UpsertedObject, failure *sdkgo.Failure
 	return connectormock.Branch(pipedrive.UpsertObjectBranchUpserted, value, failure)
 }
 
-// UpsertObjectMultipleMatches selects the multipleMatches branch: More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs.
+// UpsertObjectMultipleMatches selects the multipleMatches branch: More than one record carries the identity value before any create of this Step was sent, so the connector changed nothing; the Result lists their IDs.
 func UpsertObjectMultipleMatches(value pipedrive.UpsertedObject, failure *sdkgo.Failure) connectormock.Case[pipedrive.UpsertedObject] {
 	return connectormock.Branch(pipedrive.UpsertObjectBranchMultipleMatches, value, failure)
 }
@@ -390,7 +390,7 @@ func UpdateObjectProviderRejected(value pipedrive.CRMObject, failure *sdkgo.Fail
 	return connectormock.Branch(pipedrive.UpdateObjectBranchProviderRejected, value, failure)
 }
 
-// UpdateObjectInvalidResponse selects the invalidResponse branch: Pipedrive applied or rejected the update but returned an invalid or oversized record.
+// UpdateObjectInvalidResponse selects the invalidResponse branch: No longer selected. An invalid or oversized record after the update is retried, because a repeated PATCH converges; the branch stays declared for compatibility.
 func UpdateObjectInvalidResponse(value pipedrive.CRMObject, failure *sdkgo.Failure) connectormock.Case[pipedrive.CRMObject] {
 	return connectormock.Branch(pipedrive.UpdateObjectBranchInvalidResponse, value, failure)
 }

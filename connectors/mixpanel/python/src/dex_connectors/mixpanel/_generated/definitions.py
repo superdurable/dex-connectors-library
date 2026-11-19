@@ -29,7 +29,7 @@ TRACK_EVENT_DEFINITION = MutationDefinition(
     (
         BranchDefinition(IMPORTED, "Mixpanel accepted the event for ingestion.", False),
         BranchDefinition(PROVIDER_REJECTED, "Mixpanel rejected the event or credentials.", True),
-        BranchDefinition(INVALID_RESPONSE, "Mixpanel returned malformed or oversized data.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: a malformed or oversized import confirmation now retries, because the $insert_id makes a resend safe.", True),
         BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
     ),
     StepDefaults(

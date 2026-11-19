@@ -14,6 +14,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/pipedrive/go"
 	"github.com/superdurable/dex-connectors-library/connectors/pipedrive/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -74,7 +75,7 @@ func TestFencedCreatesClassifyRejectedOAuthRefresh(t *testing.T) {
 					}
 				}
 				require.Equal(t, 1, posts)
-				require.Len(t, ctx.Heartbeats(), 1, "the claim cannot authorize a resend")
+				require.Len(t, ctx.Heartbeats(), 2, "the claim, then canResend for the definite 401 refusal")
 			})
 		}
 	}
@@ -119,7 +120,13 @@ func TestFencedCreatesClassifyCredentialResolutionAtBothFenceStates(t *testing.T
 	}{
 		{name: "store unavailable", resolution: credentialResolutionResult{err: errors.New("credential store unavailable")}, isRetry: true},
 		{name: "deadline", resolution: credentialResolutionResult{err: context.DeadlineExceeded}, isRetry: true},
+		{name: "broker unavailable", resolution: credentialResolutionResult{err: projectconfig.ErrCredentialBrokerUnavailable}, isRetry: true},
+		{name: "static not configured", resolution: credentialResolutionResult{err: errors.New("connection is not configured")}, isRetry: true},
 		{name: "reauthorization", resolution: credentialResolutionResult{err: sdkgo.ErrReauthorizationRequired}, isRejected: true},
+		{name: "project reauthorization", resolution: credentialResolutionResult{err: projectconfig.ErrReauthorizationRequired}, isRejected: true},
+		{name: "connection absent", resolution: credentialResolutionResult{err: projectconfig.ErrObjectNotFound}},
+		{name: "connection not selected", resolution: credentialResolutionResult{err: projectconfig.ErrConnectionNotSelected}},
+		{name: "broker rejected", resolution: credentialResolutionResult{err: projectconfig.ErrCredentialBrokerRejected}},
 		{name: "missing credentials", resolution: credentialResolutionResult{}, isRejected: false},
 		{name: "empty token", resolution: credentialResolutionResult{credentials: pipedrive.Credentials{AuthMethodID: pipedrive.APITokenAuthMethodID}}},
 		{name: "invalid api domain", resolution: credentialResolutionResult{credentials: oauthCredentials("https://invalid.example.com")}},

@@ -36,19 +36,38 @@ export interface Credentials {
   sessionToken?: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["access_key_id", "secret_access_key", "session_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_key_id"] != null && !(typeof fields["access_key_id"] === 'string')) throw new TypeError("credential access_key_id has an invalid type");
-  if (fields["secret_access_key"] != null && !(typeof fields["secret_access_key"] === 'string')) throw new TypeError("credential secret_access_key has an invalid type");
-  if (fields["session_token"] != null && !(typeof fields["session_token"] === 'string')) throw new TypeError("credential session_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_key_id"] != null && !(typeof fields["access_key_id"] === 'string')) throw new CredentialMaterialError("credential access_key_id has an invalid type");
+  if (fields["secret_access_key"] != null && !(typeof fields["secret_access_key"] === 'string')) throw new CredentialMaterialError("credential secret_access_key has an invalid type");
+  if (fields["session_token"] != null && !(typeof fields["session_token"] === 'string')) throw new CredentialMaterialError("credential session_token has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["access_key_id"]) throw new TypeError("credential access_key_id is required");
+  if (!fields["access_key_id"]) throw new CredentialMaterialError("credential access_key_id is required");
   credentials.accessKeyId = new SecretString((fields["access_key_id"] ?? '') as string);
-  if (!fields["secret_access_key"]) throw new TypeError("credential secret_access_key is required");
+  if (!fields["secret_access_key"]) throw new CredentialMaterialError("credential secret_access_key is required");
   credentials.secretAccessKey = new SecretString((fields["secret_access_key"] ?? '') as string);
   credentials.sessionToken = new SecretString((fields["session_token"] ?? '') as string);
   return credentials;

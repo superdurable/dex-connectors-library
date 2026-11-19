@@ -102,7 +102,7 @@ UPLOAD_FILE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(UPLOADED, "Dropbox stored the replacement file content.", False),
         BranchDefinition(PROVIDER_REJECTED, "Dropbox conclusively rejected the upload.", True),
-        BranchDefinition(INVALID_RESPONSE, "Dropbox returned malformed or oversized upload metadata.", True),
+        BranchDefinition(INVALID_RESPONSE, "Retained for compatibility and no longer selected: malformed or oversized upload metadata now retries the overwrite.", True),
         BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
     ),
     StepDefaults(

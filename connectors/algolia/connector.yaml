@@ -6,16 +6,16 @@ metadata:
   description: Search an index and replace a record by object ID.
   company: Algolia
   categories: [databases-storage, data-search]
-  version: v0.3.0
+  version: v0.3.1
 spec:
   provider: algolia
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       operations: [saveObject, search]
       triggers: []
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [saveObject, search]
       triggers: []
   codegen:
@@ -92,7 +92,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Algolia rejected the record or key., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Algolia returned malformed or oversized data., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # A repeated PUT replaces the same objectID with the same attributes.
+        repeatOnUnknown: safe
       mocks:
         - name: savedDefaultObject
           branch: saved

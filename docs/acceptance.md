@@ -86,6 +86,16 @@ CI behavior is accepted when:
   on every event, base commit, diff, and scope, unless
   `conformance/exemptions.yaml` exempts its connector;
 - the `ci-summary` check reports a result even when a matrix is empty;
+- a pull request or single-pull-request merge group whose head carries
+  `mac-studio-verified` = `success`, posted by an admin or maintainer through
+  the Mac Studio tooling `remote-test.py attest`, skips the heavy connector
+  jobs and runs `connector-generation` instead, and so does the push to `main`
+  that adds its squash commit; skipped jobs are not re-run on the merge-group
+  commit or on `main`; the daily scheduled run still skips
+  `dex-integration-connectors` and `dex-compat-current`, so only a manual
+  `workflow_dispatch` runs them on merged results, as
+  [Mac Studio verified pull requests](architecture.md#mac-studio-verified-pull-requests)
+  describes;
 - scheduled compatibility selects the complete catalog;
 - no matrix creates more than 256 jobs and Connector jobs cap parallelism at 32.
 
@@ -99,8 +109,9 @@ make test-dex-compat-current
 ```
 
 It builds selected connectors through a temporary file-backed Go module proxy,
-runs schema 2.0 visualization twice in clean consumer modules, and checks valid,
-deterministic output with complete identities. It also builds real release
+runs schema 2.0 visualization twice in clean consumer modules for every
+non-test Flow source (each Go file with `GetSteps`) in an example `flow`
+package, and checks valid, deterministic output with complete identities. It also builds real release
 metadata and optional Studio UI artifacts, then runs Dex Web's catalog,
 checksum, caching, sandbox, OAuth, and API-key security suites.
 

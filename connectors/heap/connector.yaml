@@ -6,17 +6,17 @@ metadata:
   description: Set user properties through Heap's server-side API.
   company: Heap
   categories: [analytics]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: heap
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-heap
       operations: [setUserProperties]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-heap'
       operations: [setUserProperties]
       triggers: []
@@ -61,9 +61,13 @@ spec:
       branches:
         - {id: accepted, goName: Accepted, description: Heap accepted the property updates.}
         - {id: providerRejected, goName: ProviderRejected, description: Heap conclusively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Heap returned an oversized or unreadable confirmation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an oversized or unreadable confirmation now retries, because repeating the overwrite is safe.", optional: true}
         - {id: defect, goName: Defect, description: "Local identity, property input, or app ID is invalid.", optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # A resend overwrites the same properties with the same absolute values.
+        repeatOnUnknown: safe
       mocks:
         - name: acceptedDefault
           branch: accepted

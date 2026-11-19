@@ -1,14 +1,15 @@
 # Klaviyo profile event example
 
-This runnable Flow submits one profile event from Dex Web Start Flow. The `accepted` branch completes after Klaviyo queues the event; optional branches remain unwired and fail the Flow. The connector derives a stable `unique_id` from the Dex call. `ConnectionName` is statically `klaviyo`. Dex Web summary and display views show the completed provider outcome.
+This runnable Worker registers `KlaviyoProfileEvent` and `KlaviyoProfileList`. The first submits one event; the second reads a bounded profile page under the existing `profiles:read` scope. Optional branches remain unwired and fail the Flow. The connector derives a stable event `unique_id` from the Dex call. `ConnectionName` is statically `klaviyo`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 
-From `connectors/klaviyo` with the latest stable Dex CLI:
+From `connectors/klaviyo/go` with the latest stable Dex CLI:
 
 ```bash
 mkdir -p build
-dexcli visualize ./examples/profile-event/flow/workflow.go --schema-version 2.0 --json --out ./build/profile-event
+dexcli visualize ./examples/profile-event/flow/workflow.go --schema-version 2.0 --lint app --json --out ./build/profile-event
+dexcli visualize ./examples/profile-event/flow/profile_list_workflow.go --schema-version 2.0 --lint app --json --out ./build/profile-list
 ```
 
 The result must report `valid: true`. Local source may report `connector_release_required` until published.
@@ -22,11 +23,11 @@ mkdir -p /tmp/klaviyo-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/klaviyo/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/klaviyo/go \
-  --version v0.2.0 --tag connectors/klaviyo/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/klaviyo/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/klaviyo-release/connector-release.json \
   --digest-output /tmp/klaviyo-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/klaviyo/go/build" --connector-release-override klaviyo=/tmp/klaviyo-release
+dexcli dev -open=false --flow-rendering-dir "$PWD/connectors/klaviyo/go/build" --connector-release-override klaviyo=/tmp/klaviyo-release
 ```
 
 Set the project environment described by [`projectconfig`](../../../../../sdkgo/projectconfig/README.md), then start the Worker:
@@ -43,6 +44,8 @@ Configure `klaviyo / klaviyo` in Dex Web Connections using a private key with `e
 ```
 
 Use a real address from an account you control. Klaviyo can return 202 and later discard events for test domains.
+
+To inspect profiles, start `KlaviyoProfileList` with `{"pageSize":20}`; use optional `email` for an exact match and returned `nextCursor` as the following `cursor`.
 
 ## Tests
 

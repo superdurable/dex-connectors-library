@@ -110,6 +110,22 @@ type fakeReply struct {
 	body   string
 	// dropConnection closes the connection after reading the request.
 	dropConnection bool
+	// breakBody sends the status and part of body, then aborts the connection mid-body.
+	breakBody bool
+}
+
+// failingCredentials returns err for every connection, as an unavailable or rejecting credential store does.
+type failingCredentials struct{ err error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.err
+}
+
+// requireLastCheckpointState asserts the state of the newest dispatch checkpoint.
+func requireLastCheckpointState(t *testing.T, heartbeats [][]byte, state string) {
+	t.Helper()
+	require.NotEmpty(t, heartbeats)
+	require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"`+state+`"`)
 }
 
 const testAccessTokenPrefix = "fake-access-token-"
@@ -148,11 +164,19 @@ func (fake *fakeWeCom) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		closeAfterReadingRequest(fake.t, w)
 		return
 	}
+	if reply.breakBody {
+		// A declared length beyond the written bytes makes the client see the body end early.
+		w.Header().Set("Content-Length", strconv.Itoa(len(reply.body)+64))
+	}
 	if reply.status != 0 {
 		w.WriteHeader(reply.status)
 	}
 	_, err = w.Write([]byte(reply.body))
 	require.NoError(fake.t, err)
+	if reply.breakBody {
+		w.(http.Flusher).Flush()
+		panic(http.ErrAbortHandler)
+	}
 }
 
 // defaultTokenReply issues a distinct token per exchange, so tests can see which token a send used.

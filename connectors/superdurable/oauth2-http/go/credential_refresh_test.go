@@ -150,7 +150,7 @@ func TestSendRequestSelectsDefectWhenTheCredentialsAreUnusable(t *testing.T) {
 	session := newTestSession(t, nil, time.Hour)
 	missing := &testSession{server: session.server}
 	var err error
-	missing.client, err = oauth2http.New(session.server.config(), sdkgo.StaticCredentialProvider[oauth2http.Credentials]{},
+	missing.client, err = oauth2http.New(session.server.config(), sdkgo.StaticCredentialProvider[oauth2http.Credentials]{testConnection: {}},
 		oauth2http.WithHTTPClient(session.server.Client()))
 	require.NoError(t, err)
 

@@ -60,7 +60,7 @@ export const UploadFileBranchUploaded = UploadFileBranch.Uploaded;
 export const UploadFileBranchNotFound = UploadFileBranch.NotFound;
 /** Box conclusively rejected the replacement. */
 export const UploadFileBranchProviderRejected = UploadFileBranch.ProviderRejected;
-/** Box returned malformed or oversized file metadata. */
+/** Retained for compatibility and no longer selected: malformed or oversized file metadata now retries. */
 export const UploadFileBranchInvalidResponse = UploadFileBranch.InvalidResponse;
 /** Local input or connection credentials are invalid. */
 export const UploadFileBranchDefect = UploadFileBranch.Defect;
@@ -71,7 +71,7 @@ export const UploadFileDefinition: MutationDefinition = {
     { id: "uploaded", description: "The existing Box file now has the requested content." },
     { id: "notFound", description: "Box did not find the file or the user lacks access.", optional: true },
     { id: "providerRejected", description: "Box conclusively rejected the replacement.", optional: true },
-    { id: "invalidResponse", description: "Box returned malformed or oversized file metadata.", optional: true },
+    { id: "invalidResponse", description: "Retained for compatibility and no longer selected: malformed or oversized file metadata now retries.", optional: true },
     { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

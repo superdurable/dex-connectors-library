@@ -30,8 +30,11 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -284,9 +287,24 @@ class Client:
         await self.http_client.aclose()
 
     async def start_session(self, call: Call, operation: str) -> _Session | Failure:
-        """Resolve and validate the access key once per operation."""
+        """Resolve and validate the access key once per operation.
+
+        A transient credential failure returns an AVAILABILITY Failure, which Retries; any other
+        returned Failure selects defect.
+        """
         try:
             credentials = await self.credentials.resolve(call)
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return _failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "SQS connection credentials are temporarily unavailable; nothing was sent",
+                )
+            credentials = None
+        try:
+            if credentials is None:
+                raise ValueError("terminal credential failure")
             validate_credentials(credentials)
         except Exception:
             return _failure(
@@ -431,7 +449,7 @@ class ReceiveMessagesOperation:
             document["ReceiveRequestAttemptId"] = attempt_id
         session = await client.start_session(call, operation)
         if isinstance(session, Failure):
-            return MutationAttempt.branch_result(DEFECT, ReceivedMessages(), Receipt(), session)
+            return _session_failure_attempt(session, ReceivedMessages())
         batch = ReceivedMessages(queue.url, queue.is_fifo)
         try:
             response = await client.exchange(session, "ReceiveMessage", document)
@@ -528,7 +546,7 @@ class DeleteMessageOperation:
             return MutationAttempt.branch_result(DEFECT, DeletedMessage(), Receipt(), failure)
         session = await client.start_session(call, operation)
         if isinstance(session, Failure):
-            return MutationAttempt.branch_result(DEFECT, DeletedMessage(), Receipt(), session)
+            return _session_failure_attempt(session, DeletedMessage())
         deleted = DeletedMessage(queue.url, input.message_id)
         result = await client.send_acknowledgement(
             session,
@@ -577,7 +595,7 @@ class ChangeMessageVisibilityOperation:
             return MutationAttempt.branch_result(DEFECT, ChangedMessageVisibility(), Receipt(), failure)
         session = await client.start_session(call, operation)
         if isinstance(session, Failure):
-            return MutationAttempt.branch_result(DEFECT, ChangedMessageVisibility(), Receipt(), session)
+            return _session_failure_attempt(session, ChangedMessageVisibility())
         changed = ChangedMessageVisibility(queue.url, input.message_id, input.visibility_timeout_seconds)
         result = await client.send_acknowledgement(
             session,
@@ -592,8 +610,14 @@ class ChangeMessageVisibilityOperation:
         )
         request_id = result.request_id if isinstance(result, _Classified) else result
         receipt = client.receipt(call, request_id, _message_object_id(queue, input.message_id))
-        if isinstance(result, _Classified):
+        is_repeated_release = (
+            input.visibility_timeout_seconds == 0 and call.context is not None and call.context.attempt > 1
+        )
+        if isinstance(result, _Classified) and not (
+            is_repeated_release and result.outcome is _Outcome.RECEIPT_HANDLE_INVALID
+        ):
             return _mutation_for_failure(result, receipt, RECEIPT_HANDLE_INVALID, changed)
+        # An earlier release may have taken effect, and a released message is no longer in flight.
         observed_at = receipt.observed_at
         assert isinstance(observed_at, datetime)
         changed = replace(
@@ -670,6 +694,10 @@ def _classify_error_response(operation: str, subject: str, response: _ErrorRespo
         return classified(
             _Outcome.REJECTED, FailureKind.AUTHORIZATION, status_message("SQS denied the " + subject)
         )
+    if status not in (400, 401, 403, 404, 411, 413, 414, 415, 422, 501):
+        # Every SQS operation is safe to repeat, so a status that does not prove a refusal retries.
+        message = status_message("SQS answered the " + subject + " ambiguously")
+        return classified(_Outcome.RETRY, FailureKind.AVAILABILITY, message)
     message = status_message("SQS rejected the " + subject)
     return classified(_Outcome.REJECTED, FailureKind.PROVIDER_REJECTION, message)
 
@@ -883,6 +911,29 @@ def _transport_failure(operation: str, subject: str) -> Failure:
     return _failure(
         operation, FailureKind.TRANSPORT, "SQS could not be reached or did not finish the " + subject
     )
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
+
+
+def _session_failure_attempt(failure: Failure, empty: Any) -> MutationAttempt[Any]:
+    """Retry a transient credential failure; select defect for any other session failure."""
+    if failure.kind == FailureKind.AVAILABILITY:
+        return MutationAttempt.retry(failure)
+    return MutationAttempt.branch_result(DEFECT, empty, Receipt(), failure)
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:

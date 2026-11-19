@@ -286,7 +286,7 @@ func TestCreateOutageBeforeConfluenceStoredThePageIsSentAgainSafely(t *testing.T
 	store := newPageStore(t)
 	provider := newRecordingConfluence(t, func(response http.ResponseWriter, request *http.Request, index int) {
 		if request.Method == http.MethodPost && index == 0 {
-			writeJSON(t, response, http.StatusServiceUnavailable, `{"message":"SENTINEL unavailable"}`)
+			writeJSON(t, response, http.StatusInternalServerError, `{"message":"SENTINEL unavailable"}`)
 			return
 		}
 		store.serve(t, response, request)
@@ -307,6 +307,18 @@ func TestCreateOutageBeforeConfluenceStoredThePageIsSentAgainSafely(t *testing.T
 	require.False(t, result.Value.IsConfirmedByTitleLookup)
 	require.Equal(t, 1, store.count(), "Confluence keeps one page per title, so the second send created the only page")
 	require.Equal(t, http.MethodGet, provider.request(2).method, "the retry looked the title up before sending")
+}
+
+func TestCreateServiceUnavailableRetriesWithoutAConfirmingLookup(t *testing.T) {
+	provider := newRecordingConfluence(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusServiceUnavailable, `{"message":"SENTINEL unavailable"}`)
+	})
+	dexContext := newTestDexContext("create-service-unavailable")
+
+	_, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).CreatePage(), confluenceConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 1, provider.requestCount(), "a 503 wrote nothing, so no title lookup follows")
+	require.False(t, dexContext.hasHeartbeat(), "the next attempt may send without looking the title up")
 }
 
 func TestCreateAfterAnEarlierDispatchReportsThePageWithoutSending(t *testing.T) {

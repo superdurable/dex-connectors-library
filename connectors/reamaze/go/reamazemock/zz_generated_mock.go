@@ -275,12 +275,12 @@ func UpdateConversationProviderRejected(value reamaze.UpdateConversationOutput, 
 	return connectormock.Branch(reamaze.UpdateConversationBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationInvalidResponse selects the invalidResponse branch: Re:amaze returned an invalid or oversized conversation, so the change may have been applied.
+// UpdateConversationInvalidResponse selects the invalidResponse branch: Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe.
 func UpdateConversationInvalidResponse(value reamaze.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[reamaze.UpdateConversationOutput] {
 	return connectormock.Branch(reamaze.UpdateConversationBranchInvalidResponse, value, failure)
 }
 
-// UpdateConversationDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// UpdateConversationDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid; unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent.
 func UpdateConversationDefect(value reamaze.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[reamaze.UpdateConversationOutput] {
 	return connectormock.Branch(reamaze.UpdateConversationBranchDefect, value, failure)
 }
@@ -308,7 +308,7 @@ func UpdateConversationProviderRejectedFailure() connectormock.Case[reamaze.Upda
 	return connectormock.Branch(reamaze.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Re:amaze rejected the assignee (HTTP 422)."})
 }
 
-// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: For conversationId double-charge, Re:amaze returns a malformed updated conversation.
+// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: For conversationId double-charge, Re:amaze returns a malformed conversation before the change.
 func UpdateConversationInvalidResponseFailure() connectormock.Case[reamaze.UpdateConversationOutput] {
 	var value reamaze.UpdateConversationOutput
 	return connectormock.Branch(reamaze.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Re:amaze returned a malformed JSON response."})

@@ -20,12 +20,23 @@ from dex_connectors.sdk import (
     MutationDefinition,
     Receipt,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import ProviderTransportError, parse_retry_after, send_traced
 
 from ._generated.definitions import SEND_EVENT_DEFINITION
 from .client import Client
 from .models import SendEventInput, SendEventOutput
+
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+# Only these resolve failures need a person; every other resolve error is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 
 class SendEventOperation:
@@ -47,32 +58,38 @@ class SendEventOperation:
         webhook_id = str(call.idempotency_key)
         output = SendEventOutput(webhook_id=webhook_id)
         if not self.client.delivery_url:
-            return _defect(output, FailureKind.VALIDATION, "the connection has no deliveryUrl")
+            return _defect(call, output, FailureKind.VALIDATION, "the connection has no deliveryUrl")
         try:
             payload = (bytes(input.payload) if isinstance(input.payload, (bytes, bytearray)) else
                        json.dumps(input.payload, ensure_ascii=False, separators=(",", ":"),
                                   allow_nan=False).encode())
             json.loads(payload.decode("utf-8"), parse_constant=lambda value: _reject_json_constant(value))
         except (TypeError, ValueError, UnicodeDecodeError, UnicodeEncodeError):
-            return _defect(output, FailureKind.VALIDATION, "sendEvent payload must be one valid JSON value")
+            return _defect(
+                call, output, FailureKind.VALIDATION, "sendEvent payload must be one valid JSON value"
+            )
         if len(payload) > self.client.max_body_bytes:
-            return _defect(output, FailureKind.VALIDATION, "sendEvent payload exceeds maxBodyBytes")
+            return _defect(call, output, FailureKind.VALIDATION, "sendEvent payload exceeds maxBodyBytes")
         try:
             credentials = await self.client.credentials.resolve(call)
-        except CredentialBrokerUnavailableError:
-            return MutationAttempt.retry(_failure(FailureKind.AVAILABILITY, "credential broker unavailable"))
-        except Exception:
-            return _defect(output, FailureKind.AUTHENTICATION, "webhook signing secret unavailable")
+        except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error):
+                return _defect(call, output, FailureKind.AUTHENTICATION, "webhook signing secret unavailable")
+            return MutationAttempt.retry(
+                _failure(FailureKind.AVAILABILITY, "credential broker or store unavailable; nothing was sent")
+            )
         secret = credentials.signing_secret.reveal()
         if not secret:
-            return _defect(output, FailureKind.AUTHENTICATION, "webhook signing secret unavailable")
+            return _defect(call, output, FailureKind.AUTHENTICATION, "webhook signing secret unavailable")
         if secret.startswith("whsec_"):
             try:
                 key = base64.b64decode(secret[6:].replace("\r", "").replace("\n", ""), validate=True)
             except (ValueError, binascii.Error, UnicodeEncodeError):
-                return _defect(output, FailureKind.VALIDATION, "whsec_ signing secret is invalid")
+                return _defect(call, output, FailureKind.VALIDATION, "whsec_ signing secret is invalid")
             if not key:
-                return _defect(output, FailureKind.VALIDATION, "whsec_ signing secret is invalid")
+                return _defect(call, output, FailureKind.VALIDATION, "whsec_ signing secret is invalid")
         else:
             key = secret.encode()
         timestamp = str(int(self.client.clock().timestamp()))
@@ -90,18 +107,23 @@ class SendEventOperation:
                 "POST", self.client.delivery_url, headers=headers, content=payload
             )
         except Exception:
-            return _defect(output, FailureKind.LOCAL_DEFECT, "the sendEvent request could not be built")
+            return _defect(call, output, FailureKind.LOCAL_DEFECT, "the sendEvent request could not be built")
         try:
             response, _ = await send_traced(self.client.http_client, request)
         except ProviderTransportError as error:
             kind = FailureKind.AVAILABILITY if error.provably_not_sent else FailureKind.TRANSPORT
             return MutationAttempt.retry(_failure(kind, "receiver did not answer the event"))
         status = response.status_code
-        await response.aclose()
+        headers_received = response.headers
+        try:
+            await response.aclose()
+        except Exception:
+            # The status already arrived; closing only releases the connection.
+            pass
         output = SendEventOutput(webhook_id, status)
         if 200 <= status < 300:
             return MutationAttempt.branch_result("delivered", output, Receipt(provider_object_id=webhook_id))
-        delay = parse_retry_after(response.headers.get("Retry-After", ""), self.client.clock())
+        delay = parse_retry_after(headers_received.get("Retry-After", ""), self.client.clock())
         if status in (408, 429):
             return MutationAttempt.retry(
                 _failure(FailureKind.RATE_LIMIT, f"receiver answered HTTP {status}"), delay
@@ -112,11 +134,18 @@ class SendEventOperation:
             return MutationAttempt.retry(
                 _failure(FailureKind.AVAILABILITY, f"receiver answered HTTP {status}"), delay
             )
+        if status not in _DEFINITE_REFUSAL_STATUSES or _has_possible_earlier_send(call):
+            return MutationAttempt.retry(
+                _failure(
+                    FailureKind.PROTOCOL,
+                    f"receiver answered HTTP {status}, which does not prove it refused the event",
+                ),
+                delay,
+            )
         kind = {
             401: FailureKind.AUTHENTICATION,
             403: FailureKind.AUTHORIZATION,
             404: FailureKind.NOT_FOUND,
-            410: FailureKind.NOT_FOUND,
         }.get(status, FailureKind.PROVIDER_REJECTION)
         return MutationAttempt.branch_result(
             "rejected",
@@ -124,6 +153,11 @@ class SendEventOperation:
             Receipt(provider_object_id=webhook_id),
             _failure(kind, f"receiver answered HTTP {status}"),
         )
+
+
+def _has_possible_earlier_send(call: Call) -> bool:
+    """Report whether an earlier attempt of this Step may have delivered the event."""
+    return call.context is not None and call.context.attempt > 1
 
 
 def _failure(kind: FailureKind, message: str) -> Failure:
@@ -134,5 +168,10 @@ def _reject_json_constant(value: str) -> None:
     raise ValueError(f"invalid JSON constant {value}")
 
 
-def _defect(output: SendEventOutput, kind: FailureKind, message: str) -> MutationAttempt[SendEventOutput]:
+def _defect(
+    call: Call, output: SendEventOutput, kind: FailureKind, message: str
+) -> MutationAttempt[SendEventOutput]:
+    """Select defect on the first attempt only; a later attempt may follow a delivered event."""
+    if _has_possible_earlier_send(call):
+        return MutationAttempt.retry(_failure(kind, message))
     return MutationAttempt.branch_result("defect", output, Receipt(), _failure(kind, message))

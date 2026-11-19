@@ -5,6 +5,7 @@ package helpscout_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/helpscout/go"
 	"github.com/superdurable/dex-connectors-library/connectors/helpscout/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 // documentedTokenResponse is Help Scout's documented client credentials answer: no refresh token, two days.
@@ -172,6 +174,44 @@ func TestARejectedAppNeedsNewCredentialsAndATokenOutageRetries(t *testing.T) {
 			require.Empty(t, fake.requestsTo(http.MethodGet, "/v2/conversations"), "no API call without a usable token")
 		})
 	}
+}
+
+func TestCredentialResolutionClassifiesEveryResolveFailure(t *testing.T) {
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"reauthorization required":         {err: sdkgo.ErrReauthorizationRequired, isTerminal: true},
+		"project reauthorization required": {err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		"connection object not found":      {err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		"connection not selected":          {err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		"broker rejected":                  {err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		"broker unavailable":               {err: projectconfig.ErrCredentialBrokerUnavailable},
+		"connection not configured":        {err: errors.New("connection is not configured")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := helpscout.New(helpscout.Config{}, failingHelpScoutCredentials{err: test.err})
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(newStepContext("search"), client.SearchConversations(), testConnection, helpscout.SearchConversationsInput{})
+			if !test.isTerminal {
+				requireRetry(t, err, sdkgo.FailureAvailability)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, helpscout.SearchConversationsBranchDefect, result.Branch)
+		})
+	}
+}
+
+// failingHelpScoutCredentials fails every resolution with err.
+type failingHelpScoutCredentials struct{ err error }
+
+func (credentials failingHelpScoutCredentials) Resolve(sdkgo.Call) (helpscout.Credentials, error) {
+	return helpscout.Credentials{}, credentials.err
+}
+
+func (credentials failingHelpScoutCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[helpscout.Credentials]) (helpscout.Credentials, error) {
+	return helpscout.Credentials{}, credentials.err
 }
 
 // TestWebhookEndpointRenewsAnExpiredTokenToReadTheWebhookSecret covers an idle connection: project storage

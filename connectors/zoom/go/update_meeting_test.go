@@ -89,7 +89,6 @@ func TestUpdateMeetingClassifiesMissingMeetingsAndRejectedValues(t *testing.T) {
 	}{
 		{name: "deleted meeting", status: http.StatusNotFound, body: `{"code":3001,"message":"SENTINEL"}`, branch: zoom.UpdateMeetingBranchNotFound},
 		{name: "invalid schedule", status: http.StatusBadRequest, body: `{"code":300,"message":"SENTINEL"}`, branch: zoom.UpdateMeetingBranchProviderRejected},
-		{name: "redirect", status: http.StatusTemporaryRedirect, body: `{}`, branch: zoom.UpdateMeetingBranchProviderRejected},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -103,6 +102,20 @@ func TestUpdateMeetingClassifiesMissingMeetingsAndRejectedValues(t *testing.T) {
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, int64(85746065), result.Value.MeetingID)
 			require.NotContains(t, result.Failure.Message, "SENTINEL")
+		})
+	}
+}
+
+func TestUpdateMeetingRetriesRedirectsAndUnlistedStatuses(t *testing.T) {
+	for _, status := range []int{http.StatusTemporaryRedirect, http.StatusTooEarly, http.StatusTeapot, http.StatusGone} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, status, `{"code":1,"message":"SENTINEL"}`)
+			})
+			_, err := sdkgo.RunMutation(newZoomDexContext("update-unknown"), newZoomClient(t, provider.URL).UpdateMeeting(), zoomConnection, zoom.UpdateMeetingInput{MeetingID: 85746065, Topic: "Renamed"})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.NotContains(t, retry.Failure.Message, "SENTINEL")
 		})
 	}
 }

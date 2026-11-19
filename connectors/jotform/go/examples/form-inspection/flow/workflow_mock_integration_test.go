@@ -56,4 +56,5 @@ func TestFormInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, 20, output.Limit)
 	require.Len(t, mock.ListForms().Calls(), 1)
+	require.Len(t, mock.GetForm().Calls(), 1)
 }

@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { ReauthorizationRequiredError, RetryError, SecretString, defaultTriggerLogger, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, defaultTriggerLogger, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import type { Config, Credentials, CredentialSource } from './generated/models.js';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials, type CredentialSource } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import { ListContactsOperation, FindContactByEmailOperation, GetInvoiceOperation, ListInvoicesOperation, CreateInvoiceOperation, RecordPaymentOperation } from './operations.js';
 
@@ -108,7 +109,8 @@ export class XeroClient {
     try { credentials = await this.credentials.resolveWithRefresh(call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
       const rejected = error instanceof ReauthorizationRequiredError;
-      const transient = error instanceof RetryError;
+      // A transient resolve failure sends nothing, so every attempt retries instead of selecting defect or uncertain.
+      const transient = !rejected && !isTerminalCredentialError(error);
       return this.localFailure(call, operation, rejected ? 'rejected' : transient ? 'retry' : 'defect', rejected ? 'AUTHENTICATION' : transient ? 'AVAILABILITY' : 'AUTHENTICATION', rejected ? 'Xero authorization must be renewed: reconnect the app or replace the client secret' : transient ? 'Xero access token request is temporarily unavailable' : 'Xero connection credentials are unavailable');
     }
     if (!['custom-connection', 'xero-oauth'].includes(credentials.authMethodId ?? '') || !(credentials.accessToken instanceof SecretString) || !isHeaderSafeCredential(credentials.accessToken.reveal())) return this.localFailure(call, operation, 'defect', 'AUTHENTICATION', 'Xero connection credentials are unavailable');
@@ -236,6 +238,11 @@ export function escapeGoPath(value: string): string {
   }).join('');
 }
 
+/** Report a resolve failure no later attempt clears; a TypeError may be a fetch failure, so it is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
+    || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
 function firstHeader(value: string | string[] | number | undefined): string | undefined { return Array.isArray(value) ? value[0] : typeof value === 'string' ? value : undefined; }
 function failure(kind: Failure['kind'], operation: string, message: string): Failure { return { kind, provider: 'xero', operation, message }; }
 function withSummary(message: string, parts: string[]): string { return parts.length ? `${message} [${parts.join('; ')}]` : message; }

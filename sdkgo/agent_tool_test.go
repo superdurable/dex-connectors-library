@@ -707,6 +707,78 @@ func (mutation *fencedMutation) Invoke(call sdkgo.Call, _ agentInput) sdkgo.Muta
 
 var errProviderOverloaded = errors.New("provider answered 503")
 
+// renamedFencedMutation runs fencedMutation under another operation, so its Call ID differs.
+type renamedFencedMutation struct {
+	*fencedMutation
+	operation sdkgo.OperationRef
+}
+
+func (mutation renamedFencedMutation) Definition() sdkgo.MutationDefinition {
+	definition := agentMutationDefinition()
+	definition.Operation = mutation.operation
+	return definition
+}
+
+func TestRepeatedFencedOperationInOneStepGetsDistinctStableCallIDs(t *testing.T) {
+	mutation := &fencedMutation{branch: agentBranchSucceeded, shouldSend: true}
+	tool, err := sdkgo.NewMutationAgentTool(mutation, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	ctx := agentStepContext()
+	for range 2 {
+		attempt, err := tool.RunAttempt(ctx, nil)
+		require.NoError(t, err)
+		require.Equal(t, sdkgo.AgentToolAttemptSucceeded, attempt.Outcome)
+	}
+	require.Equal(t, 2, mutation.providerSent, "the second call is not fenced by the first call's claim")
+	require.Len(t, mutation.callIDs, 2)
+	require.NotEqual(t, mutation.callIDs[0], mutation.callIDs[1])
+	heartbeats := ctx.Heartbeats()
+	var checkpoint struct {
+		SingleDispatchMarkers map[sdkgo.CallID]singledispatch.Marker `json:"singleDispatchMarkers"`
+	}
+	require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &checkpoint))
+	require.Len(t, checkpoint.SingleDispatchMarkers, 2)
+
+	ctx.AdvanceAttempt()
+	retried := &fencedMutation{branch: agentBranchSucceeded, shouldSend: true}
+	retriedTool, err := sdkgo.NewMutationAgentTool(retried, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	for range 2 {
+		_, err := retriedTool.RunAttempt(ctx, nil)
+		require.NoError(t, err)
+	}
+	require.Equal(t, mutation.callIDs, retried.callIDs, "call order keeps occurrence IDs stable across attempts")
+	require.Zero(t, retried.providerSent, "each call finds its own claim and does not resend")
+}
+
+func TestTwoFencedAgentToolsInOneStepBothSend(t *testing.T) {
+	gmail := renamedFencedMutation{fencedMutation: &fencedMutation{branch: agentBranchSucceeded, shouldSend: true}, operation: sdkgo.OperationRef{ConnectorID: "gmail", OperationID: "sendMessage"}}
+	slack := renamedFencedMutation{fencedMutation: &fencedMutation{branch: agentBranchSucceeded, shouldSend: true}, operation: sdkgo.OperationRef{ConnectorID: "slack", OperationID: "postThreadReply"}}
+	ctx := agentStepContext()
+	toolNames := map[string]string{"gmail": "gmail_send_message", "slack": "slack_post_thread_reply"}
+	for _, mutation := range []renamedFencedMutation{gmail, slack} {
+		metadata := agentMutationMetadata()
+		metadata.Operation = mutation.operation
+		metadata.ToolName = toolNames[mutation.operation.ConnectorID]
+		tool, err := sdkgo.NewMutationAgentTool(mutation, agentConnection, metadata)
+		require.NoError(t, err)
+		attempt, err := tool.RunAttempt(ctx, nil)
+		require.NoError(t, err)
+		require.Equal(t, sdkgo.AgentToolAttemptSucceeded, attempt.Outcome, mutation.operation.ConnectorID)
+		require.Equal(t, 1, mutation.providerSent, mutation.operation.ConnectorID)
+	}
+	require.NotEqual(t, gmail.callIDs[0], slack.callIDs[0])
+	heartbeats := ctx.Heartbeats()
+	var checkpoint struct {
+		SingleDispatchMarkers map[sdkgo.CallID]singledispatch.Marker `json:"singleDispatchMarkers"`
+	}
+	require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &checkpoint))
+	require.Equal(t, map[sdkgo.CallID]singledispatch.Marker{
+		gmail.callIDs[0]: {CallID: gmail.callIDs[0], Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1},
+		slack.callIDs[0]: {CallID: slack.callIDs[0], Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1},
+	}, checkpoint.SingleDispatchMarkers)
+}
+
 func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
 	cases := []struct {
 		name         string
@@ -810,7 +882,7 @@ func TestMutationAgentToolReadsPriorFenceCheckpoint(t *testing.T) {
 	tool, err = sdkgo.NewMutationAgentTool(declined, agentConnection, metadata)
 	require.NoError(t, err)
 	ctx = agentStepContext()
-	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{
+	require.NoError(t, ctx.SetPersistedMarkers(singledispatch.Marker{
 		CallID: firstCallID(t, overloaded), Attempt: 1, State: singledispatch.StateCanResend,
 	}))
 	ctx.AdvanceAttempt()

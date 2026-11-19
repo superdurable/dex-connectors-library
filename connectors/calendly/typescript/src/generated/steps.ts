@@ -109,15 +109,18 @@ export interface CancelScheduledEventStepConfig<StepInput, OperationInput = Canc
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Calendly refused to cancel an active event, such as one that already started or one the token may not cancel. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Calendly returned a malformed or oversized response. */
+  /** No longer selected. A malformed or oversized scheduled event read back after a 403 is retried, because a repeated cancellation is harmless; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the cancelScheduledEvent Step from a named connection. */
 export function newCancelScheduledEventStep<StepInput, OperationInput = CancelScheduledEventInput, OperationOutput = ScheduledEventCancellation>(configuration: CancelScheduledEventStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, canceled, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, canceled, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.cancelScheduledEvent(), connection: connection.reference, branches: [
     goToBranch("canceled", canceled),
@@ -136,9 +139,9 @@ export interface CreateSchedulingLinkStepConfig<StepInput, OperationInput = Crea
   connectionName: string;
   /** Calendly created the single-use scheduling link. */
   created: StepTarget<MutationResult<OperationOutput>>;
-  /** Calendly conclusively rejected the request, such as an event type the token cannot use. */
+  /** Calendly conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an event type the token cannot use. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but Calendly's answer was lost, a server error, or unreadable, so a link may exist that this Result does not name. */
+  /** Sends up to the send cap had a lost, server-error, conflicting, or unreadable answer, or Calendly accepted the link without a usable URL, so a link may exist that this Result does not name. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -168,15 +171,18 @@ export interface CreateWebhookSubscriptionStepConfig<StepInput, OperationInput =
   conflictingSubscription?: StepTarget<MutationResult<OperationOutput>>;
   /** Calendly conclusively rejected the request, such as a plan without webhooks or a token that is not an organization admin. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Calendly returned a malformed or oversized response. */
+  /** Calendly returned a malformed or oversized user or subscription list before the connector created anything. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the createWebhookSubscription Step from a named connection. */
 export function newCreateWebhookSubscriptionStep<StepInput, OperationInput = CreateWebhookSubscriptionInput, OperationOutput = WebhookSubscription>(configuration: CreateWebhookSubscriptionStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, subscribed, conflictingSubscription, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, subscribed, conflictingSubscription, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createWebhookSubscription(), connection: connection.reference, branches: [
     goToBranch("subscribed", subscribed),

@@ -3,19 +3,19 @@ kind: Connector
 metadata:
   name: facebook-pages
   displayName: Facebook Pages
-  description: Read Facebook Page posts and publish plain-text posts.
+  description: Read, publish, edit, and delete Facebook Page posts.
   company: Meta
   categories: [social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: facebook-pages
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listPosts, getPost, publishTextPost]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listPosts, getPost, publishTextPost]
       triggers: []
   codegen:
@@ -55,6 +55,48 @@ spec:
         - Save the complete opaque Page access token only in page_access_token in Dex. Never put it in Flow input or logs. Revoke or rotate it in Meta when retired.
         - Find the Page ID in Meta Business Suite > Settings > Business assets > Pages; listPosts returns post IDs for getPost. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: updatePost
+      goName: UpdatePost
+      inputType: UpdatePostInput
+      outputType: ChangedPost
+      kind: mutation
+      description: Replace the message text of one Page post.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Meta confirmed the post update.}
+        - {id: notFound, goName: NotFound, description: The post is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Page post message is replaced.
+          output: {postId: '123456789_987654321'}
+    - name: deletePost
+      goName: DeletePost
+      inputType: DeletePostInput
+      outputType: ChangedPost
+      kind: mutation
+      description: Delete one Page post when Meta grants API deletion to the app.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Meta confirmed the post deletion.}
+        - {id: notFound, goName: NotFound, description: The post is already missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retired; unconfirmed successful writes retry.", optional: true, retired: true, retiredReason: "A dispatched write with an unconfirmed response now retries."}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Page post is deleted.
+          output: {postId: '123456789_987654321'}
     - name: listPosts
       goName: ListPosts
       inputType: ListPostsInput
@@ -63,7 +105,7 @@ spec:
       description: Read one page of Page feed post IDs, messages, timestamps, and permalinks.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Meta returned one Page feed page.}
         - {id: notFound, goName: NotFound, description: The Page is missing or inaccessible., optional: true}
@@ -86,7 +128,7 @@ spec:
       description: Read one Page post's ID, message, timestamp, and permalink.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Meta returned the Page post.}
         - {id: notFound, goName: NotFound, description: The post is missing or inaccessible., optional: true}
@@ -104,16 +146,16 @@ spec:
       inputType: PublishTextPostInput
       outputType: PublishedPost
       kind: mutation
-      description: Publish a plain-text post to a Facebook Page feed.
+      description: Publish a plain-text post to a Facebook Page feed. An unknown outcome resends up to the send cap, so the Page may show a duplicate post.
       idempotency: required
       authorization: required
-      # Sync preserves the single-dispatch heartbeat; Meta has no post idempotency key.
+      # Sync preserves the single-dispatch heartbeat; Meta has no post idempotency key or read-back by Call ID.
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: published, goName: Published, description: Meta returned the published post ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the post., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The publish outcome is unknown; inspect the Page before retrying manually., optional: true}
-        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Meta may have published the post, but the send cap was reached, Meta accepted it with an unreadable response, or Meta contradicted itself; inspect the Page before retrying manually.", optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid before any send., optional: true}
       mocks:
         - name: publishedDefault
           branch: published

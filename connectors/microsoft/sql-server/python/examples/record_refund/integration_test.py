@@ -39,6 +39,11 @@ async def test_refund_flow_routes_success_retry_and_unwired_rejection(tmp_path: 
             await client.start_flow(flow, success_id, RefundRequest("order-88213", "250.00"))
             success = await client.wait_for_flow(success_id, timedelta(seconds=30))
             assert success.status == dex.FlowStatus.COMPLETED, success.error_message
+            daily_total_calls = [
+                item for item in mock.execute_non_idempotent_script.calls() if item.flow_id == success_id
+            ]
+            assert len(daily_total_calls) == 1
+            assert daily_total_calls[0].input.parameters == ("250.00",)
 
             retry_id = f"sqlserver-python-retry-{uuid4().hex}"
             mock.execute_script.for_flow(retry_id).respond(

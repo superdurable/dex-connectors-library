@@ -76,7 +76,7 @@ export interface CreateContactStepConfig<StepInput, OperationInput = CreateConta
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Google conclusively rejected the contact. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Google may have created the contact but its resource name was not confirmed; do not resend automatically. */
+  /** Google may have created the contact, and its resource name was not confirmed: at the send cap, after a refusal that follows a possible send, or after a 2xx without a usable resource name. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local contact input, connection credentials, or dispatch checkpoint is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

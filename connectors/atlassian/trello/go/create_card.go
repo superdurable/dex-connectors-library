@@ -76,32 +76,37 @@ func (CreateCardOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateCardInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /cards. A 429, 503, or traced undispatched failure retries; an ambiguous outcome does not resend.
+// Invoke sends POST /cards. A 429, 503, or traced undispatched failure retries; an unknown outcome
+// resends while the send cap allows and selects uncertain at the cap. An accepted card is never resent.
 func (operation CreateCardOperation) Invoke(call sdkgo.Call, input CreateCardInput) sdkgo.MutationAttempt[CreateCardOutput] {
 	client := operation.client
 	fields, requested, err := buildCreateCardFields(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateCardBranchDefect, requested, failurePointer(createCardOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	session, cancel, startFailure := client.startSession(call, createCardOperationID)
-	if startFailure != nil {
-		return sdkgo.NewMutationBranch(CreateCardBranchDefect, requested, startFailure, sdkgo.Receipt{})
-	}
-	defer cancel()
-	if attempt, isFinal := singleDispatchAttemptBeforeSend(call, claimSingleDispatch(call, session.context), createCardOperationID, requested,
-		client.receipt(session, trelloResponse{}, "")); isFinal {
+	write, attempt, isFinal := startFencedWrite(call, CreateCardDefinition, createCardOperationID, requested, CreateCardBranchDefect, client.receipt(&operationSession{call: call}, trelloResponse{}, ""))
+	if isFinal {
 		return attempt
 	}
-	result := client.exchange(session, trelloRequest{method: http.MethodPost, path: "/cards", payload: fields})
+	session, cancel, startFailure := client.startSession(call, createCardOperationID)
+	if startFailure != nil {
+		return sessionFailureAttempt(write, createCardOperationID, startFailure, requested, CreateCardBranchDefect)
+	}
+	defer cancel()
+	result, attempt, isFinal := dispatchFencedWrite(write, client, session, trelloRequest{method: http.MethodPost, path: "/cards", payload: fields}, createCardOperationID, requested, CreateCardBranchDefect)
+	if isFinal {
+		return attempt
+	}
 	receipt := client.receipt(session, result.response, "")
-	if attempt, isFinal := singleDispatchAttemptForWrite(call, client.classifyUnkeyedWrite(createCardOperationID, createCardFailureSubject, result),
+	if attempt, isFinal := attemptForWrite(write, createCardOperationID, client.classifyUnkeyedWrite(createCardOperationID, createCardFailureSubject, result),
 		requested, receipt, singleDispatchBranches{providerRejected: CreateCardBranchProviderRejected, defect: CreateCardBranchDefect}); isFinal {
 		return attempt
 	}
 	created, err := decodeJSONObject[cardResource](result.response.body)
 	if err != nil || !trelloIDPattern.MatchString(created.ID) {
-		return sdkgo.NewMutationUncertain(requested, newFailure(createCardOperationID, sdkgo.FailureProtocol, "Trello accepted the card but returned an unusable card reference"), receipt)
+		return selectAcceptedUncertain(requested, newFailure(createCardOperationID, sdkgo.FailureProtocol, "Trello accepted the card but returned an unusable card reference"), receipt)
 	}
+	recordAcceptedWrite(write, created.ID)
 	output := requested
 	output.CardID, output.URL, output.ShortURL = created.ID, created.URL, created.ShortURL
 	if trelloIDPattern.MatchString(created.IDBoard) {

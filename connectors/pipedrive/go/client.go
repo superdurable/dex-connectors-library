@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -245,12 +246,13 @@ func (client *Client) startSession(call sdkgo.Call, operation string) (*operatio
 	switch {
 	case sessionContext.Err() != nil:
 		failure = &sessionFailure{route: sessionRetry, failure: providerFailure(operation, sdkgo.FailureAvailability, "Pipedrive connection credentials are temporarily unavailable")}
-	case errors.Is(err, sdkgo.ErrReauthorizationRequired):
+	case errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		failure = &sessionFailure{route: sessionRejected, failure: providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive authorization must be renewed; reconnect the connection")}
-	case err != nil && err.Error() == "connection is not configured":
-		// sdkgo.StaticCredentialProvider returns this error for an absent connection without a typed sentinel.
+	case errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected):
 		failure = &sessionFailure{route: sessionDefect, failure: providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive connection credentials are unavailable; reconnect the connection")}
 	case err != nil:
+		// Any other credential read failure, including a static provider's absent connection, may clear on a later attempt.
 		failure = &sessionFailure{route: sessionRetry, failure: providerFailure(operation, sdkgo.FailureAvailability, "Pipedrive connection credentials are temporarily unavailable")}
 	case validateResolvedCredentials(credentials) != nil:
 		failure = &sessionFailure{route: sessionDefect, failure: providerFailure(operation, sdkgo.FailureAuthentication, "Pipedrive connection credentials are unavailable; reconnect the connection")}

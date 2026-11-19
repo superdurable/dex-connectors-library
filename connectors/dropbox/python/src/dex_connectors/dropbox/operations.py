@@ -419,9 +419,21 @@ class UploadFileOperation:
                 defs.DEFECT, FailureKind.VALIDATION, "upload content must be bounded Base64"
             )
         exchange = await self.client.upload(call, input.path, content)
-        if exchange.error == "credential":
+        if exchange.error == "credential" and exchange.status == 0:
+            if call.context is not None and call.context.attempt > 1:
+                # An earlier attempt may have stored the file, so defect would misreport it.
+                return _mutation_retry(
+                    FailureKind.AUTHENTICATION,
+                    "connection credentials are unavailable or invalid after a possible earlier upload",
+                )
             return _mutation_branch(
                 defs.DEFECT, FailureKind.AUTHENTICATION, "connection credentials are unavailable or invalid"
+            )
+        if exchange.error == "credential":
+            return _mutation_retry(
+                FailureKind.PROTOCOL,
+                "Dropbox echoed the access token, so the overwrite is repeated",
+                exchange.retry_after,
             )
         if exchange.error == "refresh":
             return _mutation_retry(FailureKind.AVAILABILITY, "Dropbox credentials could not be refreshed")
@@ -435,24 +447,48 @@ class UploadFileOperation:
             return _mutation_retry(
                 FailureKind.AVAILABILITY, "Dropbox upload is temporarily unavailable", exchange.retry_after
             )
-        if exchange.status != 200:
+        if exchange.status != 200 and _is_definite_upload_refusal(exchange):
             return _mutation_branch(
                 defs.PROVIDER_REJECTED,
                 FailureKind.PROVIDER_REJECTION,
                 f"Dropbox rejected HTTP {exchange.status}",
             )
+        if exchange.status != 200:
+            return _mutation_retry(
+                FailureKind.PROTOCOL,
+                f"Dropbox answered the overwrite with unsettled HTTP {exchange.status}",
+                exchange.retry_after,
+            )
+        # The overwrite is absolute, so an unusable 2xx body repeats it instead of selecting invalidResponse.
         if exchange.error == "too_large":
-            return _mutation_branch(
-                defs.INVALID_RESPONSE,
-                FailureKind.RESPONSE_TOO_LARGE,
-                "Dropbox upload metadata exceeded the configured limit",
+            return _mutation_retry(
+                FailureKind.RESPONSE_TOO_LARGE, "Dropbox upload metadata exceeded the configured limit"
             )
         if exchange.error:
             return _mutation_retry(FailureKind.TRANSPORT, "Dropbox upload response was interrupted")
         try:
             file = _entry(_json_body(exchange.body), upload=True)
         except (ValueError, TypeError, UnicodeError):
-            return _mutation_branch(
-                defs.INVALID_RESPONSE, FailureKind.PROTOCOL, "Dropbox returned invalid upload metadata"
-            )
+            return _mutation_retry(FailureKind.PROTOCOL, "Dropbox returned invalid upload metadata")
         return MutationAttempt.branch_result(defs.UPLOADED, UploadedFile(file), Receipt())
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_definite_upload_refusal(exchange: Exchange) -> bool:
+    """Accept an allowlisted status or Dropbox's documented 409 error, when no stored file is described."""
+    if exchange.error:
+        return False
+    try:
+        wire: Any = json.loads(exchange.body)
+    except (ValueError, UnicodeDecodeError):
+        wire = None
+    is_object = isinstance(wire, dict)
+    if is_object and wire.get("id") not in (None, ""):
+        return False
+    if exchange.status in _DEFINITE_REFUSAL_STATUSES:
+        return True
+    return exchange.status == 409 and is_object and isinstance(wire.get("error_summary"), str) and bool(
+        wire["error_summary"]
+    )

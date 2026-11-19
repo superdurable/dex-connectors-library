@@ -36,7 +36,10 @@ func (SendInvoiceOperation) IdempotencyKey(callID sdkgo.CallID, _ SendInvoiceInp
 }
 
 // Invoke sends POST /invoice/{invoiceId}/send with an empty application/octet-stream body under
-// the Step's requestid and returns the invoice QuickBooks updated, with EmailStatus EmailSent.
+// the Step's requestid and returns the invoice QuickBooks updated, with EmailStatus EmailSent. The
+// send runs under a single-dispatch fence capped by call.MaxSends: an unknown outcome is resent with
+// the same requestid while the cap allows another send and selects uncertain at the cap, and an
+// accepted but unusable answer reads the invoice back, as every later attempt then does.
 func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceInput) sdkgo.MutationAttempt[Invoice] {
 	client := operation.client
 	attemptBudget := client.newAttemptBudget(call.Context, SendInvoiceDefinition.StepDefaults.ExecuteMethodTimeout)
@@ -54,13 +57,23 @@ func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceI
 		}
 		query.Set("sendTo", sendTo)
 	}
-	result := client.exchange(call, sendInvoiceOperationID, quickbooksRequest{
+	write, attempt, isDecided := newFencedWrite(client, call, sendInvoiceOperationID, SendInvoiceDefinition.StepDefaults.ExecuteMethodTimeout, requested,
+		mutationBranches{providerRejected: SendInvoiceBranchProviderRejected, defect: SendInvoiceBranchDefect},
+		acceptedWriteReadBack[Invoice]{entityPath: "invoice", happy: SendInvoiceBranchSent,
+			confirm: func(body []byte, readInvoiceID string) (Invoice, bool) {
+				return confirmSentInvoice(body, readInvoiceID, sendTo)
+			}})
+	if isDecided {
+		return attempt
+	}
+	result, notSent := write.dispatch(quickbooksRequest{
 		method: http.MethodPost, path: "/invoice/" + invoiceID + "/send", query: query, isMutation: true, attemptBudget: attemptBudget,
 	})
+	if notSent != nil {
+		return *notSent
+	}
 	receipt := client.receipt(call, result, invoiceID)
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
-		providerRejected: SendInvoiceBranchProviderRejected, defect: SendInvoiceBranchDefect,
-	}); isTerminal {
+	if attempt, isTerminal := write.attemptForExchange(result, receipt); isTerminal {
 		return attempt
 	}
 	wire, err := decodeEntity[invoiceWire](result.response.body, "Invoice")
@@ -78,15 +91,18 @@ func (operation SendInvoiceOperation) Invoke(call sdkgo.Call, input SendInvoiceI
 		err = errors.New("the returned invoice has another billing address")
 	}
 	if err != nil {
-		if body, isFound := readAcceptedEntity(client, call, sendInvoiceOperationID, "invoice", invoiceID); isFound {
-			if readWire, readErr := decodeEntity[invoiceWire](body, "Invoice"); readErr == nil {
-				if readInvoice, decodeErr := decodeInvoice(readWire); decodeErr == nil && readInvoice.InvoiceID == invoiceID && readInvoice.EmailStatus == EmailStatusEmailSent && (sendTo == "" || strings.EqualFold(readInvoice.BillEmail, sendTo)) {
-					return sdkgo.NewMutationBranch(SendInvoiceBranchSent, readInvoice, nil, receipt)
-				}
-			}
-		}
-		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, sendInvoiceOperationID,
-			"QuickBooks accepted the delivery but returned an unusable invoice: "+err.Error()), receipt)
+		return write.unusableAccepted(invoiceID, receipt, err)
 	}
 	return sdkgo.NewMutationBranch(SendInvoiceBranchSent, invoice, nil, receipt)
+}
+
+// confirmSentInvoice decodes a read invoice and reports whether it shows the delivery this Step requested.
+func confirmSentInvoice(body []byte, invoiceID string, sendTo string) (Invoice, bool) {
+	wire, err := decodeEntity[invoiceWire](body, "Invoice")
+	if err != nil {
+		return Invoice{}, false
+	}
+	invoice, err := decodeInvoice(wire)
+	return invoice, err == nil && invoice.InvoiceID == invoiceID && invoice.EmailStatus == EmailStatusEmailSent &&
+		(sendTo == "" || strings.EqualFold(invoice.BillEmail, sendTo))
 }

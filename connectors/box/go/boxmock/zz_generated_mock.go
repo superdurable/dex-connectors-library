@@ -123,7 +123,7 @@ func UploadFileProviderRejected(value box.UploadedFile, failure *sdkgo.Failure) 
 	return connectormock.Branch(box.UploadFileBranchProviderRejected, value, failure)
 }
 
-// UploadFileInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized file metadata.
+// UploadFileInvalidResponse selects the invalidResponse branch: Retained for compatibility and no longer selected: malformed or oversized file metadata now retries.
 func UploadFileInvalidResponse(value box.UploadedFile, failure *sdkgo.Failure) connectormock.Case[box.UploadedFile] {
 	return connectormock.Branch(box.UploadFileBranchInvalidResponse, value, failure)
 }

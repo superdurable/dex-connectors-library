@@ -1,8 +1,8 @@
 # Asana Python connector
 
-`dex-connector-asana` v0.2.0 provides typed Dex Steps for `listTasks`,
+`dex-connector-asana` v0.2.1 provides typed Dex Steps for `listTasks`,
 `getTask`, `createTask`, `updateTask`, and `addComment`, and the `taskChanged`
-poll Trigger. Install it with `uv add dex-connector-asana==0.2.0`; it requires
+poll Trigger. Install it with `uv add dex-connector-asana==0.2.1`; it requires
 `dex-connectors-sdk` 0.12.0 or newer.
 
 The package's generated `Config`, `Credentials`, operation models, Step

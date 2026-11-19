@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { MaxChangesPerPage } from '@superdurable/connectors-sdk/pollingtrigger';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isRefreshRequired, ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials, File, FileSummary } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials, type File, type FileSummary } from './generated/models.js';
 import { GetFileOperation, ReadFileTextOperation, SearchFilesOperation, UploadFileOperation } from './operations.js';
 
 /** Provider transport, clock, and generated credential refresh collaborators. */
@@ -85,7 +86,13 @@ export class DriveClient {
 
   /** Resolve a credential outside Flow state. */
   async resolve(call: Call): Promise<Credentials> {
-    const credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal);
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
+    catch (error) {
+      // CredentialError marks a terminal failure; any other error is transient and propagates unchanged.
+      if (isTerminalCredentialError(error)) throw new CredentialError();
+      throw error;
+    }
     if (!credentials.accessToken || !isHeaderSafeCredential(credentials.accessToken.reveal()) ||
       !['', 'google-oauth', 'workspace-domain-delegation'].includes(credentials.authMethodId ?? '')) throw new CredentialError();
     return credentials;
@@ -97,16 +104,18 @@ export class DriveClient {
     for (let attempt = 0; attempt < 2; attempt++) {
       const token = active.accessToken?.reveal() ?? '';
       if (!isHeaderSafeCredential(token)) throw new CredentialError();
+      // An upload refusal whose body broke or overflowed might hide a file ID, so its error reaches the caller.
+      const isUpload = method === 'POST';
       const request: ProviderRequest = {
         url: target, method, headers: { Authorization: `Bearer ${token}`, ...(contentType ? { 'Content-Type': contentType } : {}) },
-        maxResponseBytes: limit, maxErrorResponseBytes: Math.max(limit, MaxErrorBodyBytes), ignoreErrorBodyReadFailure: true,
+        maxResponseBytes: limit, maxErrorResponseBytes: Math.max(limit, MaxErrorBodyBytes), ignoreErrorBodyReadFailure: !isUpload,
         addressPolicy: 'unrestricted', timeoutMs: 25_000,
         ...(body ? { body } : {}), ...(signal ? { signal } : {}),
       };
       let response: ProviderResponse;
       try { response = await this.#transport(request); }
       catch (error) {
-        if (error instanceof BodyTooLargeError && error.status && (error.status < 200 || error.status >= 300))
+        if (!isUpload && error instanceof BodyTooLargeError && error.status && (error.status < 200 || error.status >= 300))
           response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
         else throw error;
       }
@@ -122,11 +131,16 @@ export class DriveClient {
 
   /** Force one host-coordinated refresh after an upload credential rejection. */
   async refreshAfterRejection(call: Call): Promise<boolean> {
-    if (!('resolveAfterRejection' in this.#credentials)) return false;
+    return (await this.classifyRefreshAfterRejection(call)) === 'refreshed';
+  }
+
+  /** Force one refresh after a rejection and report whether it succeeded, failed transiently, or needs reconnection. */
+  async classifyRefreshAfterRejection(call: Call): Promise<'refreshed' | 'transient' | 'terminal'> {
+    if (!('resolveAfterRejection' in this.#credentials)) return 'terminal';
     try {
       const credentials = await resolveCredentialAfterRejection(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal);
-      return Boolean(credentials.accessToken && isHeaderSafeCredential(credentials.accessToken.reveal()));
-    } catch { return false; }
+      return credentials.accessToken && isHeaderSafeCredential(credentials.accessToken.reveal()) ? 'refreshed' : 'terminal';
+    } catch (error) { return isTerminalCredentialError(error) ? 'terminal' : 'transient'; }
   }
 
   /** Classify an idempotent read and retain its response on success. */
@@ -180,8 +194,13 @@ export class DriveClient {
   retryDelay(headers: Record<string, unknown>): number { return parseRetryAfter(header(headers, 'retry-after'), this.#now()); }
 }
 
-/** An unusable access credential. */
+/** An unusable access credential, or a resolve failure that only reconnection repairs. */
 export class CredentialError extends Error { constructor() { super('connection credentials are unavailable'); } }
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
 /** Construct a sanitized provider failure. */
 export function failure(kind: FailureKind, operation: string, message: string): Failure { return { kind, provider: 'google-drive', operation, message }; }
 /** Read a response header case insensitively. */

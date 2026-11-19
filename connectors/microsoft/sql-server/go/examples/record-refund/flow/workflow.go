@@ -1,11 +1,13 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package recordrefund demonstrates the SQL Server query and execute operations in a Flow started
-// from Dex Web Start Flow. It records one refund in a ledger table at most once: a query finds an
-// existing refund for the order, and an INSERT ... SELECT ... WHERE NOT EXISTS keyed by the Step's
-// idempotency key writes a new one and returns it through OUTPUT. A replayed or uncertain INSERT is
-// reconciled by reading the row back by that key.
+// Package recordrefund demonstrates the SQL Server query, execute, and executeNonIdempotent
+// operations in a Flow started from Dex Web Start Flow. It records one refund in a ledger table at
+// most once: a query finds an existing refund for the order, and an INSERT ... SELECT ... WHERE NOT
+// EXISTS keyed by the Step's idempotency key writes a new one and returns it through OUTPUT, which
+// execute repeats after an unknown COMMIT. A replayed INSERT is reconciled by reading the row back
+// by that key. The Flow then adds a new refund to the daily refund total with
+// executeNonIdempotent, because adding twice double-counts.
 package recordrefund
 
 import (
@@ -38,6 +40,8 @@ const (
 	completeRefundRecordingStepType = "CompleteRefundRecording"
 	findInsertedRefundStepType      = "FindInsertedRefund"
 	resolveInsertedRefundStepType   = "ResolveInsertedRefund"
+	addRefundToDailyTotalStepType   = "AddRefundToDailyTotal"
+	completeDailyTotalStepType      = "CompleteDailyTotal"
 
 	refundColumns         = "refund_id, order_id, amount_usd, external_reference, idempotency_key, recorded_at"
 	insertedRefundColumns = "INSERTED.refund_id, INSERTED.order_id, INSERTED.amount_usd, INSERTED.external_reference, " +
@@ -56,6 +60,12 @@ const (
 	// FindInsertedRefundStatement reads back this Step's row by its key, or the order's row another Flow wrote.
 	FindInsertedRefundStatement = "SELECT " + refundColumns + " FROM dbo.refund_ledger " +
 		"WHERE idempotency_key = CAST(@p1 AS uniqueidentifier) OR order_id = @p2"
+	// AddRefundToDailyTotalStatement adds @p1 to today's UTC total; running it twice counts the refund twice.
+	AddRefundToDailyTotalStatement = "MERGE dbo.refund_daily_totals WITH (HOLDLOCK) AS totals\n" +
+		"USING (SELECT CAST(SYSUTCDATETIME() AS date) AS refund_date, CAST(@p1 AS decimal(14, 2)) AS amount_usd) AS refund\n" +
+		"ON totals.refund_date = refund.refund_date\n" +
+		"WHEN MATCHED THEN UPDATE SET total_usd = totals.total_usd + refund.amount_usd\n" +
+		"WHEN NOT MATCHED THEN INSERT (refund_date, total_usd) VALUES (refund.refund_date, refund.amount_usd);"
 )
 
 var (
@@ -100,11 +110,13 @@ type Outcome struct {
 	Status string `json:"status"`
 	// Refund is the ledger row for the order.
 	Refund Refund `json:"refund"`
-	// WasReconciled reports that this Flow's row was confirmed by the read-back after an uncertain or replayed INSERT.
+	// WasReconciled reports that this Flow's row was confirmed by the read-back after a replayed INSERT.
 	WasReconciled bool `json:"wasReconciled,omitempty"`
+	// IsAddedToDailyTotal reports that this Flow added its new refund to the daily refund total.
+	IsAddedToDailyTotal bool `json:"isAddedToDailyTotal,omitempty"`
 }
 
-// RefundReadBack names the row an uncertain or row-less INSERT may have written, or another Flow's row for the order.
+// RefundReadBack names the row a row-less INSERT may have written, or another Flow's row for the order.
 type RefundReadBack struct {
 	// IdempotencyKey is the INSERT's key from its Receipt.
 	IdempotencyKey string `json:"idempotencyKey"`
@@ -126,7 +138,7 @@ func NewFlow(connection sqlserver.Connection) *Flow {
 // GetFlowType returns FlowType.
 func (*Flow) GetFlowType() string { return FlowType }
 
-// GetSteps returns the request, query, decision, write, read-back, and completion Steps.
+// GetSteps returns the request, query, decision, write, read-back, daily-total, and completion Steps.
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordRefundRequest{}),
@@ -150,9 +162,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToInsertRefundInput,
 			Completed:           sdkgo.GoTo(completeRefundRecording{}),
-			// Re-read an uncertain commit by its idempotency key before deciding whether the refund was recorded.
-			Uncertain:       sdkgo.GoTo(completeRefundRecording{}),
-			ResultAttribute: &refundInsertResultAttribute,
+			ResultAttribute:     &refundInsertResultAttribute,
 		})),
 		dex.DefineStep(completeRefundRecording{}),
 		dex.DefineStep(sqlserver.NewQueryRowsStep(sqlserver.QueryRowsStepConfig[RefundReadBack]{
@@ -166,6 +176,17 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Completed:           sdkgo.GoTo(resolveInsertedRefund{}),
 		})),
 		dex.DefineStep(resolveInsertedRefund{}),
+		dex.DefineStep(sqlserver.NewExecuteStatementNonIdempotentStep(sqlserver.ExecuteStatementNonIdempotentStepConfig[Outcome]{
+			StepType: addRefundToDailyTotalStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{
+				GroupID: "sql-server", GroupLabel: "SQL Server",
+				Explanation: "Add the new refund to today's total at most once.",
+			},
+			Connection:          flow.connection,
+			MapToOperationInput: flow.MapToAddRefundToDailyTotalInput,
+			Completed:           sdkgo.GoTo(completeDailyTotal{}),
+		})),
+		dex.DefineStep(completeDailyTotal{}),
 	}
 }
 
@@ -230,6 +251,14 @@ func (*Flow) MapToInsertRefundInput(input Input) sqlserver.ExecuteStatementInput
 		IdempotencyKeyPlaceholder: 4,
 		MaxRowsAffected:           &maxRowsAffected,
 		ReturnsOutputRows:         true,
+	}
+}
+
+// MapToAddRefundToDailyTotalInput binds the recorded refund's exact amount; the MERGE touches one row.
+func (*Flow) MapToAddRefundToDailyTotalInput(outcome Outcome) sqlserver.ExecuteStatementInput {
+	maxRowsAffected := int64(1)
+	return sqlserver.ExecuteStatementInput{
+		Statement: AddRefundToDailyTotalStatement, Parameters: []any{outcome.Refund.AmountUSD}, MaxRowsAffected: &maxRowsAffected,
 	}
 }
 
@@ -352,14 +381,14 @@ func (decideRefundRecording) Execute(ctx dex.Context, result sqlserver.QueryRows
 }
 
 // dex:group group-id:sql-server group-label:"SQL Server"
-// dex:explanation text:"Complete with the OUTPUT row, or read it back after a replayed or uncertain insert."
+// dex:explanation text:"Record the OUTPUT row, or read it back after a replayed insert."
 type completeRefundRecording struct {
 	dex.StepDefaultsNoWaitFor[sqlserver.ExecuteStatementResult]
 }
 
 func (completeRefundRecording) GetStepType() string { return completeRefundRecordingStepType }
 
-// Execute reads back when the INSERT is uncertain or returned no row: a replay, or another Flow's refund.
+// Execute reads back when the INSERT returned no row: a replay, or another Flow's refund.
 func (completeRefundRecording) Execute(ctx dex.Context, result sqlserver.ExecuteStatementResult) (*dex.StepDecision, error) {
 	if result.Branch == sqlserver.ExecuteStatementBranchCompleted && len(result.Value.Rows) == 1 {
 		refund, err := decodeRefund(result.Value.Rows[0])
@@ -370,7 +399,7 @@ func (completeRefundRecording) Execute(ctx dex.Context, result sqlserver.Execute
 		if err := refundOutcomeAttribute.Set(ctx, outcome); err != nil {
 			return nil, err
 		}
-		return dex.GracefulComplete(outcome), nil
+		return dex.GoTo(sdkgo.StepRef[Outcome](addRefundToDailyTotalStepType), outcome), nil
 	}
 	request, err := refundRequestAttribute.Get(ctx)
 	if err != nil {
@@ -381,7 +410,7 @@ func (completeRefundRecording) Execute(ctx dex.Context, result sqlserver.Execute
 }
 
 // dex:group group-id:sql-server group-label:"SQL Server"
-// dex:explanation text:"Complete with this Flow's row or another Flow's refund; otherwise stop for review."
+// dex:explanation text:"Record this Flow's row or complete with another Flow's refund; otherwise stop for review."
 type resolveInsertedRefund struct {
 	dex.StepDefaultsNoWaitFor[sqlserver.QueryRowsResult]
 }
@@ -398,6 +427,29 @@ func (resolveInsertedRefund) Execute(ctx dex.Context, readBack sqlserver.QueryRo
 	if err != nil {
 		return dex.ForceFail(err.Error()), nil
 	}
+	if err := refundOutcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	if outcome.Status == StatusRecorded {
+		return dex.GoTo(sdkgo.StepRef[Outcome](addRefundToDailyTotalStepType), outcome), nil
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:sql-server group-label:"SQL Server"
+// dex:explanation text:"Complete with the recorded refund after adding it to today's total."
+type completeDailyTotal struct {
+	dex.StepDefaultsNoWaitFor[sqlserver.ExecuteStatementNonIdempotentResult]
+}
+
+func (completeDailyTotal) GetStepType() string { return completeDailyTotalStepType }
+
+func (completeDailyTotal) Execute(ctx dex.Context, _ sqlserver.ExecuteStatementNonIdempotentResult) (*dex.StepDecision, error) {
+	outcome, err := refundOutcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	outcome.IsAddedToDailyTotal = true
 	if err := refundOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

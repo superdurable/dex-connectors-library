@@ -7,11 +7,13 @@ import {
   type ReceiptDraft, type TriggerLogger,
 } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter,
   sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
 import type { IncomingHttpHeaders } from 'node:http';
+import { isCredentialMaterialError } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource, ProviderError } from './models.js';
 import {
@@ -72,6 +74,8 @@ export interface SalesforceOutcome {
   apiUsage: string;
   /** The Date header of the classified HTTP response; absent when no response arrived. */
   responseDate?: string;
+  /** The status of the classified HTTP response; absent when no response arrived. */
+  status?: number;
 }
 
 /** Provider transport and clock seams; production uses the SDK HTTP sender. */
@@ -200,6 +204,9 @@ export class SalesforceClient {
         'providerRejected', operation, 'AUTHENTICATION',
         'Salesforce authorization is revoked or expired; reauthorize the connection',
       );
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) return this.outcome(
+        'defect', operation, 'AUTHENTICATION', 'Salesforce connection credentials are missing or invalid',
+      );
       return this.outcome('retry', operation, 'AUTHENTICATION', 'Salesforce credentials are temporarily unavailable');
     }
     if (!this.validCredentials(credentials)) return this.outcome(
@@ -299,7 +306,7 @@ export class SalesforceClient {
     const retryAfter = parseRetryAfter(firstHeader(response.headers['retry-after']), this.now());
     const result = (
       route: SalesforceOutcome['route'], kind: Failure['kind'], description: string, delay = 0,
-    ) => ({ ...this.outcome(route, operation, kind, message(description), delay, providerErrors, response.apiUsage), responseDate: firstHeader(response.headers.date) });
+    ) => ({ ...this.outcome(route, operation, kind, message(description), delay, providerErrors, response.apiUsage), responseDate: firstHeader(response.headers.date), status: response.status });
     if (code === 'REQUEST_LIMIT_EXCEEDED' || response.status === 429) return result('retry', 'RATE_LIMIT', 'Salesforce API request limit was reached', retryAfter);
     if (code === 'UNABLE_TO_LOCK_ROW') return result('retry', 'CONFLICT', 'Salesforce could not lock the record', retryAfter);
     if (code === 'DUPLICATE_VALUE' && duplicateRetry) return result('retry', 'CONFLICT', 'a concurrent write holds the unique value');

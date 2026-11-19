@@ -56,9 +56,9 @@ func (operation QueryRowsOperation) Invoke(call sdkgo.Call, input QueryRowsInput
 	if err != nil {
 		return queryDefect(sdkgo.FailureValidation, err.Error(), sdkgo.Receipt{})
 	}
-	password, isResolved := client.resolvePassword(call)
+	password, credentialFailure, isResolved := client.resolvePassword(call)
 	if !isResolved {
-		return queryDefect(sdkgo.FailureAuthentication, "PostgreSQL connection credentials are unavailable", sdkgo.Receipt{})
+		return queryAttemptForFailure(credentialFailure, sdkgo.Receipt{})
 	}
 	ctx, cancel := client.newCallContext(call)
 	defer cancel()

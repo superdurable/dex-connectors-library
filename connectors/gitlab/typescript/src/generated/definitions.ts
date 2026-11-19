@@ -89,7 +89,7 @@ export const UpdateIssueLabelsBranchUpdated = UpdateIssueLabelsBranch.Updated;
 export const UpdateIssueLabelsBranchNotFound = UpdateIssueLabelsBranch.NotFound;
 /** The provider rejected the request. */
 export const UpdateIssueLabelsBranchProviderRejected = UpdateIssueLabelsBranch.ProviderRejected;
-/** The provider returned malformed or oversized JSON. */
+/** Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because replacing the complete label set again is safe. */
 export const UpdateIssueLabelsBranchInvalidResponse = UpdateIssueLabelsBranch.InvalidResponse;
 /** Local input or connection credentials are invalid. */
 export const UpdateIssueLabelsBranchDefect = UpdateIssueLabelsBranch.Defect;
@@ -100,7 +100,7 @@ export const UpdateIssueLabelsDefinition: MutationDefinition = {
     { id: "updated", description: "Replace one GitLab issue's complete label set; repeating the request is safe." },
     { id: "notFound", description: "The requested resource does not exist or is inaccessible.", optional: true },
     { id: "providerRejected", description: "The provider rejected the request.", optional: true },
-    { id: "invalidResponse", description: "The provider returned malformed or oversized JSON.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because replacing the complete label set again is safe.", optional: true },
     { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

@@ -76,7 +76,10 @@ func (operation ListEventsOperation) Invoke(call sdkgo.Call, input ListEventsInp
 	if err != nil {
 		return sdkgo.NewQueryBranch(ListEventsBranchDefect, ListEventsOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, mailboxRoot, failure := operation.client.resolveCredentials(call, operationID)
+	credentials, mailboxRoot, failure, isRetryable := operation.client.resolveCredentials(call, operationID)
+	if isRetryable {
+		return sdkgo.NewQueryRetry[ListEventsOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ListEventsBranchDefect, ListEventsOutput{}, failure, sdkgo.Receipt{})
 	}

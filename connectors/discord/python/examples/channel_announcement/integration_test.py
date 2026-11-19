@@ -34,7 +34,8 @@ async def test_announcement_retries_and_fails_unwired_rejection() -> None:
         if body["content"] == "reject":
             return httpx.Response(403, json={"code": 50013, "message": "SENTINEL"})
         if len(requests) == 1:
-            return httpx.Response(503, json={"code": 0})
+            # A 502 is an unknown outcome, so the connector resends with the same nonce.
+            return httpx.Response(502, json={"code": 0})
         return httpx.Response(
             200,
             json={

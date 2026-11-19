@@ -127,7 +127,8 @@ func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *test
 	require.NotNil(t, uncertain.UncertainCreate)
 	require.Equal(t, sdkgo.FailureTransport, uncertain.UncertainCreate.FailureKind)
 	require.NotEmpty(t, uncertain.UncertainCreate.CallID)
-	require.Equal(t, 1, provider.createCount(summary), "a timeout after dispatch is never retried")
+	sendCap := int(jira.CreateIssueDefinition.MaxSends)
+	require.Equal(t, sendCap, provider.createCount(summary), "an unindexed timed-out create is resent up to the send cap")
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.ConfirmCreatedIssue, ConfirmCreatedIssueInput{IssueKey: "OPS-99"}, nil))
 	waitForReconciliationNote(t, ctx, harness, flow, flowID, NoteReportedIssueMissing)
@@ -141,7 +142,7 @@ func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *test
 	require.Equal(t, createdKey, triage.Issue.Key)
 	require.Nil(t, triage.UncertainCreate)
 	require.Equal(t, 1, triage.CreateAttempts)
-	require.Equal(t, 1, provider.createCount(summary), "reconciliation adopted the existing issue")
+	require.Equal(t, sendCap, provider.createCount(summary), "reconciliation adopted an existing issue without another create")
 }
 
 func TestServerErrorIsCreatedAgainOnlyAfterOperatorApprovalWithRealDex(t *testing.T) {
@@ -152,13 +153,14 @@ func TestServerErrorIsCreatedAgainOnlyAfterOperatorApprovalWithRealDex(t *testin
 
 	uncertain := waitForPhase(t, ctx, harness, flow, flowID, PhaseNeedsReconciliation)
 	require.Equal(t, sdkgo.FailureAvailability, uncertain.UncertainCreate.FailureKind)
-	require.Equal(t, 1, provider.createCount(summary))
+	sendCap := int(jira.CreateIssueDefinition.MaxSends)
+	require.Equal(t, sendCap, provider.createCount(summary), "each 5xx is read back and resent up to the send cap")
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.ApproveIssueCreateRetry, nil, nil))
 	triage := waitForFlowOutput(t, ctx, harness, flowID)
 	require.Equal(t, PhaseTriaged, triage.Phase)
 	require.Equal(t, 2, triage.CreateAttempts)
-	require.Equal(t, 2, provider.createCount(summary), "only the approved retry sent a second create")
+	require.Equal(t, sendCap+1, provider.createCount(summary), "only the approved retry sent another create")
 }
 
 // TestCreateIsSentOnceWithRealDex checks the provider request and created issue counts.
@@ -207,7 +209,7 @@ func TestUnavailableTransitionFailsWithoutMovingIssueWithRealDex(t *testing.T) {
 	require.Zero(t, provider.transitionPostCount(provider.issueKeyForSummary(input.Summary)))
 }
 
-func TestCommentTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestCommentTimeoutResendsUpToTheSendCapThenFailsWithRealDex(t *testing.T) {
 	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
@@ -219,7 +221,7 @@ func TestCommentTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
 	issueKey := provider.issueKeyForSummary(summary)
-	require.Equal(t, 1, provider.commentCount(issueKey), "an uncertain comment is never re-sent")
+	require.Equal(t, int(jira.AddCommentDefinition.MaxSends), provider.commentCount(issueKey), "an unconfirmed comment is resent up to the send cap")
 	require.Zero(t, provider.transitionPostCount(issueKey), "a failed comment does not move the issue")
 }
 
@@ -420,7 +422,7 @@ func (provider *fakeJira) createIssue(response http.ResponseWriter, request *htt
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"errorMessages":["SENTINEL rate limited"]}`)
 	case strings.Contains(summary, markerUnavailable) && attempt == 1:
 		provider.writeJSON(response, http.StatusServiceUnavailable, `{"errorMessages":["SENTINEL unavailable"]}`)
-	case strings.Contains(summary, markerServerError) && attempt == 1:
+	case strings.Contains(summary, markerServerError) && attempt <= int(jira.CreateIssueDefinition.MaxSends):
 		provider.writeJSON(response, http.StatusInternalServerError, `{"errorMessages":["SENTINEL internal error"]}`)
 	case strings.Contains(summary, markerCreateTimeout):
 		provider.storeIssue(summary)

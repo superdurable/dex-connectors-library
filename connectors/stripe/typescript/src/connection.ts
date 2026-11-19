@@ -65,8 +65,8 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
         auth_method: z.enum(['api-key-only', 'api-key-with-webhook']).optional(),
         secret_key: z.string(), webhook_secret: z.string().optional(),
       }).parse(fields);
-      const authMethodId = decoded.auth_method ?? selected.authMethodId ?? 'api-key-with-webhook';
-      if (authMethodId !== 'api-key-only' && authMethodId !== 'api-key-with-webhook') throw new TypeError('Stripe credential auth_method is invalid');
+      // A ZodError marks an unusable stored method, which the client treats as terminal.
+      const authMethodId = z.enum(['api-key-only', 'api-key-with-webhook']).parse(decoded.auth_method ?? selected.authMethodId ?? 'api-key-with-webhook');
       return {
         authMethodId, secretKey: new SecretString(decoded.secret_key),
         ...(decoded.webhook_secret ? { webhookSecret: new SecretString(decoded.webhook_secret) } : {}),

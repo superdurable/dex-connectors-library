@@ -148,21 +148,17 @@ func TestSlowNoteIsSentOnceWithRealDex(t *testing.T) {
 	require.Len(t, provider.conversation(target).notes, 1)
 }
 
-func TestLostNoteResponseFailsAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostNoteResponseIsResentWithinTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeHiver(t, fastRequestInterval)
 	provider.seedStandardInbox()
 	target := provider.seedConversation(integrationInboxID, "open", "", nil)
 	provider.losesFirstNoteResponse = true
 	harness := newClaimHarness(t, provider, fastRequestInterval, defaultRequestTimeout)
 
-	flowID := harness.startClaim(t, "lost-note", integrationClaimInput())
-	result := harness.waitForFlow(t, flowID)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("note"), "an unconfirmed note is never resent")
-	require.Len(t, provider.conversation(target).notes, 1, "Hiver did add the note, which a person must now find")
-	require.Zero(t, provider.count("draft"), "the failed Flow never creates a draft")
+	outcome := harness.runClaim(t, "lost-note", integrationClaimInput())
+	require.Equal(t, ClaimActionClaimed, outcome.Action, "the unknown outcome is resent below the send cap of 3")
+	require.Equal(t, 2, provider.count("note"))
+	require.Len(t, provider.conversation(target).notes, 2, "limited accepts a duplicate note instead of an uncertain Flow")
 }
 
 func TestRateLimitedNoteWaitsAndAddsOneNoteWithRealDex(t *testing.T) {
@@ -197,8 +193,8 @@ func TestServiceUnavailableNoteRetriesWithSameCallIDWithRealDex(t *testing.T) {
 	require.Len(t, provider.conversation(target).notes, 1)
 }
 
-// TestLostWorkerDuringDraftFailsWithoutResendingWithRealDex replaces the Worker while Hiver holds the draft.
-func TestLostWorkerDuringDraftFailsWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringDraftResendsWithinTheSendCapWithRealDex replaces the Worker while Hiver holds the draft.
+func TestLostWorkerDuringDraftResendsWithinTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeHiver(t, fastRequestInterval)
 	provider.seedStandardInbox()
 	target := provider.seedConversation(integrationInboxID, "open", "", nil)
@@ -211,12 +207,10 @@ func TestLostWorkerDuringDraftFailsWithoutResendingWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstDraft)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, "the new Worker counts the lost send and resends below the cap: %s", result.ErrorMessage)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("draft"), "the attempt on the new Worker did not resend the draft")
-	require.Len(t, provider.conversation(target).drafts, 1)
+	require.Equal(t, 2, provider.count("draft"), "the attempt on the new Worker resent the draft")
+	require.Len(t, provider.conversation(target).drafts, 2, "limited accepts a duplicate draft instead of an uncertain Flow")
 }
 
 func TestUnknownAssigneeFailsTheFlowBeforeAnyChangeWithRealDex(t *testing.T) {

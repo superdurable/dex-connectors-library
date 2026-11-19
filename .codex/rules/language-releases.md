@@ -25,9 +25,12 @@ Porters write scenario inputs, prior state, and provider responses; Go record
 mode writes complete requests, exact outputs, production idempotency keys,
 and retry decisions. CI verifies a nonzero value for every input field, each
 declared branch, separate final-attempt 429 and 5xx Retry scenarios and a
-transport failure per operation, uncertainty when declared, SDK-encoded exact
-outputs, and exact Go recordings. Pending scenarios are rejected; other recovery paths
-remain a review requirement.
+transport failure per operation, uncertainty when a non-safe operation
+declares it, SDK-encoded exact outputs, and exact Go recordings. A safe
+Mutation may leave `uncertain` and `invalidResponse` unreplayed. The runners
+present a recorded heartbeat in the installed SDK's checkpoint format.
+Pending scenarios are rejected; other recovery paths remain a review
+requirement.
 
 The reviewed `conformance/exemptions.yaml` exempts only `connectors/postgresql`,
 `connectors/mysql`, `connectors/mongodb`, `connectors/microsoft/sql-server`, and

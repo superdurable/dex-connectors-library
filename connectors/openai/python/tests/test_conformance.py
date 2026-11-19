@@ -34,9 +34,11 @@ async def invoke_openai(scenario: dict[str, Any], recorder: conformance.Exchange
         )
         operation_name = scenario["operation"]
         request = scenario["input"]
+        send_cap = (conformance.production_send_cap_arguments(client.create_response().definition())
+                    if operation_name == "createResponse" else {})
         call = sdk.Call(sdk.CallID(scenario["callId"]), CONNECTION,
                         sdk.OperationRef("openai", operation_name), sdk.IdempotencyKey(""),
-                        context=context)  # type: ignore[arg-type]
+                        context=context, **send_cap)  # type: ignore[arg-type]
         if operation_name == "createResponse":
             structured = request.get("StructuredOutput")
             output = (openai.StructuredOutput(
@@ -59,7 +61,8 @@ async def invoke_openai(scenario: dict[str, Any], recorder: conformance.Exchange
 async def test_connector_conformance(scenario: dict[str, Any]) -> None:
     """Compare provider requests, checkpoints, and outcomes to the Go recording."""
     recorder = conformance.ExchangeRecorder(scenario, scenario["callId"], "/v1")
-    context = conformance.HeartbeatContext(scenario.get("priorHeartbeat"), scenario_name=scenario["name"])
+    context = conformance.HeartbeatContext(scenario.get("priorHeartbeat"), scenario_name=scenario["name"],
+                                           call_id=scenario["callId"])
     if scenario["name"].endswith("-deadline"):
         context.deadline = datetime.now(UTC) + timedelta(seconds=6)
     for intermediate in scenario.get("intermediate", []):

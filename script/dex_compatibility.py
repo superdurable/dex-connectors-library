@@ -597,11 +597,21 @@ def flow_examples(root: Path, connector_directories: list[str] | None = None) ->
     examples = []
     for source in sorted((root / "connectors").glob("**/examples/**/flow/*.go")):
         if (selected_roots is None or owning_connector_root(root, source) in selected_roots) \
-                and "GetSteps(" in source.read_text():
+                and is_flow_source(source) and source.parent not in examples:
             examples.append(source.parent)
     if not examples and connector_directories is None:
         raise RuntimeError("no Flow examples found")
     return examples
+
+
+def is_flow_source(source: Path) -> bool:
+    """Reports whether a non-test Go file defines a Flow through GetSteps."""
+    return not source.name.endswith("_test.go") and "GetSteps(" in source.read_text()
+
+
+def flow_sources(example: Path) -> list[Path]:
+    """Returns every Flow source in an example flow package, which may define several Flows."""
+    return [source for source in sorted(example.glob("*.go")) if is_flow_source(source)]
 
 
 def owning_connector_root(root: Path, source: Path) -> Path | None:
@@ -655,27 +665,41 @@ def run_visualize(source: Path, consumer: Path, dexcli: Path, connector_module: 
         environment["GOPROXY"] = f"{proxy_url},https://proxy.golang.org,direct"
         environment["GONOSUMDB"] = connector_module
     run_go_network_command(["go", "mod", "tidy"], consumer, environment)
+    consumer_flow_sources = flow_sources(consumer / "flow")
+    if not consumer_flow_sources:
+        raise RuntimeError(f"expected at least one Flow source with GetSteps in {source}, found 0")
+    for consumer_flow_source in consumer_flow_sources:
+        visualize_flow_source(consumer_flow_source, source / consumer_flow_source.name, consumer, dexcli, connector_module, version, environment)
+
+
+def visualize_flow_source(
+    consumer_flow_source: Path,
+    example_flow_source: Path,
+    consumer: Path,
+    dexcli: Path,
+    connector_module: str,
+    version: str,
+    environment: dict[str, str],
+) -> None:
+    """Visualizes one Flow source twice, checks determinism, and validates the schema 2.0 definition."""
     outputs = []
-    flow_sources = [path for path in sorted((consumer / "flow").glob("*.go")) if "GetSteps(" in path.read_text()]
-    if len(flow_sources) != 1:
-        raise RuntimeError(f"expected one Flow source with GetSteps in {source}, found {len(flow_sources)}")
     for run_number in (1, 2):
-        destination = consumer / f"definition-{run_number}"
+        destination = consumer / f"definition-{consumer_flow_source.stem}-{run_number}"
         generated = destination.with_suffix(".json")
         try:
-            run([str(dexcli), "visualize", str(flow_sources[0]), "--schema-version", "2.0", "--json", "--out", str(destination)], consumer, environment)
+            run([str(dexcli), "visualize", str(consumer_flow_source), "--schema-version", "2.0", "--json", "--out", str(destination)], consumer, environment)
         except RuntimeError:
             if generated.exists():
                 print(generated.read_text(), flush=True)
             raise
         outputs.append(generated.read_bytes())
     if definition_without_generation_time(outputs[0]) != definition_without_generation_time(outputs[1]):
-        raise RuntimeError(f"visualize output is not deterministic: {source}")
-    validate_definition(json.loads(outputs[0]), connector_module, version, source)
-    print(f"Visualize: example={source} module={connector_module} version={version} deterministic=true", flush=True)
+        raise RuntimeError(f"visualize output is not deterministic: {example_flow_source}")
+    validate_definition(json.loads(outputs[0]), connector_module, version, example_flow_source, consumer_flow_source.read_text())
+    print(f"Visualize: source={example_flow_source} module={connector_module} version={version} deterministic=true", flush=True)
 
 
-def validate_definition(definition: object, connector_module: str, version: str, source: Path) -> None:
+def validate_definition(definition: object, connector_module: str, version: str, source: Path, source_text: str) -> None:
     if not isinstance(definition, dict) or definition.get("valid") is not True:
         raise RuntimeError(f"schema 2.0 definition is invalid: {source}")
     errors = [diagnostic for diagnostic in definition.get("diagnostics", []) if str(diagnostic.get("severity", "")).lower() == "error"]
@@ -692,8 +716,9 @@ def validate_definition(definition: object, connector_module: str, version: str,
             stack.extend(value.values())
         elif isinstance(value, list):
             stack.extend(value)
-    if not connectors:
-        raise RuntimeError(f"definition contains no connector nodes: {source}")
+    trigger_bindings = definition.get("v2", {}).get("connectorTriggerBindings", [])
+    if not connectors and not trigger_bindings:
+        raise RuntimeError(f"definition contains no connector nodes or Trigger bindings: {source}")
     for connector in connectors:
         required = ("connectionName", "operationId", "operationKind")
         if connector.get("modulePath") != connector_module or connector.get("moduleVersion") != version or any(not connector.get(field) for field in required):
@@ -707,8 +732,10 @@ def validate_definition(definition: object, connector_module: str, version: str,
             raise RuntimeError(f"connector Step has no explanation in {source}: {node.get('id')}")
         if not any(edge.get("from") == node.get("id") and edge.get("metadata", {}).get("connectorBranch") is True for edge in edges):
             raise RuntimeError(f"connector Step has no branch targets in {source}: {node.get('id')}")
-    source_text = next(path for path in source.glob("*.go") if "GetSteps(" in path.read_text()).read_text()
-    if "GetConnectorTriggerBindings" in source_text and not definition.get("v2", {}).get("connectorTriggerBindings"):
+    for binding in trigger_bindings:
+        if not isinstance(binding, dict) or any(not binding.get(field) for field in ("connectorId", "triggerName", "connectionName", "bindingName")):
+            raise RuntimeError(f"invalid connector Trigger binding in {source}: {binding}")
+    if "GetConnectorTriggerBindings" in source_text and not trigger_bindings:
         raise RuntimeError(f"connector Trigger bindings are missing in {source}")
     if "ResultAttribute:" in source_text and not any(edge.get("kind") == "resource_write" and edge.get("from") in {node.get("id") for node in connector_nodes} for edge in edges):
         raise RuntimeError(f"connector Result Attribute edge is missing in {source}")
@@ -818,7 +845,7 @@ def test_released_examples(releases: list[dict[str, object]], output: Path, dexc
         module_root = Path(module["Dir"])
         released_examples = []
         for source in sorted((module_root / "examples").glob("**/flow/*.go")):
-            if "GetSteps(" in source.read_text():
+            if is_flow_source(source) and source.parent not in released_examples:
                 released_examples.append(source.parent)
         for example in released_examples:
             run_visualize(example, output / example_consumer_name(prefix, example), dexcli, connector_module, version)

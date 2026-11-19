@@ -4,11 +4,13 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { encodeGoQuery, escapeGoPath, ZohoClient } from '../src/client.js';
 import { buildFindRecordsQuery, buildListModifiedRecordsQuery } from '../src/coql.js';
 import { decodeModuleFields, decodeRecordPage, parseZohoTime, validateWriteFields } from '../src/records.js';
 import type { CredentialSource } from '../src/models.js';
 import { ZohoHTTPClient } from '../src/http.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const bytes = (value: unknown) => Buffer.from(JSON.stringify(value));
 
@@ -46,6 +48,23 @@ describe('Go wire parity at provider boundaries', () => {
     const update = await client.updateRecord().invoke(call, { module: 'Deals', recordId: '123', fields: { Amount: 1250.5 } });
     expect(upsert).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
     expect(update).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
+  });
+
+  it.each([
+    ['missing connection object', () => new ObjectNotFoundError(), 'branch'],
+    ['unselected connection', () => new ConnectionNotSelectedError(), 'branch'],
+    ['broker refusal', () => new CredentialBrokerRejectedError(), 'branch'],
+    ['malformed credential material', () => new CredentialMaterialError('credential access_token is required'), 'branch'],
+    ['SDK provider decoding failure', () => new TypeError('project credential decoding failed'), 'branch'],
+    ['broker outage', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['unconfigured static connection', () => new Error('connection is not configured'), 'retry'],
+  ] as const)('classifies a %s resolve failure before sending', async (_name, error, kind) => {
+    const credentials = { resolve: async () => { throw error(); } } as unknown as CredentialSource;
+    const client = new ZohoClient({}, credentials);
+    const call = { context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    const update = await client.updateRecord().invoke(call, { module: 'Deals', recordId: '123', fields: { Amount: 1250.5 } });
+    expect(update.kind).toBe(kind);
+    if (update.kind === 'branch') expect(update.branch).toBe('providerRejected');
   });
 
   it('accepts exact fractional JSON values and rejects unsafe integer fields', () => {

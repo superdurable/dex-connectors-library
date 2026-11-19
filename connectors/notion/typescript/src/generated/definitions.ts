@@ -121,9 +121,9 @@ export const CreatePageBranch = {
 export const CreatePageBranchCreated = CreatePageBranch.Created;
 /** The database or data source does not exist or is not shared with the connection; nothing was created. */
 export const CreatePageBranchNotFound = CreatePageBranch.NotFound;
-/** Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created. */
+/** Notion conclusively rejected the first send with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as a missing property, a value of the wrong type, or missing Insert content capability; nothing was created. */
 export const CreatePageBranchProviderRejected = CreatePageBranch.ProviderRejected;
-/** The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically. */
+/** Sends up to the send cap had unknown outcomes, or Notion accepted the page without a confirmable ID; Notion has no idempotency key, so the page may exist and must not be created again automatically. */
 export const CreatePageBranchUncertain = CreatePageBranch.Uncertain;
 /** Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created. */
 export const CreatePageBranchInvalidResponse = CreatePageBranch.InvalidResponse;
@@ -135,8 +135,8 @@ export const CreatePageDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Notion created the page and returned or confirmed its ID." },
     { id: "notFound", description: "The database or data source does not exist or is not shared with the connection; nothing was created.", optional: true },
-    { id: "providerRejected", description: "Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.", optional: true },
-    { id: "uncertain", description: "The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically.", optional: true },
+    { id: "providerRejected", description: "Notion conclusively rejected the first send with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as a missing property, a value of the wrong type, or missing Insert content capability; nothing was created.", optional: true },
+    { id: "uncertain", description: "Sends up to the send cap had unknown outcomes, or Notion accepted the page without a confirmable ID; Notion has no idempotency key, so the page may exist and must not be created again automatically.", optional: true },
     { id: "invalidResponse", description: "Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created.", optional: true },
     { id: "defect", description: "Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true },
   ],
@@ -161,7 +161,7 @@ export const UpdatePagePropertiesBranchUpdated = UpdatePagePropertiesBranch.Upda
 export const UpdatePagePropertiesBranchNotFound = UpdatePagePropertiesBranch.NotFound;
 /** Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability. */
 export const UpdatePagePropertiesBranchProviderRejected = UpdatePagePropertiesBranch.ProviderRejected;
-/** Notion applied the update but returned an invalid or oversized page. */
+/** Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe. */
 export const UpdatePagePropertiesBranchInvalidResponse = UpdatePagePropertiesBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdatePagePropertiesBranchDefect = UpdatePagePropertiesBranch.Defect;
@@ -172,7 +172,7 @@ export const UpdatePagePropertiesDefinition: MutationDefinition = {
     { id: "updated", description: "Notion applied the property values and returned the page." },
     { id: "notFound", description: "The page does not exist or is not shared with the connection; nothing was changed.", optional: true },
     { id: "providerRejected", description: "Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability.", optional: true },
-    { id: "invalidResponse", description: "Notion applied the update but returned an invalid or oversized page.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 90000, executeDurability: "async" },

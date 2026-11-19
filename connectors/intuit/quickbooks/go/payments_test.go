@@ -86,7 +86,7 @@ func TestRecordPaymentValidatesBeforeAnyRequestAndDistrustsAnotherInvoice(t *tes
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.RecordPaymentBranchProviderRejected, result.Branch)
 	require.NotContains(t, result.Failure.Message, "SENTINEL")
-	result, err = sdkgo.RunMutation(newQuickBooksDexContext("another-invoice"), client.RecordPayment(), quickbooksConnection, validRecordPaymentInput())
+	result, err = sdkgo.RunMutation(newQuickBooksDexContext("another-invoice"), client.RecordPayment(), quickbooksConnection, validRecordPaymentInput(), sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.RecordPaymentBranchUncertain, result.Branch, "a payment applied elsewhere is never reported as recorded")
 }

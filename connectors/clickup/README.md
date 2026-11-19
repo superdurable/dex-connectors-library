@@ -1,6 +1,6 @@
 # ClickUp Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/clickup/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/clickup/go@v0.23.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/clickup`.
 
@@ -27,7 +27,7 @@ their `X-Signature`.
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) implements all seven task operations at `@superdurable/connector-clickup` v0.1.0. Its [runnable get-task Flow](typescript/examples/get-task/) uses the static `clickup-workspace` connection and is exercised against a real Dex Worker and Client with a local ClickUp HTTP fixture. The signed `taskEvent` Trigger remains Go only. The shared Go recordings cover 63 TypeScript provider scenarios; live ClickUp authorization and provider calls are unverified.
+The [TypeScript package](typescript/README.md) implements all seven task operations at `@superdurable/connector-clickup` v0.1.3. Its [runnable get-task Flow](typescript/examples/get-task/) uses the static `clickup-workspace` connection and is exercised against a real Dex Worker and Client with a local ClickUp HTTP fixture. The signed `taskEvent` Trigger remains Go only. The shared Go recordings cover 89 TypeScript provider scenarios; live ClickUp authorization and provider calls are unverified.
 
 ## Mocks
 
@@ -163,10 +163,11 @@ never returned.
 | --- | --- | --- |
 | `429` | Retry after `X-RateLimit-Reset`, at most one minute | Retry; ClickUp applied nothing |
 | `408`, `5xx`, dropped connection | Retry | Keep the dispatch checkpoint and retry, so the next attempt reads back |
-| `404`, or `401` with a Workspace-not-authorized `ECODE` (`OAUTH_023`, `OAUTH_026`, `OAUTH_027`, `OAUTH_029` to `OAUTH_045`) | `notFound` | `notFound` |
-| other `401`, `403`, `400`, other `4xx`, `3xx` | `providerRejected` | `providerRejected` |
-| unusable or oversized `2xx` | `invalidResponse` | Retry with the checkpoint held |
+| `404`, or `401` with a Workspace-not-authorized `ECODE` (`OAUTH_023`, `OAUTH_026`, `OAUTH_027`, `OAUTH_029` to `OAUTH_045`) | `notFound` | `notFound` for a first send; `uncertain` after a possible earlier send |
+| other `401`, `403`, `400`, other `4xx`, `3xx` | `providerRejected` | `providerRejected` for a first send with a definite status |
+| unusable, unreadable, or oversized `2xx` | Reads: `invalidResponse`; updates: Retry | Retry to read back by a returned ID, otherwise `uncertain`; never sent again |
 | invalid input or token | `defect`, no request | `defect`, no request |
+| credential store or broker temporarily unreadable | Retry, no request | Retry, no request |
 
 ClickUp's rate limit is per token and per minute (100 requests on Free,
 Unlimited, and Business plans; 1,000 on Business Plus; 10,000 on Enterprise), so
@@ -206,24 +207,38 @@ carry one.
 `MarkdownDescription`, `Status`, `Priority`, `DueAt`, `AssigneeIDs`, `Tags`,
 `ParentTaskID` (a subtask in the same List), and `CustomFields`, each an ID
 and a raw JSON value. ClickUp has no idempotency key, so the Step uses sync
-durability and records a Dex heartbeat checkpoint before the request; a later
-attempt that finds the checkpoint reads back instead of resending:
+durability and sends behind the SDK single-dispatch fence, whose Dex heartbeat
+checkpoint counts each possible send against the Step's send cap
+(`execution.maxSends`, three unless `CreateTaskStepConfig.MaxSends` overrides
+it):
 
 | Outcome | Result |
 | --- | --- |
-| `200` with a task | `created` |
-| `429`, or a connection that never opened | checkpoint cleared, Retry, and the create is sent again |
-| timeout, dropped connection, `408`, `5xx`, or an unusable `2xx` | checkpoint kept, Retry; the next attempt reads back |
+| `200` with a task | `created`; the task ID is saved in the checkpoint |
+| `429`, `503`, or a connection that never opened | Retry, and the create is sent again without a read-back |
+| timeout, dropped connection, `408`, `409`, `410`, `425`, other `5xx`, a redirect, another unlisted status, or an error body over `maxResponseBytes` | Retry after at least five seconds; the next attempt reads back first |
+| `2xx` whose body is unusable, unreadable, or oversized | Retry when the body still names the task ID, so the next attempt reads it back; otherwise `uncertain`. It is never sent again |
 | `404` | `notFound` |
-| `400`, `401`, `403`, other `4xx` | `providerRejected` |
+| `400`, `401`, `403`, `411`, `413`, `414`, `415`, `422` | `providerRejected` |
 
-An attempt that finds the checkpoint never sends. It reads
-`GET /list/{list_id}/task` for tasks created since five minutes before the
-dispatch, closed tasks and subtasks included, and reports `created` with
-`WasAlreadyApplied` when exactly one has the requested name and parent;
-otherwise it selects `uncertain`. Put the application's own request key in the
-name, as the example puts the blocked task's ID in brackets, so the read-back
-is unambiguous.
+An attempt after a possible earlier send reads back before it sends, including
+an attempt after a resend that got `429` or `503`. When
+ClickUp returned a task ID, it reads `GET /task/{task_id}` and never resends:
+the task found reports `created` with `WasAlreadyApplied`, and otherwise the
+attempt selects `uncertain`. Without an ID, it reads `GET /list/{list_id}/task`
+for tasks created since five minutes before the Step's first attempt, closed
+tasks and subtasks included. Exactly one task with the requested name and
+parent reports `created` with `WasAlreadyApplied`; several select `uncertain`;
+none sends the create again while possible sends stay below the cap, and
+selects `uncertain` at the cap. A refusal or local defect after a possible
+earlier send also selects `uncertain`, as does a read-back that finds the List
+missing (`404`, or `401` with a Workspace-not-authorized `ECODE`). After a
+possible earlier send, the attempt never records that nothing was sent: a
+temporarily unreadable credential retries, and a missing, invalid, or
+deauthorized one selects `uncertain`. A `2xx` whose body the write window cuts
+off is accepted and selects `uncertain` without a resend. Put the application's own request key in
+the name, as the example puts the blocked task's ID in brackets, so the
+read-back is unambiguous.
 
 ### updateTask
 
@@ -231,8 +246,12 @@ is unambiguous.
 pointer to `""` clears it with ClickUp's documented single space), `Status`,
 `Priority`, `DueAt`, and `AddAssigneeIDs` and `RemoveAssigneeIDs`, ClickUp's
 `assignees.add` and `assignees.rem`. Every change is an absolute value or a set
-membership, so a repeated `PUT` leaves the same task, and every ambiguous
-outcome retries. The `Value` is the task ClickUp returns. Clearing the
+membership, so a repeated `PUT` leaves the same task, the manifest declares
+`repeatOnUnknown: safe`, and every unknown outcome retries, including a `409`,
+`410`, redirect, or other status outside `400`, `401`, `403`, `404`, `411`,
+`413`, `414`, `415`, and `422`. A `2xx` with an unusable, unreadable, or
+oversized body also retries, so the declared `invalidResponse` branch is no
+longer selected. The `Value` is the task ClickUp returns. Clearing the
 priority or the due date is not offered.
 
 ### updateTaskTags
@@ -241,15 +260,19 @@ priority or the due date is not offered.
 both lists, a `/`, and the names `.` and `..`, which would change the request
 path, are rejected. Each change is its own request, and the operation then
 reads the task back for its tags. A rejection after some changes reports
-`AppliedChanges`; a retry repeats them all, which changes nothing.
+`AppliedChanges`; a retry repeats them all, which changes nothing, so the
+operation is `repeatOnUnknown: safe` and classifies statuses as `updateTask`
+does; an unusable task read back also retries.
 
 ### addComment
 
 `AddCommentInput.Text` is plain text of at most 32768 bytes, sent as
 `comment_text`, with `notify_all` from `IsCreatorNotified`. The dispatch rule
-matches `createTask`; the read-back is `GET /task/{task_id}/comment`, the 25
-newest comments, matched by text, ignoring whitespace differences, and created
-since the dispatch.
+and send cap match `createTask`; the read-back is `GET /task/{task_id}/comment`,
+the 25 newest comments. A saved comment ID matches only that comment;
+otherwise a comment matches by text, ignoring whitespace differences, created
+since five minutes before the Step's first attempt. A read-back that finds the
+task missing after a possible earlier send selects `uncertain`.
 
 ### findMemberByEmail
 
@@ -265,12 +288,12 @@ member has the address, or the token's user is not in the Workspace.
 `createTask` and `addComment` use sync Execute durability. The
 example's real-Dex tests delay a create and a comment and
 record one request each; another holds a create while the Worker is replaced,
-and the new attempt reads the List instead of resending. Do not override these
-Steps to async. Dex accepts the checkpoint when the Worker writes it to its
-stream, before the request leaves; a Worker lost in that instant, before Dex
-stored the checkpoint, could still send twice, and a crash after the
-checkpoint but before the request left reports `uncertain` for a request
-ClickUp never received.
+and the new attempt reads the List, finds nothing yet, and sends again within
+the cap. Do not override these Steps to async. A duplicate is possible only
+when ClickUp applied a send whose outcome stayed unknown and read-back did not
+see it, and possible sends never exceed the send cap. Lower the cap with
+`MaxSends: 1` to never resend an unknown outcome; such a Step only reads back
+and selects `uncertain` when read-back finds nothing.
 
 `updateTask` and `updateTaskTags` keep the async default. After Worker loss
 during an applied `PUT`, the replacement Worker sends the same absolute

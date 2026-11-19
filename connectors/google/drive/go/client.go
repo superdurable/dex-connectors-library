@@ -32,7 +32,9 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/pollingtrigger"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -313,23 +315,41 @@ func (client *Client) ReadFileText() ReadFileTextOperation {
 // UploadFile returns the UploadFile operation bound to this client.
 func (client *Client) UploadFile() UploadFileOperation { return UploadFileOperation{client: client} }
 
-func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Credentials, *sdkgo.Failure) {
+// resolveCredential resolves the call's credential. isRetryable reports a credential outage that
+// needs no reauthorization.
+func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, driveFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable")
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, driveFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are temporarily unavailable"), true
 	}
-	return credential, nil
+	if err != nil || validateResolvedCredentials(credential) != nil {
+		return Credentials{}, driveFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), false
+	}
+	return credential, nil, false
 }
 
-func (client *Client) refreshRejectedUploadCredential(call sdkgo.Call) error {
+// resolveUploadCredential is resolveCredential for uploadFile.
+func (client *Client) resolveUploadCredential(call sdkgo.Call) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
+	return client.resolveCredential(call, uploadFileOperationID)
+}
+
+// refreshRejectedUploadCredential reports whether the refresh succeeded, and whether a failure is transient.
+func (client *Client) refreshRejectedUploadCredential(call sdkgo.Call) (isRefreshed bool, isTransient bool) {
 	if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
-		return errors.New("credential provider does not support refresh after rejection")
+		return false, false
 	}
 	refreshed, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil {
-		return err
+		return false, !isTerminalCredentialError(err)
 	}
-	return validateResolvedCredentials(refreshed)
+	return validateResolvedCredentials(refreshed) == nil, false
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) readBackUploadByID(call sdkgo.Call, credential *Credentials, fileID, idempotencyKey string) (*File, driveResponse, *readOutcome) {
@@ -371,21 +391,97 @@ func (client *Client) lookupEarlierUpload(call sdkgo.Call, credential *Credentia
 	return earlierFile, lookupResponse, nil, isIncompleteLookup
 }
 
-func (client *Client) reconcileUpload(call sdkgo.Call, credential *Credentials, idempotencyKey, requestID string) sdkgo.MutationAttempt[UploadFileOutput] {
+// reconcileUpload reads back an upload with an unknown outcome, then resends while the cap allows.
+func (client *Client) reconcileUpload(call sdkgo.Call, fence *singledispatch.Fence, credential *Credentials, idempotencyKey, requestID string, canResendUnknownOutcome bool) sdkgo.MutationAttempt[UploadFileOutput] {
 	file, response, outcome, isIncomplete := client.lookupEarlierUpload(call, credential, idempotencyKey)
 	if outcome != nil {
 		if outcome.branch == "" {
 			return sdkgo.NewMutationRetry[UploadFileOutput](outcome.failure, outcome.retryAfter)
 		}
-		return uploadUncertain(call, client, "upload read-back could not confirm the outcome")
+		return resendUploadOrSelectUncertain(call, client, canResendUnknownOutcome, "upload read-back could not confirm the outcome", requestID)
 	}
 	if file != nil {
+		// A later attempt reads this file back by ID even when the property lookup lags.
+		_ = fence.RecordProviderID(file.ID)
 		return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: *file}, nil, client.receipt(call, response.requestID, file.ID))
 	}
 	if isIncomplete {
 		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "provider did not complete upload read-back"), 0)
 	}
-	return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "upload was sent but read-back found no matching file"), client.receipt(call, requestID, ""))
+	return resendUploadOrSelectUncertain(call, client, canResendUnknownOutcome, "upload was sent but read-back found no matching file", requestID)
+}
+
+// reconcileAcceptedUpload confirms an upload Drive may have stored, from a 2xx without a usable file or a
+// response carrying a file ID. It never resends: a saved file ID is read back on later attempts, and
+// an upload this attempt cannot confirm without one selects uncertain.
+func (client *Client) reconcileAcceptedUpload(call sdkgo.Call, fence *singledispatch.Fence, credential *Credentials, idempotencyKey, requestID, acceptedFileID string) sdkgo.MutationAttempt[UploadFileOutput] {
+	if isDriveID(acceptedFileID) {
+		isFileIDSaved := fence.RecordProviderID(acceptedFileID) == nil
+		reconciled, isRetry := client.readBackSavedUpload(call, credential, acceptedFileID, idempotencyKey, false)
+		if isRetry && !isFileIDSaved {
+			// Without the saved ID the next attempt could resend, so the outcome stays uncertain.
+			return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureAvailability, uploadFileOperationID,
+				"provider accepted the upload, but its file could not be read back and its ID checkpoint failed"), client.receipt(call, requestID, acceptedFileID))
+		}
+		return reconciled
+	}
+	isAcceptanceSaved := fence.RecordProviderID(acceptedUploadWithoutFileID) == nil
+	file, response, outcome, _ := client.lookupEarlierUpload(call, credential, idempotencyKey)
+	if outcome == nil && file != nil {
+		// A later attempt reads this file back by ID even when the property lookup lags.
+		_ = fence.RecordProviderID(file.ID)
+		return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: *file}, nil, client.receipt(call, response.requestID, file.ID))
+	}
+	failure := driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "provider accepted the upload without a usable file, and read-back has not found it yet")
+	if isAcceptanceSaved {
+		// The saved acceptance makes later attempts look the file up without sending again.
+		return sdkgo.NewMutationRetry[UploadFileOutput](failure, 0)
+	}
+	failure.Message += "; its acceptance checkpoint failed, so it is not sent again"
+	return sdkgo.NewMutationUncertain(UploadFileOutput{}, failure, client.receipt(call, requestID, ""))
+}
+
+// reconcileSavedAcceptance looks up an upload an earlier attempt saw Drive accept without a usable file.
+// It never resends; an upload still missing selects uncertain once the attempts reach the send cap.
+func (client *Client) reconcileSavedAcceptance(call sdkgo.Call, fence *singledispatch.Fence, credential *Credentials, idempotencyKey string, canLookUpAgain bool) sdkgo.MutationAttempt[UploadFileOutput] {
+	file, response, outcome, isIncomplete := client.lookupEarlierUpload(call, credential, idempotencyKey)
+	if outcome == nil && file != nil {
+		_ = fence.RecordProviderID(file.ID)
+		return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: *file, IsFromEarlierAttempt: true}, nil, client.receipt(call, response.requestID, file.ID))
+	}
+	if outcome != nil && outcome.branch == "" {
+		return sdkgo.NewMutationRetry[UploadFileOutput](outcome.failure, outcome.retryAfter)
+	}
+	failure := driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "an earlier attempt's upload was accepted, and read-back has not found it yet")
+	if isIncomplete || canLookUpAgain {
+		return sdkgo.NewMutationRetry[UploadFileOutput](failure, 0)
+	}
+	failure.Message += "; it is not sent again"
+	return sdkgo.NewMutationUncertain(UploadFileOutput{}, failure, client.receipt(call, "", ""))
+}
+
+// readBackSavedUpload reads an accepted upload by its file ID. isRetry reports a transient read failure.
+func (client *Client) readBackSavedUpload(call sdkgo.Call, credential *Credentials, fileID, idempotencyKey string, isFromEarlierAttempt bool) (reconciled sdkgo.MutationAttempt[UploadFileOutput], isRetry bool) {
+	file, response, outcome := client.readBackUploadByID(call, credential, fileID, idempotencyKey)
+	if outcome != nil {
+		if outcome.branch == "" {
+			return sdkgo.NewMutationRetry[UploadFileOutput](outcome.failure, outcome.retryAfter), true
+		}
+		return uploadUncertain(call, client, "upload ID read-back could not confirm the outcome"), false
+	}
+	if file == nil {
+		return uploadUncertain(call, client, "upload ID read-back found no matching file"), false
+	}
+	return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: *file, IsFromEarlierAttempt: isFromEarlierAttempt}, nil, client.receipt(call, response.requestID, file.ID)), false
+}
+
+// resendUploadOrSelectUncertain retries a possibly accepted upload while the send cap allows another send.
+func resendUploadOrSelectUncertain(call sdkgo.Call, client *Client, canResendUnknownOutcome bool, message, requestID string) sdkgo.MutationAttempt[UploadFileOutput] {
+	if canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt reads back again and counts this send.
+		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, message), 0)
+	}
+	return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, message+"; the send cap is reached"), client.receipt(call, requestID, ""))
 }
 
 // sendRead performs one idempotent Drive read and classifies every non-2xx or unreadable response.

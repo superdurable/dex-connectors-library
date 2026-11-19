@@ -228,7 +228,7 @@ func ReplyToConversationNotFound(value helpscout.ConversationReply, failure *sdk
 	return connectormock.Branch(helpscout.ReplyToConversationBranchNotFound, value, failure)
 }
 
-// ReplyToConversationProviderRejected selects the providerRejected branch: Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.
+// ReplyToConversationProviderRejected selects the providerRejected branch: Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added.
 func ReplyToConversationProviderRejected(value helpscout.ConversationReply, failure *sdkgo.Failure) connectormock.Case[helpscout.ConversationReply] {
 	return connectormock.Branch(helpscout.ReplyToConversationBranchProviderRejected, value, failure)
 }
@@ -260,10 +260,10 @@ func ReplyToConversationNotFoundFailure() connectormock.Case[helpscout.Conversat
 	return connectormock.Branch(helpscout.ReplyToConversationBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added."})
 }
 
-// ReplyToConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches a locked conversation with too many threads (HTTP 412).
+// ReplyToConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches a reply to an unknown customer (HTTP 422).
 func ReplyToConversationProviderRejectedFailure() connectormock.Case[helpscout.ConversationReply] {
 	var value helpscout.ConversationReply
-	return connectormock.Branch(helpscout.ReplyToConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added."})
+	return connectormock.Branch(helpscout.ReplyToConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Help Scout conclusively rejected the thread, such as invalid text or an unknown customer; nothing was added."})
 }
 
 // ReplyToConversationDefault is the manifest default, repliedDefaultAnswer, which New installs.
@@ -286,7 +286,7 @@ func UpdateConversationProviderRejected(value helpscout.UpdateConversationOutput
 	return connectormock.Branch(helpscout.UpdateConversationBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationInvalidResponse selects the invalidResponse branch: Help Scout returned a malformed or oversized conversation, so part of the change may have been applied.
+// UpdateConversationInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat.
 func UpdateConversationInvalidResponse(value helpscout.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[helpscout.UpdateConversationOutput] {
 	return connectormock.Branch(helpscout.UpdateConversationBranchInvalidResponse, value, failure)
 }
@@ -313,16 +313,16 @@ func UpdateConversationNotFoundFailure() connectormock.Case[helpscout.UpdateConv
 	return connectormock.Branch(helpscout.UpdateConversationBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user."})
 }
 
-// UpdateConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches a locked conversation that refuses an update (HTTP 412).
+// UpdateConversationProviderRejectedFailure is the manifest mock providerRejectedFailure: Matches an assignee who is not a user or team of the account (HTTP 422).
 func UpdateConversationProviderRejectedFailure() connectormock.Case[helpscout.UpdateConversationOutput] {
 	var value helpscout.UpdateConversationOutput
-	return connectormock.Branch(helpscout.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Help Scout refused to change the locked conversation (HTTP 412)."})
+	return connectormock.Branch(helpscout.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Help Scout rejected the assignee (HTTP 422)."})
 }
 
-// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches an oversized read-back after a status update.
+// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: Matches an oversized conversation read before a status update.
 func UpdateConversationInvalidResponseFailure() connectormock.Case[helpscout.UpdateConversationOutput] {
 	var value helpscout.UpdateConversationOutput
-	return connectormock.Branch(helpscout.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureResponseTooLarge, Message: "Help Scout returned an oversized conversation read-back."})
+	return connectormock.Branch(helpscout.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureResponseTooLarge, Message: "Help Scout returned an oversized conversation before the change."})
 }
 
 // UpdateConversationDefault is the manifest default, updatedDefaultAnswer, which New installs.

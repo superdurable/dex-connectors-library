@@ -56,9 +56,11 @@ func TestApprovalDecisionAppendAppliedBeforeAGatewayTimeoutIsFoundNotResentWithR
 	require.Len(t, decisionRows(provider), 1)
 }
 
-func TestApprovalDecisionUnconfirmedAppendFailsWithoutResendingWithRealDex(t *testing.T) {
+// Each unconfirmed append is resent after a key column miss until the default send cap of 3.
+func TestApprovalDecisionUnconfirmedAppendIsResentUpToTheSendCapThenFailsWithRealDex(t *testing.T) {
 	provider := newApprovalProvider(t)
-	provider.QueueAppendBehaviors(fakeexcel.AppendBehavior{StatusAfterApplying: http.StatusBadGateway, IsHiddenFromKeyReads: true})
+	hidden := fakeexcel.AppendBehavior{StatusAfterApplying: http.StatusBadGateway, IsHiddenFromKeyReads: true}
+	provider.QueueAppendBehaviors(hidden, hidden, hidden)
 	harness := newApprovalHarness(t, provider)
 
 	result := harness.waitForFlow(t, harness.startDecision(t, "unconfirmed", travelRequest("REQ-2004", 50)))
@@ -66,11 +68,12 @@ func TestApprovalDecisionUnconfirmedAppendFailsWithoutResendingWithRealDex(t *te
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
-	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived))
+	require.Equal(t, 3, provider.Count(fakeexcel.CountAppendsReceived), "the attempt at the send cap only reads the key column")
 	require.Zero(t, provider.Count(fakeexcel.CountRangeUpdatesReceived), "the summary is not written for an uncertain log row")
 }
 
-func TestApprovalDecisionLostWorkerDuringTheAppendIsNeverResentWithRealDex(t *testing.T) {
+// A lost Worker leaves the append unconfirmed, so the next attempt reads the key column and resends within the cap.
+func TestApprovalDecisionLostWorkerDuringTheAppendIsResentWithinTheSendCapWithRealDex(t *testing.T) {
 	provider := newApprovalProvider(t)
 	hold := make(chan struct{})
 	provider.QueueAppendBehaviors(fakeexcel.AppendBehavior{Hold: hold, IsHiddenFromKeyReads: true})
@@ -83,11 +86,12 @@ func TestApprovalDecisionLostWorkerDuringTheAppendIsNeverResentWithRealDex(t *te
 
 	result := harness.waitForFlow(t, flowID)
 	close(hold)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var decision ApprovalDecision
+	require.NoError(t, result.DecodeSingleOutput(&decision))
+	require.True(t, decision.IsLogRowAppended)
 	provider.WaitForDelayedRequests(t, 30*time.Second)
-	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived), "the attempt on the new Worker did not resend the append")
+	require.Equal(t, 2, provider.Count(fakeexcel.CountAppendsReceived), "the attempt on the new Worker resent the unconfirmed append once")
 }
 
 func TestApprovalDecisionThrottledAppendIsRetriedOnceRefusedWithRealDex(t *testing.T) {

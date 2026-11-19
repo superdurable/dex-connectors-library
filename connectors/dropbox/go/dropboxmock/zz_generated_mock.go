@@ -270,7 +270,7 @@ func UploadFileProviderRejected(value dropbox.UploadedFile, failure *sdkgo.Failu
 	return connectormock.Branch(dropbox.UploadFileBranchProviderRejected, value, failure)
 }
 
-// UploadFileInvalidResponse selects the invalidResponse branch: Dropbox returned malformed or oversized upload metadata.
+// UploadFileInvalidResponse selects the invalidResponse branch: Retained for compatibility and no longer selected: malformed or oversized upload metadata now retries the overwrite.
 func UploadFileInvalidResponse(value dropbox.UploadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.UploadedFile] {
 	return connectormock.Branch(dropbox.UploadFileBranchInvalidResponse, value, failure)
 }

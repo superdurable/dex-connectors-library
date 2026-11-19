@@ -4,10 +4,12 @@
 // Package sqlserver connects Dex applications to Microsoft SQL Server, Azure SQL Database, and
 // Azure SQL Managed Instance.
 //
-// The connector exposes two operations. QueryRows runs one parameterized SELECT inside a
+// The connector exposes three operations. QueryRows runs one parameterized SELECT inside a
 // transaction that it always rolls back and returns bounded rows. ExecuteStatement runs one
-// parameterized INSERT, UPDATE, DELETE, or MERGE in its own transaction, commits it, and reports
-// the rows it affected and any OUTPUT rows. Both bind values only through the positional
+// parameterized, repeat-safe INSERT, UPDATE, DELETE, or MERGE in its own transaction, commits it,
+// and reports the rows it affected and any OUTPUT rows; an unknown COMMIT outcome runs it again.
+// ExecuteStatementNonIdempotent runs a write that must not run twice, commits it at most once, and
+// selects uncertain when a COMMIT outcome is unknown. All bind values only through the positional
 // parameters @p1 through @pN, which SQL Server receives as typed sp_executesql parameters, and map
 // every result column to a JSON value without losing precision.
 //
@@ -35,6 +37,7 @@ import (
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -183,9 +186,15 @@ func (client *Client) QueryRows() QueryRowsOperation {
 	return QueryRowsOperation{client: client}
 }
 
-// ExecuteStatement returns the transactional write operation bound to this client.
+// ExecuteStatement returns the repeat-safe transactional write operation bound to this client.
 func (client *Client) ExecuteStatement() ExecuteStatementOperation {
 	return ExecuteStatementOperation{client: client}
+}
+
+// ExecuteStatementNonIdempotent returns the fenced transactional write operation, which never
+// runs its statement twice, bound to this client.
+func (client *Client) ExecuteStatementNonIdempotent() ExecuteStatementNonIdempotentOperation {
+	return ExecuteStatementNonIdempotentOperation{client: client}
 }
 
 // newCallContext bounds the whole call so it returns a classified attempt before Dex's Execute timeout.
@@ -198,12 +207,29 @@ func (client *Client) newStatementContext(callCtx context.Context) (context.Cont
 	return context.WithTimeout(callCtx, client.statementTimeout)
 }
 
-func (client *Client) resolvePassword(call sdkgo.Call) (string, bool) {
+// resolvePassword returns the password, or the failure to report before connecting: defect for a
+// terminal credential failure or an empty password, Retry for any other credential failure.
+func (client *Client) resolvePassword(call sdkgo.Call) (string, classifiedFailure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || credentials.Password.Reveal() == "" {
-		return "", false
+	if err != nil && !isTerminalCredentialError(err) {
+		return "", classifiedFailure{
+			disposition: dispositionRetry, kind: sdkgo.FailureAvailability,
+			message: "SQL Server connection credentials are temporarily unavailable, so nothing was sent",
+		}, false
 	}
-	return credentials.Password.Reveal(), true
+	if err != nil || credentials.Password.Reveal() == "" {
+		return "", classifiedFailure{
+			disposition: dispositionDefect, kind: sdkgo.FailureAuthentication, message: "SQL Server connection credentials are unavailable",
+		}, false
+	}
+	return credentials.Password.Reveal(), classifiedFailure{}, true
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // openSession returns a non-nil session even on failure, so its meter can classify and release it.

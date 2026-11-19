@@ -25,19 +25,38 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret provider-issued API key from Jotform My Account > API at https://www.jotform.com/myaccount/api. Create or select a read-only key and copy its full string; blank makes calls select defect. Dex stores it as a secret and sends it only in the APIKEY header. */
+  /** Secret provider-issued API key from Jotform My Account > API at https://www.jotform.com/myaccount/api. Select read-only access for Queries or Full Access for form and submission writes; copy the full opaque string. Blank makes calls select defect. Dex stores it as a secret and sends it only in the APIKEY header. */
   apiKey: SecretString;
+}
+
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
 }
 
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["api_key"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new CredentialMaterialError("credential api_key has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  if (!fields["api_key"]) throw new CredentialMaterialError("credential api_key is required");
   credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
   return credentials;
 }

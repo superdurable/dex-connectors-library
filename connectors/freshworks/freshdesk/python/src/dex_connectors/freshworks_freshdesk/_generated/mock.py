@@ -182,7 +182,7 @@ def update_ticket_update_rejected() -> Case[UpdateTicketOutput]:
 setattr(update_ticket_update_rejected, '__module__', "dex_connectors.freshworks_freshdesk.freshdeskmock")
 
 def update_ticket_invalid_updated_ticket() -> Case[UpdateTicketOutput]:
-    return Case.branch_result(INVALID_RESPONSE, UpdateTicketOutput(ticket=Ticket(status=0, priority=0)), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "updateTicket", "Freshdesk returned an invalid updated ticket."))
+    return Case.branch_result(INVALID_RESPONSE, UpdateTicketOutput(ticket=Ticket(status=0, priority=0)), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "updateTicket", "Freshdesk returned an invalid ticket."))
 
 setattr(update_ticket_invalid_updated_ticket, '__module__', "dex_connectors.freshworks_freshdesk.freshdeskmock")
 

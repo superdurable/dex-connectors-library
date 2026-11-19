@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
@@ -120,6 +121,8 @@ type helpScoutResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isErrorBodyIncomplete marks a non-2xx body that exceeded MaxErrorBodyBytes or could not be read in full.
+	isErrorBodyIncomplete bool
 }
 
 // helpScoutOutcome classifies a non-2xx answer: a Retry, or a conclusive failure the caller maps to a branch.
@@ -202,7 +205,7 @@ func (client *Client) FindCustomerByEmail() FindCustomerByEmailOperation {
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		return Credentials{}, errHelpScoutReauthorizationRequired
 	case err != nil:
 		return Credentials{}, errHelpScoutCredentialsUnavailable
@@ -210,6 +213,13 @@ func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 		return Credentials{}, errHelpScoutAccessTokenUnusable
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // send repeats once after a 401 and a new token for reads and repeatable writes.
@@ -274,7 +284,9 @@ func (client *Client) sendOnce(
 	response := helpScoutResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header.Clone()}
 	if httpResponse.StatusCode < 200 || httpResponse.StatusCode >= 300 {
 		// Only error tokens are read, so a truncated or unreadable error body keeps its status.
-		response.body, _ = io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes))
+		body, readErr := io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes+1))
+		response.isErrorBodyIncomplete = readErr != nil || len(body) > providerhttp.MaxErrorBodyBytes
+		response.body = body[:min(len(body), providerhttp.MaxErrorBodyBytes)]
 		return response, nil
 	}
 	response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)

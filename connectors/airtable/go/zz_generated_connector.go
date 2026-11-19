@@ -435,7 +435,7 @@ var UpsertRecordsDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertRecordsBranchUpserted, Description: "Airtable created each record without a match and updated each record that matched."},
 		{ID: UpsertRecordsBranchProviderRejected, Description: "Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token.", Optional: true},
-		{ID: UpsertRecordsBranchInvalidResponse, Description: "Airtable applied or rejected the upsert but returned an invalid or oversized response.", Optional: true},
+		{ID: UpsertRecordsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.", Optional: true},
 		{ID: UpsertRecordsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -443,8 +443,7 @@ var UpsertRecordsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertRecordsResult = sdkgo.MutationResult[UpsertedRecords]
@@ -465,7 +464,7 @@ type UpsertRecordsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertRecordsResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertedRecords]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -499,7 +498,6 @@ func NewUpsertRecordsStep[IN any](config UpsertRecordsStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -515,7 +513,7 @@ var UpdateRecordsDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateRecordsBranchUpdated, Description: "Airtable updated every record and returned it."},
 		{ID: UpdateRecordsBranchNotFound, Description: "A record ID does not exist in the table.", Optional: true},
 		{ID: UpdateRecordsBranchProviderRejected, Description: "Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token.", Optional: true},
-		{ID: UpdateRecordsBranchInvalidResponse, Description: "Airtable applied or rejected the update but returned an invalid or oversized response.", Optional: true},
+		{ID: UpdateRecordsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe.", Optional: true},
 		{ID: UpdateRecordsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -523,8 +521,7 @@ var UpdateRecordsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateRecordsResult = sdkgo.MutationResult[UpdatedRecords]
@@ -546,7 +543,7 @@ type UpdateRecordsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateRecordsResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedRecords]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -583,6 +580,5 @@ func NewUpdateRecordsStep[IN any](config UpdateRecordsStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }

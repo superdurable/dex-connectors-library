@@ -6,17 +6,17 @@ metadata:
   description: Search, replace, and delete documents in an Elasticsearch index.
   company: Elastic
   categories: [databases-storage, data-search]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: elasticsearch
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-elasticsearch
       operations: [indexDocument, deleteDocument, searchDocuments]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-elasticsearch'
       operations: [indexDocument, deleteDocument, searchDocuments]
       triggers: []
@@ -82,6 +82,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated PUT stores the same complete source under the same stable ID.
+        repeatOnUnknown: safe
       mocks:
         - name: indexedProduct
           branch: indexed
@@ -104,6 +106,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated DELETE of the same ID finds the document absent, which selects absent again.
+        repeatOnUnknown: safe
       mocks:
         - name: deletedProduct
           branch: absent

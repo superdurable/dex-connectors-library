@@ -7,11 +7,29 @@ from typing import NoReturn
 import pytest
 from dex_connectors.sdk import Call, CallID, ConnectionRef, FailureKind, IdempotencyKey, OperationRef
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.xero import Client, Config
+from dex_connectors.xero._generated.connection import CredentialMaterialError
 from dex_connectors.xero.client import _error_summary, go_path_escape, go_query
 from dex_connectors.xero.operations import _single, _wire_decimal
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Xero credential access_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 
 @pytest.mark.parametrize(
@@ -99,7 +117,14 @@ def test_local_provider_url_rejects_non_loopback_host() -> None:
     [
         (ReauthorizationRequiredError(), "rejected", FailureKind.AUTHENTICATION),
         (RefreshFailedError("unavailable"), "retry", FailureKind.AVAILABILITY),
-        (ValueError("broken"), "defect", FailureKind.AUTHENTICATION),
+        (CredentialBrokerUnavailableError(), "retry", FailureKind.AVAILABILITY),
+        (ValueError("connection is not configured"), "retry", FailureKind.AVAILABILITY),
+        (RuntimeError("unlisted"), "retry", FailureKind.AVAILABILITY),
+        (ObjectNotFoundError(), "defect", FailureKind.AUTHENTICATION),
+        (ConnectionNotSelectedError(), "defect", FailureKind.AUTHENTICATION),
+        (CredentialBrokerRejectedError(), "defect", FailureKind.AUTHENTICATION),
+        (CredentialMaterialError("Xero access_token is required"), "defect", FailureKind.AUTHENTICATION),
+        (_sdk_wrapped_material_error(), "defect", FailureKind.AUTHENTICATION),
     ],
 )
 async def test_credential_errors_keep_terminal_and_transient_outcomes(
@@ -177,3 +202,83 @@ def test_bare_email_matches_go_mail_address_edges(address: str, accepted: bool) 
     from dex_connectors.xero.operations import _valid_bare_email
 
     assert _valid_bare_email(address) is accepted
+
+
+@pytest.mark.parametrize(
+    ("status", "kind"), [(409, "retry"), (501, "retry"), (307, "retry"), (400, "branch"), (422, "branch")]
+)
+def test_write_retries_a_status_that_does_not_prove_a_refusal(status: int, kind: str) -> None:
+    """Only a definite refusal status selects providerRejected; the Idempotency-Key makes a repeat safe."""
+    from dex_connectors.sdk import Failure
+
+    from dex_connectors.xero.client import Exchange
+    from dex_connectors.xero.operations import _mutation_outcome
+
+    client = Client(Config(), _FailedCredentials(ValueError()))
+    rejected = Exchange(
+        "rejected", status, error=Failure(FailureKind.PROVIDER_REJECTION, "xero", "createInvoice", "rejected")
+    )
+    attempt = _mutation_outcome(client, _call(), rejected, None)
+    assert attempt is not None and attempt.kind == kind
+    if kind == "branch":
+        assert attempt.branch == "providerRejected"
+
+
+class _LaterAttemptContext:
+    attempt = 2
+
+
+@pytest.mark.parametrize(
+    ("outcome", "status", "failure_kind", "expected_branch"),
+    [
+        ("rejected", 403, FailureKind.AUTHORIZATION, "uncertain"),
+        ("rejected", 401, FailureKind.AUTHENTICATION, "uncertain"),
+        ("rejected", 0, FailureKind.AUTHENTICATION, "uncertain"),
+        ("defect", 0, FailureKind.AUTHENTICATION, "uncertain"),
+        ("rejected", 400, FailureKind.VALIDATION, "providerRejected"),
+    ],
+)
+def test_later_write_attempt_selects_uncertain_for_a_credential_or_local_failure(
+    outcome: str, status: int, failure_kind: FailureKind, expected_branch: str
+) -> None:
+    """Xero checks credentials before replaying the key, so a later attempt proves nothing."""
+    from dataclasses import replace
+
+    from dex_connectors.sdk import Failure
+
+    from dex_connectors.xero.client import Exchange
+    from dex_connectors.xero.operations import _mutation_outcome
+
+    client = Client(Config(), _FailedCredentials(ValueError()))
+    result = Exchange(outcome, status, error=Failure(failure_kind, "xero", "createInvoice", "refused"))
+    later_call = replace(_call(), context=_LaterAttemptContext())  # type: ignore[arg-type]
+    attempt = _mutation_outcome(client, later_call, result, None)
+    assert attempt is not None and attempt.branch == expected_branch
+    first = _mutation_outcome(client, _call(), result, None)
+    assert first is not None and first.branch != "uncertain"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError(),
+        TimeoutError(),
+        ValueError("connection is not configured"),
+        RuntimeError("unlisted"),
+    ],
+)
+async def test_write_retries_a_transient_credential_failure_on_every_attempt(error: Exception) -> None:
+    """A broker outage sends nothing, so neither defect nor uncertain may be selected."""
+    from dataclasses import replace
+
+    from dex_connectors.xero.operations import _mutation_outcome
+
+    client = Client(Config(), _FailedCredentials(error))
+    try:
+        for call in (_call(), replace(_call(), context=_LaterAttemptContext())):  # type: ignore[arg-type]
+            result = await client.exchange(call, "createInvoice", "PUT", "/Invoices", mutation=True)
+            attempt = _mutation_outcome(client, call, result, None)
+            assert attempt is not None and attempt.kind == "retry"
+    finally:
+        await client.aclose()

@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-doist-todoist",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Todoist task operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -45,8 +45,8 @@
     "example:task-crud:start": "npm run build && tsx examples/task-crud/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.1",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

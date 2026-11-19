@@ -449,8 +449,7 @@ class TransitionTicketInput:
     # compared without case.
     transition_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'transitionName', 'dex_json_omit_default': True})
     # DestinationStatusName is the status the transition leads to, such as In Progress, compared without
-    # case. When the issue is already in it, no transition is performed. Set it whenever the destination
-    # is known: a retried Step then recognizes a transition Jira already made.
+    # case. When the issue is already in it, no transition is performed.
     destination_status_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'destinationStatusName', 'dex_json_omit_default': True})
     # ResolutionName sets the resolution, such as Done, for a transition whose screen requires one;
     # blank sends no fields. Jira rejects it for a transition without a resolution field.
@@ -487,7 +486,8 @@ class TransitionTicketOutput:
     status: TicketStatus = _dataclass_field(default_factory=TicketStatus)
     # Transition is the matched transition, or nil when none matched.
     transition: TransitionReference | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
-    # IsAlreadyInDestinationStatus reports that the issue was already in the destination, so nothing was sent.
+    # IsAlreadyInDestinationStatus reports that the issue was already in the destination, so this attempt
+    # sent nothing; on a retried Step an earlier attempt may have made the transition.
     is_already_in_destination_status: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isAlreadyInDestinationStatus', 'dex_json_omit_default': True})
     # AvailableTransitions lists up to 50 transitions available from Status, set on transitionUnavailable.
     available_transitions: tuple[TransitionReference, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'availableTransitions', 'dex_json_omit_default': True})

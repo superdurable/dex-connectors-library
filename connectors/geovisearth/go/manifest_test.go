@@ -56,12 +56,14 @@ func TestConnectionGuidanceCoversEveryVisibleField(t *testing.T) {
 		}
 	}
 	require.Equal(t, []string{"baseUrl", "timeout", "maxResponseBytes", "token"}, names)
- require.Equal(t, "secretString", fields[3].Type)
- require.Contains(t, fields[3].Description, "https://open.geovisearth.com/support/document")
- require.Equal(t, "https://open.geovisearth.com/", manifest.Spec.Auth.Guide.StartURL)
- guide := strings.Join(manifest.Spec.Auth.Guide.Steps, " ")
- for _, text := range []string{"token", "verification", "quota"} { require.Contains(t, guide, text) }
- require.Len(t, manifest.Spec.Operations, 1)
+	require.Equal(t, "secretString", fields[3].Type)
+	require.Contains(t, fields[3].Description, "https://open.geovisearth.com/support/document")
+	require.Equal(t, "https://open.geovisearth.com/", manifest.Spec.Auth.Guide.StartURL)
+	guide := strings.Join(manifest.Spec.Auth.Guide.Steps, " ")
+	for _, text := range []string{"token", "verification", "quota"} {
+		require.Contains(t, guide, text)
+	}
+	require.Len(t, manifest.Spec.Operations, 1)
 	require.Equal(t, "getCurrentWeather", manifest.Spec.Operations[0].Name)
 	require.Nil(t, manifest.Spec.Operations[0].ConfigurationUI)
 	require.Nil(t, manifest.Spec.Studio)

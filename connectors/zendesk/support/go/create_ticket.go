@@ -98,9 +98,13 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates the ticket under the call's Idempotency-Key. A lost response, a 409 from a
-// concurrent attempt with the same key, a rate limit, or a 5xx retries the identical request,
-// and Zendesk answers a repeated key and body with the ticket it already created.
+// Invoke creates the ticket under the call's Idempotency-Key. Only HTTP 400, 401, 403, 404, 411,
+// 413, 414, 415, or 422 with a readable body that carries no ticket selects providerRejected.
+// Every other outcome, including a lost response, a 409 from a concurrent attempt with the same
+// key, a rate limit, a 5xx, a redirect, an oversized error body, or an invalid, oversized, or
+// credential-reflecting 2xx, retries the identical request, and Zendesk answers a repeated key
+// and body with the ticket it already created. A credential failure selects defect only when it
+// is terminal on the first attempt; otherwise it retries.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	if err := validateCreateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureValidation, createTicketOperation, err.Error()), sdkgo.Receipt{})
@@ -108,8 +112,12 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	if call.IdempotencyKey == "" {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureLocalDefect, createTicketOperation, "connector call has no idempotency key"), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, createTicketOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, createTicketOperation)
 	if failure != nil {
+		if call.Context.Attempt() > 1 || !isTerminal {
+			// defect would hide a ticket an earlier attempt may have created; createTicket declares no uncertain branch.
+			return sdkgo.NewMutationRetry[CreateTicketOutput](*failure, 0)
+		}
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, failure, sdkgo.Receipt{})
 	}
 	result := operation.client.exchange(call, credentials, createTicketOperation, zendeskRequest{
@@ -117,20 +125,19 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 		idempotencyKey: call.IdempotencyKey,
 	})
 	receipt := operation.client.receipt(call, result.response, 0)
-	switch result.outcome {
-	case exchangeSucceeded:
-	case exchangeRetryable:
-		return sdkgo.NewMutationRetry[CreateTicketOutput](result.failure, result.retryAfter)
-	case exchangeInvalid:
-		return sdkgo.NewMutationBranch(CreateTicketBranchInvalidResponse, CreateTicketOutput{}, &result.failure, receipt)
-	case exchangeDefect:
+	switch {
+	case result.outcome == exchangeSucceeded:
+	case result.outcome == exchangeDefect:
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, &result.failure, receipt)
-	default:
+	case isDefiniteRefusal(result):
 		return sdkgo.NewMutationBranch(CreateTicketBranchProviderRejected, CreateTicketOutput{}, &result.failure, receipt)
+	default:
+		// The keyed request is safe to repeat, and its outcome is unknown.
+		return sdkgo.NewMutationRetry[CreateTicketOutput](result.failure, result.retryAfter)
 	}
 	decoded, err := decodeTicketEnvelope(result.response.body, operation.client.agentTicketURL)
 	if err != nil {
-		return sdkgo.NewMutationBranch(CreateTicketBranchInvalidResponse, CreateTicketOutput{}, zendeskFailurePointer(sdkgo.FailureProtocol, createTicketOperation, "Zendesk returned an invalid created ticket: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[CreateTicketOutput](zendeskFailure(sdkgo.FailureProtocol, createTicketOperation, "Zendesk returned an invalid created ticket: "+err.Error()), 0)
 	}
 	receipt = operation.client.receipt(call, result.response, decoded.ticket.ID)
 	lookup := strings.ToLower(result.response.header.Get(idempotencyLookupHeader))

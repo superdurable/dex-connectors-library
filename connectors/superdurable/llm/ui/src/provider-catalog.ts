@@ -45,6 +45,11 @@ export const llmProviderSetups: readonly LLMProviderSetup[] = [
     keyPagePath: "Claude Console > Settings > API keys", keyFormat: "an sk-ant- key", apiHost: "api.anthropic.com", regions: globalOnly,
   },
   {
+    provider: "anthropic-compatible", label: "Anthropic-compatible gateway", defaultModel: "", keyPage: "https://example.com",
+    keyPagePath: "your gateway administration page > API keys", keyFormat: "a gateway-issued key",
+    apiHost: "the host in baseUrl", regions: globalOnly,
+  },
+  {
     provider: "gemini", label: "Gemini", defaultModel: "gemini-3.5-flash-lite", keyPage: "https://aistudio.google.com/api-keys",
     keyPagePath: "Google AI Studio > API keys", keyFormat: "an AIza key", apiHost: "generativelanguage.googleapis.com", regions: globalOnly,
   },

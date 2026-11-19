@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-cloudflare",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "description": "Cloudflare zone and cache operations for Dex Flows",
   "repository": {

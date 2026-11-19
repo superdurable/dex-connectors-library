@@ -20,7 +20,7 @@ export const UpsertVectorsBranch = {
 export const UpsertVectorsBranchUpserted = UpsertVectorsBranch.Upserted;
 /** The provider conclusively rejected the request or credentials. */
 export const UpsertVectorsBranchProviderRejected = UpsertVectorsBranch.ProviderRejected;
-/** The provider returned malformed or oversized JSON. */
+/** Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert. */
 export const UpsertVectorsBranchInvalidResponse = UpsertVectorsBranch.InvalidResponse;
 /** Local input, configuration, or credentials are invalid. */
 export const UpsertVectorsBranchDefect = UpsertVectorsBranch.Defect;
@@ -30,7 +30,7 @@ export const UpsertVectorsDefinition: MutationDefinition = {
   branches: [
     { id: "upserted", description: "Upsert vector IDs by absolute replacement in one namespace." },
     { id: "providerRejected", description: "The provider conclusively rejected the request or credentials.", optional: true },
-    { id: "invalidResponse", description: "The provider returned malformed or oversized JSON.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.", optional: true },
     { id: "defect", description: "Local input, configuration, or credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

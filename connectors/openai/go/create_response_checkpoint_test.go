@@ -56,10 +56,37 @@ func TestCreateResponseHeartbeatsTheCurrentCheckpointDuringAQuietCall(t *testing
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 	require.Greater(t, len(ctx.heartbeats), 3, "the ticker beats while the provider is silent")
-	marker := createResponseCheckpoint{CallID: result.Receipt.CallID, Attempt: 1}
+	oneSend := int32(1)
+	marker := createResponseCheckpoint{CallID: result.Receipt.CallID, Attempt: 1, SendCount: &oneSend}
 	require.Equal(t, marker, ctx.heartbeats[0], "the dispatch marker is the attempt's first heartbeat")
 	for _, heartbeat := range ctx.heartbeats {
 		require.NotNil(t, heartbeat, "a nil heartbeat clears the checkpoint")
 	}
-	require.Equal(t, createResponseCheckpoint{CallID: result.Receipt.CallID, Attempt: 1, ResponseID: "resp_quiet"}, ctx.heartbeats[len(ctx.heartbeats)-1])
+	require.Equal(t, createResponseCheckpoint{CallID: result.Receipt.CallID, Attempt: 1, ResponseID: "resp_quiet", SendCount: &oneSend}, ctx.heartbeats[len(ctx.heartbeats)-1])
+}
+
+func TestCreateResponseSendBudgetDerivesThePriorSendBoundFromTheCheckpoint(t *testing.T) {
+	count := func(value int32) *int32 { return &value }
+	for name, test := range map[string]struct {
+		attempt   int32
+		previous  createResponseCheckpoint
+		isTrusted bool
+		wantBound int32
+	}{
+		"first attempt":                  {attempt: 1, wantBound: 0},
+		"no checkpoint":                  {attempt: 3, wantBound: 2},
+		"checkpoint of an older release": {attempt: 3, previous: createResponseCheckpoint{Attempt: 2, CanResend: true}, isTrusted: true, wantBound: 2},
+		"previous attempt sent nothing":  {attempt: 4, previous: createResponseCheckpoint{Attempt: 3, CanResend: true, SendCount: count(0)}, isTrusted: true, wantBound: 0},
+		"skipped attempts may have sent": {attempt: 5, previous: createResponseCheckpoint{Attempt: 2, SendCount: count(1)}, isTrusted: true, wantBound: 3},
+		"count larger than its attempt":  {attempt: 3, previous: createResponseCheckpoint{Attempt: 1, SendCount: count(2)}, isTrusted: true, wantBound: 2},
+		"marker of this attempt":         {attempt: 2, previous: createResponseCheckpoint{Attempt: 2, SendCount: count(0)}, isTrusted: true, wantBound: 1},
+		"untrusted checkpoint":           {attempt: 2, previous: createResponseCheckpoint{Attempt: 1, SendCount: count(0)}, wantBound: 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dexContext := testsupport.NewDexContext("flow-1", "budget")
+			dexContext.AttemptNo = test.attempt
+			budget := newCreateResponseSendBudget(sdkgo.Call{Context: dexContext}, test.previous, test.isTrusted)
+			require.Equal(t, test.wantBound, budget.priorSendUpperBound)
+		})
+	}
 }

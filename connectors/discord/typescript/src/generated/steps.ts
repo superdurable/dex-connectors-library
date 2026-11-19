@@ -81,21 +81,24 @@ export interface CreateMessageStepConfig<StepInput, OperationInput = CreateMessa
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Discord applied or rejected the message but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
+  /** Discord may have created the message, or accepted it but could not confirm it by read-back, and no further send is allowed; check the channel before sending again. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
 /** Build the createMessage Step from a named connection. */
 export function newCreateMessageStep<StepInput, OperationInput = CreateMessageInput, OperationOutput = Message>(configuration: CreateMessageStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, created, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName, created, notFound, providerRejected, invalidResponse, uncertain, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createMessage(), connection: connection.reference, branches: [
     goToBranch("created", created),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }
@@ -114,11 +117,14 @@ export interface AddReactionStepConfig<StepInput, OperationInput = AddReactionIn
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the addReaction Step from a named connection. */
 export function newAddReactionStep<StepInput, OperationInput = AddReactionInput, OperationOutput = AddedReaction>(configuration: AddReactionStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, added, notFound, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, added, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.addReaction(), connection: connection.reference, branches: [
     goToBranch("added", added),

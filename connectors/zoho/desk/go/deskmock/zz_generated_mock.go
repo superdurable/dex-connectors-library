@@ -262,7 +262,7 @@ func UpdateTicketProviderRejected(value desk.UpdateTicketOutput, failure *sdkgo.
 	return connectormock.Branch(desk.UpdateTicketBranchProviderRejected, value, failure)
 }
 
-// UpdateTicketInvalidResponse selects the invalidResponse branch: Zoho Desk returned an invalid or oversized ticket, so the change may have been applied.
+// UpdateTicketInvalidResponse selects the invalidResponse branch: Not selected by this release: an invalid or oversized answer to the ticket read or to the change retries, because the change is absolute and an earlier attempt may have sent it.
 func UpdateTicketInvalidResponse(value desk.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[desk.UpdateTicketOutput] {
 	return connectormock.Branch(desk.UpdateTicketBranchInvalidResponse, value, failure)
 }
@@ -295,10 +295,10 @@ func UpdateTicketInvalidStatus() connectormock.Case[desk.UpdateTicketOutput] {
 	return connectormock.Branch(desk.UpdateTicketBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Zoho Desk rejected the ticket update (HTTP 422)."})
 }
 
-// UpdateTicketInvalidUpdatedTicket is the manifest mock invalidUpdatedTicket: Zoho Desk accepted the update but returned an invalid ticket body.
+// UpdateTicketInvalidUpdatedTicket is the manifest mock invalidUpdatedTicket: The ticket read before the update has malformed required fields, so no change is sent.
 func UpdateTicketInvalidUpdatedTicket() connectormock.Case[desk.UpdateTicketOutput] {
-	value := connectormock.MustDecodeOutput[desk.UpdateTicketOutput](`{"ticket":{"id":"1892000000099001","ticketNumber":"101","subject":"Billing question","descriptionHtml":"\u003cdiv\u003ePlease check my invoice.\u003c/div\u003e","status":"On Hold","statusType":"On Hold","priority":"Low","channel":"Web","departmentId":"1892000000006907","contactId":"1892000000042032","email":"jane@example.test","commentCount":1,"createdAt":"2026-01-28T09:00:00Z","modifiedAt":"2026-01-28T09:03:00Z"}}`)
-	return connectormock.Branch(desk.UpdateTicketBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Zoho Desk returned an invalid updated ticket."})
+	var value desk.UpdateTicketOutput
+	return connectormock.Branch(desk.UpdateTicketBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Zoho Desk returned an invalid ticket."})
 }
 
 // UpdateTicketDefault is the manifest default, reprioritizedBillingTicket, which New installs.

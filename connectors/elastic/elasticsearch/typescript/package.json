@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-elasticsearch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Elasticsearch document indexing, deletion, and search for Dex TypeScript applications",
   "repository": {

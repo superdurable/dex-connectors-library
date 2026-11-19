@@ -134,7 +134,8 @@ class AgentRulesTest(unittest.TestCase):
         openings = (
             "A connector manifest author marks every branch that is not a happy path",
             "Applications and examples wire only happy-path branches by default",
-            "A connector selects a branch for a definite business outcome",
+            "A connector selects a branch only for a definite outcome",
+            "One Step may make several fenced writes",
             "When an operation's repeat safety depends on application-supplied content",
             "Omitted manifest `execution.retry` uses one-second initial delay",
         )
@@ -149,8 +150,11 @@ class AgentRulesTest(unittest.TestCase):
             )
         agents_rules, cursor_rules = mirrored_rules
         self.assertEqual(agents_rules, cursor_rules)
-        self.assertEqual([1, 1, 1, 1, 1], [len(matches) for matches in agents_rules])
-        manifest_rule, wiring_rule, uncertainty_rule, non_idempotent_rule, retry_rule = (matches[0] for matches in agents_rules)
+        self.assertEqual([1, 1, 1, 1, 1, 1], [len(matches) for matches in agents_rules])
+        manifest_rule, wiring_rule, uncertainty_rule, fenced_writes_rule, non_idempotent_rule, retry_rule = (
+            matches[0] for matches in agents_rules)
+        self.assertIn("never parse Fence markers", fenced_writes_rule)
+        self.assertIn("Fence `FailClosed` decision return Retry", uncertainty_rule)
         self.assertIn("Only the happy-path branch is required", manifest_rule)
         self.assertIn("an unwired optional branch fails the Flow when selected", wiring_rule)
         self.assertIn("A transport failure before the request left the process", uncertainty_rule)

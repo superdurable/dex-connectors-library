@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, test, vi } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ImapFlow } from 'imapflow';
 import { EmailClient, MailFailure } from '../src/index.js';
 import { classifyMailError, hasControls, isBareAddress } from '../src/client.js';
+import { decideSubmissionFromMarker } from '../src/operations.js';
 
 function fakeCall(operation: string, prior?: unknown): { call: Call; heartbeats: unknown[] } {
   const heartbeats: unknown[] = [];
@@ -20,10 +22,22 @@ function fakeIMAP(overrides: Record<string, unknown> = {}): ImapFlow {
 describe('email operation decisions', () => {
   test('rejects malformed config and credentials without contacting a provider', async () => {
     expect(() => new EmailClient({ imapHost: 'https://mail.example.com', smtpHost: 'smtp.example.com' }, { resolve: async () => ({ username: 'x', password: new SecretString('x') }) })).toThrow();
-    const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => { throw new Error('secret text'); } });
+    const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => ({ username: 'x\r\nsecret text', password: new SecretString('x') }) });
     const result = await email.searchMessages().invoke(fakeCall('searchMessages').call, {});
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') { expect(result.branch).toBe('defect'); expect(result.failure?.message).not.toContain('secret text'); }
+  });
+
+  test('classifies credential resolve failures as terminal or transient', async () => {
+    for (const [error, kind] of [
+      [new Error('connection is not configured'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'], [new RangeError('unlisted'), 'retry'],
+      [new TypeError('fetch failed'), 'retry'], [new ReauthorizationRequiredError(), 'branch'], [new ObjectNotFoundError(), 'branch'], [new ConnectionNotSelectedError(), 'branch'], [new CredentialBrokerRejectedError(), 'branch'],
+    ] as const) {
+      const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost', fromAddress: 'support@example.com' }, { resolve: async () => { throw error; } });
+      const attempt = await email.sendMessage().invoke(fakeCall('sendMessage').call, { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' });
+      expect(attempt.kind, error.name).toBe(kind);
+      if (attempt.kind === 'branch') expect(attempt.branch).toBe('defect');
+    }
   });
 
   test('search returns newest-first bounded summaries and rejects stale pagination', async () => {
@@ -71,14 +85,36 @@ describe('email operation decisions', () => {
     if (refused.kind === 'branch') expect(refused.branch).toBe('providerRejected');
   });
 
-  test('send validates recipients and never connects after a prior submission claim', async () => {
+  test('send validates recipients, retries after a foreign checkpoint, and never connects at the send cap', async () => {
     const email = client();
     const invalid = await email.sendMessage().invoke(fakeCall('sendMessage').call, { to: ['wrong'], subject: 'Hello', text: 'Hello' });
     expect(invalid.kind).toBe('branch');
     if (invalid.kind === 'branch') expect(invalid.branch).toBe('defect');
-    const prior = await email.sendMessage().invoke(fakeCall('sendMessage', { emailSubmittedCallId: 'earlier' }).call, { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' });
-    expect(prior.kind).toBe('uncertain');
-    if (prior.kind === 'uncertain') { expect(prior.value.messageId).toBe('dex-email-test-call@example.com'); expect(prior.receipt.providerObjectId).toBe(prior.value.messageId); }
+    const input = { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' };
+    const foreign = await email.sendMessage().invoke(fakeCall('sendMessage', { emailSubmittedCallId: 'earlier', emailAttempt: 1, emailSubmissionCount: 1 }).call, input);
+    expect(foreign.kind).toBe('retry');
+    const capped = fakeCall('sendMessage', { emailSubmittedCallId: 'email-test-call', emailAttempt: 3, emailSubmissionCount: 3 }).call;
+    (capped.context as { attempt: number }).attempt = 4;
+    const atCap = await email.sendMessage().invoke(capped, input);
+    expect(atCap.kind).toBe('uncertain');
+    if (atCap.kind === 'uncertain') { expect(atCap.value.messageId).toBe('dex-email-test-call@example.com'); expect(atCap.receipt.providerObjectId).toBe(atCap.value.messageId); }
+  });
+
+  test.each([
+    [undefined, 1, 'allowed', 0],
+    [undefined, 3, 'allowed', 2],
+    [{ emailSubmittedCallId: 'call' }, 2, 'allowed', 1],
+    [{ emailSubmittedCallId: 'other', emailAttempt: 1, emailSubmissionCount: 1 }, 2, 'untrusted', undefined],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 1, emailSubmissionCount: 1 }, 3, 'allowed', 2],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 1 }, 2, 'allowed', 0],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 2, emailSubmissionCount: 1 }, 2, 'untrusted', undefined],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 1, emailSubmissionCount: 2 }, 2, 'untrusted', undefined],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 1, emailSubmissionCount: 1, emailAccepted: true }, 2, 'accepted', undefined],
+    [{ emailSubmittedCallId: 'call', emailAttempt: 3, emailSubmissionCount: 3 }, 4, 'capReached', 3],
+  ])('decides the Go decision table case %j at attempt %i', (marker, attempt, kind, bound) => {
+    const decision = decideSubmissionFromMarker('call', attempt, 3, marker);
+    expect(decision.kind).toBe(kind);
+    if (bound !== undefined) expect(decision.maximumPriorSubmissions).toBe(bound);
   });
 
   test('reply with missing source selects notFound before SMTP', async () => {
@@ -109,7 +145,70 @@ describe('email operation decisions', () => {
     expect(flagsInvalid.kind).toBe('retry');
   });
 
-  test('reply validation and an unreadable checkpoint preserve defect and uncertainty', async () => {
+  test('reply with a missing source after an earlier possible submission is uncertain', async () => {
+    const email = client();
+    vi.spyOn(email, 'openIMAP').mockResolvedValue(fakeIMAP({ fetchOne: async () => false }));
+    const reply = await email.replyToMessage().invoke(fakeCall('replyToMessage', { emailSubmittedCallId: 'email-test-call', emailAttempt: 1, emailSubmissionCount: 1 }).call, { message: { mailbox: 'INBOX', uidValidity: 42, uid: 100 }, text: 'Thanks' });
+    expect(reply.kind).toBe('uncertain');
+  });
+
+  test('reply replay after an accepted reply is sent from the rebuilt output without submitting', async () => {
+    const email = client();
+    const accepted = { emailSubmittedCallId: 'email-test-call', emailAttempt: 1, emailSubmissionCount: 1, emailAccepted: true };
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    vi.spyOn(email, 'openIMAP').mockResolvedValueOnce(fakeIMAP())
+      .mockRejectedValueOnce(Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }))
+      .mockRejectedValueOnce(new MailFailure('notFound', 'NOT_FOUND', 'the mailbox does not exist'));
+    const { call: replayCall, heartbeats } = fakeCall('replyToMessage', accepted);
+    const reply = await email.replyToMessage().invoke(replayCall, { message: reference, text: 'Thanks' });
+    expect(reply.kind).toBe('branch');
+    if (reply.kind === 'branch') {
+      expect(reply.branch).toBe('sent');
+      expect(reply.value.recipients).toEqual(['jane@example.com']);
+      expect(reply.value.inReplyTo).toBe('message-100@example.com');
+      expect(reply.value.sentAt).toBeUndefined();
+    }
+    const temporary = fakeCall('replyToMessage', accepted);
+    const unreachable = await email.replyToMessage().invoke(temporary.call, { message: reference, text: 'Thanks' });
+    expect(unreachable.kind, 'a later attempt rebuilds the output from the kept accepted marker').toBe('retry');
+    expect(temporary.heartbeats, 'the accepted marker stays the last checkpoint').toEqual([]);
+    const unreadable = await email.replyToMessage().invoke(fakeCall('replyToMessage', accepted).call, { message: reference, text: 'Thanks' });
+    expect(unreadable.kind, 'a source that is gone cannot rebuild the output').toBe('uncertain');
+    expect(heartbeats, 'an accepted reply never records another claim').toEqual([]);
+  });
+
+  test('an unavailable credential broker returns Retry and never clears an accepted marker', async () => {
+    const broker = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost', fromAddress: 'support@example.com' }, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } });
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    expect((await broker.searchMessages().invoke(fakeCall('searchMessages').call, {})).kind).toBe('retry');
+    expect((await broker.setFlags().invoke(fakeCall('setFlags').call, { message: reference, isSeen: true })).kind).toBe('retry');
+    expect((await broker.moveMessage().invoke(fakeCall('moveMessage').call, { message: reference, destinationMailbox: 'Archive' })).kind).toBe('retry');
+    const first = fakeCall('sendMessage');
+    expect((await broker.sendMessage().invoke(first.call, { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' })).kind).toBe('retry');
+    expect(first.heartbeats, 'recorded as no submission').toEqual([{ emailSubmittedCallId: 'email-test-call', emailAttempt: 1 }]);
+    const accepted = { emailSubmittedCallId: 'email-test-call', emailAttempt: 1, emailSubmissionCount: 1, emailAccepted: true };
+    for (const operation of ['sendMessage', 'replyToMessage'] as const) {
+      const later = fakeCall(operation, accepted);
+      const attempt = operation === 'sendMessage'
+        ? await broker.sendMessage().invoke(later.call, { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' })
+        : await broker.replyToMessage().invoke(later.call, { message: reference, text: 'Thanks' });
+      expect(attempt.kind).toBe('retry');
+      expect(later.heartbeats).toEqual([]);
+    }
+  });
+
+  test('a terminal credential failure selects defect only on the first attempt of a repeat-safe write', async () => {
+    const missing = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => { throw new ConnectionNotSelectedError(); } });
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    const first = await missing.setFlags().invoke(fakeCall('setFlags').call, { message: reference, isSeen: true });
+    expect(first.kind === 'branch' && first.branch).toBe('defect');
+    const later = await missing.setFlags().invoke(fakeCall('setFlags', {}).call, { message: reference, isSeen: true });
+    expect(later.kind, 'an earlier attempt may have applied the flags').toBe('retry');
+    const moved = await missing.moveMessage().invoke(fakeCall('moveMessage', {}).call, { message: reference, destinationMailbox: 'Archive' });
+    expect(moved.kind).toBe('retry');
+  });
+
+  test('reply validation and an unreadable checkpoint preserve defect and Retry', async () => {
     const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => ({ username: 'jane', password: new SecretString('test-password') }) });
     const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
     const defect = await email.replyToMessage().invoke(fakeCall('replyToMessage').call, { message: reference, text: 'Hello' });
@@ -117,8 +216,8 @@ describe('email operation decisions', () => {
     const valid = client();
     const unreadable = fakeCall('replyToMessage').call;
     unreadable.context.hasLastHeartbeatValue = () => { throw new Error('checkpoint unavailable'); };
-    const uncertain = await valid.replyToMessage().invoke(unreadable, { message: reference, text: 'Hello' });
-    expect(uncertain.kind).toBe('uncertain');
+    const retried = await valid.replyToMessage().invoke(unreadable, { message: reference, text: 'Hello' });
+    expect(retried.kind).toBe('retry');
   });
 
   test('move rejects invalid message identifiers and INBOX case variants', async () => {

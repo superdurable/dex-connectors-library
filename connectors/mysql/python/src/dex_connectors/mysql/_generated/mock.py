@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution
-from .definitions import CONNECTOR_ID, COMPLETED, DEFECT, EXECUTE_DEFINITION, INVALID_RESPONSE, LIMIT_EXCEEDED, PROVIDER_REJECTED, QUERY_DEFINITION, TRUNCATED, UNCERTAIN
+from .definitions import CONNECTOR_ID, COMPLETED, DEFECT, EXECUTE_DEFINITION, EXECUTE_NON_IDEMPOTENT_DEFINITION, INVALID_RESPONSE, LIMIT_EXCEEDED, PROVIDER_REJECTED, QUERY_DEFINITION, TRUNCATED, UNCERTAIN
 
 def query_completed(value: RowSet, failure: Failure | None = None) -> Case[RowSet]:
     return Case.branch_result(COMPLETED, value, failure)
@@ -106,6 +106,51 @@ def execute_duplicate_key() -> Case[StatementExecution]:
 
 setattr(execute_duplicate_key, '__module__', "dex_connectors.mysql.mysqlmock")
 
+def execute_non_idempotent_completed(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(COMPLETED, value, failure)
+
+setattr(execute_non_idempotent_completed, '__module__', "dex_connectors.mysql.mysqlmock")
+
+def execute_non_idempotent_limit_exceeded(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(LIMIT_EXCEEDED, value, failure)
+
+setattr(execute_non_idempotent_limit_exceeded, '__module__', "dex_connectors.mysql.mysqlmock")
+
+def execute_non_idempotent_provider_rejected(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(execute_non_idempotent_provider_rejected, '__module__', "dex_connectors.mysql.mysqlmock")
+
+def execute_non_idempotent_uncertain(value: StatementExecution, failure: Failure) -> Case[StatementExecution]:
+    return Case.uncertain(value, failure)
+
+setattr(execute_non_idempotent_uncertain, '__module__', "dex_connectors.mysql.mysqlmock")
+
+def execute_non_idempotent_invalid_response(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(execute_non_idempotent_invalid_response, '__module__', "dex_connectors.mysql.mysqlmock")
+
+def execute_non_idempotent_defect(value: StatementExecution, failure: Failure | None = None) -> Case[StatementExecution]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(execute_non_idempotent_defect, '__module__', "dex_connectors.mysql.mysqlmock")
+
+def execute_non_idempotent_retry(failure: Failure, after_seconds: float = 0) -> Case[StatementExecution]:
+    return Case.retry(failure, after_seconds)
+
+setattr(execute_non_idempotent_retry, '__module__', "dex_connectors.mysql.mysqlmock")
+
+def execute_non_idempotent_added_to_daily_total() -> Case[StatementExecution]:
+    return Case.branch_result(COMPLETED, StatementExecution(rows_affected=1, last_insert_id='0', warning_count=0, columns=(), rows=()))
+
+setattr(execute_non_idempotent_added_to_daily_total, '__module__', "dex_connectors.mysql.mysqlmock")
+
+def execute_non_idempotent_missing_daily_total_table() -> Case[StatementExecution]:
+    return Case.branch_result(PROVIDER_REJECTED, StatementExecution(), Failure(FailureKind.NOT_FOUND, CONNECTOR_ID, "executeNonIdempotent", "Adding to a missing refund_daily_totals table is rejected before commit."))
+
+setattr(execute_non_idempotent_missing_daily_total_table, '__module__', "dex_connectors.mysql.mysqlmock")
+
 
 class Mock:
 
@@ -114,9 +159,12 @@ class Mock:
         self.query_script.default(query_completed_default_answer())
         self.execute_script: Mutation[ExecuteStatementInput, StatementExecution] = Mutation(EXECUTE_DEFINITION)
         self.execute_script.default(execute_completed_default_answer())
+        self.execute_non_idempotent_script: Mutation[ExecuteStatementInput, StatementExecution] = Mutation(EXECUTE_NON_IDEMPOTENT_DEFINITION)
+        self.execute_non_idempotent_script.default(execute_non_idempotent_added_to_daily_total())
         self._connection = new_connection_with_operations(
             query=self.query_script,
             execute=self.execute_script,
+            execute_non_idempotent=self.execute_non_idempotent_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -146,4 +194,13 @@ __all__ = [
     "execute_completed_default_answer",
     "execute_row_limit",
     "execute_duplicate_key",
+    "execute_non_idempotent_completed",
+    "execute_non_idempotent_limit_exceeded",
+    "execute_non_idempotent_provider_rejected",
+    "execute_non_idempotent_uncertain",
+    "execute_non_idempotent_invalid_response",
+    "execute_non_idempotent_defect",
+    "execute_non_idempotent_retry",
+    "execute_non_idempotent_added_to_daily_total",
+    "execute_non_idempotent_missing_daily_total_table",
 ]

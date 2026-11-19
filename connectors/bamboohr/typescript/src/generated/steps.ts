@@ -138,17 +138,20 @@ export interface UpdateEmployeeStepConfig<StepInput, OperationInput = UpdateEmpl
   updated: StepTarget<MutationResult<OperationOutput>>;
   /** No employee has this internal ID. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit. */
+  /** BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** BambooHR returned an invalid or oversized employee record, so the change may have been applied. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized employee record now retries, because repeating the absolute write is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateEmployee Step from a named connection. */
 export function newUpdateEmployeeStep<StepInput, OperationInput = UpdateEmployeeInput, OperationOutput = UpdateEmployeeOutput>(configuration: UpdateEmployeeStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateEmployee(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -167,9 +170,9 @@ export interface AddEmployeeStepConfig<StepInput, OperationInput = AddEmployeeIn
   connectionName: string;
   /** BambooHR added the employee and returned its internal ID. */
   created: StepTarget<MutationResult<OperationOutput>>;
-  /** BambooHR conclusively rejected the employee, such as a duplicate email or invalid field value; no employee was added. */
+  /** BambooHR conclusively rejected the first send with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid field value, or with its documented duplicate-email 409; no employee was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed, so the employee may exist; the connector never resends it. */
+  /** Sends up to the send cap may have added the employee, or BambooHR accepted it without a usable ID, and read-back cannot confirm it; the employee may exist. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

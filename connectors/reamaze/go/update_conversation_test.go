@@ -5,6 +5,7 @@ package reamaze_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -91,6 +92,52 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 	require.Equal(t, reamaze.UpdateConversationBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "SENTINEL")
+}
+
+func TestUpdateConversationRetriesAnUnusableReadBeforeTheChange(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		body   string
+		status int
+	}{
+		{name: "malformed conversation", body: `{"slug":"double-charge"}`, status: http.StatusOK},
+		{name: "oversized conversation", body: `{"slug":"` + strings.Repeat("x", 4096) + `"}`, status: http.StatusOK},
+		{name: "oversized refusal", body: `{"errors":"` + strings.Repeat("x", 4096) + `"}`, status: http.StatusBadRequest},
+		{name: "redirect", body: `{}`, status: http.StatusMovedPermanently},
+		{name: "conflict", body: `{}`, status: http.StatusConflict},
+		{name: "outage", body: `{}`, status: http.StatusInternalServerError},
+		{name: "credential-reflecting refusal", body: `{"errors":"` + testAPIToken + `"}`, status: http.StatusBadRequest},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, test.status, test.body)
+			})
+			client, err := reamaze.New(reamaze.Config{Brand: testBrand, MaxResponseBytes: 1024}, testCredentialProvider(),
+				reamaze.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			status := reamaze.ConversationStatus(2)
+			_, err = sdkgo.RunMutation(newReamazeDexContext("update-unusable-read"), client.UpdateConversation(), reamazeConnection,
+				reamaze.UpdateConversationInput{ConversationID: "double-charge", Status: &status})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an earlier attempt's PUT may have applied, so the safe write repeats")
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
+func TestUpdateConversationTerminalCredentialFailureSelectsDefectOnlyOnTheFirstAttempt(t *testing.T) {
+	provider := newRecordingReamaze(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client, credentials := newSwitchingReamazeClient(t, provider.URL)
+	credentials.resolveErr = sdkgo.ErrReauthorizationRequired
+	status := reamaze.ConversationStatus(2)
+	input := reamaze.UpdateConversationInput{ConversationID: "double-charge", Status: &status}
+	first := newReamazeDexContext("update-credentials")
+	result, err := sdkgo.RunMutation(first, client.UpdateConversation(), reamazeConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, reamaze.UpdateConversationBranchDefect, result.Branch)
+	_, err = sdkgo.RunMutation(first.nextAttempt(), client.UpdateConversation(), reamazeConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an earlier attempt's PUT may have applied")
 }
 
 func TestUpdateConversationRejectsInvalidChangesWithoutARequest(t *testing.T) {

@@ -10,7 +10,9 @@
 // request to that provider's API in its own wire format: the OpenAI Responses
 // API, the Claude Messages API, the Gemini generateContent method, or the
 // OpenAI-compatible Chat Completions API of Qwen, DeepSeek, Meta, Mistral,
-// Kimi, xAI, or a configured OpenAI-compatible endpoint. Model IDs are the
+// Kimi, xAI, or a configured OpenAI-compatible endpoint, which may instead
+// serve the Responses API. A configured Anthropic-compatible endpoint receives
+// Messages API requests. Model IDs are the
 // provider's own, such as claude-sonnet-5, never prefixed with the provider.
 //
 // Applications load the project configuration once at startup, open the
@@ -84,7 +86,7 @@ func (option baseURLForTestOption) applyClientOption(options *clientOptions) {
 // request timeout when the client sets none: 1170 seconds for deepseek and 870
 // seconds for every other provider. New rejects a client Timeout of 1200
 // seconds or more, because the Execute timeout must end after the exchange.
-// An openai-compatible endpoint requires a nil or *http.Transport transport
+// An openai-compatible or anthropic-compatible endpoint requires a nil or *http.Transport transport
 // so the connector can check resolved addresses before dialing. The caller
 // keeps ownership of client.
 func WithHTTPClient(client *http.Client) Option { return httpClientOption{httpClient: client} }
@@ -94,7 +96,8 @@ func WithHTTPClient(client *http.Client) Option { return httpClientOption{httpCl
 // path, such as /chat/completions or /v1/messages, is appended to baseURL.
 // New rejects a baseURL whose host is not localhost, 127.0.0.0/8, or ::1, so
 // the option cannot send the API key to another host. Config.Region is still
-// validated.
+// validated, and a custom endpoint's Config.BaseURL is validated and then
+// replaced, so a WithHTTPClient test transport of any type is accepted.
 func WithBaseURLForTest(baseURL string) Option { return baseURLForTestOption{baseURL: baseURL} }
 
 // Client calls the text generation API of the connection's provider. It holds
@@ -110,13 +113,20 @@ type Client struct {
 // default model, a blank config.Region uses global, and a zero
 // config.MaxResponseBytes uses 64 MiB for deepseek and 8 MiB for every other
 // provider. For openai-compatible, a model and a base URL ending in /v1 are
-// required; the base URL's address is checked on every call before the key is sent.
+// required, and config.OpenAICompatibleAPI selects Chat Completions (the
+// default) or the Responses API. For anthropic-compatible, a model and a base
+// URL that precedes /v1/messages are required. A custom endpoint's address is
+// checked on every call before the key is sent. config.Models and
+// config.ModelContextWindowTokens are checked as their manifest descriptions
+// state; generateText does not restrict a Step's model to config.Models.
 //
 // New returns an error for a nil credential provider, a missing or unknown
 // provider, a region the provider does not serve, a model ID the provider's
 // model-ID rule rejects, an anthropicWorkspaceId on a provider other than
-// anthropic or one that is not a wrkspc_ workspace ID, a negative response
-// limit, a nil option, a WithHTTPClient client whose Timeout is 1200 seconds
+// anthropic or one that is not a wrkspc_ workspace ID, an openaiCompatibleApi
+// other than chat-completions on a provider other than openai-compatible, a
+// negative response limit, an invalid models or modelContextWindowTokens
+// entry, a nil option, a WithHTTPClient client whose Timeout is 1200 seconds
 // or more, a non-loopback WithBaseURLForTest URL, or an invalid custom baseUrl
 // or missing custom model. Credentials are resolved again for every provider
 // call, so a replaced key takes effect without a
@@ -145,16 +155,20 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.AnthropicWorkspaceID != "" && config.Provider != ProviderAnthropic {
 		return nil, fmt.Errorf("llm: configuration anthropicWorkspaceId applies only to provider anthropic; clear it for provider %s", config.Provider)
 	}
-	if config.Provider == ProviderOpenaiCompatible {
+	if config.OpenAICompatibleAPI != OpenAICompatibleAPIChatCompletions && config.Provider != ProviderOpenaiCompatible {
+		return nil, fmt.Errorf("llm: configuration openaiCompatibleApi applies only to provider openai-compatible; clear it for provider %s", config.Provider)
+	}
+	isCustomEndpoint := isCustomEndpointProvider(config.Provider)
+	if isCustomEndpoint {
 		if config.Model == "" {
-			return nil, fmt.Errorf("llm: configuration model is required for provider openai-compatible")
+			return nil, fmt.Errorf("llm: configuration model is required for provider %s", config.Provider)
 		}
-		baseURL, err = validateOpenAICompatibleBaseURL(config.BaseURL)
+		baseURL, err = validateCustomEndpointBaseURL(config.Provider, config.BaseURL)
 		if err != nil {
 			return nil, fmt.Errorf("llm: configuration baseUrl: %w", err)
 		}
 	} else if hasConfiguredBaseURL {
-		return nil, fmt.Errorf("llm: configuration baseUrl applies only to provider openai-compatible")
+		return nil, fmt.Errorf("llm: configuration baseUrl applies only to provider openai-compatible or anthropic-compatible")
 	}
 	resolved := clientOptions{}
 	for _, option := range options {
@@ -169,19 +183,21 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		}
 		baseURL = resolved.baseURLForTest
 	}
-	if config.Provider == ProviderOpenaiCompatible {
+	// A loopback test URL replaces the configured endpoint, so the caller's test transport needs no address pinning.
+	if isCustomEndpoint && !resolved.hasBaseURLForTest {
 		resolved.httpClient, err = newOpenAICompatibleHTTPClient(resolved.httpClient, isLoopbackBaseURL(baseURL))
 		if err != nil {
-			return nil, fmt.Errorf("llm: openai-compatible HTTP client: %w", err)
+			return nil, fmt.Errorf("llm: %s HTTP client: %w", config.Provider, err)
 		}
 	}
 	wireFormat, err := api.newWireFormat(&config)
 	if err != nil {
 		return nil, fmt.Errorf("llm: %w", err)
 	}
+	connectionModel := cmp.Or(config.Model, api.defaultModel)
 	generateText, err := textgen.NewTextGenerationQuery(&textgen.TextGenerationQueryConfig{
 		Definition: GenerateTextDefinition, WireFormat: wireFormat,
-		BaseURL: baseURL, ConnectionModel: cmp.Or(config.Model, api.defaultModel),
+		BaseURL: baseURL, ConnectionModel: connectionModel,
 		HTTPClient: resolved.httpClient, RequestTimeout: api.requestTimeout,
 		ResolveCredential: func(call sdkgo.Call) (sdkgo.SecretString, error) {
 			credential, err := credentials.Resolve(call)
@@ -192,6 +208,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	})
 	if err != nil {
 		return nil, fmt.Errorf("llm %s: %w", config.Provider, err)
+	}
+	if err := validateConnectionModelList(&config, wireFormat.ModelIDRule, connectionModel); err != nil {
+		return nil, fmt.Errorf("llm: %w", err)
 	}
 	return &Client{generateText: generateText}, nil
 }
@@ -217,15 +236,32 @@ func isLoopbackBaseURL(value string) bool {
 	return address != nil && address.IsLoopback()
 }
 
-// validateOpenAICompatibleBaseURL checks the configured API root without exposing its value in an error.
-func validateOpenAICompatibleBaseURL(value string) (string, error) {
+// isCustomEndpointProvider reports whether provider calls the API root in Config.BaseURL.
+func isCustomEndpointProvider(provider Provider) bool {
+	return provider == ProviderOpenaiCompatible || provider == ProviderAnthropicCompatible
+}
+
+// validateCustomEndpointBaseURL checks the configured API root without exposing its value in an error.
+// An OpenAI root ends in /v1; an Anthropic root, as ANTHROPIC_BASE_URL, precedes /v1/messages.
+func validateCustomEndpointBaseURL(provider Provider, value string) (string, error) {
 	baseURL, err := providerhttp.ValidateBaseURL(value)
 	if err != nil {
 		return "", err
 	}
 	parsed, err := url.Parse(baseURL)
-	if err != nil || !strings.HasSuffix(parsed.EscapedPath(), "/v1") {
-		return "", fmt.Errorf("base URL must end in /v1")
+	if err != nil {
+		return "", fmt.Errorf("base URL must be an absolute URL with a host")
+	}
+	path := parsed.EscapedPath()
+	switch provider {
+	case ProviderOpenaiCompatible:
+		if !strings.HasSuffix(path, "/v1") {
+			return "", fmt.Errorf("base URL must end in /v1")
+		}
+	case ProviderAnthropicCompatible:
+		if strings.HasSuffix(path, "/v1") || strings.HasSuffix(path, "/messages") {
+			return "", fmt.Errorf("base URL must not end in /v1 or /messages; the connector appends /v1/messages")
+		}
 	}
 	host := parsed.Hostname()
 	if address, err := netip.ParseAddr(host); err == nil {

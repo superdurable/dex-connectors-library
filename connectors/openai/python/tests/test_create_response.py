@@ -19,12 +19,15 @@ from dex_connectors.sdk import (
     FailureKind,
     MutationResult,
     Progress,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
 )
+from dex_connectors.sdk.projectconfig import ConnectionNotSelectedError, CredentialBrokerUnavailableError
 
+import dex_connectors.openai._generated.connection as generated_connection
 import dex_connectors.openai.client as openai_client
 from dex_connectors.openai import (
     COMPLETED,
@@ -101,8 +104,12 @@ class ProgressCollector:
 
 
 def make_call(
-    context: FakeContext, text: TextCollector | None = None, progress: ProgressCollector | None = None
+    context: FakeContext,
+    text: TextCollector | None = None,
+    progress: ProgressCollector | None = None,
+    max_sends: int = 1,
 ) -> Call:
+    """Build a call; the default cap of 1 permits no resend, so unknown outcomes are uncertain."""
     return Call(
         CallID(str(uuid4())),
         CONNECTION,
@@ -110,6 +117,7 @@ def make_call(
         context=context,  # type: ignore[arg-type]
         _progress_reporter=progress,  # type: ignore[arg-type]
         _text_writer=text,  # type: ignore[arg-type]
+        max_sends=max_sends,
     )
 
 
@@ -173,8 +181,8 @@ async def test_first_attempt_sends_payload_and_checkpoints_response_id() -> None
             }
         },
     }
-    assert context.heartbeats[0] == CreateResponseCheckpoint(str(call.id), 1)
-    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 1, RESPONSE_ID)
+    assert context.heartbeats[0] == CreateResponseCheckpoint(str(call.id), 1, send_count=1)
+    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 1, RESPONSE_ID, send_count=1)
 
 
 @pytest.mark.asyncio
@@ -205,7 +213,7 @@ async def test_retryable_status_marks_checkpoint_resendable() -> None:
     call = make_call(context)
     with pytest.raises(RetryError):
         await create(client, call)
-    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 1, can_resend=True)
+    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 1, can_resend=True, send_count=0)
 
 
 @pytest.mark.asyncio
@@ -277,10 +285,62 @@ async def test_resendable_previous_attempt_sends_again() -> None:
     requests: list[httpx.Request] = []
     client = make_client(lambda request: httpx.Response(200, json=wire()), requests)
     context = FakeContext(attempt=3)
-    call = make_call(context)
-    context.previous = CreateResponseCheckpoint(str(call.id), 2, can_resend=True)
+    call = make_call(context, max_sends=3)
+    context.previous = CreateResponseCheckpoint(str(call.id), 2, can_resend=True, send_count=0)
     assert (await create(client, call)).branch == COMPLETED
     assert [request.method for request in requests] == ["POST"]
+    assert context.heartbeats[0] == CreateResponseCheckpoint(str(call.id), 3, send_count=1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("attempt", "previous", "expected"),
+    [
+        (2, CreateResponseCheckpoint("", 1, send_count=1), "retry"),
+        (3, CreateResponseCheckpoint("", 2, send_count=2), "uncertain"),
+        (3, None, "uncertain"),
+        (5, CreateResponseCheckpoint("", 4, can_resend=True, send_count=0), "retry"),
+    ],
+)
+async def test_unknown_outcome_resends_below_the_cap(
+    attempt: int, previous: CreateResponseCheckpoint | None, expected: str
+) -> None:
+    """A 500 retries while possible creates stay below 3, and selects uncertain at the cap."""
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(500), requests)
+    context = FakeContext(attempt=attempt)
+    call = make_call(context, max_sends=3)
+    if previous is not None:
+        context.previous = CreateResponseCheckpoint(
+            str(call.id), previous.attempt, can_resend=previous.can_resend, send_count=previous.send_count
+        )
+    if expected == "retry":
+        with pytest.raises(RetryError):
+            await create(client, call)
+    else:
+        assert (await create(client, call)).branch == UNCERTAIN
+    assert [request.method for request in requests] == ["POST"]
+
+
+@pytest.mark.asyncio
+async def test_send_cap_reached_sends_nothing() -> None:
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(200, json=wire()), requests)
+    context = FakeContext(attempt=4)
+    call = make_call(context, max_sends=3)
+    context.previous = CreateResponseCheckpoint(str(call.id), 3, send_count=3)
+    assert (await create(client, call)).branch == UNCERTAIN
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_refused_resend_after_a_possible_create_is_uncertain() -> None:
+    client = make_client(lambda request: httpx.Response(400), [])
+    context = FakeContext(attempt=2)
+    call = make_call(context, max_sends=3)
+    context.previous = CreateResponseCheckpoint(str(call.id), 1, send_count=1)
+    assert (await create(client, call)).branch == UNCERTAIN
+    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 2, can_resend=True, send_count=1)
 
 
 @pytest.mark.asyncio
@@ -300,9 +360,14 @@ async def test_unfenced_retry_is_uncertain_without_sending(previous_attempt: int
 @pytest.mark.asyncio
 @pytest.mark.parametrize("previous", [CreateResponseCheckpoint("other-call", 1), ValueError("foreign value")])
 async def test_foreign_heartbeat_value_is_defect(previous: object) -> None:
-    client = make_client(lambda request: httpx.Response(200, json=wire()), [])
-    result = await create(client, make_call(FakeContext(attempt=2, previous=previous)))
+    """Attempt 1 has no earlier send, so another heartbeat writer is a defect; later it is no checkpoint."""
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(200, json=wire()), requests)
+    result = await create(client, make_call(FakeContext(attempt=1, previous=previous), max_sends=3))
     assert result.branch == DEFECT
+    result = await create(client, make_call(FakeContext(attempt=2, previous=previous), max_sends=3))
+    assert result.branch == COMPLETED
+    assert [request.method for request in requests] == ["POST"]
 
 
 @pytest.mark.asyncio
@@ -374,6 +439,181 @@ async def test_unusable_create_body_is_uncertain(body: object) -> None:
 
     result = await create(make_client(respond, [], max_response_bytes=100), make_call(FakeContext()))
     assert result.branch == UNCERTAIN
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body", [b"{", b'data: {"type":"error"}\n\n'], ids=["malformed body", "stream error only"]
+)
+async def test_accepted_create_without_a_readable_id_is_never_resent_below_the_cap(body: bytes) -> None:
+    """A 2xx created a response; without its ID it can be neither read back nor resent."""
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(200, content=body), requests)
+    is_stream = body.startswith(b"data:")
+    call = make_call(FakeContext(), TextCollector() if is_stream else None, max_sends=3)
+    result = await create(client, call)
+    assert result.branch == UNCERTAIN
+    assert result.failure is not None
+    assert result.failure.message.startswith("OpenAI accepted the create request")
+    assert len(requests) == 1
+
+
+@dataclass
+class _FailingCredentialProvider:
+    """Fail every resolve with error."""
+
+    error: Exception
+
+    async def resolve(self, _call: Call) -> Credentials:
+        raise self.error
+
+
+_UNAVAILABLE = _FailingCredentialProvider(CredentialBrokerUnavailableError("broker is unavailable"))
+_REAUTHORIZATION = _FailingCredentialProvider(ReauthorizationRequiredError())
+
+
+class _MalformedProject:
+    """Serve stored credential material that fails the generated decoder."""
+
+    async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+        return {"unexpected_field": "value"}
+
+
+_MALFORMED = generated_connection._ProjectCredentialSource(_MalformedProject(), object())  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("credentials", "expected"),
+    [
+        (_UNAVAILABLE, "retry"),
+        (StaticCredentialProvider({}), "retry"),
+        (_FailingCredentialProvider(RuntimeError("unlisted")), "retry"),
+        (_REAUTHORIZATION, UNCERTAIN),
+        (_FailingCredentialProvider(ConnectionNotSelectedError()), UNCERTAIN),
+        (StaticCredentialProvider({CONNECTION: Credentials(SecretString(""))}), UNCERTAIN),
+        (_MALFORMED, UNCERTAIN),
+    ],
+    ids=[
+        "unavailable",
+        "not configured",
+        "unlisted",
+        "reauthorization",
+        "not selected",
+        "invalid",
+        "malformed",
+    ],
+)
+async def test_credential_failure_after_a_possible_create(credentials: Any, expected: str) -> None:
+    """Unavailable credentials retry; lasting failures select uncertain, never defect."""
+    client = Client(
+        Config(endpoint="http://localhost:8848/v1"),
+        credentials,
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(500))),
+    )
+    context = FakeContext(attempt=2)
+    call = make_call(context, max_sends=3)
+    if expected == "retry":
+        with pytest.raises(RetryError):
+            await create(client, call)
+        assert context.heartbeats[-1].can_resend and context.heartbeats[-1].send_count == 1
+        return
+    assert (await create(client, call)).branch == UNCERTAIN
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("credentials", "expected"),
+    [(_UNAVAILABLE, "retry"), (_REAUTHORIZATION, DEFECT), (_MALFORMED, DEFECT)],
+    ids=["unavailable", "reauthorization", "malformed"],
+)
+async def test_credential_failure_before_the_first_create(credentials: Any, expected: str) -> None:
+    """An unavailable broker retries and counts no send; a lasting failure before any send is a defect."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    client = Client(Config(endpoint="http://localhost:8848/v1"), credentials, http_client)
+    context = FakeContext()
+    call = make_call(context, max_sends=3)
+    if expected == "retry":
+        with pytest.raises(RetryError):
+            await create(client, call)
+        assert context.heartbeats[-1].can_resend and context.heartbeats[-1].send_count == 0
+    else:
+        assert (await create(client, call)).branch == DEFECT
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "answer",
+    [
+        lambda: httpx.Response(400, content=b'{"error":{"code":"x"}}' + b" " * (64 << 10)),
+        lambda: httpx.Response(400, content=_broken_error_body()),
+    ],
+    ids=["oversized", "cut off"],
+)
+async def test_refusal_that_proves_nothing_resends_below_the_cap(
+    answer: Callable[[], httpx.Response],
+) -> None:
+    """A refusal status whose body is incomplete is an unknown outcome."""
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: answer(), requests)
+    with pytest.raises(RetryError):
+        await create(client, make_call(FakeContext(), max_sends=3))
+    result = await create(client, make_call(FakeContext(attempt=3), max_sends=3))
+    assert result.branch == UNCERTAIN, "the third send reached the cap"
+    assert len(requests) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 429, 500])
+async def test_error_answer_naming_a_response_is_read_back_and_never_resent(status: int) -> None:
+    """An error body that names a response means OpenAI created it."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(status, json={"id": RESPONSE_ID, "error": {"code": "x"}})
+        return httpx.Response(200, json=wire())
+
+    context = FakeContext()
+    result = await create(make_client(respond, requests), make_call(context, max_sends=3))
+    assert result.branch == COMPLETED and result.value.id == RESPONSE_ID
+    assert [request.method for request in requests] == ["POST", "GET"]
+    assert context.heartbeats[-1].response_id == RESPONSE_ID
+
+
+@pytest.mark.asyncio
+async def test_error_answer_naming_a_response_keeps_its_id_for_later_attempts() -> None:
+    """A read-back miss selects uncertain, and the checkpointed ID makes a later attempt read, not send."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(400, json={"id": RESPONSE_ID, "error": {"code": "x"}})
+        is_first_read = [sent.method for sent in requests].count("GET") == 1
+        return httpx.Response(404) if is_first_read else httpx.Response(200, json=wire())
+
+    client = make_client(respond, requests)
+    context = FakeContext()
+    call = make_call(context, max_sends=3)
+    assert (await create(client, call)).branch == UNCERTAIN
+    checkpoint = context.heartbeats[-1]
+    assert checkpoint.response_id == RESPONSE_ID
+    later = FakeContext(attempt=2, previous=checkpoint)
+    later_call = Call(call.id, CONNECTION, CREATE_RESPONSE_DEFINITION.operation, context=later, max_sends=3)  # type: ignore[arg-type]
+    assert (await create(client, later_call)).branch == COMPLETED
+    assert [request.method for request in requests] == ["POST", "GET", "GET"], "the create is never resent"
+
+
+async def _broken_error_body() -> Any:
+    yield b'{"error":{"code":'
+    raise httpx.ReadError("connection lost")
 
 
 def sse(*events: dict[str, Any] | str) -> bytes:
@@ -477,7 +717,10 @@ async def test_oversized_stream_before_id_is_uncertain() -> None:
     client = make_client(lambda request: httpx.Response(200, content=body), [], max_response_bytes=200)
     result = await create(client, make_call(FakeContext(), TextCollector()))
     assert result.branch == UNCERTAIN
-    assert result.failure is not None and result.failure.message == "stream exceeds the configured size limit"
+    assert result.failure is not None
+    assert result.failure.message == (
+        "OpenAI accepted the create request, but stream exceeds the configured size limit"
+    )
 
 
 @pytest.mark.asyncio

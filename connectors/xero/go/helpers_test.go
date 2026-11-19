@@ -174,10 +174,16 @@ func contactJSON(contactID string, email string, status string) map[string]any {
 type xeroDexContext struct {
 	context.Context
 	step string
+	// attempt is the Step attempt; zero means the first attempt.
+	attempt int32
 }
 
 func newXeroDexContext(step string) *xeroDexContext {
 	return &xeroDexContext{Context: context.Background(), step: step}
+}
+
+func newLaterAttemptXeroDexContext(step string) *xeroDexContext {
+	return &xeroDexContext{Context: context.Background(), step: step, attempt: 2}
 }
 
 func (*xeroDexContext) FlowID() string                          { return "xero-flow" }
@@ -187,7 +193,7 @@ func (context *xeroDexContext) StepExecutionID() string         { return context
 func (*xeroDexContext) FromStepExecutionID() string             { return "" }
 func (*xeroDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
 func (*xeroDexContext) FirstAttemptAt() time.Time               { return time.Unix(1, 0) }
-func (*xeroDexContext) Attempt() int32                          { return 1 }
+func (context *xeroDexContext) Attempt() int32                  { return max(context.attempt, 1) }
 func (*xeroDexContext) HasTimerFired() bool                     { return false }
 func (*xeroDexContext) HasTimerFiredByIndex(int) bool           { return false }
 func (*xeroDexContext) WaitForMethodFailed() bool               { return false }

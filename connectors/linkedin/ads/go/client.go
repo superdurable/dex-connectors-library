@@ -76,6 +76,14 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.getResource(call, path, false)
+}
+
+func (client *Client) getFinder(call sdkgo.Call, path string) providerResponse {
+	return client.getResource(call, path, true)
+}
+
+func (client *Client) getResource(call sdkgo.Call, path string, isFinder bool) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -98,6 +106,9 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	request.Header.Set("Linkedin-Version", client.marketingVersion)
 	request.Header.Set("X-Restli-Protocol-Version", "2.0.0")
+	if isFinder {
+		request.Header.Set("X-RestLi-Method", "FINDER")
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}

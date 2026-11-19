@@ -6,17 +6,17 @@ metadata:
   description: "Use the GitLab REST API through typed Dex connector Steps."
   company: GitLab
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: gitlab
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-gitlab"
       operations: [getProject, listIssues, updateIssueLabels]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [getProject, listIssues, updateIssueLabels]
       triggers: []
   codegen:
@@ -112,11 +112,13 @@ spec:
         - {id: updated, goName: Updated, description: "Replace one GitLab issue's complete label set; repeating the request is safe."}
         - {id: notFound, goName: NotFound, description: The requested resource does not exist or is inaccessible., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because replacing the complete label set again is safe.", optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The PUT replaces the complete label set, so a repeat leaves the same labels.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedDefault
           branch: updated

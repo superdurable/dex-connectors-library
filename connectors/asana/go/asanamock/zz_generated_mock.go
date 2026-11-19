@@ -254,7 +254,7 @@ func UpdateTaskProviderRejected(value asana.UpdateTaskOutput, failure *sdkgo.Fai
 	return connectormock.Branch(asana.UpdateTaskBranchProviderRejected, value, failure)
 }
 
-// UpdateTaskInvalidResponse selects the invalidResponse branch: Asana returned an invalid or oversized task after the update.
+// UpdateTaskInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: the update is safe to repeat, so an invalid or oversized task after the update retries.
 func UpdateTaskInvalidResponse(value asana.UpdateTaskOutput, failure *sdkgo.Failure) connectormock.Case[asana.UpdateTaskOutput] {
 	return connectormock.Branch(asana.UpdateTaskBranchInvalidResponse, value, failure)
 }

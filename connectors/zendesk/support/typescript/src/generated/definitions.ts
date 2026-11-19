@@ -80,9 +80,9 @@ export const CreateTicketBranch = {
 } as const;
 /** The ticket exists; a repeated attempt returns the ticket the first attempt created. */
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
-/** Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created. */
+/** Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and does not echo the API token, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
-/** Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist. */
+/** Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request. */
 export const CreateTicketBranchInvalidResponse = CreateTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
@@ -91,8 +91,8 @@ export const CreateTicketDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createTicket" },
   branches: [
     { id: "created", description: "The ticket exists; a repeated attempt returns the ticket the first attempt created." },
-    { id: "providerRejected", description: "Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created.", optional: true },
-    { id: "invalidResponse", description: "Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist.", optional: true },
+    { id: "providerRejected", description: "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and does not echo the API token, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -108,18 +108,21 @@ export const UpdateTicketBranch = {
   Conflict: "conflict",
   ProviderRejected: "providerRejected",
   InvalidResponse: "invalidResponse",
+  Uncertain: "uncertain",
   Defect: "defect",
 } as const;
 /** The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment. */
 export const UpdateTicketBranchUpdated = UpdateTicketBranch.Updated;
-/** The ticket does not exist or is not visible to the connection's agent. */
+/** The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it. */
 export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
-/** The ticket changed after expectedUpdatedAt, so nothing was written. */
+/** The ticket read before the first write changed after expectedUpdatedAt, so nothing was written. */
 export const UpdateTicketBranchConflict = UpdateTicketBranch.Conflict;
-/** Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent. */
+/** Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and, for the write, does not echo the API token, such as updating a closed ticket or assigning an unknown agent; nothing was written. */
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
-/** Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied. */
+/** Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
+/** The ticket and its latest audit page show no change by this Step, yet the change and its comment may still appear: the send cap is reached, Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, Zendesk accepted a write that the read-back cannot confirm, or the credentials became unusable after a possible send. Below the cap, an unconfirmed write that Zendesk did not accept is read back and then resent. */
+export const UpdateTicketBranchUncertain = UpdateTicketBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateTicketBranchDefect = UpdateTicketBranch.Defect;
 /** Manifest definition for updateTicket. */
@@ -127,13 +130,14 @@ export const UpdateTicketDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "updateTicket" },
   branches: [
     { id: "updated", description: "The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment." },
-    { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent.", optional: true },
-    { id: "conflict", description: "The ticket changed after expectedUpdatedAt, so nothing was written.", optional: true },
-    { id: "providerRejected", description: "Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent.", optional: true },
-    { id: "invalidResponse", description: "Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied.", optional: true },
+    { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it.", optional: true },
+    { id: "conflict", description: "The ticket read before the first write changed after expectedUpdatedAt, so nothing was written.", optional: true },
+    { id: "providerRejected", description: "Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and, for the write, does not echo the API token, such as updating a closed ticket or assigning an unknown agent; nothing was written.", optional: true },
+    { id: "invalidResponse", description: "Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written.", optional: true },
+    { id: "uncertain", description: "The ticket and its latest audit page show no change by this Step, yet the change and its comment may still appear: the send cap is reached, Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, Zendesk accepted a write that the read-back cannot confirm, or the credentials became unusable after a possible send. Below the cap, an unconfirmed write that Zendesk did not accept is read back and then resent.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
   repeatOnUnknown: "limited",
   maxSends: 3,
 };

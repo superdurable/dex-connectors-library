@@ -98,6 +98,9 @@ func (operation GetChatOperation) Invoke(call sdkgo.Call, input GetChatInput) sd
 		return failedQuery(GetChatBranchDefect, sdkgo.FailureValidation, "chatId must be a decimal ID or public @username")
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return retryQuery(sdkgo.FailureAvailability, "bot token is temporarily unavailable", 0)
+	}
 	if err != nil || credentials.Validate() != nil {
 		return failedQuery(GetChatBranchDefect, sdkgo.FailureAuthentication, "bot token is unavailable or invalid")
 	}
@@ -184,7 +187,15 @@ func retryAfterFromResponse(response *http.Response, maxResponseBytes int64) tim
 		return delay
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
-	if err != nil {
+	return retryAfterFromHeaderOrBody("", body, err)
+}
+
+// retryAfterFromHeaderOrBody is retryAfterFromResponse for a body that was already read.
+func retryAfterFromHeaderOrBody(retryAfterHeader string, body []byte, readErr error) time.Duration {
+	if delay := providerhttp.ParseRetryAfter(retryAfterHeader, time.Now()); delay > 0 {
+		return delay
+	}
+	if readErr != nil {
 		return 0
 	}
 	var envelope struct {

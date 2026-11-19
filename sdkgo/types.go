@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -159,7 +160,13 @@ type Mutation[IN, OUT any] interface {
 type Call struct {
 	// Context is the active Dex Step context and is never serialized.
 	Context dex.Context `json:"-"`
-	// ID is the stable connector call identity derived from Dex execution identity.
+	// ID is the stable connector call identity derived from Dex execution identity. The
+	// first call of an operation in a Step attempt gets the four-field derivation; the n-th
+	// call of the same operation mixes in n. Counts restart each attempt, so IDs stay
+	// stable across retries only when the Step makes its calls in a deterministic order.
+	// RunMutation refuses, with defect and before Invoke, a call that starts while an
+	// earlier call of the same operation in the Step attempt is still running; the refused
+	// call still counts, so later IDs follow call order.
 	ID CallID `json:"id"`
 	// IdempotencyKey is the provider-safe deduplication key for the call.
 	IdempotencyKey IdempotencyKey `json:"idempotencyKey,omitempty"`
@@ -295,6 +302,8 @@ func (call Call) HasTextStream() bool { return call.text != nil }
 type operationRunTrace struct {
 	// hasInvokedOperation is set immediately before Invoke, so it also holds when Invoke panics.
 	hasInvokedOperation bool
+	// onCallCreated, when set, learns the Call ID before Invoke runs.
+	onCallCreated func(Call)
 }
 
 type runConfig struct {
@@ -380,10 +389,11 @@ func runMutationWithTrace[IN, OUT any](ctx dex.Context, operation Mutation[IN, O
 	if err := definition.Validate(); err != nil {
 		return failedMutation[OUT](definition, "invalid mutation definition: "+err.Error()), nil
 	}
-	call, err := newCall(ctx, definition.Operation, connection)
+	call, endCall, err := newMutationCall(ctx, definition.Operation, connection)
 	if err != nil {
 		return failedMutation[OUT](definition, err.Error()), nil
 	}
+	defer endCall()
 	call.IdempotencyKey = operation.IdempotencyKey(call.ID, input)
 	if call.IdempotencyKey == "" {
 		call.IdempotencyKey = IdempotencyKey(call.ID)
@@ -394,6 +404,9 @@ func runMutationWithTrace[IN, OUT any](ctx dex.Context, operation Mutation[IN, O
 	}
 	if err := configureCall(&call, options, definition.sendCapPolicy()); err != nil {
 		return failedMutationForCall[OUT](definition, call, err.Error()), nil
+	}
+	if trace.onCallCreated != nil {
+		trace.onCallCreated(call)
 	}
 	trace.hasInvokedOperation = true
 	return mutationResult(call, definition, operation.Invoke(call, input))
@@ -480,25 +493,48 @@ func retryError(failure Failure, delay time.Duration) error {
 }
 
 func newCall(ctx dex.Context, operation OperationRef, connection ConnectionRef) (Call, error) {
+	if err := validateCallScope(ctx, operation, connection); err != nil {
+		return Call{}, err
+	}
+	return callForOccurrence(ctx, operation, connection, nextCallOccurrence(ctx, operation)), nil
+}
+
+// newMutationCall also returns the function that ends the call.
+func newMutationCall(ctx dex.Context, operation OperationRef, connection ConnectionRef) (Call, func(), error) {
+	if err := validateCallScope(ctx, operation, connection); err != nil {
+		return Call{}, nil, err
+	}
+	occurrence, end, err := beginMutationOccurrence(ctx, operation)
+	if err != nil {
+		return Call{}, nil, err
+	}
+	return callForOccurrence(ctx, operation, connection, occurrence), end, nil
+}
+
+func validateCallScope(ctx dex.Context, operation OperationRef, connection ConnectionRef) error {
 	if ctx == nil {
-		return Call{}, fmt.Errorf("Dex context is required")
+		return fmt.Errorf("Dex context is required")
 	}
 	if ctx.FlowID() == "" {
-		return Call{}, fmt.Errorf("Dex Flow ID is required")
+		return fmt.Errorf("Dex Flow ID is required")
 	}
 	if ctx.StepExecutionID() == "" {
-		return Call{}, fmt.Errorf("connector operations require a Dex Step execution; RPC invocation is not allowed")
+		return fmt.Errorf("connector operations require a Dex Step execution; RPC invocation is not allowed")
 	}
 	if err := operation.Validate(); err != nil {
-		return Call{}, fmt.Errorf("invalid connector operation: %w", err)
+		return fmt.Errorf("invalid connector operation: %w", err)
 	}
 	if err := connection.Validate(); err != nil {
-		return Call{}, fmt.Errorf("invalid connector connection: %w", err)
+		return fmt.Errorf("invalid connector connection: %w", err)
 	}
+	return nil
+}
+
+func callForOccurrence(ctx dex.Context, operation OperationRef, connection ConnectionRef, occurrence int) Call {
 	return Call{
-		Context: ctx, ID: deriveCallID(ctx.FlowID(), ctx.StepExecutionID(), operation),
+		Context: ctx, ID: deriveOccurrenceCallID(ctx.FlowID(), ctx.StepExecutionID(), operation, occurrence),
 		Connection: connection, Operation: operation,
-	}, nil
+	}
 }
 
 func configureCall(call *Call, options []RunOption, sendCaps sendCapPolicy) error {
@@ -532,8 +568,17 @@ func configureCall(call *Call, options []RunOption, sendCaps sendCapPolicy) erro
 }
 
 func deriveCallID(flowID, stepExecutionID string, operation OperationRef) CallID {
+	return deriveOccurrenceCallID(flowID, stepExecutionID, operation, 1)
+}
+
+// deriveOccurrenceCallID keeps the four-field derivation for occurrence 1 and appends the
+// decimal occurrence as a fifth length-prefixed field from occurrence 2.
+func deriveOccurrenceCallID(flowID, stepExecutionID string, operation OperationRef, occurrence int) CallID {
 	fields := []string{flowID, stepExecutionID, operation.ConnectorID, operation.OperationID}
-	payload := make([]byte, 0, len(flowID)+len(stepExecutionID)+len(operation.ConnectorID)+len(operation.OperationID)+16)
+	if occurrence > 1 {
+		fields = append(fields, strconv.Itoa(occurrence))
+	}
+	payload := make([]byte, 0, len(flowID)+len(stepExecutionID)+len(operation.ConnectorID)+len(operation.OperationID)+24)
 	var length [4]byte
 	for _, field := range fields {
 		binary.BigEndian.PutUint32(length[:], uint32(len(field)))

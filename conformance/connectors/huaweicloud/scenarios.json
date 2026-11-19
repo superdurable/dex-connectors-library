@@ -1,0 +1,824 @@
+{
+  "connector": "huaweicloud",
+  "scenarios": [
+    {
+      "callId": "2b2a50b1-d20e-5ff1-9deb-dccbb27029cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "X-Subject-Token": "synthetic-test-token"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"projects\":[{\"id\":\"project-123\",\"name\":\"Example Project\",\"enabled\":true,\"domain_id\":\"domain-123\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/auth/projects",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ],
+            "X-Auth-Token": [
+              "synthetic-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "domainId": "domain-123",
+              "enabled": true,
+              "id": "project-123",
+              "name": "Example Project"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-found",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "44f5aabd-3a69-5017-8815-9892a7eab7c0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "X-Subject-Token": "synthetic-test-token"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"projects\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/auth/projects",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ],
+            "X-Auth-Token": [
+              "synthetic-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-foundEmpty",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "8b97cb05-ffb2-573b-be7e-e39a7c95754c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"denied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-providerRejectedAuth",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "ba94666d-f92c-586e-9c59-70563f1b734c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "X-Subject-Token": "synthetic-test-token"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"error\":{\"message\":\"denied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/auth/projects",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ],
+            "X-Auth-Token": [
+              "synthetic-test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-providerRejectedProject",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "dd8cb9ba-73c1-5257-85e6-3469ee35210a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-invalidResponseToken",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "447c00e6-7f18-5f39-8c3d-3fbb5ebac5b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "X-Subject-Token": "synthetic-test-token"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"projects\":[{\"id\":\"missing-fields\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/auth/projects",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ],
+            "X-Auth-Token": [
+              "synthetic-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-invalidResponseProjects",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "64ba87db-4f70-59e7-8f17-3b497e627165",
+      "exchanges": [
+        {
+          "body": "{\"long_field\":\"response exceeds limit\"}",
+          "headers": {
+            "X-Subject-Token": "synthetic-test-token"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-oversizedAuth",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "e14ae1e4-5d11-5534-a237-99703e21bbe1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-defect",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "b30aa5f4-d4a6-5a44-89b3-f36c11ef4ace",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-rateLimit429",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "4aa570c8-c449-52d0-9dfd-d29621c2cb0b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "X-Subject-Token": "synthetic-test-token"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/auth/projects",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ],
+            "X-Auth-Token": [
+              "synthetic-test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-availability503",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "0a410937-d566-542e-b1b2-79e20db84734",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-transportFailure",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "b59d370f-9ce5-5aa8-9734-2cccff0edb02",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "https://example.com/collect"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-redirect",
+      "operation": "listAccessibleProjects"
+    },
+    {
+      "callId": "f762adb3-31bd-59c0-ad8f-de96e6c3efeb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/auth/tokens",
+          "requestBody": {
+            "auth": {
+              "identity": {
+                "methods": [
+                  "password"
+                ],
+                "password": {
+                  "user": {
+                    "domain": {
+                      "name": "example-account"
+                    },
+                    "name": "example-user",
+                    "password": "synthetic-test-password"
+                  }
+                }
+              },
+              "scope": {
+                "domain": {
+                  "name": "example-account"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccessibleProjects-availability503Auth",
+      "operation": "listAccessibleProjects"
+    }
+  ],
+  "schemaVersion": 1
+}

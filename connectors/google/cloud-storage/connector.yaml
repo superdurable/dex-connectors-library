@@ -6,16 +6,16 @@ metadata:
   description: List, download, and upload objects in Google Cloud Storage buckets.
   company: Google
   categories: [databases-storage, files-documents]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: google-cloud-storage
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listObjects, downloadObject, uploadObject]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listObjects, downloadObject, uploadObject]
       triggers: []
   codegen:
@@ -143,7 +143,8 @@ spec:
       description: Create an object only if absent, or confirm existing content matches the requested bytes.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      # ifGenerationMatch=0 creates only an absent object, and a resend's 412 compares the stored bytes.
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: uploaded, goName: Uploaded, description: The named object now has the requested content.}
         - {id: objectExists, goName: ObjectExists, description: An object with different content already exists at that name., optional: true}

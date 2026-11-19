@@ -1,10 +1,10 @@
 {
   "connectorId": "zoom",
-  "releaseTag": "connectors/zoom/go/v0.25.0",
+  "releaseTag": "connectors/zoom/go/v0.25.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-zoom",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -126,7 +126,7 @@
       "kind": "mutation",
       "operationId": "createMeeting",
       "inputType": "CreateMeetingInput",
-      "description": "Schedule one meeting for the authorized user at an explicit start instant and IANA time zone; a synchronous dispatch fence makes the pre-send checkpoint visible across attempts and prevents a second send after an unknown outcome.",
+      "description": "Schedule one meeting for the authorized user at an explicit start instant and IANA time zone; a synchronous dispatch fence counts possible sends across attempts, so an unknown outcome resends up to the send cap and may create a duplicate meeting.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

@@ -4,9 +4,11 @@
 import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import mysql, { type Connection, type ConnectionOptions } from 'mysql2/promise';
-import { SecretString, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
-import { ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import type { ClassifiedFailure } from './failures.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
+import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
 
 class MySQLIPIdentityError extends Error {
   readonly code = 'MYSQL_IP_IDENTITY_UNSUPPORTED';
@@ -63,16 +65,26 @@ export class MySQLClient {
 
   /** Bind the read-only query operation. */
   query(): QueryRowsOperation { return new QueryRowsOperation(this); }
-  /** Bind the transactional write operation. */
+  /** Bind the repeat-safe transactional write operation. */
   execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
+  /** Bind the fenced transactional write operation, which never runs its statement twice. */
+  executeNonIdempotent(): ExecuteStatementNonIdempotentOperation { return new ExecuteStatementNonIdempotentOperation(this); }
 
-  /** Resolve the password for one call without retaining it on the client. */
-  async resolvePassword(call: Call): Promise<string | undefined> {
+  /**
+   * Resolve the password for one call without retaining it on the client, or return the failure to report before connecting:
+   * defect for a terminal credential failure or invalid credential material, Retry for any other credential failure.
+   */
+  async resolvePassword(call: Call): Promise<string | ClassifiedFailure> {
+    const unavailable: ClassifiedFailure = { disposition: 'defect', kind: 'AUTHENTICATION', message: 'MySQL connection credentials are unavailable' };
+    let resolved: Credentials;
     try {
-      const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(resolved.password instanceof SecretString)) return undefined;
-      return resolved.password.reveal() || undefined;
-    } catch { return undefined; }
+      resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      if (!isTerminalCredentialError(error)) return { disposition: 'retry', kind: 'AVAILABILITY', message: 'MySQL connection credentials are temporarily unavailable, so nothing was sent' };
+      return unavailable;
+    }
+    if (!(resolved.password instanceof SecretString)) return unavailable;
+    return resolved.password.reveal() || unavailable;
   }
 
   /** Open and initialize one MySQL session with pinned server settings. The callback can bind a call deadline before setup queries. */
@@ -120,4 +132,10 @@ export class MySQLClient {
     if (sqlState) metadata.sqlState = sqlState;
     return { callId: call.id, provider: 'mysql', observedAt: this.now().toISOString(), ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}), ...(Object.keys(metadata).length ? { metadata } : {}) };
   }
+}
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }

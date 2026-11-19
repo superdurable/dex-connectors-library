@@ -6,16 +6,16 @@ metadata:
   description: "Receive verified webhook requests from any sender, such as a form service, and start or resume Flows with a stable event ID. Send signed Standard Webhooks events to a configured HTTPS receiver."
   company: Super Durable
   categories: [developer-tools]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: webhook
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [sendEvent]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-superdurable-webhook'
       operations: [sendEvent]
       triggers: []
@@ -115,15 +115,17 @@ spec:
       inputType: SendEventInput
       outputType: SendEventOutput
       kind: mutation
-      description: "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already applied."
+      description: "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a redirect, a 408, 409, 410, 425, 429, 5xx, or other unknown answer, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already applied."
       idempotency: required
       branches:
         - {id: delivered, goName: Delivered, description: The receiver answered 2xx and accepted the event.}
-        - {id: rejected, goName: Rejected, description: "The receiver answered a redirect or a 4xx other than 408, 409, 425, and 429, so it refused the event; the Result carries the status code. A 409 is retried with the same webhook-id instead, and fails the Flow when the retry budget runs out.", optional: true}
-        - {id: defect, goName: Defect, description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", optional: true}
+        - {id: rejected, goName: Rejected, description: "On the Step's first attempt the receiver answered 400, 401, 403, 404, 411, 413, 414, 415, or 422, so it refused the event; the Result carries the status code. Any other status, and a refusal on a later attempt that may follow a delivered event, is retried with the same webhook-id and fails the Flow when the retry budget runs out.", optional: true}
+        - {id: defect, goName: Defect, description: "On the Step's first attempt the connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes. A later attempt retries instead.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every resend carries the Step-derived webhook-id, which Standard Webhooks receivers deduplicate on.
+        repeatOnUnknown: safe
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Receivers retain each webhook-id for the documented two-minute window; a later retry could apply the same event again after that record expires."}}
       mocks:
         - name: submissionDelivered

@@ -87,8 +87,9 @@ export class UploadObjectOperation implements Mutation<UploadObjectInput, Storag
     if (exchange.status === 429) return mutationRetry('RATE_LIMIT', 'Google rate limited the upload', exchange.retryAfterMs);
     if (exchange.status === 408 || exchange.status >= 500) return mutationRetry('AVAILABILITY', 'Google Cloud Storage upload is temporarily unavailable', exchange.retryAfterMs);
     if (exchange.error) return mutationRetry('TRANSPORT', 'Google Cloud Storage upload failed');
-    if (exchange.status !== 200 && exchange.status !== 201)
+    if (exchange.status !== 200 && exchange.status !== 201 && definiteRefusalStatuses.has(exchange.status))
       return mutationBranch('providerRejected', empty, 'PROVIDER_REJECTION', `Google rejected HTTP ${exchange.status}`);
+    if (exchange.status !== 200 && exchange.status !== 201) return mutationRetry('AVAILABILITY', `Google answered HTTP ${exchange.status}, which leaves the upload unknown`);
     const object = projectObject(parseJSON(exchange.body), input.name);
     if (!object) return mutationRetry('PROTOCOL', 'Google returned invalid upload metadata; checking object on retry');
     return newMutationBranch('uploaded', object);
@@ -109,12 +110,17 @@ export class UploadObjectOperation implements Mutation<UploadObjectInput, Storag
     if (media.error === 'tooLarge') return mutationBranch('objectExists', empty, 'PROVIDER_REJECTION', 'an object with different content already exists');
     if (media.error || media.status === 429 || media.status >= 500)
       return mutationRetry('AVAILABILITY', 'existing object could not be confirmed', media.retryAfterMs);
+    // After an earlier attempt, the unreadable object may be this Step's upload.
+    if (media.status !== 200 && (!definiteRefusalStatuses.has(media.status) || (call.context?.attempt ?? 1) > 1)) return mutationRetry('AVAILABILITY', 'existing object could not be confirmed');
     if (media.status !== 200) return mutationBranch('providerRejected', empty, 'PROVIDER_REJECTION', 'Google denied object confirmation');
     if (!Buffer.from(media.body).equals(Buffer.from(content)))
       return mutationBranch('objectExists', empty, 'PROVIDER_REJECTION', 'an object with different content already exists');
     return newMutationBranch('uploaded', object);
   }
 }
+
+/** Only these statuses prove Google refused the request; any other one is unknown. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 function classifyRead<Output>(operation: string, exchange: StorageExchange, empty: Output): QueryAttempt<Output> | undefined {
   if (exchange.error === 'credential') return queryBranch(operation, 'defect', empty, 'AUTHENTICATION', 'connection credentials are unavailable or invalid');

@@ -7,7 +7,7 @@ The public models, branch definitions, Step factories, connection helpers, and
 mock cases are generated from `../connector.yaml`; OAuth credential refresh
 uses the generated manifest declaration. The provider client and operation
 behavior follow the Go connector, including page title and version read-back
-for writes and an at-most-once checkpoint for footer comments. From 0.2.0 the
+for writes and a send-counting checkpoint that reads footer comments back before a resend within the send cap. From 0.2.0 the
 package also implements the `pageChanged` poll Trigger, which starts a Flow
 when a page is created or updated, on `@superdurable/connectors-sdk` 0.12.0's
 poll Trigger kit.

@@ -20,7 +20,7 @@ export const SendEmailBranch = {
 export const SendEmailBranchSent = SendEmailBranch.Sent;
 /** The provider definitively rejected the request. */
 export const SendEmailBranchProviderRejected = SendEmailBranch.ProviderRejected;
-/** The provider returned malformed or oversized JSON. */
+/** Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because the Idempotency-Key makes Resend replay the first send. */
 export const SendEmailBranchInvalidResponse = SendEmailBranch.InvalidResponse;
 /** Local input or connection credentials are invalid. */
 export const SendEmailBranchDefect = SendEmailBranch.Defect;
@@ -30,7 +30,7 @@ export const SendEmailDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Resend returned the requested result." },
     { id: "providerRejected", description: "The provider definitively rejected the request.", optional: true },
-    { id: "invalidResponse", description: "The provider returned malformed or oversized JSON.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because the Idempotency-Key makes Resend replay the first send.", optional: true },
     { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

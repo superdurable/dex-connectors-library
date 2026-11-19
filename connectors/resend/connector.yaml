@@ -6,16 +6,16 @@ metadata:
   description: Read and act through the Resend public API.
   company: Resend
   categories: [communication, developer-tools]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: resend
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [sendEmail, getEmail]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-resend'
       operations: [sendEmail, getEmail]
       triggers: []
@@ -82,7 +82,7 @@ spec:
       optional: true
     - id: invalidResponse
       goName: InvalidResponse
-      description: The provider returned malformed or oversized JSON.
+      description: "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because the Idempotency-Key makes Resend replay the first send."
       optional: true
     - id: defect
       goName: Defect
@@ -91,6 +91,8 @@ spec:
     execution:
       executeMethodTimeout: 30s
       durability: async
+      # Resend replays the first send for a repeated Idempotency-Key for 24 hours, beyond the one-hour retry budget.
+      repeatOnUnknown: safe
     mocks:
     - name: sendEmailDefault
       branch: sent

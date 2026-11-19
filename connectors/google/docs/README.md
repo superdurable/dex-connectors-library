@@ -25,10 +25,10 @@ no Triggers.
 
 ## TypeScript
 
-The first TypeScript package is
-[`@superdurable/connector-google-docs`](typescript/README.md) at `v0.1.0`.
+The TypeScript package is
+[`@superdurable/connector-google-docs`](typescript/README.md) at `v0.1.1`.
 It implements the same four operations and uses generated manifest OAuth and
-Workspace delegation refresh wiring from Connector SDK `0.6.0`. Its
+Workspace delegation refresh wiring from Connector SDK `0.12.0`. Its
 [`policy-documents` example](typescript/examples/policy-documents/README.md)
 runs each operation through a real Dex Worker with the static `policy-docs`
 connection. Go-recorded conformance scenarios replay provider requests and
@@ -40,8 +40,8 @@ calls remain unverified.
 
 The Python package implements the same four operations through operation-specific
 Step factories and the generated Google OAuth and Workspace domain delegation
-credential wiring. Install `dex-connector-google-docs==0.1.0` with Connector
-SDK `0.6.0`. The checked-in [policy read example](python/examples/policy_read/README.md)
+credential wiring. Install `dex-connector-google-docs==0.1.1` with Connector
+SDK `0.12.0` or later. The checked-in [policy read example](python/examples/policy_read/README.md)
 runs a Google Docs Query through a real Dex Worker and Client. Its local
 integration test uses an inert credential and a fake Google HTTP boundary;
 live Google OAuth consent, refresh, domain delegation, and provider calls are
@@ -163,26 +163,47 @@ supports queries on that property.
 The shared single-dispatch fence reads the previous Dex heartbeat before
 credentials or Drive lookup. Sync durability commits that heartbeat promptly.
 **Keep the Step sync:** a replay after a lost Worker must read the checkpoint
-before deciding whether a create can be sent. An attempt first searches for a tagged file; if found, it
-returns that document without another create. The fence permits a send only on
-the first attempt or after the immediately prior attempt proved that no create
-was sent, Drive returned a 429 or 503, or a 401 credential was refreshed.
-After a 429 or 503, the connector searches once for the tagged file. If that
-lookup cannot confirm creation, it records permission for the next attempt to
-retry; that attempt searches again before sending. A 401 forces credential
-refresh and retries in the next attempt only when refresh succeeds.
-A missing, stale, or claimed heartbeat cannot authorize another send. A 2xx
-reply with an invalid or interrupted body is treated as accepted and searched
-by app property. A found file completes `created`; inconclusive read-back
-selects `uncertain`, and the example leaves that branch unwired for manual
-reconciliation. HTTP writes use a bounded fraction of the Step deadline and
-disable Go's transparent request replay.
+before deciding whether a create can be sent. Every attempt first searches for a tagged file; if found, it
+returns that document without another create. The fence counts possible sends
+against the send cap (`maxSends`, default 3). A 429, a 503, a proven
+pre-send connection failure, or a refreshed 401 credential records that
+nothing was created, so the next attempt searches again and resends. After a
+429 or 503, the connector also searches once for the tagged file in the same
+attempt.
+
+An unknown outcome, such as a timeout, a lost connection, a 5xx, or a 409, is
+searched by app property. A found file completes `created`. Otherwise the
+attempt retries while the cap allows another send, and the next attempt
+searches again before resending, also after a resend that Google rate
+limited. A 2xx whose body is unusable, oversized, or breaks while read, and a
+response of any other status whose body names a file ID, means Drive created
+the document, so it is never resent: before any search the attempt saves the
+file ID the body carries, or without an ID the acceptance itself, so an attempt
+that ends during the search can never resend. It then searches once, saves the
+found ID, and otherwise retries: a saved ID is read back on the next attempt,
+and a saved acceptance makes later attempts search again without sending until
+the cap, where `uncertain` is selected. A saved document ID is always read back
+instead of resent. The search is bounded by the attempt deadline. A definite
+refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) whose body was read in
+full selects
+`providerRejected` on the first send and is never resent; after an earlier
+unconfirmed send it selects `uncertain`. A refusal body over the error limit
+might hide a file ID, so it is an unknown outcome. Below the
+cap, a rejected or invalid search after an earlier possible send, and an empty
+search after a saved document ID, retry the search without sending; an
+incomplete search retries even at the cap. Temporarily unavailable credentials
+and a transient refresh failure after a 401 also retry. A connection that must
+be reauthorized selects `defect` before any send and `uncertain` after an
+earlier unconfirmed send. `uncertain` is otherwise selected only when the cap is reached and the
+search still cannot confirm the create, and the example leaves that branch
+unwired for manual reconciliation. HTTP writes use a bounded fraction of the
+Step deadline and disable Go's transparent request replay.
 
 When upgrading from v0.22.1, an in-flight `createDocument` Step can carry a
-legacy `googleDocsDispatchedCallId` heartbeat. The new fence fails closed for
-that marker: it searches Drive by `dexIdempotencyKey` without sending a create.
-A found document completes `created`; a temporary lookup failure retries; an
-unconfirmed outcome selects `uncertain` for manual reconciliation.
+legacy `googleDocsDispatchedCallId` heartbeat, and any unreadable checkpoint
+fails closed: the attempt searches Drive by `dexIdempotencyKey` without
+sending a create. A found document completes `created`; otherwise the attempt
+retries and never selects a terminal branch.
 
 [Google's Drive error guide](https://developers.google.com/workspace/drive/api/guides/handle-errors)
 recommends backoff for 429 and 503. It describes a 503 as an error during
@@ -210,9 +231,11 @@ the batch atomically and only if the document is still at that revision;
 otherwise it answers 400 and applies nothing. Because the revision is part of
 the Step input, every replay of one Step execution carries the same revision.
 Once one batch is applied the revision has moved, so
-no second batch with that revision can apply. The operations therefore keep
-async durability and retry every unconfirmed outcome: a transport failure, a
-5xx, or an unreadable 2xx is retried, and the retry recognizes its own write.
+no second batch with that revision can apply. The operations therefore declare
+`repeatOnUnknown: safe`, keep async durability, and retry every unconfirmed
+outcome: a transport failure, a 5xx, a 409, any status outside 400, 401, 403,
+404, 411, 413, 414, 415, and 422, or an unreadable 2xx is retried, and the
+retry recognizes its own write.
 
 Each attempt reads the first tab with suggestions inline, the view Google
 requires for edit indexes, and then:
@@ -256,7 +279,10 @@ next guarded write without another read.
 ## Branches
 
 Every operation uses `defect` for invalid local input, connection
-configuration, or connector contract violations, before any request.
+configuration, or connector contract violations, before any request. A guarded
+write whose connection must be reauthorized selects `defect` only on its first
+attempt; a later attempt may follow a write that applied, so it returns Retry.
+Temporarily unavailable credentials always return Retry.
 `providerRejected` is a conclusive Google refusal, such as a revoked grant,
 missing permission, or a connection without edit access. `notFound` is a
 document the connection cannot see. `invalidResponse` is a malformed or
@@ -323,7 +349,7 @@ mock.GetDocumentText().Respond(
 ```
 
 Install the v0.23.0 connector with
-`go get github.com/superdurable/dex-connectors-library/connectors/google/docs/go@v0.24.0`
+`go get github.com/superdurable/dex-connectors-library/connectors/google/docs/go@v0.24.1`
 after this release is published.
 
 ## Verification

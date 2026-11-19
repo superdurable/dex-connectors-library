@@ -156,7 +156,7 @@ export const UploadFileBranch = {
 export const UploadFileBranchUploaded = UploadFileBranch.Uploaded;
 /** Dropbox conclusively rejected the upload. */
 export const UploadFileBranchProviderRejected = UploadFileBranch.ProviderRejected;
-/** Dropbox returned malformed or oversized upload metadata. */
+/** Retained for compatibility and no longer selected: malformed or oversized upload metadata now retries the overwrite. */
 export const UploadFileBranchInvalidResponse = UploadFileBranch.InvalidResponse;
 /** Local input or connection credentials are invalid. */
 export const UploadFileBranchDefect = UploadFileBranch.Defect;
@@ -166,7 +166,7 @@ export const UploadFileDefinition: MutationDefinition = {
   branches: [
     { id: "uploaded", description: "Dropbox stored the replacement file content." },
     { id: "providerRejected", description: "Dropbox conclusively rejected the upload.", optional: true },
-    { id: "invalidResponse", description: "Dropbox returned malformed or oversized upload metadata.", optional: true },
+    { id: "invalidResponse", description: "Retained for compatibility and no longer selected: malformed or oversized upload metadata now retries the overwrite.", optional: true },
     { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

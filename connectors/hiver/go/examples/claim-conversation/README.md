@@ -67,7 +67,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/hiver/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/hiver/go \
-  --version v0.24.0 --tag connectors/hiver/go/v0.24.0 \
+  --version v0.24.1 --tag connectors/hiver/go/v0.24.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/hiver-release/connector-ui.tgz \
   --ui-digest /tmp/hiver-release/connector-ui.tgz.sha256 \

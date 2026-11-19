@@ -1,10 +1,10 @@
 {
   "connectorId": "airtable",
-  "releaseTag": "connectors/airtable/go/v0.24.0",
+  "releaseTag": "connectors/airtable/go/v0.24.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-airtable",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {

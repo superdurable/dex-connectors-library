@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 // Package clickup implements ClickUp task operations and a signed task webhook Trigger as Dex connector
-// Steps. searchTasks, getTask, and findMemberByEmail read; createTask and addComment record a Dex
-// heartbeat checkpoint before they write and reconcile an unconfirmed attempt by reading back instead of
-// resending; updateTask and updateTaskTags apply absolute values and set memberships, so they are safe
-// to repeat. Dex accepts the checkpoint when the Worker writes it to its stream, so a Worker lost before
-// Dex stored it could still send a create or comment twice.
+// Steps. searchTasks, getTask, and findMemberByEmail read; createTask and addComment send behind the
+// shared single-dispatch fence, which counts each possible send in a Dex heartbeat checkpoint. After an
+// unknown outcome the next attempt reads the List or the task's comments back and reports the earlier
+// write it finds; otherwise it resends while possible sends stay within the Step's send cap, and selects
+// uncertain at the cap. updateTask and updateTaskTags apply absolute values and set memberships, so they
+// are safe to repeat and retry every unknown outcome.
 //
 // The connector authenticates with a ClickUp personal API token sent as the raw Authorization header,
 // sends every request to ClickUp API v2 at APIBaseURL, and passes ClickUp's own vocabulary through:
@@ -35,6 +36,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
@@ -153,7 +155,25 @@ type clickupExchange struct {
 	response   clickupResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// isErrorBodyTooLarge reports a non-2xx body over maxResponseBytes, which cannot prove a write refusal.
+	isErrorBodyTooLarge bool
 }
+
+// writeOutcome is what a sent write proves; only a definite refusal status selects a refusal branch.
+type writeOutcome uint8
+
+const (
+	writeAccepted writeOutcome = iota + 1
+	// writeNotApplied is a 429, a 503, or a connection that never opened: ClickUp did not apply the write.
+	writeNotApplied
+	writeNotFound
+	writeRejected
+	// writeUnknown is a lost response, 408, 409, other 5xx, unlisted status, or oversized error: ClickUp may have applied it.
+	writeUnknown
+	writeDefect
+	// writeAcceptedUnreadable is a 2xx whose body is unreadable, oversized, or unsafe: ClickUp applied the write.
+	writeAcceptedUnreadable
+)
 
 // isRetryableRead reports an outcome that a read, or a write that is safe to repeat, may simply repeat.
 func (result clickupExchange) isRetryableRead() bool {
@@ -162,6 +182,35 @@ func (result clickupExchange) isRetryableRead() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// classifyWrite narrows the shared classification for a write, which repeats every outcome that is not definite.
+func (result clickupExchange) classifyWrite() writeOutcome {
+	switch result.outcome {
+	case exchangeSucceeded:
+		return writeAccepted
+	case exchangeNotSent, exchangeRateLimited:
+		return writeNotApplied
+	case exchangeDefect:
+		return writeDefect
+	}
+	status := result.response.statusCode
+	switch {
+	case status >= 200 && status < 300:
+		return writeAcceptedUnreadable
+	case result.outcome == exchangeInvalid:
+		return writeUnknown
+	case status == http.StatusServiceUnavailable:
+		return writeNotApplied
+	case result.isErrorBodyTooLarge:
+		return writeUnknown
+	case result.outcome == exchangeNotFound && status != http.StatusGone:
+		return writeNotFound
+	case result.outcome == exchangeRejected && isDefiniteWriteRefusalStatus(status):
+		return writeRejected
+	default:
+		return writeUnknown
 	}
 }
 
@@ -276,11 +325,15 @@ func (client *Client) taskEventWebhookEndpoint(
 	return endpoint, nil
 }
 
-// resolveCredentials returns a header-safe personal API token, or a safe defect Failure.
+// resolveCredentials returns a header-safe personal API token, or a safe Failure. A terminal failure
+// has kind FailureAuthentication; a transient one, such as a store or broker read, has FailureAvailability.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && isTerminalCredentialError(err) {
+		return Credentials{}, clickupFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are missing or need reauthorization")
+	}
 	if err != nil {
-		return Credentials{}, clickupFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+		return Credentials{}, clickupFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials could not be read, so nothing was sent")
 	}
 	if err := validateResolvedCredentials(credentials); err != nil {
 		return Credentials{}, clickupFailurePointer(sdkgo.FailureAuthentication, operation, err.Error())
@@ -319,7 +372,9 @@ func (client *Client) exchange(ctx context.Context, credentials Credentials, ope
 		}
 		return clickupExchange{outcome: exchangeSucceeded, response: response}
 	}
-	return client.classifyFailureStatus(response, operation)
+	result := client.classifyFailureStatus(response, operation)
+	result.isErrorBodyTooLarge = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
+	return result
 }
 
 func (client *Client) buildRequest(ctx context.Context, credentials Credentials, request clickupRequest) (*http.Request, error) {
@@ -426,6 +481,18 @@ func rejectionFailureKind(status int) sdkgo.FailureKind {
 	}
 }
 
+// isDefiniteWriteRefusalStatus reports a status proving ClickUp refused a write; other statuses leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
+}
+
 // readClickUpErrorCode returns the ECODE of a ClickUp error body; the err text is provider prose and is never read.
 func readClickUpErrorCode(body []byte) string {
 	var document struct {
@@ -449,6 +516,13 @@ func teamNotAuthorizedCodes() map[string]bool {
 func isConnectionNeverEstablished(err error) bool {
 	var operationError *net.OpError
 	return errors.As(err, &operationError) && operationError.Op == "dial"
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as store reads, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func validateResolvedCredentials(credentials Credentials) error {

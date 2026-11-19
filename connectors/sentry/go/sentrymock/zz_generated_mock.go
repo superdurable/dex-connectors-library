@@ -161,7 +161,7 @@ func UpdateIssueStatusProviderRejected(value sentry.Issue, failure *sdkgo.Failur
 	return connectormock.Branch(sentry.UpdateIssueStatusBranchProviderRejected, value, failure)
 }
 
-// UpdateIssueStatusInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+// UpdateIssueStatusInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because repeating the absolute status update is safe.
 func UpdateIssueStatusInvalidResponse(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
 	return connectormock.Branch(sentry.UpdateIssueStatusBranchInvalidResponse, value, failure)
 }

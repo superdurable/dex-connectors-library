@@ -6,7 +6,7 @@ import { branchCase, retryCase, uncertainCase, type Case, newMutation, type Mock
 import type { Failure } from '@superdurable/connectors-sdk';
 import type { QueryRowsInput, Column, RowSet, ExecuteStatementInput, StatementExecution } from './models.js';
 import { QueryRowsInputSchema, ColumnSchema, RowSetSchema, ExecuteStatementInputSchema, StatementExecutionSchema } from './models.js';
-import { ProviderID, ConnectorID, QueryRowsDefinition, ExecuteStatementDefinition } from './definitions.js';
+import { ProviderID, ConnectorID, QueryRowsDefinition, ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for QueryRowsInput in scripted cases. */
@@ -97,23 +97,54 @@ export function executeDuplicateOrder(): Case<StatementExecution> {
   return branchCase("providerRejected", value, { kind: "CONFLICT", provider: ConnectorID, operation: "execute", message: "PostgreSQL rejected the duplicate order." });
 }
 
+/** Script the completed branch. */
+export function executeNonIdempotentCompleted(value: StatementExecution, failure?: Failure): Case<StatementExecution> { return branchCase("completed", value, failure); }
+/** Script the limitExceeded branch. */
+export function executeNonIdempotentLimitExceeded(value: StatementExecution, failure?: Failure): Case<StatementExecution> { return branchCase("limitExceeded", value, failure); }
+/** Script the providerRejected branch. */
+export function executeNonIdempotentProviderRejected(value: StatementExecution, failure?: Failure): Case<StatementExecution> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function executeNonIdempotentInvalidResponse(value: StatementExecution, failure?: Failure): Case<StatementExecution> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function executeNonIdempotentDefect(value: StatementExecution, failure?: Failure): Case<StatementExecution> { return branchCase("defect", value, failure); }
+/** Script a safe retry of executeNonIdempotent. */
+export function executeNonIdempotentRetry(failure: Failure, retryAfterMs = 0): Case<StatementExecution> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain executeNonIdempotent attempt. */
+export function executeNonIdempotentUncertain(value: StatementExecution, failure: Failure): Case<StatementExecution> { return uncertainCase(value, failure); }
+/** Manifest scenario addedToDailyTotal for executeNonIdempotent. */
+export function executeNonIdempotentAddedToDailyTotal(): Case<StatementExecution> {
+  const value = StatementExecutionSchema.parse({"columns":[{"name":"refund_date","typeName":"date","typeOid":1082},{"name":"total_usd","typeName":"numeric","typeOid":1700}],"command":"INSERT","rows":[{"refund_date":"2026-10-26","total_usd":"250.00"}],"rowsAffected":1});
+  return branchCase("completed", value);
+}
+/** Default executeNonIdempotent scenario. */
+export function executeNonIdempotentDefault(): Case<StatementExecution> { return executeNonIdempotentAddedToDailyTotal(); }
+/** Manifest scenario missingDailyTotalTable for executeNonIdempotent. */
+export function executeNonIdempotentMissingDailyTotalTable(): Case<StatementExecution> {
+  const value = StatementExecutionSchema.parse({"columns":[],"command":"","rows":[],"rowsAffected":0});
+  return branchCase("providerRejected", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "executeNonIdempotent", message: "PostgreSQL could not find refund_daily_totals." });
+}
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #query: MockQuery<QueryRowsInput, RowSet>;
   readonly #execute: MockMutation<ExecuteStatementInput, StatementExecution>;
+  readonly #executeNonIdempotent: MockMutation<ExecuteStatementInput, StatementExecution>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#query = newQuery<QueryRowsInput, RowSet>(QueryRowsDefinition).default(queryDefault());
     this.#execute = newMutation<ExecuteStatementInput, StatementExecution>(ExecuteStatementDefinition).default(executeDefault());
+    this.#executeNonIdempotent = newMutation<ExecuteStatementInput, StatementExecution>(ExecuteStatementNonIdempotentDefinition).default(executeNonIdempotentDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   query(): MockQuery<QueryRowsInput, RowSet> { return this.#query; }
   execute(): MockMutation<ExecuteStatementInput, StatementExecution> { return this.#execute; }
+  executeNonIdempotent(): MockMutation<ExecuteStatementInput, StatementExecution> { return this.#executeNonIdempotent; }
   assertNoFailures(): void {
     this.#query.assertNoFailures();
     this.#execute.assertNoFailures();
+    this.#executeNonIdempotent.assertNoFailures();
   }
 }

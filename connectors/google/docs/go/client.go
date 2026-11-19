@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -100,6 +101,8 @@ type googleResponse struct {
 	header    http.Header
 	body      []byte
 	requestID string
+	// isErrorBodyOversized reports a non-2xx body dropped for its size, which could hide a created object.
+	isErrorBodyOversized bool
 }
 
 type googleRequestError struct {
@@ -236,12 +239,24 @@ func (client *Client) ReplaceDocumentText() ReplaceDocumentTextOperation {
 // AppendText returns the AppendText operation bound to this client.
 func (client *Client) AppendText() AppendTextOperation { return AppendTextOperation{client: client} }
 
-func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Credentials, *sdkgo.Failure) {
+// resolveWriteCredential resolves the call's credential and reports whether a later attempt may succeed.
+// Only a terminal resolve error or an invalid credential is terminal; every other resolution error is transient.
+func (client *Client) resolveWriteCredential(call sdkgo.Call, operationID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, docsFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable")
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, docsFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are temporarily unavailable"), true
 	}
-	return credential, nil
+	if err != nil || validateResolvedCredentials(credential) != nil {
+		return Credentials{}, docsFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable; reconnect the connection"), false
+	}
+	return credential, nil, false
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // sendRead performs one idempotent Google read and classifies every non-2xx or unreadable response.
@@ -326,6 +341,7 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 		if isOversized {
 			// An oversized error body carries no usable reason, so the status alone classifies it.
 			response.body = nil
+			response.isErrorBodyOversized = true
 			readErr = nil
 		}
 		if readErr != nil || closeErr != nil {
@@ -414,6 +430,17 @@ func mutationAttemptFromReadOutcome[T any](outcome *readOutcome) sdkgo.MutationA
 }
 
 func isDriveID(value string) bool { return driveIDPattern.MatchString(value) }
+
+// isDefiniteRefusalStatus reports a status that proves Google refused a write; others are unknown outcomes.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
 
 func isRetryableStatus(status int, tokens []string) bool {
 	return status >= 500 || status == http.StatusRequestTimeout || isRateLimitStatus(status, tokens)

@@ -90,15 +90,31 @@ function decodeMessage(message: JSONRecord): DecodedResponse {
 
 /** Claude Messages dialect of the shared text generation Query. */
 export function newClaudeWireFormat(workspaceID: string): WireFormat {
+  return newMessagesWireFormat('anthropic', true, modelRules, workspaceID);
+}
+
+/** Rules for every gateway model, whose limits the connector cannot know. */
+function anthropicCompatibleModelRules(): ModelRequestRules {
+  return { temperature: temperatureRange(0, 1), reasoningEfforts: {}, structuredOutput: { mode: 'jsonObjectWithInstruction' } };
+}
+
+/** Messages dialect for a gateway: no effort, and structured output by instruction. */
+export function newAnthropicCompatibleWireFormat(): WireFormat {
+  return newMessagesWireFormat('anthropic-compatible', false, anthropicCompatibleModelRules, '');
+}
+
+function newMessagesWireFormat(
+  providerName: string, supportsReasoningEffort: boolean, rulesForModel: (model: string) => ModelRequestRules, workspaceID: string,
+): WireFormat {
   const stateFor = new WeakMap<DecodedResponse, { started: boolean; blocks: Map<number, string>; usage: JSONRecord }>();
   return {
-    providerName: 'anthropic', modelIDRule: 'body',
+    providerName, modelIDRule: 'body',
     features: {
       supportsInstructions: true, supportsStructuredOutput: true, supportsMaxOutputTokens: true,
-      supportsTemperature: true, supportsReasoningEffort: true,
+      supportsTemperature: true, supportsReasoningEffort,
     },
     credentialHeader: { name: 'Authorization', prefix: 'Bearer ' },
-    rulesForModel: modelRules,
+    rulesForModel,
     encodeRequest({ request, rules }) {
       const body: JSONRecord = {
         model: request.model, max_tokens: request.maxOutputTokens || 16_000,
@@ -109,7 +125,8 @@ export function newClaudeWireFormat(workspaceID: string): WireFormat {
       if (request.temperature !== undefined) body.temperature = request.temperature;
       const outputConfig: JSONRecord = {};
       if (request.reasoningEffort) outputConfig.effort = rules.reasoningEfforts[request.reasoningEffort];
-      if (request.structuredOutput) {
+      // The JSON object mode carries the schema in the instructions the pipeline already extended.
+      if (request.structuredOutput && rules.structuredOutput.mode === 'jsonSchema') {
         const output = request.structuredOutput;
         const schema = { ...output.schema };
         if (output.description && !schema.description) schema.description = output.description;

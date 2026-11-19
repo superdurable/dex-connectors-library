@@ -40,6 +40,7 @@ const (
 	dispositionUncertain
 	dispositionInvalidResponse
 	dispositionDefect
+	dispositionLimitExceeded
 )
 
 // classifiedFailure is a secret-free description of one failed call.
@@ -106,7 +107,8 @@ func classifyServerError(serverError *pgconn.PgError, phase sessionPhase) classi
 	code := serverError.Code
 	failure := classifiedFailure{disposition: dispositionRejected, kind: sdkgo.FailureProviderRejection, sqlState: code}
 	// A terminated backend or canceled synchronous-replication wait can report an error after committing locally.
-	if phase == phaseCommit && !strings.HasPrefix(code, "23") && !strings.HasPrefix(code, "40") {
+	// SQLSTATE 40003 (statement_completion_unknown) is the one rollback-class code that proves nothing.
+	if phase == phaseCommit && (code == "40003" || (!strings.HasPrefix(code, "23") && !strings.HasPrefix(code, "40"))) {
 		failure.disposition, failure.kind = dispositionUncertain, sdkgo.FailureAvailability
 		failure.message = fmt.Sprintf("PostgreSQL returned SQLSTATE %s while committing, so whether the transaction committed is unknown", describeSQLState(code))
 		return failure

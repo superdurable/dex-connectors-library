@@ -1,10 +1,10 @@
 {
   "connectorId": "reamaze",
-  "releaseTag": "connectors/reamaze/go/v0.24.0",
+  "releaseTag": "connectors/reamaze/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-reamaze",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -159,7 +159,7 @@
       "kind": "mutation",
       "operationId": "createConversation",
       "inputType": "CreateConversationInput",
-      "description": "Create one conversation on behalf of a customer in one channel. Re:amaze has no idempotency key, so the Step runs with sync durability, resends only after a confirmed 429, 503, or provably unsent request, and reconciles an unconfirmed attempt by finding the conversation whose data attribute holds the Step's key. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and do not resend a possibly accepted write.",
+      "description": "Create one conversation on behalf of a customer in one channel. Re:amaze has no idempotency key, so the Step runs with sync durability and reconciles an unconfirmed attempt by finding the conversation whose data attribute holds the Step's key; when none is found it resends while the send cap allows and selects uncertain at the cap. A create Re:amaze answered with a 2xx is never resent. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -370,7 +370,7 @@
       "kind": "mutation",
       "operationId": "replyToConversation",
       "inputType": "ReplyToConversationInput",
-      "description": "Add one public reply, which Re:amaze sends to the customer, or one internal note to a conversation. The message carries an origin_id derived from the Step, the Step runs with sync durability, and an unconfirmed attempt is reconciled by finding that origin_id instead of sending again. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and do not resend a possibly accepted write.",
+      "description": "Add one public reply, which Re:amaze sends to the customer, or one internal note to a conversation. The message carries an origin_id derived from the Step, the Step runs with sync durability, and an unconfirmed attempt is reconciled by finding that origin_id; when none is found it resends while the send cap allows and selects uncertain at the cap. A message Re:amaze answered with a 2xx is never resent. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

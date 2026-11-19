@@ -1,6 +1,6 @@
 # Google Sheets Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go@v0.26.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go@v0.26.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet`.
 
@@ -31,21 +31,32 @@ new one, and terminal `invalid_grant` responses require reauthorization.
 `UpsertRow` first reads the target sheet and matches a stable key column. It
 [replaces values at an absolute range](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update)
 when one row matches, [appends a new row](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append)
-when absent, and returns `conflict` for duplicate keys. A PUT can retry because
+when absent, and returns `conflict` for duplicate keys when no append of this
+Step may have happened; after a possible append, duplicate keys return
+`uncertain`, since one of them may be that append. A PUT can retry because
 it replaces the same values. An append uses the shared single-dispatch fence
 with synchronous Execute durability; the fence records its dispatch claim before
-the POST and prevents a second send after an unconfirmed claim. A 429, 503, 409,
-401 followed by a successful credential refresh, or traced failure before a
-connection is obtained permits a retry. The retry first reads the row key
-again. A visible row with the requested values confirms the
-append. An unconfirmed, possibly accepted append returns `uncertain`. A write
-401 that cannot obtain a new credential returns `providerRejected`.
+the POST and counts every possible send. A 429, 503, 401 followed by a
+successful credential refresh, or traced failure before a connection is
+obtained permits a retry. An unknown append outcome, such as a timeout, a lost
+connection, a 5xx, a 409, or an unreadable response, is read back by the row
+key; a visible row with the requested values confirms the append. Otherwise the
+append is resent on a later attempt, which reads the key again first, until the
+send cap (`maxSends`, default 3) is reached. Only an append still unconfirmed at
+the cap returns `uncertain`. A 2xx proves Google accepted the append even when
+its body is unusable, oversized, or breaks while it is read, and so does any
+response naming the appended range: such an append is read back by its key and
+never resent. The Fence records the sheet range as the append's provider
+locator, so later attempts only read it back; a missing row then returns
+`uncertain`. A definite refusal (400, 401, 403, 404, 411, 413,
+414, 415, or 422) returns `providerRejected` on the first send and is never
+resent; after an earlier unconfirmed append it returns `uncertain`.
 
 Google [recommends backoff for 503](https://developers.google.com/workspace/sheets/api/troubleshoot-api-errors),
 but its published [append documentation](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append)
-does not guarantee that 503 or 409 means the row was not applied, or that a
+does not guarantee that 503 means the row was not applied, or that a
 row-key lookup immediately sees every accepted append. The connector treats
-these statuses as not-processed evidence; that provider behavior and read
+503 as not-processed evidence; that provider behavior and read
 visibility timing are unverified against a live Google spreadsheet. The
 connector's `X-Idempotency-Key` is a stable correlation header; Google does not
 document deduplication for it. A delayed row becoming visible after a retry's
@@ -56,11 +67,15 @@ or Connector contract violations. `GetValues` and `FindRow` also select `defect`
 for any credential resolution failure, including transient refresh failures.
 Before an upsert write, terminal reauthorization failures such as `invalid_grant`
 select `defect` only after a not-sent checkpoint; transient credential failures
-retry after that checkpoint. If an earlier append may have been accepted, a
-terminal credential failure selects `uncertain`, while a transient failure
-retries without sending again. A conclusive Google API refusal uses
-`providerRejected`; malformed or oversized reads before a write use
-`invalidResponse`. Safe query transport, rate-limit, and availability failures
+retry after that checkpoint; once an append may have happened, no not-sent
+checkpoint is recorded, so the next attempt still counts it. If an earlier
+append may have been accepted, a terminal credential failure or a local defect
+selects `uncertain`. A rejected, oversized, or invalid lookup retries while the
+send cap allows another attempt, which counts as a possible send, and selects
+`uncertain` at the cap. A transient failure retries without sending again. A
+conclusive Google API refusal of a first send uses `providerRejected`; malformed
+or oversized reads before any write use `invalidResponse`. An unreadable
+dispatch checkpoint retries without writing. Safe query transport, rate-limit, and availability failures
 retry instead of producing a branch.
 
 ## rowAdded Trigger
@@ -139,7 +154,7 @@ The `ui/` package builds the credential-safe Studio setup bundle published as
 
 ## Python package
 
-Install `dex-connector-google-spreadsheet==0.2.0` to use the Python `getValues`,
+Install `dex-connector-google-spreadsheet==0.2.1` to use the Python `getValues`,
 `findRow`, and `upsertRow` Step factories and the `rowAdded` Trigger. The package uses the manifest-generated
 OAuth refresh driver and project connection. Its
 [`upsert_contact` example](python/examples/upsert_contact/README.md) binds the

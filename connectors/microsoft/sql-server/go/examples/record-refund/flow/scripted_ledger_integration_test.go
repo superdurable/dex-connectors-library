@@ -6,6 +6,8 @@
 package recordrefund
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go/internal/scriptedtds"
@@ -43,6 +45,7 @@ type scriptedRefundLedger struct {
 	insertFaults            []bool
 	waitForCommitDisconnect bool
 	racingOrderBeforeInsert string
+	dailyTotalCents         int64
 }
 
 func newScriptedRefundLedger() *scriptedRefundLedger {
@@ -67,6 +70,9 @@ func (ledger *scriptedRefundLedger) execute(statement scriptedtds.Statement) scr
 		})
 	case InsertRefundStatement:
 		return ledger.insert(statement)
+	case AddRefundToDailyTotalStatement:
+		cents := parseCents(statement.Parameters[0].Text)
+		return scriptedtds.Execution{RowsAffected: 1, OnCommit: func() { ledger.addToDailyTotal(cents) }}
 	}
 	return scriptedtds.Execution{Error: &scriptedtds.ServerError{Number: 102, State: 1, Severity: 15, Message: "unexpected statement"}}
 }
@@ -134,6 +140,28 @@ func (ledger *scriptedRefundLedger) appendRow(row ledgerRow) {
 	ledger.rows = append(ledger.rows, row)
 }
 
+func (ledger *scriptedRefundLedger) addToDailyTotal(cents int64) {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+	ledger.dailyTotalCents += cents
+}
+
+func (ledger *scriptedRefundLedger) committedDailyTotalCents() int64 {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+	return ledger.dailyTotalCents
+}
+
+// parseCents reads a validated decimal amount such as "250.00" or "8" as cents.
+func parseCents(amount string) int64 {
+	whole, fraction, _ := strings.Cut(amount, ".")
+	cents, err := strconv.ParseInt(whole+(fraction + "00")[:2], 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return cents
+}
+
 func (ledger *scriptedRefundLedger) commit() scriptedtds.CommitAction {
 	ledger.mu.Lock()
 	defer ledger.mu.Unlock()
@@ -163,11 +191,15 @@ func (ledger *scriptedRefundLedger) committedRowCount() int {
 const racingFlowKey = "7d3c6a52-90f1-4b8e-a2d4-6c1f0e9b5a33"
 
 func insertExecutions(server *scriptedtds.Server) []scriptedtds.Statement {
-	var inserts []scriptedtds.Statement
+	return executionsOf(server, InsertRefundStatement)
+}
+
+func executionsOf(server *scriptedtds.Server, statement string) []scriptedtds.Statement {
+	var executions []scriptedtds.Statement
 	for _, event := range server.EventsOfKind(scriptedtds.EventRPC) {
-		if event.Statement.SQL == InsertRefundStatement {
-			inserts = append(inserts, event.Statement)
+		if event.Statement.SQL == statement {
+			executions = append(executions, event.Statement)
 		}
 	}
-	return inserts
+	return executions
 }

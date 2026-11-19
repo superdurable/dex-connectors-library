@@ -31,6 +31,9 @@ const (
 
 var reamazeConnection = sdkgo.ConnectionRef{Provider: "reamaze", Name: "reamaze-test"}
 
+// sendCapOfOne makes a fenced write read back on every later attempt instead of resending.
+var sendCapOfOne = sdkgo.WithMaxSends(1)
+
 // recordedRequest is one request a recordingReamaze received.
 type recordedRequest struct {
 	method string

@@ -207,7 +207,7 @@ func GetTicketDefault() connectormock.Case[freshdesk.TicketDetails] {
 	return GetTicketCustomerIssueTicket()
 }
 
-// CreateTicketCreated selects the created branch: Freshdesk created the ticket and returned it.
+// CreateTicketCreated selects the created branch: Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned.
 func CreateTicketCreated(value freshdesk.CreateTicketOutput, failure *sdkgo.Failure) connectormock.Case[freshdesk.CreateTicketOutput] {
 	return connectormock.Branch(freshdesk.CreateTicketBranchCreated, value, failure)
 }
@@ -264,12 +264,12 @@ func UpdateTicketProviderRejected(value freshdesk.UpdateTicketOutput, failure *s
 	return connectormock.Branch(freshdesk.UpdateTicketBranchProviderRejected, value, failure)
 }
 
-// UpdateTicketInvalidResponse selects the invalidResponse branch: Freshdesk returned an invalid or oversized ticket, so the change may have been applied.
+// UpdateTicketInvalidResponse selects the invalidResponse branch: Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on the read or after the change repeats the absolute change.
 func UpdateTicketInvalidResponse(value freshdesk.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[freshdesk.UpdateTicketOutput] {
 	return connectormock.Branch(freshdesk.UpdateTicketBranchInvalidResponse, value, failure)
 }
 
-// UpdateTicketDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// UpdateTicketDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.
 func UpdateTicketDefect(value freshdesk.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[freshdesk.UpdateTicketOutput] {
 	return connectormock.Branch(freshdesk.UpdateTicketBranchDefect, value, failure)
 }
@@ -297,10 +297,10 @@ func UpdateTicketUpdateRejected() connectormock.Case[freshdesk.UpdateTicketOutpu
 	return connectormock.Branch(freshdesk.UpdateTicketBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Freshdesk rejected the ticket update."})
 }
 
-// UpdateTicketInvalidUpdatedTicket is the manifest mock invalidUpdatedTicket: The update succeeded but its ticket answer is malformed.
+// UpdateTicketInvalidUpdatedTicket is the manifest mock invalidUpdatedTicket: Kept for compatibility: the ticket read before the change is malformed, which the connector now retries.
 func UpdateTicketInvalidUpdatedTicket() connectormock.Case[freshdesk.UpdateTicketOutput] {
 	var value freshdesk.UpdateTicketOutput
-	return connectormock.Branch(freshdesk.UpdateTicketBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Freshdesk returned an invalid updated ticket."})
+	return connectormock.Branch(freshdesk.UpdateTicketBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Freshdesk returned an invalid ticket."})
 }
 
 // UpdateTicketDefault is the manifest default, reprioritizedCustomerIssue, which New installs.
@@ -308,7 +308,7 @@ func UpdateTicketDefault() connectormock.Case[freshdesk.UpdateTicketOutput] {
 	return UpdateTicketReprioritizedCustomerIssue()
 }
 
-// AddNoteAdded selects the added branch: Freshdesk added the note or reply and returned it.
+// AddNoteAdded selects the added branch: Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned.
 func AddNoteAdded(value freshdesk.AddNoteOutput, failure *sdkgo.Failure) connectormock.Case[freshdesk.AddNoteOutput] {
 	return connectormock.Branch(freshdesk.AddNoteBranchAdded, value, failure)
 }

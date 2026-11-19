@@ -37,7 +37,7 @@ func TestSuspendAndUnsuspendSetAnAbsoluteFlagThatIsSafeToRepeat(t *testing.T) {
 	}
 }
 
-func TestSuspensionSelectsNotFoundAndRejectsAnUnchangedAccount(t *testing.T) {
+func TestSuspensionSelectsNotFoundAndRetriesAnUnchangedAccount(t *testing.T) {
 	directory := newFakeDirectory(t)
 	client := newTestClient(t, directory.URL)
 
@@ -49,11 +49,8 @@ func TestSuspensionSelectsNotFoundAndRejectsAnUnchangedAccount(t *testing.T) {
 	directory.setIntercept(func(recordedRequest, int) (int, any, bool) {
 		return http.StatusOK, map[string]any{"id": "123", "primaryEmail": "abuse@example.com", "suspended": true, "suspensionReason": "ABUSE"}, true
 	})
-	kept, err := sdkgo.RunMutation(newTestDexContext("unsuspend-kept"), client.UnsuspendUser(), testConnection, workspaceadmin.UnsuspendUserInput{UserKey: "abuse@example.com"})
-	require.NoError(t, err)
-	require.Equal(t, workspaceadmin.UnsuspendUserBranchProviderRejected, kept.Branch)
-	require.True(t, kept.Value.IsSuspended)
-	require.Equal(t, sdkgo.FailureProviderRejection, kept.Failure.Kind)
+	_, err = sdkgo.RunMutation(newTestDexContext("unsuspend-kept"), client.UnsuspendUser(), testConnection, workspaceadmin.UnsuspendUserInput{UserKey: "abuse@example.com"})
+	require.Equal(t, sdkgo.FailureProtocol, requireRetry(t, err).Kind, "a 2xx contradicting the absolute write is unknown")
 
 	invalid, err := sdkgo.RunMutation(newTestDexContext("suspend-invalid"), client.SuspendUser(), testConnection, workspaceadmin.SuspendUserInput{})
 	require.NoError(t, err)

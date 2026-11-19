@@ -316,6 +316,13 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+          "providerId": "event-1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "event": {
             "calendarId": "team-calendar",
@@ -1534,6 +1541,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+          "state": "notSent"
+        },
         "output": {
           "event": {
             "end": {
@@ -1625,6 +1637,11 @@
       "expected": {
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+          "state": "notSent"
+        },
         "output": {
           "event": {
             "end": {
@@ -1988,28 +2005,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "event": {
-            "end": {
-              "dateTime": "",
-              "timeZone": ""
-            },
-            "id": "",
-            "isAllDay": false,
-            "isCancelled": false,
-            "isOrganizer": false,
-            "showAs": "",
-            "start": {
-              "dateTime": "",
-              "timeZone": ""
-            }
-          },
-          "wasAlreadyApplied": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2036,7 +2035,7 @@
         "subject": "Updated",
         "timeZone": "America/Los_Angeles"
       },
-      "name": "updateEvent-invalid-response",
+      "name": "updateEvent-invalid-read-retries",
       "operation": "updateEvent"
     },
     {
@@ -3139,6 +3138,11 @@
         {
           "exchangeCount": 2,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3338,6 +3342,12 @@
         {
           "exchangeCount": 2,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+            "sendCount": 1,
+            "state": "claimed"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3480,6 +3490,13 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+          "providerId": "event-1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "event": {
             "calendarId": "team-calendar",
@@ -3673,6 +3690,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+          "state": "canResend"
+        },
         "output": {
           "event": {
             "end": {
@@ -3722,6 +3744,170 @@
       },
       "name": "createEvent-bad-request-rejected",
       "operation": "createEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"generalException\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars/team-calendar/events",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "Agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isOnlineMeeting": true,
+            "location": {
+              "displayName": "Room A"
+            },
+            "onlineMeetingProvider": "teamsForBusiness",
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey",
+                "value": "calendar-create-1"
+              }
+            ],
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-unknown-at-cap-uncertain",
+      "operation": "createEvent",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "attempts": 2,

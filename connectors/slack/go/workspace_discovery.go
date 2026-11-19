@@ -129,9 +129,9 @@ func (operation ListChannelsOperation) Invoke(call sdkgo.Call, input ListChannel
 	if !isVisibilityValid || input.Limit < 0 || input.Limit > maximumChannelPageLimit {
 		return sdkgo.NewQueryBranch(ListChannelsBranchDefect, ListChannelsOutput{}, slackFailurePointer(operationName, sdkgo.FailureValidation, "visibility must be blank, public, or private, and limit must be from 0 through 999"), sdkgo.Receipt{})
 	}
-	credentials, failure, _ := operation.client.resolveCredentials(call, operationName, botCredentialToken)
+	credentials, failure, isTerminalCredentialFailure := operation.client.resolveCredentials(call, operationName, botCredentialToken)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(ListChannelsBranchDefect, ListChannelsOutput{}, failure, sdkgo.Receipt{})
+		return queryCredentialFailure[ListChannelsOutput](ListChannelsBranchDefect, failure, isTerminalCredentialFailure)
 	}
 	limit := input.Limit
 	if limit == 0 {
@@ -179,9 +179,9 @@ func (GetWorkspaceIdentityOperation) Definition() sdkgo.QueryDefinition {
 // Invoke reads the bot token's workspace and identity with a POST to auth.test, as Slack documents it.
 func (operation GetWorkspaceIdentityOperation) Invoke(call sdkgo.Call, _ GetWorkspaceIdentityInput) sdkgo.QueryAttempt[GetWorkspaceIdentityOutput] {
 	const operationName = "getWorkspaceIdentity"
-	credentials, failure, _ := operation.client.resolveCredentials(call, operationName, botCredentialToken)
+	credentials, failure, isTerminalCredentialFailure := operation.client.resolveCredentials(call, operationName, botCredentialToken)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(GetWorkspaceIdentityBranchDefect, GetWorkspaceIdentityOutput{}, failure, sdkgo.Receipt{})
+		return queryCredentialFailure[GetWorkspaceIdentityOutput](GetWorkspaceIdentityBranchDefect, failure, isTerminalCredentialFailure)
 	}
 	response, err := operation.client.postForm(call, &credentials, botCredentialToken, "auth.test", nil)
 	if attempt, isClassified := classifyQueryResponse(operation.client, call, operationName, response, err, GetWorkspaceIdentityBranchInvalidResponse, GetWorkspaceIdentityBranchProviderRejected, GetWorkspaceIdentityOutput{}, "Slack workspace identity is temporarily unavailable", "Slack rate limited the identity query"); isClassified {
