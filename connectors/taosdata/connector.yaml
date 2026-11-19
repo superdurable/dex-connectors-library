@@ -8,6 +8,12 @@ metadata:
   categories: [databases-storage]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-taosdata"
+      operations: [listDatabases]
+      triggers: []
   provider: taosdata
   codegen:
     go:
