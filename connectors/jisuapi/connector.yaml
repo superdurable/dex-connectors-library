@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: jisuapi
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-jisuapi", operations: [listProvinces], triggers: []}
   codegen:
     go:
       package: jisuapi

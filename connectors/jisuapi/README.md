@@ -5,3 +5,7 @@ This connector calls the official [administrative-area province API](https://www
 Register at [极速数据](https://www.jisuapi.com/), apply for 全国省市县行政区划分, and copy the secret `appkey` from 个人中心 into Dex Web Connections. The [official integration guide](https://m.jisuapi.com/news/detail/580) also explains optional IP whitelisting. The provider requires `appkey` in the HTTPS query string; this connector disables redirects and excludes the URL, key, and raw response message from results and errors.
 
 The official product page lists 100 free calls per day for free members, with higher membership allowances. A successful status 0 generally counts as a call according to the integration guide. Run the [example Flow](go/examples/list-provinces/) with the generated mock or a user-controlled connection.
+
+# TypeScript
+
+The TypeScript package `@superdurable/connector-jisuapi` implements `listProvinces`. Its runnable Flow is in [`typescript/examples/basic`](typescript/examples/basic); the conformance test replays Go-recorded provider responses. Live JisuAPI authorization remains unverified.
