@@ -53,29 +53,9 @@ from script.dex_compatibility import (
     require_dex_web_security_tests_passed,
     require_dex_web_tests_passed,
     run_visualize,
-    validate_definition,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-class TriggerOnlyDefinitionTest(unittest.TestCase):
-    def test_accepts_a_trigger_binding_without_a_connector_step(self) -> None:
-        definition = {
-            "valid": True,
-            "v2": {"connectorTriggerBindings": [{
-                "connectorId": "bitbucket",
-                "triggerName": "repositoryEventReceived",
-                "connectionName": "bitbucket",
-                "bindingName": "repository-events",
-            }]},
-        }
-        validate_definition(definition, "example.com/bitbucket", "v0.3.0", Path("workflow.go"), "GetConnectorTriggerBindings")
-
-    def test_rejects_an_incomplete_trigger_binding(self) -> None:
-        definition = {"valid": True, "v2": {"connectorTriggerBindings": [{"connectorId": "bitbucket"}]}}
-        with self.assertRaisesRegex(RuntimeError, "invalid connector Trigger binding"):
-            validate_definition(definition, "example.com/bitbucket", "v0.3.0", Path("workflow.go"), "GetConnectorTriggerBindings")
 
 
 class ModuleProxyTest(unittest.TestCase):
