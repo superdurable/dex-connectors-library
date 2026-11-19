@@ -11,3 +11,5 @@ Sign in to Lixinger, open **开放平台 > [我的Token](https://www.lixinger.co
 ## Example
 
 The [stock company directory Flow](go/examples/stock-company-directory/) is a runnable Worker with static Dex connection name `lixinger`. Its mock is synthetic and verified with a real Dex Worker and Client. Live Lixinger authorization, plan allowance, matching behavior, and provider errors remain unverified without a token. These identifiers are reference data and are not investment advice.
+
+The [TypeScript package](typescript/README.md) implements the same `listStockCompanies` Query, including Go-recorded conformance replay and a real Dex Worker and Client integration test.
