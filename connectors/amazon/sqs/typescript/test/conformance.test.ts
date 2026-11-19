@@ -2,13 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 import { it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { RetryError, runMutation, SecretString, type Call, type Mutation } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SQSClient } from '../src/client.js';
 import { ChangeMessageVisibilityInputSchema, DeleteMessageInputSchema, ReceiveMessagesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/amazon/sqs/scenarios.json', import.meta.url));
+const packageManifest = JSON.parse(readFileSync(new URL('../dex-connector.json', import.meta.url), 'utf8')) as { factories: { operationId?: string }[] };
+const supportedOperations = new Set(packageManifest.factories.map(factory => factory.operationId).filter(Boolean));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/amazon/sqs/scenarios.json', import.meta.url))
+  .filter(scenario => supportedOperations.has(scenario.operation));
 
 function productionMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input, key: string) {
   return invokeProductionMutation(operation, key,

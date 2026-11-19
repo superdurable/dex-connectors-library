@@ -16,8 +16,68 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createTopic/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.TopicIdentity](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic"}`)
+			return err
+		}},
+		{name: "deleteTopic/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.TopicIdentity](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic"}`)
+			return err
+		}},
+		{name: "setTopicAttribute/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.TopicIdentity](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic"}`)
+			return err
+		}},
+		{name: "getTopicAttributes/foundTopicAttributes/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.TopicAttributes](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","attributes":{"DisplayName":"Operations","TracingConfig":"PassThrough"}}`)
+			return err
+		}},
+		{name: "publishMessage/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.PublishedMessage](`{"messageID":"example-message-id"}`)
+			return err
+		}},
 		{name: "listTopics/pageDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sns.TopicPage](`{"topicARNs":["arn:aws:sns:us-east-1:123456789012:example-topic"],"nextToken":""}`)
+			return err
+		}},
+		{name: "subscribeEndpoint/subscribedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionIdentity](`{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"https","endpoint":"https://example.com/sns"}`)
+			return err
+		}},
+		{name: "listSubscriptionsByTopic/topicSubscriptionPages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"https","endpoint":"https://example.com/sns","owner":"123456789012"}],"nextToken":"subscription-page-2"}`)
+			return err
+		}},
+		{name: "listSubscriptionsByTopic/topicSubscriptionPages/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:22222222-2222-4222-8222-222222222222","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"email","endpoint":"reader@example.net","owner":"123456789012"}],"nextToken":"subscription-page-3"}`)
+			return err
+		}},
+		{name: "listSubscriptionsByTopic/topicSubscriptionPages/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:33333333-3333-4333-8333-333333333333","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"sqs","endpoint":"arn:aws:sqs:us-east-1:123456789012:queue","owner":"123456789012"}]}`)
+			return err
+		}},
+		{name: "listSubscriptions/accountSubscriptionPages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"https","endpoint":"https://example.com/sns","owner":"123456789012"}],"nextToken":"account-page-2"}`)
+			return err
+		}},
+		{name: "listSubscriptions/accountSubscriptionPages/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionPage](`{"subscriptions":[{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:22222222-2222-4222-8222-222222222222","topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","protocol":"email","endpoint":"reader@example.net","owner":"123456789012"}],"nextToken":"account-page-3"}`)
+			return err
+		}},
+		{name: "listSubscriptions/accountSubscriptionPages/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionPage](`{"subscriptions":[]}`)
+			return err
+		}},
+		{name: "getSubscriptionAttributes/foundAttributes/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionAttributes](`{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111","attributes":{"PendingConfirmation":"false","RawMessageDelivery":"false"}}`)
+			return err
+		}},
+		{name: "setSubscriptionAttribute/updatedSubscription/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionIdentity](`{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111"}`)
+			return err
+		}},
+		{name: "unsubscribeEndpoint/unsubscribedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.SubscriptionIdentity](`{"subscriptionARN":"arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111"}`)
 			return err
 		}},
 	}
@@ -30,7 +90,40 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateTopic().Definition().Operation.OperationID != "createTopic" {
+		t.Errorf("createTopic mock has another definition")
+	}
+	if mock.DeleteTopic().Definition().Operation.OperationID != "deleteTopic" {
+		t.Errorf("deleteTopic mock has another definition")
+	}
+	if mock.SetTopicAttribute().Definition().Operation.OperationID != "setTopicAttribute" {
+		t.Errorf("setTopicAttribute mock has another definition")
+	}
+	if mock.GetTopicAttributes().Definition().Operation.OperationID != "getTopicAttributes" {
+		t.Errorf("getTopicAttributes mock has another definition")
+	}
+	if mock.PublishMessage().Definition().Operation.OperationID != "publishMessage" {
+		t.Errorf("publishMessage mock has another definition")
+	}
 	if mock.ListTopics().Definition().Operation.OperationID != "listTopics" {
 		t.Errorf("listTopics mock has another definition")
+	}
+	if mock.SubscribeEndpoint().Definition().Operation.OperationID != "subscribeEndpoint" {
+		t.Errorf("subscribeEndpoint mock has another definition")
+	}
+	if mock.ListSubscriptionsByTopic().Definition().Operation.OperationID != "listSubscriptionsByTopic" {
+		t.Errorf("listSubscriptionsByTopic mock has another definition")
+	}
+	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
+		t.Errorf("listSubscriptions mock has another definition")
+	}
+	if mock.GetSubscriptionAttributes().Definition().Operation.OperationID != "getSubscriptionAttributes" {
+		t.Errorf("getSubscriptionAttributes mock has another definition")
+	}
+	if mock.SetSubscriptionAttribute().Definition().Operation.OperationID != "setSubscriptionAttribute" {
+		t.Errorf("setSubscriptionAttribute mock has another definition")
+	}
+	if mock.UnsubscribeEndpoint().Definition().Operation.OperationID != "unsubscribeEndpoint" {
+		t.Errorf("unsubscribeEndpoint mock has another definition")
 	}
 }

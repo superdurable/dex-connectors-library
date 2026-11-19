@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package sqs consumes messages from Amazon SQS standard and FIFO queues, and from SQS-compatible servers
+// Package sqs sends and consumes messages from Amazon SQS standard and FIFO queues, and from SQS-compatible servers
 // such as ElasticMQ, as Dex connector Steps.
 //
 // A consuming Flow receives a batch with ReceiveMessages, processes each message, and then acknowledges it
@@ -14,15 +14,16 @@
 // configured Region. The connector sends each request itself, so it reads every response within its own
 // limits, never follows a redirect, and leaves retries to Dex.
 //
-// Every operation is safe to repeat. A repeated receive of a standard queue may hide further messages,
+// Receive, delete, and visibility operations are safe to repeat. A repeated receive of a standard queue may hide further messages,
 // which reappear when their visibility timeout ends; a repeated receive of a FIFO queue sends the same
 // ReceiveRequestAttemptId and gets the same batch back. A repeated deletion leaves the message deleted, though
 // a server that forgets the handle, such as ElasticMQ, answers the repeat with receiptHandleInvalid. Setting a
-// visibility timeout again restarts the timeout from the later attempt.
+// visibility timeout again restarts the timeout from the later attempt. Sending to a standard queue is limited
+// to three possible sends because a repeated send may deliver a duplicate.
 //
 // Applications use the generated operation-specific Step factories, such as NewReceiveMessagesStep and
 // NewDeleteMessageStep, with a Connection built by NewProjectConnection or NewConnection. The runnable
-// example in examples/queue-consumer uses every operation in one Flow.
+// example in examples/queue-consumer registers a consumer Flow and a send Flow.
 package sqs
 
 import (
@@ -160,6 +161,8 @@ type classifiedFailure struct {
 	failure    sdkgo.Failure
 	retryAfter time.Duration
 	requestID  string
+	statusCode int
+	errorCode  string
 }
 
 // sqsErrorDocument is the JSON error body SQS returns for every failed request.
@@ -332,7 +335,7 @@ func (client *Client) readErrorResponse(response *http.Response, credentials Cre
 
 // classifyErrorResponse maps a non-2xx response onto Retry or a branch category, by status and error code.
 func classifyErrorResponse(operationID string, subject string, response providerErrorResponse) classifiedFailure {
-	classified := classifiedFailure{requestID: response.requestID, retryAfter: response.retryAfter}
+	classified := classifiedFailure{requestID: response.requestID, retryAfter: response.retryAfter, statusCode: response.statusCode, errorCode: response.code}
 	status, code := response.statusCode, response.code
 	switch {
 	case status == http.StatusTooManyRequests || isThrottlingErrorCode(code):
@@ -386,8 +389,11 @@ func (client *Client) receipt(call sdkgo.Call, requestID string, providerObjectI
 }
 
 // mutationAttemptForFailure maps a classified failure to Retry or a branch; blank receiptHandleInvalid means rejected.
-func mutationAttemptForFailure[T any](classified classifiedFailure, receipt sdkgo.Receipt, receiptHandleInvalid, rejected, defect sdkgo.BranchID, value T) sdkgo.MutationAttempt[T] {
+func mutationAttemptForFailure[T any](call sdkgo.Call, classified classifiedFailure, receipt sdkgo.Receipt, receiptHandleInvalid, rejected, defect sdkgo.BranchID, value T) sdkgo.MutationAttempt[T] {
 	failure := classified.failure
+	if classified.outcome != outcomeRetry && ((call.Context != nil && call.Context.Attempt() > 1) || !isDefiniteSQSRefusal(providerErrorResponse{statusCode: classified.statusCode, code: classified.errorCode})) {
+		return sdkgo.NewMutationRetry[T](failure, classified.retryAfter)
+	}
 	switch {
 	case classified.outcome == outcomeRetry:
 		return sdkgo.NewMutationRetry[T](failure, classified.retryAfter)

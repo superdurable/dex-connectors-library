@@ -25,7 +25,8 @@ import (
 func TestItemLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := dynamodbmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	putFlow := NewPutItemFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, putFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,11 @@ func TestItemLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.True(t, output.Exists)
 	require.Len(t, mock.GetItem().Calls(), 1)
+	putFlowID := "dynamodb-put-item-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, putFlow, putFlowID, dynamodb.PutItemInput{TableName: "Examples", Item: map[string]json.RawMessage{"pk": json.RawMessage(`{"S":"example"}`)}}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	putResult, err := client.WaitForFlow(ctx, putFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, putResult.Status, putResult.ErrorMessage)
+	require.Len(t, mock.PutItem().Calls(), 1)
 }

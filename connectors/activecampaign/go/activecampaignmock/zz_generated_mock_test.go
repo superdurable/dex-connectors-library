@@ -16,11 +16,211 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "upsertEcommerceOrder/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderUpsertMetadata](`{"connectionId":"3","storeOrderId":"store-order-1","email":"person@example.com"}`)
+			return err
+		}},
+		{name: "listEcommerceOrders/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrdersPage](`{"orders":[{"id":"1","connectionId":"3","externalId":"store-order-1","customerId":"15","email":"person@example.com","currency":"USD","totalMinor":9111,"state":1}],"total":1}`)
+			return err
+		}},
+		{name: "getEcommerceOrder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderMetadata](`{"id":"1","connectionId":"3","externalId":"store-order-1","customerId":"15","email":"person@example.com","currency":"USD","totalMinor":9111,"state":1}`)
+			return err
+		}},
+		{name: "listEcommerceOrderProducts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderProductsPage](`{"products":[{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}],"total":1}`)
+			return err
+		}},
+		{name: "getEcommerceOrderProduct/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderProductMetadata](`{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}`)
+			return err
+		}},
+		{name: "listProductsForEcommerceOrder/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceOrderProductsPage](`{"products":[{"id":"7","orderId":"1","externalId":"product-1","name":"Skateboard","priceMinor":5000,"quantity":1}],"total":1}`)
+			return err
+		}},
+		{name: "listEcommerceCustomers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomersPage](`{"customers":[{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}],"total":1}`)
+			return err
+		}},
+		{name: "getEcommerceCustomer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+			return err
+		}},
+		{name: "createEcommerceCustomer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+			return err
+		}},
+		{name: "updateEcommerceCustomer/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+			return err
+		}},
+		{name: "deleteEcommerceCustomer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomerDeletion](`{"customerId":"15","deleted":true}`)
+			return err
+		}},
+		{name: "listConnections/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionsPage](`{"connections":[{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}],"total":1}`)
+			return err
+		}},
+		{name: "getConnection/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionMetadata](`{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}`)
+			return err
+		}},
+		{name: "createConnection/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionMetadata](`{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}`)
+			return err
+		}},
+		{name: "updateConnection/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionMetadata](`{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}`)
+			return err
+		}},
+		{name: "deleteConnection/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ConnectionDeletion](`{"connectionId":"1","deleted":true}`)
+			return err
+		}},
+		{name: "listAccountContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactsPage](`{"associations":[{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getAccountContact/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactAssociation](`{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}`)
+			return err
+		}},
+		{name: "createAccountContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactAssociation](`{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}`)
+			return err
+		}},
+		{name: "updateAccountContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactAssociation](`{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}`)
+			return err
+		}},
+		{name: "deleteAccountContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactDeletion](`{"associationId":"17","deleted":true}`)
+			return err
+		}},
+		{name: "listAccounts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountsPage](`{"accounts":[{"id":"1","name":"Example Account","accountUrl":"https://example.com"}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getAccount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountMetadata](`{"id":"1","name":"Example Account","accountUrl":"https://example.com"}`)
+			return err
+		}},
+		{name: "createAccount/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountMetadata](`{"id":"1","name":"Example Account","accountUrl":"https://example.com"}`)
+			return err
+		}},
+		{name: "updateAccount/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountMetadata](`{"id":"1","name":"Example Account","accountUrl":"https://example.com"}`)
+			return err
+		}},
+		{name: "deleteAccount/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountDeletion](`{"accountId":"1","deleted":true}`)
+			return err
+		}},
+		{name: "listContactListMemberships/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactListMembershipsPage](`{"memberships":[{"id":"42","contactId":"68","listId":"11","status":1}],"contactId":"68","offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "subscribeContactToList/subscribedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactListMembership](`{"id":"42","contactId":"68","listId":"11","status":1}`)
+			return err
+		}},
+		{name: "unsubscribeContactFromList/unsubscribedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactListMembership](`{"id":"42","contactId":"68","listId":"11","status":2}`)
+			return err
+		}},
+		{name: "listContactTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactTagAssociations](`{"contactId":"68","tags":[{"associationId":"22","contactId":"68","tagId":"16"}]}`)
+			return err
+		}},
+		{name: "applyTagToContact/appliedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactTagAssociation](`{"associationId":"22","contactId":"68","tagId":"16"}`)
+			return err
+		}},
+		{name: "removeTagFromContact/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactTagRemoval](`{"contactId":"68","tagId":"16","removed":true}`)
+			return err
+		}},
+		{name: "listDealNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealNotesPage](`{"notes":[{"id":"91","dealId":"46","text":"Follow up"}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getDealNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+			return err
+		}},
+		{name: "createDealNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+			return err
+		}},
+		{name: "updateDealNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+			return err
+		}},
+		{name: "listDeals/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealsPage](`{"deals":[{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getDeal/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+			return err
+		}},
+		{name: "createDeal/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+			return err
+		}},
+		{name: "updateDeal/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealMetadata](`{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}`)
+			return err
+		}},
+		{name: "deleteDeal/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealDeletion](`{"dealId":"46","deleted":true}`)
+			return err
+		}},
+		{name: "listTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagsPage](`{"tags":[{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getTag/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+			return err
+		}},
+		{name: "createTag/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+			return err
+		}},
+		{name: "updateTag/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+			return err
+		}},
+		{name: "deleteTag/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagDeletion](`{"tagId":"16","deleted":true}`)
+			return err
+		}},
+		{name: "listLists/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ListsPage](`{"lists":[{"id":"11","name":"Newsletter","activeSubscribers":7,"nonDeletedSubscribers":8}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getList/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ListMetadata](`{"id":"11","name":"Newsletter","activeSubscribers":0,"nonDeletedSubscribers":0}`)
+			return err
+		}},
 		{name: "listContacts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.ContactsPage](`{"contacts":[{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}],"offset":0,"limit":20,"total":1}`)
 			return err
 		}},
 		{name: "getContact/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactMetadata](`{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}`)
+			return err
+		}},
+		{name: "syncContact/syncedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactMetadata](`{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.ContactMetadata](`{"id":"68","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace"}`)
 			return err
 		}},
@@ -34,10 +234,160 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.UpsertEcommerceOrder().Definition().Operation.OperationID != "upsertEcommerceOrder" {
+		t.Errorf("upsertEcommerceOrder mock has another definition")
+	}
+	if mock.ListEcommerceOrders().Definition().Operation.OperationID != "listEcommerceOrders" {
+		t.Errorf("listEcommerceOrders mock has another definition")
+	}
+	if mock.GetEcommerceOrder().Definition().Operation.OperationID != "getEcommerceOrder" {
+		t.Errorf("getEcommerceOrder mock has another definition")
+	}
+	if mock.ListEcommerceOrderProducts().Definition().Operation.OperationID != "listEcommerceOrderProducts" {
+		t.Errorf("listEcommerceOrderProducts mock has another definition")
+	}
+	if mock.GetEcommerceOrderProduct().Definition().Operation.OperationID != "getEcommerceOrderProduct" {
+		t.Errorf("getEcommerceOrderProduct mock has another definition")
+	}
+	if mock.ListProductsForEcommerceOrder().Definition().Operation.OperationID != "listProductsForEcommerceOrder" {
+		t.Errorf("listProductsForEcommerceOrder mock has another definition")
+	}
+	if mock.ListEcommerceCustomers().Definition().Operation.OperationID != "listEcommerceCustomers" {
+		t.Errorf("listEcommerceCustomers mock has another definition")
+	}
+	if mock.GetEcommerceCustomer().Definition().Operation.OperationID != "getEcommerceCustomer" {
+		t.Errorf("getEcommerceCustomer mock has another definition")
+	}
+	if mock.CreateEcommerceCustomer().Definition().Operation.OperationID != "createEcommerceCustomer" {
+		t.Errorf("createEcommerceCustomer mock has another definition")
+	}
+	if mock.UpdateEcommerceCustomer().Definition().Operation.OperationID != "updateEcommerceCustomer" {
+		t.Errorf("updateEcommerceCustomer mock has another definition")
+	}
+	if mock.DeleteEcommerceCustomer().Definition().Operation.OperationID != "deleteEcommerceCustomer" {
+		t.Errorf("deleteEcommerceCustomer mock has another definition")
+	}
+	if mock.ListConnections().Definition().Operation.OperationID != "listConnections" {
+		t.Errorf("listConnections mock has another definition")
+	}
+	if mock.GetConnection().Definition().Operation.OperationID != "getConnection" {
+		t.Errorf("getConnection mock has another definition")
+	}
+	if mock.CreateConnection().Definition().Operation.OperationID != "createConnection" {
+		t.Errorf("createConnection mock has another definition")
+	}
+	if mock.UpdateConnection().Definition().Operation.OperationID != "updateConnection" {
+		t.Errorf("updateConnection mock has another definition")
+	}
+	if mock.DeleteConnection().Definition().Operation.OperationID != "deleteConnection" {
+		t.Errorf("deleteConnection mock has another definition")
+	}
+	if mock.ListAccountContacts().Definition().Operation.OperationID != "listAccountContacts" {
+		t.Errorf("listAccountContacts mock has another definition")
+	}
+	if mock.GetAccountContact().Definition().Operation.OperationID != "getAccountContact" {
+		t.Errorf("getAccountContact mock has another definition")
+	}
+	if mock.CreateAccountContact().Definition().Operation.OperationID != "createAccountContact" {
+		t.Errorf("createAccountContact mock has another definition")
+	}
+	if mock.UpdateAccountContact().Definition().Operation.OperationID != "updateAccountContact" {
+		t.Errorf("updateAccountContact mock has another definition")
+	}
+	if mock.DeleteAccountContact().Definition().Operation.OperationID != "deleteAccountContact" {
+		t.Errorf("deleteAccountContact mock has another definition")
+	}
+	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
+		t.Errorf("listAccounts mock has another definition")
+	}
+	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
+		t.Errorf("getAccount mock has another definition")
+	}
+	if mock.CreateAccount().Definition().Operation.OperationID != "createAccount" {
+		t.Errorf("createAccount mock has another definition")
+	}
+	if mock.UpdateAccount().Definition().Operation.OperationID != "updateAccount" {
+		t.Errorf("updateAccount mock has another definition")
+	}
+	if mock.DeleteAccount().Definition().Operation.OperationID != "deleteAccount" {
+		t.Errorf("deleteAccount mock has another definition")
+	}
+	if mock.ListContactListMemberships().Definition().Operation.OperationID != "listContactListMemberships" {
+		t.Errorf("listContactListMemberships mock has another definition")
+	}
+	if mock.SubscribeContactToList().Definition().Operation.OperationID != "subscribeContactToList" {
+		t.Errorf("subscribeContactToList mock has another definition")
+	}
+	if mock.UnsubscribeContactFromList().Definition().Operation.OperationID != "unsubscribeContactFromList" {
+		t.Errorf("unsubscribeContactFromList mock has another definition")
+	}
+	if mock.ListContactTags().Definition().Operation.OperationID != "listContactTags" {
+		t.Errorf("listContactTags mock has another definition")
+	}
+	if mock.ApplyTagToContact().Definition().Operation.OperationID != "applyTagToContact" {
+		t.Errorf("applyTagToContact mock has another definition")
+	}
+	if mock.RemoveTagFromContact().Definition().Operation.OperationID != "removeTagFromContact" {
+		t.Errorf("removeTagFromContact mock has another definition")
+	}
+	if mock.ListDealNotes().Definition().Operation.OperationID != "listDealNotes" {
+		t.Errorf("listDealNotes mock has another definition")
+	}
+	if mock.GetDealNote().Definition().Operation.OperationID != "getDealNote" {
+		t.Errorf("getDealNote mock has another definition")
+	}
+	if mock.CreateDealNote().Definition().Operation.OperationID != "createDealNote" {
+		t.Errorf("createDealNote mock has another definition")
+	}
+	if mock.UpdateDealNote().Definition().Operation.OperationID != "updateDealNote" {
+		t.Errorf("updateDealNote mock has another definition")
+	}
+	if mock.ListDeals().Definition().Operation.OperationID != "listDeals" {
+		t.Errorf("listDeals mock has another definition")
+	}
+	if mock.GetDeal().Definition().Operation.OperationID != "getDeal" {
+		t.Errorf("getDeal mock has another definition")
+	}
+	if mock.CreateDeal().Definition().Operation.OperationID != "createDeal" {
+		t.Errorf("createDeal mock has another definition")
+	}
+	if mock.UpdateDeal().Definition().Operation.OperationID != "updateDeal" {
+		t.Errorf("updateDeal mock has another definition")
+	}
+	if mock.DeleteDeal().Definition().Operation.OperationID != "deleteDeal" {
+		t.Errorf("deleteDeal mock has another definition")
+	}
+	if mock.ListTags().Definition().Operation.OperationID != "listTags" {
+		t.Errorf("listTags mock has another definition")
+	}
+	if mock.GetTag().Definition().Operation.OperationID != "getTag" {
+		t.Errorf("getTag mock has another definition")
+	}
+	if mock.CreateTag().Definition().Operation.OperationID != "createTag" {
+		t.Errorf("createTag mock has another definition")
+	}
+	if mock.UpdateTag().Definition().Operation.OperationID != "updateTag" {
+		t.Errorf("updateTag mock has another definition")
+	}
+	if mock.DeleteTag().Definition().Operation.OperationID != "deleteTag" {
+		t.Errorf("deleteTag mock has another definition")
+	}
+	if mock.ListLists().Definition().Operation.OperationID != "listLists" {
+		t.Errorf("listLists mock has another definition")
+	}
+	if mock.GetList().Definition().Operation.OperationID != "getList" {
+		t.Errorf("getList mock has another definition")
+	}
 	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
 		t.Errorf("listContacts mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.SyncContact().Definition().Operation.OperationID != "syncContact" {
+		t.Errorf("syncContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
 	}
 }

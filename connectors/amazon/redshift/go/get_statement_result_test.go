@@ -20,6 +20,7 @@ var testConnection = sdkgo.ConnectionRef{Provider: "amazon-redshift", Name: "ama
 
 type queryContext struct{ dex.Context }
 
+func (queryContext) Attempt() int32              { return 1 }
 func (queryContext) FlowID() string              { return "redshift-provider-test" }
 func (queryContext) StepExecutionID() string     { return "get-statement-result" }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }

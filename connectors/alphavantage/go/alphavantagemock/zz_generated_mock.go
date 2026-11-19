@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted alphavantage connection. Script each operation through its accessor.
 type Mock struct {
-	connection         alphavantage.Connection
-	getGlobalQuote     *connectormock.Query[alphavantage.StockInput, alphavantage.GlobalQuoteOutput]
-	getTimeSeriesDaily *connectormock.Query[alphavantage.StockInput, alphavantage.DailySeriesOutput]
+	connection              alphavantage.Connection
+	searchSymbols           *connectormock.Query[alphavantage.SymbolSearchInput, alphavantage.SymbolSearchOutput]
+	getCurrencyExchangeRate *connectormock.Query[alphavantage.CurrencyPairInput, alphavantage.CurrencyExchangeRateOutput]
+	getMarketStatus         *connectormock.Query[alphavantage.MarketStatusInput, alphavantage.MarketStatusOutput]
+	getTopGainersLosers     *connectormock.Query[alphavantage.MarketMoversInput, alphavantage.MarketMoversOutput]
+	getGlobalQuote          *connectormock.Query[alphavantage.StockInput, alphavantage.GlobalQuoteOutput]
+	getTimeSeriesDaily      *connectormock.Query[alphavantage.StockInput, alphavantage.DailySeriesOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +31,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getGlobalQuote:     connectormock.NewQuery[alphavantage.StockInput, alphavantage.GlobalQuoteOutput](t, alphavantage.GetGlobalQuoteDefinition),
-		getTimeSeriesDaily: connectormock.NewQuery[alphavantage.StockInput, alphavantage.DailySeriesOutput](t, alphavantage.GetTimeSeriesDailyDefinition),
+		searchSymbols:           connectormock.NewQuery[alphavantage.SymbolSearchInput, alphavantage.SymbolSearchOutput](t, alphavantage.SearchSymbolsDefinition),
+		getCurrencyExchangeRate: connectormock.NewQuery[alphavantage.CurrencyPairInput, alphavantage.CurrencyExchangeRateOutput](t, alphavantage.GetCurrencyExchangeRateDefinition),
+		getMarketStatus:         connectormock.NewQuery[alphavantage.MarketStatusInput, alphavantage.MarketStatusOutput](t, alphavantage.GetMarketStatusDefinition),
+		getTopGainersLosers:     connectormock.NewQuery[alphavantage.MarketMoversInput, alphavantage.MarketMoversOutput](t, alphavantage.GetTopGainersLosersDefinition),
+		getGlobalQuote:          connectormock.NewQuery[alphavantage.StockInput, alphavantage.GlobalQuoteOutput](t, alphavantage.GetGlobalQuoteDefinition),
+		getTimeSeriesDaily:      connectormock.NewQuery[alphavantage.StockInput, alphavantage.DailySeriesOutput](t, alphavantage.GetTimeSeriesDailyDefinition),
 	}
+	mock.searchSymbols.Default(SearchSymbolsDefault())
+	mock.getCurrencyExchangeRate.Default(GetCurrencyExchangeRateDefault())
+	mock.getMarketStatus.Default(GetMarketStatusDefault())
+	mock.getTopGainersLosers.Default(GetTopGainersLosersDefault())
 	mock.getGlobalQuote.Default(GetGlobalQuoteDefault())
 	mock.getTimeSeriesDaily.Default(GetTimeSeriesDailyDefault())
 	connection, err := alphavantage.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "alphavantage", Name: connectionName})
@@ -43,6 +55,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() alphavantage.Connection { return mock.connection }
 
+// SearchSymbols returns the searchSymbols script.
+func (mock *Mock) SearchSymbols() *connectormock.Query[alphavantage.SymbolSearchInput, alphavantage.SymbolSearchOutput] {
+	return mock.searchSymbols
+}
+
+// GetCurrencyExchangeRate returns the getCurrencyExchangeRate script.
+func (mock *Mock) GetCurrencyExchangeRate() *connectormock.Query[alphavantage.CurrencyPairInput, alphavantage.CurrencyExchangeRateOutput] {
+	return mock.getCurrencyExchangeRate
+}
+
+// GetMarketStatus returns the getMarketStatus script.
+func (mock *Mock) GetMarketStatus() *connectormock.Query[alphavantage.MarketStatusInput, alphavantage.MarketStatusOutput] {
+	return mock.getMarketStatus
+}
+
+// GetTopGainersLosers returns the getTopGainersLosers script.
+func (mock *Mock) GetTopGainersLosers() *connectormock.Query[alphavantage.MarketMoversInput, alphavantage.MarketMoversOutput] {
+	return mock.getTopGainersLosers
+}
+
 // GetGlobalQuote returns the getGlobalQuote script.
 func (mock *Mock) GetGlobalQuote() *connectormock.Query[alphavantage.StockInput, alphavantage.GlobalQuoteOutput] {
 	return mock.getGlobalQuote
@@ -55,11 +87,172 @@ func (mock *Mock) GetTimeSeriesDaily() *connectormock.Query[alphavantage.StockIn
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) SearchSymbols() sdkgo.Query[alphavantage.SymbolSearchInput, alphavantage.SymbolSearchOutput] {
+	return operations.mock.searchSymbols
+}
+func (operations mockOperations) GetCurrencyExchangeRate() sdkgo.Query[alphavantage.CurrencyPairInput, alphavantage.CurrencyExchangeRateOutput] {
+	return operations.mock.getCurrencyExchangeRate
+}
+func (operations mockOperations) GetMarketStatus() sdkgo.Query[alphavantage.MarketStatusInput, alphavantage.MarketStatusOutput] {
+	return operations.mock.getMarketStatus
+}
+func (operations mockOperations) GetTopGainersLosers() sdkgo.Query[alphavantage.MarketMoversInput, alphavantage.MarketMoversOutput] {
+	return operations.mock.getTopGainersLosers
+}
 func (operations mockOperations) GetGlobalQuote() sdkgo.Query[alphavantage.StockInput, alphavantage.GlobalQuoteOutput] {
 	return operations.mock.getGlobalQuote
 }
 func (operations mockOperations) GetTimeSeriesDaily() sdkgo.Query[alphavantage.StockInput, alphavantage.DailySeriesOutput] {
 	return operations.mock.getTimeSeriesDaily
+}
+
+// SearchSymbolsFound selects the found branch: Alpha Vantage returned matching symbols, possibly empty.
+func SearchSymbolsFound(value alphavantage.SymbolSearchOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.SymbolSearchOutput] {
+	return connectormock.Branch(alphavantage.SearchSymbolsBranchFound, value, failure)
+}
+
+// SearchSymbolsProviderRejected selects the providerRejected branch: The provider conclusively rejected the search.
+func SearchSymbolsProviderRejected(value alphavantage.SymbolSearchOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.SymbolSearchOutput] {
+	return connectormock.Branch(alphavantage.SearchSymbolsBranchProviderRejected, value, failure)
+}
+
+// SearchSymbolsInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized data.
+func SearchSymbolsInvalidResponse(value alphavantage.SymbolSearchOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.SymbolSearchOutput] {
+	return connectormock.Branch(alphavantage.SearchSymbolsBranchInvalidResponse, value, failure)
+}
+
+// SearchSymbolsDefect selects the defect branch: Local input or credentials are invalid.
+func SearchSymbolsDefect(value alphavantage.SymbolSearchOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.SymbolSearchOutput] {
+	return connectormock.Branch(alphavantage.SearchSymbolsBranchDefect, value, failure)
+}
+
+// SearchSymbolsRetry asks Dex to retry the searchSymbols Step, after the delay when it is positive.
+func SearchSymbolsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[alphavantage.SymbolSearchOutput] {
+	return connectormock.Retry[alphavantage.SymbolSearchOutput](failure, after)
+}
+
+// SearchSymbolsFoundDefault is the manifest mock foundDefault: One example equity symbol matches.
+func SearchSymbolsFoundDefault() connectormock.Case[alphavantage.SymbolSearchOutput] {
+	value := connectormock.MustDecodeOutput[alphavantage.SymbolSearchOutput](`{"matches":[{"symbol":"IBM","name":"International Business Machines","region":"United States"}]}`)
+	return connectormock.Branch(alphavantage.SearchSymbolsBranchFound, value, nil)
+}
+
+// SearchSymbolsDefault is the manifest default, foundDefault, which New installs.
+func SearchSymbolsDefault() connectormock.Case[alphavantage.SymbolSearchOutput] {
+	return SearchSymbolsFoundDefault()
+}
+
+// GetCurrencyExchangeRateFound selects the found branch: Alpha Vantage returned an exchange rate.
+func GetCurrencyExchangeRateFound(value alphavantage.CurrencyExchangeRateOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.CurrencyExchangeRateOutput] {
+	return connectormock.Branch(alphavantage.GetCurrencyExchangeRateBranchFound, value, failure)
+}
+
+// GetCurrencyExchangeRateNotFound selects the notFound branch: No exchange rate exists for the currency pair.
+func GetCurrencyExchangeRateNotFound(value alphavantage.CurrencyExchangeRateOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.CurrencyExchangeRateOutput] {
+	return connectormock.Branch(alphavantage.GetCurrencyExchangeRateBranchNotFound, value, failure)
+}
+
+// GetCurrencyExchangeRateProviderRejected selects the providerRejected branch: The provider conclusively rejected the request.
+func GetCurrencyExchangeRateProviderRejected(value alphavantage.CurrencyExchangeRateOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.CurrencyExchangeRateOutput] {
+	return connectormock.Branch(alphavantage.GetCurrencyExchangeRateBranchProviderRejected, value, failure)
+}
+
+// GetCurrencyExchangeRateInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized data.
+func GetCurrencyExchangeRateInvalidResponse(value alphavantage.CurrencyExchangeRateOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.CurrencyExchangeRateOutput] {
+	return connectormock.Branch(alphavantage.GetCurrencyExchangeRateBranchInvalidResponse, value, failure)
+}
+
+// GetCurrencyExchangeRateDefect selects the defect branch: Local input or credentials are invalid.
+func GetCurrencyExchangeRateDefect(value alphavantage.CurrencyExchangeRateOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.CurrencyExchangeRateOutput] {
+	return connectormock.Branch(alphavantage.GetCurrencyExchangeRateBranchDefect, value, failure)
+}
+
+// GetCurrencyExchangeRateRetry asks Dex to retry the getCurrencyExchangeRate Step, after the delay when it is positive.
+func GetCurrencyExchangeRateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[alphavantage.CurrencyExchangeRateOutput] {
+	return connectormock.Retry[alphavantage.CurrencyExchangeRateOutput](failure, after)
+}
+
+// GetCurrencyExchangeRateFoundDefault is the manifest mock foundDefault: One example USD to JPY rate is available.
+func GetCurrencyExchangeRateFoundDefault() connectormock.Case[alphavantage.CurrencyExchangeRateOutput] {
+	value := connectormock.MustDecodeOutput[alphavantage.CurrencyExchangeRateOutput](`{"fromCurrency":"USD","toCurrency":"JPY","rate":"159.17723289","lastRefreshed":"2026-11-17 04:29:14"}`)
+	return connectormock.Branch(alphavantage.GetCurrencyExchangeRateBranchFound, value, nil)
+}
+
+// GetCurrencyExchangeRateDefault is the manifest default, foundDefault, which New installs.
+func GetCurrencyExchangeRateDefault() connectormock.Case[alphavantage.CurrencyExchangeRateOutput] {
+	return GetCurrencyExchangeRateFoundDefault()
+}
+
+// GetMarketStatusFound selects the found branch: Alpha Vantage returned trading venue statuses.
+func GetMarketStatusFound(value alphavantage.MarketStatusOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.MarketStatusOutput] {
+	return connectormock.Branch(alphavantage.GetMarketStatusBranchFound, value, failure)
+}
+
+// GetMarketStatusProviderRejected selects the providerRejected branch: The provider conclusively rejected the request.
+func GetMarketStatusProviderRejected(value alphavantage.MarketStatusOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.MarketStatusOutput] {
+	return connectormock.Branch(alphavantage.GetMarketStatusBranchProviderRejected, value, failure)
+}
+
+// GetMarketStatusInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized data.
+func GetMarketStatusInvalidResponse(value alphavantage.MarketStatusOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.MarketStatusOutput] {
+	return connectormock.Branch(alphavantage.GetMarketStatusBranchInvalidResponse, value, failure)
+}
+
+// GetMarketStatusDefect selects the defect branch: Connection credentials are invalid.
+func GetMarketStatusDefect(value alphavantage.MarketStatusOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.MarketStatusOutput] {
+	return connectormock.Branch(alphavantage.GetMarketStatusBranchDefect, value, failure)
+}
+
+// GetMarketStatusRetry asks Dex to retry the getMarketStatus Step, after the delay when it is positive.
+func GetMarketStatusRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[alphavantage.MarketStatusOutput] {
+	return connectormock.Retry[alphavantage.MarketStatusOutput](failure, after)
+}
+
+// GetMarketStatusFoundDefault is the manifest mock foundDefault: One example US equities venue is closed.
+func GetMarketStatusFoundDefault() connectormock.Case[alphavantage.MarketStatusOutput] {
+	value := connectormock.MustDecodeOutput[alphavantage.MarketStatusOutput](`{"markets":[{"marketType":"Equity","region":"United States","primaryExchanges":"NYSE","currentStatus":"closed"}]}`)
+	return connectormock.Branch(alphavantage.GetMarketStatusBranchFound, value, nil)
+}
+
+// GetMarketStatusDefault is the manifest default, foundDefault, which New installs.
+func GetMarketStatusDefault() connectormock.Case[alphavantage.MarketStatusOutput] {
+	return GetMarketStatusFoundDefault()
+}
+
+// GetTopGainersLosersFound selects the found branch: Alpha Vantage returned market mover lists.
+func GetTopGainersLosersFound(value alphavantage.MarketMoversOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.MarketMoversOutput] {
+	return connectormock.Branch(alphavantage.GetTopGainersLosersBranchFound, value, failure)
+}
+
+// GetTopGainersLosersProviderRejected selects the providerRejected branch: The provider conclusively rejected the request.
+func GetTopGainersLosersProviderRejected(value alphavantage.MarketMoversOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.MarketMoversOutput] {
+	return connectormock.Branch(alphavantage.GetTopGainersLosersBranchProviderRejected, value, failure)
+}
+
+// GetTopGainersLosersInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized data.
+func GetTopGainersLosersInvalidResponse(value alphavantage.MarketMoversOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.MarketMoversOutput] {
+	return connectormock.Branch(alphavantage.GetTopGainersLosersBranchInvalidResponse, value, failure)
+}
+
+// GetTopGainersLosersDefect selects the defect branch: Connection credentials are invalid.
+func GetTopGainersLosersDefect(value alphavantage.MarketMoversOutput, failure *sdkgo.Failure) connectormock.Case[alphavantage.MarketMoversOutput] {
+	return connectormock.Branch(alphavantage.GetTopGainersLosersBranchDefect, value, failure)
+}
+
+// GetTopGainersLosersRetry asks Dex to retry the getTopGainersLosers Step, after the delay when it is positive.
+func GetTopGainersLosersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[alphavantage.MarketMoversOutput] {
+	return connectormock.Retry[alphavantage.MarketMoversOutput](failure, after)
+}
+
+// GetTopGainersLosersFoundDefault is the manifest mock foundDefault: One example ticker appears in each market list.
+func GetTopGainersLosersFoundDefault() connectormock.Case[alphavantage.MarketMoversOutput] {
+	value := connectormock.MustDecodeOutput[alphavantage.MarketMoversOutput](`{"lastUpdated":"2026-11-16 16:16:00 US/Eastern","topGainers":[{"ticker":"IBM","price":"255.25"}],"topLosers":[{"ticker":"XYZ","price":"2.15"}],"mostActivelyTraded":[{"ticker":"ABC","price":"9.11"}]}`)
+	return connectormock.Branch(alphavantage.GetTopGainersLosersBranchFound, value, nil)
+}
+
+// GetTopGainersLosersDefault is the manifest default, foundDefault, which New installs.
+func GetTopGainersLosersDefault() connectormock.Case[alphavantage.MarketMoversOutput] {
+	return GetTopGainersLosersFoundDefault()
 }
 
 // GetGlobalQuoteFound selects the found branch: Alpha Vantage returned the requested result.
