@@ -1,0 +1,60 @@
+{
+  "connectorId": "sfexpress",
+  "releaseTag": "connectors/sfexpress/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-sfexpress",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_query_routes_step",
+      "kind": "query",
+      "operationId": "queryRoutes",
+      "inputType": "QueryRoutesInput",
+      "description": "Query standard route event times and codes for one owned SF Express waybill, omitting free-text remarks and locations.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryRoutesInput identifies one SF Express waybill owned by the application.",
+        "properties": {
+          "waybillNumber": {
+            "description": "WaybillNumber is an SF Express waybill number, not a customer order number.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "waybillNumber"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
