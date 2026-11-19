@@ -1,0 +1,57 @@
+{
+  "connectorId": "udesk",
+  "releaseTag": "connectors/udesk/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-udesk",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListTicketStatusesStep",
+      "kind": "query",
+      "operationId": "listTicketStatuses",
+      "inputType": "ListTicketStatusesInput",
+      "description": "List Udesk ticket statuses, optionally filtering by whether each status is enabled.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTicketStatusesInput optionally filters by Udesk's enable flag.",
+        "properties": {
+          "enabledOnly": {
+            "description": "EnabledOnly is omitted to list every status; true or false filters by enabled state.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

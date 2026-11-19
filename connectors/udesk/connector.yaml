@@ -8,6 +8,8 @@ metadata:
   categories: [customer-support]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, operations: [listTicketStatuses], triggers: []}
   provider: udesk
   codegen:
     go:
