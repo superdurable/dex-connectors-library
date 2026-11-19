@@ -40,6 +40,7 @@ from script.dex_compatibility import (
     example_consumer_name,
     fixture_module_path,
     flow_examples,
+    flow_sources,
     install_dexcli,
     manifests,
     rate_limit_wait,
@@ -51,6 +52,7 @@ from script.dex_compatibility import (
     published_release,
     require_dex_web_security_tests_passed,
     require_dex_web_tests_passed,
+    run_visualize,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -343,6 +345,73 @@ class ConnectorSelectionTest(unittest.TestCase):
                 [root / "connectors/acme/sign/go/examples/example/flow"],
                 flow_examples(root, ["connectors/acme/sign"]),
             )
+
+    def test_example_with_several_flow_sources_is_listed_once_and_tests_are_not_flow_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "connectors/acme").mkdir(parents=True)
+            (root / "connectors/acme/connector.yaml").write_text("kind: Connector\n")
+            flow = root / "connectors/acme/go/examples/example/flow"
+            flow.mkdir(parents=True)
+            for name in ("orders.go", "workflow.go", "workflow_test.go"):
+                (flow / name).write_text("package flow\n\nfunc GetSteps() {}\n")
+            (flow / "helpers.go").write_text("package flow\n")
+
+            self.assertEqual([flow], flow_examples(root, ["connectors/acme"]))
+            self.assertEqual([flow / "orders.go", flow / "workflow.go"], flow_sources(flow))
+
+
+class RunVisualizeTest(unittest.TestCase):
+    def visualize(self, example: Path, consumer: Path) -> tuple[list[list[str]], list[tuple[Path, str]]]:
+        visualize_commands: list[list[str]] = []
+        validated: list[tuple[Path, str]] = []
+
+        def fake_run(command: list[str], cwd: Path, environment: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+            if command[1:2] == ["visualize"]:
+                visualize_commands.append(command)
+                destination = Path(command[command.index("--out") + 1])
+                destination.with_suffix(".json").write_text(json.dumps({"source": Path(command[2]).name}))
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        def fake_validate(definition: object, connector_module: str, version: str, source: Path, source_text: str) -> None:
+            validated.append((source, source_text))
+
+        with patch("script.dex_compatibility.run", side_effect=fake_run), \
+                patch("script.dex_compatibility.run_go_network_command"), \
+                patch("script.dex_compatibility.validate_definition", side_effect=fake_validate):
+            run_visualize(example, consumer, Path("dexcli"), "example.com/acme", "v0.1.0")
+        return visualize_commands, validated
+
+    def test_every_flow_source_is_visualized_twice_into_distinct_outputs_and_validated(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            example = Path(temporary) / "example" / "flow"
+            example.mkdir(parents=True)
+            (example / "orders.go").write_text("package flow\n\nfunc GetSteps() {} // orders\n")
+            (example / "workflow.go").write_text("package flow\n\nfunc GetSteps() {} // workflow\n")
+            (example / "workflow_test.go").write_text("package flow\n\nfunc GetSteps() {}\n")
+            consumer = Path(temporary) / "consumer"
+
+            commands, validated = self.visualize(example, consumer)
+
+            self.assertEqual(
+                ["orders.go", "orders.go", "workflow.go", "workflow.go"],
+                [Path(command[2]).name for command in commands],
+            )
+            self.assertEqual(4, len({command[command.index("--out") + 1] for command in commands}))
+            self.assertEqual(
+                [(example / "orders.go", "package flow\n\nfunc GetSteps() {} // orders\n"),
+                 (example / "workflow.go", "package flow\n\nfunc GetSteps() {} // workflow\n")],
+                validated,
+            )
+
+    def test_example_without_a_flow_source_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            example = Path(temporary) / "example" / "flow"
+            example.mkdir(parents=True)
+            (example / "workflow_test.go").write_text("package flow\n\nfunc GetSteps() {}\n")
+
+            with self.assertRaisesRegex(RuntimeError, "found 0"):
+                self.visualize(example, Path(temporary) / "consumer")
 
     def test_released_compatibility_only_includes_selected_connectors(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
