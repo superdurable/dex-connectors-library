@@ -1,0 +1,60 @@
+{
+  "connectorId": "apispace",
+  "releaseTag": "connectors/apispace/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-apispace",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_current_weather_step",
+      "kind": "query",
+      "operationId": "getCurrentWeather",
+      "inputType": "GetCurrentWeatherInput",
+      "description": "Read current conditions and provider update time for one city ID.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCurrentWeatherInput selects one city by the provider's documented area code.",
+        "properties": {
+          "areaCode": {
+            "description": "AreaCode is a city ID from the APISpace weather product's city list.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "areaCode"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
