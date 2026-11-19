@@ -1,0 +1,620 @@
+{
+  "connector": "worktile",
+  "scenarios": [
+    {
+      "callId": "87585b49-f9a1-5123-ac66-46412bbbf128",
+      "exchanges": [
+        {
+          "body": "{\"tenant_access_token\":\"REDACTED_WORKTILE_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"page_index\":1,\"page_size\":10,\"has_more\":true,\"items\":[{\"_id\":\"project-1\",\"name\":\"Example Project\",\"identifier\":\"ABC\",\"visibility\":1}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/mission/get-projects-by-page",
+          "query": {
+            "access_token": [
+              "REDACTED_WORKTILE_ACCESS_TOKEN"
+            ],
+            "page_index": [
+              "1"
+            ],
+            "page_size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "hasMore": true,
+          "pageIndex": 1,
+          "pageSize": 10,
+          "projects": [
+            {
+              "id": "project-1",
+              "identifier": "ABC",
+              "name": "Example Project",
+              "visibility": 1
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-found",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "520d2e2f-607e-5596-b24b-51b9a3e1af1c",
+      "exchanges": [
+        {
+          "body": "{\"tenant_access_token\":\"REDACTED_WORKTILE_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"page_index\":1,\"page_size\":10,\"has_more\":false,\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/mission/get-projects-by-page",
+          "query": {
+            "access_token": [
+              "REDACTED_WORKTILE_ACCESS_TOKEN"
+            ],
+            "page_index": [
+              "1"
+            ],
+            "page_size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "pageIndex": 1,
+          "pageSize": 10,
+          "projects": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-empty",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "680b6e9d-d3df-5a61-81c0-38e5ac36b29b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hasMore": false,
+          "pageIndex": 0,
+          "pageSize": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-providerRejected",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "0b646af9-4989-59c3-adac-d37ba5230d76",
+      "exchanges": [
+        {
+          "body": "{\"tenant_access_token\":\"REDACTED_WORKTILE_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/mission/get-projects-by-page",
+          "query": {
+            "access_token": [
+              "REDACTED_WORKTILE_ACCESS_TOKEN"
+            ],
+            "page_index": [
+              "1"
+            ],
+            "page_size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "pageIndex": 0,
+          "pageSize": 0,
+          "projects": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-invalidResponse",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "bf603d8a-2a0b-540c-94e6-62699c5e0506",
+      "exchanges": [
+        {
+          "body": "{\"tenant_access_token\":\"REDACTED_WORKTILE_ACCESS_TOKEN\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "pageIndex": 0,
+          "pageSize": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-tokenInvalid",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "ec609c1f-ee62-5afc-b652-1eb29c29b182",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-tokenRetry429",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "0a43b6dd-7684-5663-8601-d3a83a3c125e",
+      "exchanges": [
+        {
+          "body": "{\"tenant_access_token\":\"REDACTED_WORKTILE_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/mission/get-projects-by-page",
+          "query": {
+            "access_token": [
+              "REDACTED_WORKTILE_ACCESS_TOKEN"
+            ],
+            "page_index": [
+              "1"
+            ],
+            "page_size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-retry429",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "f9e0ba16-abdc-5f19-8a24-ec03953180ff",
+      "exchanges": [
+        {
+          "body": "{\"tenant_access_token\":\"REDACTED_WORKTILE_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/mission/get-projects-by-page",
+          "query": {
+            "access_token": [
+              "REDACTED_WORKTILE_ACCESS_TOKEN"
+            ],
+            "page_index": [
+              "1"
+            ],
+            "page_size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-retry503",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "14526ce9-0671-5833-9a4b-03333b4eaf0b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-transport",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "8b1182a8-95c3-5813-ba7f-59bc711412b8",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "hasMore": false,
+          "pageIndex": 0,
+          "pageSize": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-oversized",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "2e0bef13-93e2-5752-abcc-e43bfbc6319d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hasMore": false,
+          "pageIndex": 0,
+          "pageSize": 0,
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-defect",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "b441ee84-4ca9-576a-b37c-7cacbb58696c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/open-api/tenant-access-token",
+          "requestBody": {
+            "client_id": "REDACTED_WORKTILE_CLIENT_ID",
+            "client_secret": "REDACTED_WORKTILE_CLIENT_SECRET"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageIndex": 1,
+        "pageSize": 10
+      },
+      "name": "listProjects-tokenRetry503",
+      "operation": "listProjects"
+    }
+  ],
+  "schemaVersion": 1
+}

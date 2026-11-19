@@ -1,0 +1,323 @@
+{
+  "connector": "yijingtong",
+  "scenarios": [
+    {
+      "callId": "5b1761cb-356f-567b-a50d-300ae90643b8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"T\",\"content\":\"ok\",\"data\":[{\"nums\":\"US01\",\"pname\":\"US Warehouse\",\"country\":\"United States\",\"is_tc\":0}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hwc_api/hwc_storage_list.php",
+          "requestBody": {
+            "token": "REDACTED_YIJINGTONG_TOKEN"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "warehouses": [
+            {
+              "country": "United States",
+              "id": "US01",
+              "name": "US Warehouse"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-listed",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "16af2be8-84fb-59c1-8724-3818bd284681",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"T\",\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hwc_api/hwc_storage_list.php",
+          "requestBody": {
+            "token": "REDACTED_YIJINGTONG_TOKEN"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-empty",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "12180be4-3a9e-53b8-9a5a-bce4eac3f535",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"F\",\"content\":\"invalid token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hwc_api/hwc_storage_list.php",
+          "requestBody": {
+            "token": "REDACTED_YIJINGTONG_TOKEN"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-providerRejected",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "c225de17-66f4-5ead-a1b7-885b88cf3c9a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"T\",\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hwc_api/hwc_storage_list.php",
+          "requestBody": {
+            "token": "REDACTED_YIJINGTONG_TOKEN"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-invalidResponse",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "a58980ec-8445-5f01-b795-17bbc54d49e9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hwc_api/hwc_storage_list.php",
+          "requestBody": {
+            "token": "REDACTED_YIJINGTONG_TOKEN"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-retry429",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "d006aacf-5cd3-5ec4-a9ac-3b7ec454c321",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hwc_api/hwc_storage_list.php",
+          "requestBody": {
+            "token": "REDACTED_YIJINGTONG_TOKEN"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-retry503",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "ddde321c-733c-59df-b987-3079575b1fe8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hwc_api/hwc_storage_list.php",
+          "requestBody": {
+            "token": "REDACTED_YIJINGTONG_TOKEN"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-transport",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "a91de6b4-de26-584d-b5cf-19990903d3a9",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hwc_api/hwc_storage_list.php",
+          "requestBody": {
+            "token": "REDACTED_YIJINGTONG_TOKEN"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-oversized",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "3bd4771b-8cd5-5f8d-a8f4-43cfd1adfd66",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWarehouses-defect",
+      "operation": "listWarehouses"
+    }
+  ],
+  "schemaVersion": 1
+}
