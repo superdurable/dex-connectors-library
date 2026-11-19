@@ -63,6 +63,59 @@
       "operation": "getFlightStatus"
     },
     {
+      "callId": "45e4c17b-32ca-57e6-8251-07d240b01843",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10,\"error\":\"no matching flight\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/flight",
+          "query": {
+            "appid": [
+              "test-app"
+            ],
+            "date": [
+              "2026-11-13"
+            ],
+            "fnum": [
+              "GX8915"
+            ],
+            "lang": [
+              "EN"
+            ],
+            "token": [
+              "64a2586610dc0f478324b575cb9820a5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "noData",
+        "failureKind": "",
+        "output": {
+          "flights": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "GX8915"
+      },
+      "name": "getFlightStatus-noData",
+      "operation": "getFlightStatus"
+    },
+    {
       "callId": "6601c6b8-93f1-54c7-8a64-27ce7e406f3a",
       "exchanges": [
         {
