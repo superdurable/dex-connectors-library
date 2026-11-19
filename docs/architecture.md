@@ -273,7 +273,12 @@ common blocks, SDK unit suites, React, site, Connectors MCP, and
 `connector-generation`, which validates and generation-checks every selected
 connector in one job, still run. `ci-summary` accepts the skipped heavy jobs
 only when `local-verification` succeeded with `trusted=true` on a pull request
-or merge group; every other run is checked exactly as before.
+or merge group; every other run is checked exactly as before. Each heavy job
+checks its original dependencies with explicit `needs.<job>.result` checks, so a
+failed or cancelled `local-verification` still runs it, and `ci-summary` fails.
+Trust relies on the reviewed workflow and scripts, so review every pull request
+that changes `.github/workflows/ci.yml`, `script/ci_local_verification.py`, or
+`script/ci_summary.py` with that in mind.
 
 Limitations:
 
