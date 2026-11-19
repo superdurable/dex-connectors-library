@@ -1,0 +1,65 @@
+{
+  "connectorId": "threatbook",
+  "releaseTag": "connectors/threatbook/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-threatbook",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_check_ip_reputation_step",
+      "kind": "query",
+      "operationId": "checkIPReputation",
+      "inputType": "CheckIPReputationInput",
+      "description": "Read the risk verdict for one inbound source IP.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "no_data",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CheckIPReputationInput identifies one inbound IPv4 or IPv6 source address.",
+        "properties": {
+          "ipAddress": {
+            "description": "IPAddress is a single IPv4 or IPv6 address from an inbound access event.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ipAddress"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

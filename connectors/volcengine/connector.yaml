@@ -59,6 +59,8 @@ spec:
         - Sign in at https://console.volcengine.com, open 访问控制 > 用户管理, and create or select a dedicated IAM user with permission to call ECS DescribeRegions. This operation does not support project-scoped authorization.
         - In the selected user's 密钥 tab, choose 新建密钥 and copy the Access Key ID and paired Secret Access Key into the two secret credential fields. Use Access Key, not an AI product API Key.
         - Leave baseUrl, timeout, maxResponseBytes, region, and service blank for displayed defaults. Dex generates UTC X-Date and HMAC-SHA256 Authorization per request; rotate or disable a compromised key in IAM.
+  languages:
+    python: {version: v0.1.0, operations: [describeRegions], triggers: []}
   operations:
     - name: describeRegions
       goName: DescribeRegions
