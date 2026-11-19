@@ -7,3 +7,7 @@ This connector requires ZenTao 16.5 or later. In Dex Web, enter the HTTPS root o
 The account needs permission to view products. The [runnable Dex Flow](go/examples/product-list/README.md) shows the local mock path. Live ZenTao instance authorization and provider response remain unverified.
 
 The logo uses the official [ZenTao website footer asset](https://static.zentao.net/web/data/source/zentao/default/wide/logo-footer.png) embedded unchanged in SVG.
+
+## Python
+
+The first Python package implements the read-only product list and replays the Go-recorded provider outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/product_list/README.md). Live ZenTao authorization and responses remain unverified.
