@@ -1,0 +1,65 @@
+{
+  "connectorId": "jingdigital",
+  "releaseTag": "connectors/jingdigital/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-jingdigital",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListTagsStep",
+      "kind": "query",
+      "operationId": "listTags",
+      "inputType": "ListTagsInput",
+      "description": "Read one bounded page of ordinary marketing tag metadata.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTagsInput selects a one-based page and page size. Zero values use page 1 and 20 tags.",
+        "properties": {
+          "page": {
+            "description": "Page is a one-based page number.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the requested tags per page, from 1 to 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
