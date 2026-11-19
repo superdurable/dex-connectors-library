@@ -8,9 +8,10 @@ metadata:
   categories: [data-search]
   version: v0.1.0
 spec:
+  provider: zoomeye
   languages:
     python: {version: v0.1.0, operations: [getAccountQuota], triggers: []}
-  provider: zoomeye
+    typescript: {version: v0.1.0, package: "@superdurable/connector-zoomeye", operations: [getAccountQuota], triggers: []}
   codegen:
     go:
       package: zoomeye

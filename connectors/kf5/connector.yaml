@@ -8,8 +8,6 @@ metadata:
   categories: [customer-support]
   version: v0.1.0
 spec:
-  languages:
-    python: {version: v0.1.0, operations: [getTicket], triggers: []}
   provider: kf5
   codegen:
     go:
@@ -52,6 +50,13 @@ spec:
         - In the tenant, open 个人设置 to confirm the agent email, then 系统设置 > 支持渠道 > 开放API设置 to generate or copy the secret API token. The connector uses HTTPS Basic authentication with email/token as username and API token as password. Blank credentials prevent requests.
         - Pass one positive numeric ticket ID in ticketID. Agent permission is required for GET /apiv2/tickets/{id}.json. The result omits title, description, requester, comments, and raw provider data.
         - Leave timeout and maxResponseBytes blank for their displayed defaults. Only use a tenant you administer and ticket IDs you are authorized to read.
+  languages:
+    python: {version: v0.1.0, operations: [getTicket], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-kf5"
+      operations: [getTicket]
+      triggers: []
   operations:
     - name: getTicket
       goName: GetTicket

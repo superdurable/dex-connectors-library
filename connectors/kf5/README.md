@@ -6,4 +6,6 @@ Register at [KF5](https://www.kf5.com) and note the subdomain of your tenant URL
 
 The [runnable Dex example](go/examples/get-ticket/) uses a synthetic mock and does not verify live tenant authorization or ticket data.
 
+The [TypeScript runnable Flow](typescript/examples/basic/README.md) uses the same provider contract and Go-recorded conformance scenarios.
+
 The [Python package](python/) mirrors the Go Query and includes a [runnable Dex Worker/Client Flow](python/examples/get_ticket/) and Go scenario replay. Real provider credentials and live API behavior remain unverified.

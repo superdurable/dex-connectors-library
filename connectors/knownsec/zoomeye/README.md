@@ -4,6 +4,6 @@ The Go connector reads the connected ZoomEye account's subscription plan and rem
 
 The provider response also includes username, email, and phone. The connector decodes only the subscription object and never returns personal account fields, raw response bodies, or the API key. HTTP 429/5xx and transport failures retry; non-success provider codes and permission failures are terminal.
 
-See the [runnable Dex Flow](go/examples/account-quota/README.md). Mock tests do not verify live authorization, subscription availability, or provider response behavior.
+See the runnable Dex Flows for [Go](go/examples/account-quota/README.md) and [TypeScript](typescript/examples/basic/README.md). Mock tests do not verify live authorization, subscription availability, or provider response behavior.
 
 The [Python package](python/) mirrors the Go Query and includes a [runnable Dex Worker/Client Flow](python/examples/account_quota/) and Go scenario replay. Real provider credentials and live API behavior remain unverified.

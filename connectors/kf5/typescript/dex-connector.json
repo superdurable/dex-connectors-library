@@ -1,0 +1,65 @@
+{
+  "connectorId": "kf5",
+  "releaseTag": "connectors/kf5/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-kf5",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetTicketStep",
+      "kind": "query",
+      "operationId": "getTicket",
+      "inputType": "GetTicketInput",
+      "description": "Read limited status metadata for one KF5 ticket ID.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "noData",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTicketInput identifies one ticket in the configured KF5 tenant.",
+        "properties": {
+          "ticketID": {
+            "description": "TicketID is a positive KF5 ticket identifier.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticketID"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

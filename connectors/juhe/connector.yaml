@@ -8,8 +8,6 @@ metadata:
   categories: [data-search]
   version: v0.1.0
 spec:
-  languages:
-    python: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
   provider: juhe
   codegen:
     go:
@@ -46,6 +44,13 @@ spec:
         - Sign in at https://www.juhe.cn/docs/api/id/73, choose 申请接口 for 天气预报 (API 73), and complete the requested real-name certification.
         - Open 个人中心 > 我的数据 > 天气预报; copy the API key shown above the API name into the secret api_key field. Keep the characters exact and rotate or revoke the key from the provider console when needed.
         - The free plan currently allows 50 calls per day; higher membership tiers can change that quota. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  languages:
+    python: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-juhe"
+      operations: [getCurrentWeather]
+      triggers: []
   operations:
     - name: getCurrentWeather
       goName: GetCurrentWeather

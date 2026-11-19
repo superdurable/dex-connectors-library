@@ -8,9 +8,10 @@ metadata:
   categories: [ai, developer-tools]
   version: v0.1.0
 spec:
+  provider: kokoniworld
   languages:
     python: {version: v0.1.0, operations: [listModels], triggers: []}
-  provider: kokoniworld
+    typescript: {version: v0.1.0, package: "@superdurable/connector-kokoniworld", operations: [listModels], triggers: []}
   codegen:
     go:
       package: kokoniworld
