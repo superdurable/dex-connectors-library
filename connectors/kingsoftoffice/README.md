@@ -5,3 +5,7 @@ This Kingsoft Office connector lists one page of file and folder metadata from a
 The connector is for an approved **enterprise self-built application**. It exchanges APPID and APPKEY for a [two-hour application access token](https://open.wps.cn/documents/app-integration-dev/wps365/server/certification-authorization/get-token/selfapp-tenant-access-token), caches it in memory, and refreshes it before expiry. Both the key and token stay out of Flow results. WPS [KSO-1 request signing](https://open.wps.cn/documents/app-integration-dev/wps365/server/api-description/signature-description) is supported when enabled for the application. Set `requestSigningEnabled` to match **开发者后台 > 安全设置 > 接口签名**; WPS says signed headers must be absent when the switch is off.
 
 See the [runnable Dex Flow](go/examples/folder-files/README.md). Its default mock is synthetic and contains no provider document data. Live enterprise authorization and file responses have not been verified.
+
+## TypeScript
+
+The [`typescript/`](typescript/) package implements `listFolderFiles` with the same Go conformance scenarios. Its [runnable Flow](typescript/examples/basic) uses the static `kingsoftoffice` connection and persists the provider result in Dex. Live provider authorization remains unverified.
