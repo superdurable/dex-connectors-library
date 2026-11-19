@@ -9,3 +9,7 @@ Sign in to [TokenGP Keys](https://www.tokengp.com/keys), choose **Create Key**, 
 ## Go
 
 The [model catalog Flow](go/examples/model-catalog/) is a runnable Worker with static Dex Web connection name `tokengp`. `listed` completes the Flow; optional branches fail unless an application wires a business response. Transient failures retry safely. The local mock integration uses synthetic model data and a real Dex Worker and Client. Live authorization and accessible model IDs remain unverified without a user-controlled connection.
+
+## TypeScript
+
+`@superdurable/connector-tokengp` provides the `listModels` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
