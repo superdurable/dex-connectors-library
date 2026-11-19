@@ -1,0 +1,381 @@
+{
+  "connector": "yuandian",
+  "scenarios": [
+    {
+      "callId": "21ddbf1f-2bdb-5509-9d23-c655a2045529",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"企业ID\":\"sample-id\",\"企业名称\":\"示例企业有限公司\",\"统一社会信用代码\":\"91110108MA0074PN30\",\"经营状态\":\"存续\",\"行业\":\"商务服务业\",\"企业类型\":\"有限责任公司\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/rh_company_detail",
+          "query": {
+            "tyshxydm": [
+              "91110108MA0074PN30"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "companyID": "sample-id",
+          "companyType": "有限责任公司",
+          "creditCode": "91110108MA0074PN30",
+          "industry": "商务服务业",
+          "name": "示例企业有限公司",
+          "registrationStatus": "存续"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-found",
+      "operation": "getCompanyProfile"
+    },
+    {
+      "callId": "bca8378a-961f-528f-a523-1e26b80643a5",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"message\":\"未查询到相关数据\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/rh_company_detail",
+          "query": {
+            "tyshxydm": [
+              "91110108MA0074PN30"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "noData",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "companyID": "",
+          "companyType": "",
+          "creditCode": "",
+          "industry": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-noData",
+      "operation": "getCompanyProfile"
+    },
+    {
+      "callId": "73942343-909d-5cbb-b3be-3e1d75e78cc2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/rh_company_detail",
+          "query": {
+            "tyshxydm": [
+              "91110108MA0074PN30"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "test-secret"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "companyID": "",
+          "companyType": "",
+          "creditCode": "",
+          "industry": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-providerRejected",
+      "operation": "getCompanyProfile"
+    },
+    {
+      "callId": "b94e0cbf-bff4-506c-8535-4ce16a898474",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/rh_company_detail",
+          "query": {
+            "tyshxydm": [
+              "91110108MA0074PN30"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "companyID": "",
+          "companyType": "",
+          "creditCode": "",
+          "industry": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-invalidResponse",
+      "operation": "getCompanyProfile"
+    },
+    {
+      "callId": "6a38ec72-bbca-579f-b743-fb1b51dbe732",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "companyID": "",
+          "companyType": "",
+          "creditCode": "",
+          "industry": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-defect",
+      "operation": "getCompanyProfile"
+    },
+    {
+      "callId": "5e57d24d-3a0a-5f4c-9116-6117a6188576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/rh_company_detail",
+          "query": {
+            "tyshxydm": [
+              "91110108MA0074PN30"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "test-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-rateLimit429",
+      "operation": "getCompanyProfile"
+    },
+    {
+      "callId": "81cb10fb-be36-5f29-9623-6f01f76f13b5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/rh_company_detail",
+          "query": {
+            "tyshxydm": [
+              "91110108MA0074PN30"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-server503",
+      "operation": "getCompanyProfile"
+    },
+    {
+      "callId": "6cb6731a-7b02-5faa-87ee-95a872e9b551",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/rh_company_detail",
+          "query": {
+            "tyshxydm": [
+              "91110108MA0074PN30"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "test-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-transportFailure",
+      "operation": "getCompanyProfile"
+    },
+    {
+      "callId": "13a84803-8814-500f-8406-8cdadad01cef",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open/rh_company_detail",
+          "query": {
+            "tyshxydm": [
+              "91110108MA0074PN30"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "companyID": "",
+          "companyType": "",
+          "creditCode": "",
+          "industry": "",
+          "name": "",
+          "registrationStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creditCode": "91110108MA0074PN30"
+      },
+      "name": "getCompanyProfile-oversized",
+      "operation": "getCompanyProfile"
+    }
+  ],
+  "schemaVersion": 1
+}
