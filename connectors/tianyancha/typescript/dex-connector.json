@@ -1,0 +1,65 @@
+{
+  "connectorId": "tianyancha",
+  "releaseTag": "connectors/tianyancha/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-tianyancha",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetCompanyProfileStep",
+      "kind": "query",
+      "operationId": "getCompanyProfile",
+      "inputType": "GetCompanyProfileInput",
+      "description": "Read limited registration facts for one company by keyword.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "noData",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCompanyProfileInput identifies one company by name, ID, registration number, or credit code.",
+        "properties": {
+          "keyword": {
+            "description": "Keyword is one company name, ID, registration number, or unified social credit code.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
