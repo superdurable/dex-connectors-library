@@ -9,3 +9,5 @@ At [JD Logistics Open Platform](https://open.jdl.com), register and certify as a
 The connector POSTs to the production HTTPS gateway with a body array and computes the documented uppercase MD5 signature over the exact body, UTC+8 timestamp, method path, AppKey, and access token. See the [official non-SDK calling guide](https://open.jdl.com/#/devSupport/53211). HTTP 429, HTTP 5xx, transport errors, and provider service errors retry. Conclusive provider failures select the optional `providerRejected` branch; malformed or oversized responses select `invalidResponse`.
 
 The [waybill-trace example](go/examples/waybill-trace/README.md) starts `JDLogisticsWaybillTrace` with `{"waybillNo":"JDX009866825381"}`. Its static ConnectionName is `jdlogistics`. The real Dex integration test runs the same Flow with a generated mock. Live authorization and provider tracking remain unverified.
+
+The [Python package](python/README.md) implements the same Query with Go-recorded conformance and a [runnable Flow](python/examples/waybill_trace/README.md).
