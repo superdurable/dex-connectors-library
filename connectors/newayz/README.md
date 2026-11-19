@@ -7,3 +7,4 @@ Register and apply for an application at [LoTBoard](https://lotboard.newayz.com/
 See the [runnable Dex Flow](go/examples/current-weather/README.md) for local mock verification. A real WAYZ account and live API call have not been exercised.
 
 The [Python package](python/README.md) implements the same Query with a checked-in Dex Worker and Client example. Its Go-recorded provider scenarios and local Dex retry path are verified; live provider authorization remains unverified.
+The [TypeScript package](typescript/README.md) exposes `getCurrentWeather` and includes a runnable Dex Flow, Go scenario replay, and a local provider integration test.

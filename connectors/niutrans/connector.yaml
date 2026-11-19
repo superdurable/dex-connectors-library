@@ -11,6 +11,11 @@ spec:
   provider: niutrans
   languages:
     python: {version: v0.1.0, operations: [translateText], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-niutrans"
+      operations: [translateText]
+      triggers: []
   codegen:
     go:
       package: niutrans

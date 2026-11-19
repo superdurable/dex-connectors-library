@@ -11,3 +11,4 @@ The connector sends `GET /v1/company/fields?type=company` with the access token 
 The [customer-fields example](go/examples/customer-fields/README.md) starts `OKKICustomerFields` with `{}`. Its static ConnectionName is `okki`. A real Dex Worker/Client test runs the Flow with a generated provider mock. Live OKKI authentication, token renewal, field retrieval, and Dex Web setup remain unverified.
 
 The [Python package](python/README.md) implements the same Query with a checked-in Dex Worker and Client example. Its Go-recorded provider scenarios and local Dex retry path are verified; live provider authorization remains unverified.
+The [TypeScript package](typescript/README.md) exposes `listCustomerFields` and includes a runnable Dex Flow, Go scenario replay, and a local provider integration test.

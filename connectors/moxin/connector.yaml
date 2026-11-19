@@ -11,6 +11,11 @@ spec:
   provider: moxin
   languages:
     python: {version: v0.1.0, operations: [listModels], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-moxin"
+      operations: [listModels]
+      triggers: []
   codegen:
     go:
       package: moxin

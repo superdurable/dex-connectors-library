@@ -7,3 +7,4 @@ Open the [IP定位 API documentation](https://lbs.navinfo.com/docs/webapi/ipcity
 Start the [runnable Flow](go/examples/lookup-ip-location/) with `{"ipAddress":"8.8.8.8"}`. Its default mock returns a Beijing example. Live AK authorization and location results have not been verified with a provider account.
 
 The [Python package](python/README.md) implements the same Query with a checked-in Dex Worker and Client example. Its Go-recorded provider scenarios and local Dex retry path are verified; live provider authorization remains unverified.
+The [TypeScript package](typescript/README.md) exposes `lookupIPLocation` and includes a runnable Dex Flow, Go scenario replay, and a local provider integration test.

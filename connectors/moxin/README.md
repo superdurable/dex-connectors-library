@@ -7,3 +7,4 @@ Moxin (魔芯（湖州）科技有限公司) opens enterprise accounts through a
 The [runnable Dex Flow](go/examples/model-list/README.md) shows connection setup and output. The logo embeds the unmodified [official website mark](https://api.kokoniworld.com/kokoni-platform-mark-20260814.png). No live account authorization has been verified.
 
 The [Python package](python/README.md) implements the same Query with a checked-in Dex Worker and Client example. Its Go-recorded provider scenarios and local Dex retry path are verified; live provider authorization remains unverified.
+The [TypeScript package](typescript/README.md) exposes `listModels` and includes a runnable Dex Flow, Go scenario replay, and a local provider integration test.
