@@ -6,7 +6,7 @@ import ipaddress
 import json
 import re
 from collections.abc import Awaitable, Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
 from typing import Any
@@ -1421,102 +1421,95 @@ class UpdateTicketOperation:
         )
 
 
+@dataclass(frozen=True)
+class _TransitionCheckpoint:
+    """The transition an attempt recorded before sending it; Go and TypeScript encode the same JSON."""
+
+    transition_id: str
+    transition_name: str
+    source_status_id: str
+    destination_status_id: str
+
+
+@dataclass(frozen=True)
+class _TransitionHistory:
+    """What the last heartbeat proves about earlier attempts of this Call."""
+
+    plan: _TransitionCheckpoint | None
+    can_select: bool
+    """No earlier attempt can have sent a transition."""
+
+    async def record_not_sent(self, call: Call) -> None:
+        """Let the next attempt select after a Retry before any send; never overwrite a possible send."""
+        if not self.can_select or self.plan is not None or call.context is None:
+            return
+        try:
+            await call.context.heartbeat(
+                {"callId": str(call.id), "attempt": call.context.attempt, "state": "notSent"}
+            )
+        except Exception:
+            pass  # A lost record only makes the next attempt read without transitioning.
+
+
+def _read_transition_history(call: Call) -> _TransitionHistory:
+    """Read this Call's state from the last heartbeat; raise when the heartbeat is unreadable.
+
+    Dex can lose a recorded heartbeat, so a later attempt may select only after this Call's notSent
+    record from the previous attempt, including an earlier release's notSent or canResend marker.
+    """
+    context = call.context
+    assert context is not None
+    attempt = context.attempt
+    fresh = _TransitionHistory(None, attempt == 1)
+    if not context.has_last_heartbeat_value():
+        return fresh
+    value = context.get_last_heartbeat_value(dict[str, Any])
+    if not isinstance(value, dict):
+        return fresh
+    call_id = str(call.id)
+    transition_id, transition_name = value.get("transitionId"), value.get("transitionName", "")
+    source_status_id, destination_status_id = value.get("sourceStatusId"), value.get("destinationStatusId")
+    identifiers = (transition_id, source_status_id, destination_status_id)
+    if (
+        "state" not in value
+        and value.get("callId") == call_id
+        and all(isinstance(item, str) and item for item in identifiers)
+        and isinstance(transition_name, str)
+    ):
+        plan = _TransitionCheckpoint(
+            str(transition_id), transition_name, str(source_status_id), str(destination_status_id)
+        )
+        return _TransitionHistory(plan, False)
+    markers = value.get("singleDispatchMarkers")
+    marker = value if "state" in value else markers.get(call_id) if isinstance(markers, dict) else None
+    can_select = (
+        isinstance(marker, dict)
+        and marker.get("callId") == call_id
+        and marker.get("attempt") == attempt - 1
+        and not marker.get("providerId")
+        and marker.get("state") in ("notSent", "canResend")
+    )
+    return _TransitionHistory(None, can_select or attempt == 1)
+
+
 _UNPROVEN_EARLIER_TRANSITION = (
-    "an earlier attempt may have transitioned the request and its status does not prove the destination, "
-    "so the transition is not sent again; set destinationStatusName so a retried Step recognizes it"
+    "an earlier attempt may have transitioned the request and its transition checkpoint is missing, "
+    "so no transition is selected or sent; the Step retries until its budget ends"
 )
 
 
-def _has_possible_earlier_transition(decision: Decision) -> bool:
-    """Ignore prior_send_upper_bound: a cap-1 fence writes no send count.
-
-    SEND_ALLOWED at cap 1 already proves that no earlier send took effect.
-    """
-    return decision.kind != DecisionKind.SEND_ALLOWED or bool(
-        decision.marker and decision.marker.provider_id
-    )
-
-
-class _TransitionDispatch:
-    """One fenced transition request and the statuses seen when its headers arrived."""
-
-    def __init__(
-        self, client: Client, call: Call, credentials: Any, path: str, payload: dict[str, Any]
-    ) -> None:
-        self.client, self.call, self.credentials, self.path, self.payload = (
-            client, call, credentials, path, payload
-        )
-        self.observed_statuses: list[int] = []
-
-    async def send(self, deadline: datetime) -> ProviderResponse:
-        """Send once after the Fence persisted the claim."""
-        return await self.client.exchange(
-            self.call, self.credentials, "POST", "jira", self.path,
-            payload=self.payload, observed_statuses=self.observed_statuses,
-        )
-
-    def has_observed_success(self) -> bool:
-        """Report that Jira answered 2xx before the write window expired."""
-        return bool(self.observed_statuses) and 200 <= self.observed_statuses[-1] < 300
-
-
-class _TransitionAttempt:
-    """One attempt's fence and whether an earlier attempt may have transitioned the request."""
-
-    def __init__(self, fence: Fence, has_possible_earlier_transition: bool) -> None:
-        self.fence = fence
-        self.has_possible_earlier_transition = has_possible_earlier_transition
-
-    async def retry_before_send(
-        self, cause: Failure, retry_after: float
-    ) -> MutationAttempt[TransitionTicketOutput]:
-        """Return Retry before any send; a first attempt records notSent so the next may send."""
-        if not self.has_possible_earlier_transition:
-            try:
-                await self.fence.record_not_sent()
-            except Exception:
-                pass  # A lost notSent only makes the next attempt read without transitioning.
-        return MutationAttempt.retry(cause, retry_after)
-
-    async def retry_unprocessed_send(
-        self, cause: Failure, retry_after: float
-    ) -> MutationAttempt[TransitionTicketOutput]:
-        """Record that Jira did not process this send, then return Retry."""
-        try:
-            await self.fence.record_can_resend()
-        except Exception:
-            return MutationAttempt.retry(
-                failure(
-                    "transitionTicket",
-                    FailureKind.AVAILABILITY,
-                    "Jira Service Management retry checkpoint could not be recorded",
-                ),
-                retry_after,
-            )
-        return MutationAttempt.retry(cause, retry_after)
-
-    async def reject_first_send(
-        self, branch: str, output: TransitionTicketOutput, receipt: Receipt, cause: Failure
-    ) -> MutationAttempt[TransitionTicketOutput]:
-        """Select a definite refusal of this attempt's only possible send."""
-        try:
-            await self.fence.record_can_resend()
-        except Exception:
-            return MutationAttempt.retry(
-                failure(
-                    "transitionTicket",
-                    FailureKind.AVAILABILITY,
-                    "Jira Service Management rejection checkpoint could not be recorded",
-                )
-            )
-        return MutationAttempt.branch_result(branch, output, receipt, cause)
-
-    async def record_can_resend_best_effort(self) -> None:
-        """Record that nothing was sent; a lost checkpoint only keeps the claim."""
-        try:
-            await self.fence.record_can_resend()
-        except Exception:
-            pass
+def _transition_checkpoint_heartbeat(
+    call: Call, attempt: int, chosen: TransitionReference, source_status_id: str
+) -> dict[str, Any]:
+    """Encode the checkpoint exactly as the Go connector does."""
+    return {
+        "callId": str(call.id),
+        "attempt": attempt,
+        "transitionId": chosen.id,
+        "transitionName": chosen.name,
+        "sourceStatusId": source_status_id,
+        "destinationStatusId": chosen.destination_status.id,
+    }
 
 
 class TransitionTicketOperation:
@@ -1622,11 +1615,7 @@ class TransitionTicketOperation:
             return MutationAttempt.branch_result(
                 defs.DEFECT, empty, Receipt(), failure("transitionTicket", FailureKind.VALIDATION, str(error))
             )
-        try:
-            # The default cap of one send: a repeated transition could move the request again.
-            fence = Fence(call, timedelta(seconds=30))
-            decision = await fence.decide()
-        except ValueError:
+        if call.context is None:
             return MutationAttempt.branch_result(
                 defs.DEFECT,
                 empty,
@@ -1634,36 +1623,41 @@ class TransitionTicketOperation:
                 failure(
                     "transitionTicket",
                     FailureKind.LOCAL_DEFECT,
-                    "Jira Service Management dispatch fence could not be constructed",
+                    "Jira Service Management transition requires a Dex Step context",
                 ),
             )
-        if decision.kind == DecisionKind.FAIL_CLOSED:
+        try:
+            history = _read_transition_history(call)
+        except Exception:
             return MutationAttempt.retry(
                 failure(
                     "transitionTicket",
                     FailureKind.AVAILABILITY,
-                    "Jira Service Management dispatch checkpoint is unreadable, "
+                    "Jira Service Management transition checkpoint is unreadable, "
                     "so nothing was sent in this attempt",
                 )
             )
-        attempt = _TransitionAttempt(fence, _has_possible_earlier_transition(decision))
         credentials, session_error = await self.client.resolve(call, "transitionTicket")
         if session_error:
-            if session_error.outcome == "retry" or attempt.has_possible_earlier_transition:
+            # After a possible earlier transition, a credential failure is no proof that nothing moved.
+            if session_error.outcome == "retry" or not history.can_select:
                 assert session_error.failure is not None
-                return await attempt.retry_before_send(session_error.failure, session_error.retry_after)
+                await history.record_not_sent(call)
+                return MutationAttempt.retry(session_error.failure, session_error.retry_after)
             return _mutation_failure(session_error, empty, Receipt())
         assert credentials is not None
         snapshot, read_response, classification = await self._snapshot(call, credentials, issue)
         receipt = self.client.receipt(call, read_response, issue)
         if snapshot is None:
-            if classification.outcome == "retry" or attempt.has_possible_earlier_transition:
-                assert classification.failure is not None
-                return await attempt.retry_before_send(classification.failure, classification.retry_after)
+            if classification.outcome == "retry":
+                await history.record_not_sent(call)
             return _mutation_failure(classification, empty, receipt)
         issue_id, issue_key, status, transitions = snapshot
         receipt = replace(receipt, provider_object_id=issue_key)
         output = TransitionTicketOutput(issue_id, issue_key, status, status)
+        send = _TransitionTicketSend(self, call, credentials, issue, resolution_name)
+        if history.plan is not None:
+            return await send.resume_recorded(history.plan, status, transitions, output, receipt)
         if destination_name and status.name.casefold() == destination_name.casefold():
             return MutationAttempt.branch_result(
                 defs.TRANSITIONED, replace(output, is_already_in_destination_status=True), receipt
@@ -1684,9 +1678,9 @@ class TransitionTicketOperation:
                 replace(output, transition=matches[0], is_already_in_destination_status=True),
                 receipt,
             )
-        if attempt.has_possible_earlier_transition:
-            return await attempt.retry_before_send(
-                failure("transitionTicket", FailureKind.AVAILABILITY, _UNPROVEN_EARLIER_TRANSITION), 0
+        if not history.can_select:
+            return MutationAttempt.retry(
+                failure("transitionTicket", FailureKind.AVAILABILITY, _UNPROVEN_EARLIER_TRANSITION)
             )
         if len(matches) != 1:
             if matches:
@@ -1709,32 +1703,91 @@ class TransitionTicketOperation:
                 reason,
             )
         chosen = matches[0]
-        output = replace(output, transition=chosen)
-        payload: dict[str, Any] = {"transition": {"id": chosen.id}}
-        if resolution_name:
-            payload["fields"] = {"resolution": {"name": resolution_name}}
-        dispatch = _TransitionDispatch(
-            self.client, call, credentials, "/issue/" + path_escape(issue) + "/transitions", payload
-        )
         try:
-            response = await fence.dispatch(dispatch.send)
-        except TimeoutError:
-            if dispatch.has_observed_success():
-                # Jira accepted the transition before the write window cut its body.
-                return MutationAttempt.branch_result(
-                    defs.TRANSITIONED, replace(output, status=chosen.destination_status), receipt
-                )
-            response = ProviderResponse(is_dispatched=True, transport_error=True)
-        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            await call.context.heartbeat(
+                _transition_checkpoint_heartbeat(call, call.context.attempt, chosen, status.id)
+            )
+        except Exception:
+            await history.record_not_sent(call)
             return MutationAttempt.retry(
                 failure(
                     "transitionTicket",
                     FailureKind.AVAILABILITY,
-                    "Jira Service Management dispatch checkpoint or request budget is unavailable, "
+                    "Jira Service Management transition checkpoint could not be recorded, "
                     "so the request was not transitioned",
                 )
             )
-        receipt = self.client.receipt(call, response, issue_key)
+        return await send.send(chosen, output)
+
+
+class _TransitionTicketSend:
+    """Sends one Jira transition for an attempt and classifies the answer."""
+
+    def __init__(
+        self, operation: TransitionTicketOperation, call: Call, credentials: Any, issue: str, resolution: str
+    ) -> None:
+        self.operation, self.client, self.call = operation, operation.client, call
+        self.credentials, self.issue, self.resolution = credentials, issue, resolution
+
+    async def resume_recorded(
+        self,
+        checkpoint: _TransitionCheckpoint,
+        status: TicketStatus,
+        transitions: tuple[TransitionReference, ...],
+        output: TransitionTicketOutput,
+        receipt: Receipt,
+    ) -> MutationAttempt[TransitionTicketOutput]:
+        """Continue the transition an earlier attempt of this Call recorded."""
+        if status.id == checkpoint.destination_status_id:
+            recorded = TransitionReference(checkpoint.transition_id, checkpoint.transition_name, status)
+            return MutationAttempt.branch_result(
+                defs.TRANSITIONED,
+                replace(output, transition=recorded, is_already_in_destination_status=True),
+                receipt,
+            )
+        unavailable = replace(output, available_transitions=transitions)
+        if status.id != checkpoint.source_status_id:
+            return MutationAttempt.branch_result(
+                defs.TRANSITION_UNAVAILABLE,
+                unavailable,
+                receipt,
+                failure(
+                    "transitionTicket",
+                    FailureKind.CONFLICT,
+                    f"the request moved to status {status.id}, which is neither the source nor the "
+                    f"destination of transition {checkpoint.transition_id}, so it was not sent again",
+                ),
+            )
+        for transition in transitions:
+            if (
+                transition.id == checkpoint.transition_id
+                and transition.destination_status.id == checkpoint.destination_status_id
+            ):
+                return await self.send(transition, output)
+        return MutationAttempt.branch_result(
+            defs.TRANSITION_UNAVAILABLE,
+            unavailable,
+            receipt,
+            failure(
+                "transitionTicket",
+                FailureKind.CONFLICT,
+                f"transition {checkpoint.transition_id} is no longer available from status {status.id}",
+            ),
+        )
+
+    async def send(
+        self, chosen: TransitionReference, output: TransitionTicketOutput
+    ) -> MutationAttempt[TransitionTicketOutput]:
+        """Post the chosen transition once in this attempt and classify Jira's answer."""
+        output = replace(output, transition=chosen)
+        payload: dict[str, Any] = {"transition": {"id": chosen.id}}
+        if self.resolution:
+            payload["fields"] = {"resolution": {"name": self.resolution}}
+        response = await self.client.exchange(
+            self.call, self.credentials, "POST", "jira",
+            "/issue/" + path_escape(self.issue) + "/transitions", payload=payload,
+        )
+        receipt = self.client.receipt(self.call, response, output.issue_key)
         is_complete = not (
             response.transport_error
             or response.has_body_read_failed
@@ -1742,7 +1795,6 @@ class TransitionTicketOperation:
             or response.reflects_secret
         )
         if response.request_not_built:
-            await attempt.record_can_resend_best_effort()
             return MutationAttempt.branch_result(
                 defs.DEFECT,
                 output,
@@ -1754,7 +1806,7 @@ class TransitionTicketOperation:
                 defs.TRANSITIONED, replace(output, status=chosen.destination_status), receipt
             )
         if response.too_little_time:
-            return await attempt.retry_unprocessed_send(
+            return MutationAttempt.retry(
                 failure(
                     "transitionTicket",
                     FailureKind.AVAILABILITY,
@@ -1763,7 +1815,7 @@ class TransitionTicketOperation:
                 0,
             )
         if is_complete and response.status_code == 404:
-            return await attempt.reject_first_send(
+            return MutationAttempt.branch_result(
                 defs.NOT_FOUND,
                 output,
                 receipt,
@@ -1774,7 +1826,7 @@ class TransitionTicketOperation:
                 ),
             )
         if not response.transport_error and response.status_code == 429:
-            return await attempt.retry_unprocessed_send(
+            return MutationAttempt.retry(
                 failure(
                     "transitionTicket",
                     FailureKind.RATE_LIMIT,
@@ -1783,7 +1835,7 @@ class TransitionTicketOperation:
                 self.client.retry_after(response),
             )
         if not response.transport_error and response.status_code == 503:
-            return await attempt.retry_unprocessed_send(
+            return MutationAttempt.retry(
                 failure(
                     "transitionTicket",
                     FailureKind.AVAILABILITY,
@@ -1792,7 +1844,7 @@ class TransitionTicketOperation:
                 self.client.retry_after(response),
             )
         if response.transport_error and not response.is_dispatched:
-            return await attempt.retry_unprocessed_send(
+            return MutationAttempt.retry(
                 failure(
                     "transitionTicket",
                     FailureKind.TRANSPORT,
@@ -1800,39 +1852,8 @@ class TransitionTicketOperation:
                 ),
                 0,
             )
-        # An unknown outcome keeps the claim, so later attempts never transition again.
-        reread, _, reread_classification = await self._snapshot(call, credentials, issue)
-        if reread is not None and reread[2].id == chosen.destination_status.id:
-            return MutationAttempt.branch_result(
-                defs.TRANSITIONED, replace(output, status=reread[2]), receipt
-            )
-        is_definite_refusal = is_complete and response.status_code in DEFINITE_WRITE_REFUSAL_STATUSES
-        if reread is None:
-            if is_definite_refusal:
-                return await attempt.retry_unprocessed_send(
-                    failure(
-                        "transitionTicket",
-                        FailureKind.AVAILABILITY,
-                        "Jira refused the transition and the request could not be read back",
-                    ),
-                    0,
-                )
-            return MutationAttempt.retry(
-                failure(
-                    "transitionTicket",
-                    FailureKind.AVAILABILITY,
-                    "Jira transition outcome could not be read back",
-                )
-            )
-        if is_definite_refusal:
-            classification = self.client.classify_read("transitionTicket", "transition", response)
-            assert classification.failure is not None
-            return await attempt.reject_first_send(
-                defs.PROVIDER_REJECTED,
-                replace(output, status=reread[2], rejected_field_ids=classification.field_ids),
-                receipt,
-                classification.failure,
-            )
+        if is_complete and response.status_code in DEFINITE_WRITE_REFUSAL_STATUSES:
+            return await self.classify_refused(chosen, output, response, receipt)
         if not response.transport_error and response.status_code < 400:
             return MutationAttempt.retry(
                 failure(
@@ -1854,7 +1875,38 @@ class TransitionTicketOperation:
             failure(
                 "transitionTicket",
                 FailureKind.AVAILABILITY,
-                "Jira did not confirm the transition and the issue has not moved yet",
+                "Jira did not confirm the transition; "
+                "the next attempt reads the request before sending it again",
             ),
             self.client.retry_after(response),
+        )
+
+    async def classify_refused(
+        self,
+        chosen: TransitionReference,
+        output: TransitionTicketOutput,
+        response: ProviderResponse,
+        receipt: Receipt,
+    ) -> MutationAttempt[TransitionTicketOutput]:
+        """Reread the request, because a concurrent duplicate may have made the transition first."""
+        reread, _, _ = await self.operation._snapshot(self.call, self.credentials, self.issue)
+        if reread is None:
+            return MutationAttempt.retry(
+                failure(
+                    "transitionTicket",
+                    FailureKind.AVAILABILITY,
+                    "Jira refused the transition and the request could not be read back",
+                )
+            )
+        if reread[2].id == chosen.destination_status.id:
+            return MutationAttempt.branch_result(
+                defs.TRANSITIONED, replace(output, status=reread[2]), receipt
+            )
+        classification = self.client.classify_read("transitionTicket", "transition", response)
+        assert classification.failure is not None
+        return MutationAttempt.branch_result(
+            defs.PROVIDER_REJECTED,
+            replace(output, status=reread[2], rejected_field_ids=classification.field_ids),
+            receipt,
+            classification.failure,
         )

@@ -380,7 +380,7 @@
       "kind": "mutation",
       "operationId": "transitionTicket",
       "inputType": "TransitionTicketInput",
-      "description": "Move one request through its Jira workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the request has already made. A single-dispatch fence sends the transition at most once; after a possible earlier transition, a repeated attempt only rereads the request and succeeds when it is in the destination status.",
+      "description": "Move one request through its Jira workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the request has already made. Before sending, the Step checkpoints the chosen transition ID and its source and destination statuses. A retried attempt never selects again; it rereads the request, succeeds when it is in the recorded destination, sends the recorded transition again only while the request is still in the recorded source, and selects transitionUnavailable without sending when someone else moved the request.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -424,7 +424,7 @@
         "description": "TransitionTicketInput selects one Jira workflow transition of a request. Set at least one of TransitionID, TransitionName, and DestinationStatusName; every one that is set must match the same available transition.",
         "properties": {
           "destinationStatusName": {
-            "description": "DestinationStatusName is the status the transition leads to, such as In Progress, compared without case. When the issue is already in it, no transition is performed. Set it whenever the destination is known: a retried Step then recognizes a transition Jira already made.",
+            "description": "DestinationStatusName is the status the transition leads to, such as In Progress, compared without case. When the issue is already in it, no transition is performed.",
             "type": "string"
           },
           "issueIdOrKey": {

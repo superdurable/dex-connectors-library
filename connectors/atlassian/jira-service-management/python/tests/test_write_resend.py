@@ -3,6 +3,7 @@
 """Bounded resend of Jira Service Management writes whose outcome is unknown."""
 
 import asyncio
+import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
@@ -402,8 +403,45 @@ def transition_posts(requests: list[httpx.Request]) -> int:
     return sum(1 for request in requests if request.method == "POST")
 
 
+RECORDED_PENDING = {
+    "callId": str(CALL_ID),
+    "attempt": 1,
+    "transitionId": "21",
+    "transitionName": "Pending",
+    "sourceStatusId": "3",
+    "destinationStatusId": "1",
+}
+TRANSITION_CALL_ISSUE_RESOLVED = (
+    '{"id":"10042","key":"ITH-42","fields":{"status":{"id":"5","name":"Resolved",'
+    '"statusCategory":{"key":"done"}}},"transitions":[{"id":"51","name":"Reopen",'
+    '"to":{"id":"1","name":"Waiting for support","statusCategory":{"key":"new"}}}]}'
+)
+
+
+def posted_transition_ids(requests: list[httpx.Request]) -> list[str]:
+    """Return the transition ID of every transition request, in order."""
+    posted = [request for request in requests if request.method == "POST"]
+    return [json.loads(request.content)["transition"]["id"] for request in posted]
+
+
 @pytest.mark.asyncio
-async def test_transition_after_an_unknown_outcome_is_never_sent_again() -> None:
+async def test_transition_records_its_checkpoint_before_sending() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer = issue_then_post([TRANSITION_CALL_ISSUE_IN_PROGRESS], (502, "{}"))
+    assert branch_of(await run("transitionTicket", answer, context, requests, transition=PENDING)) == "retry"
+    assert context.heartbeat_value == RECORDED_PENDING
+
+    unreadable = AttemptContext(2)
+    unreadable.heartbeat_read_error = RuntimeError("heartbeat unavailable")
+    untouched: list[httpx.Request] = []
+    result = await run("transitionTicket", answer, unreadable, untouched, transition=PENDING)
+    assert branch_of(result) == "retry"
+    assert untouched == [], "an unreadable checkpoint never falls back to selecting again"
+
+
+@pytest.mark.asyncio
+async def test_retried_transition_in_the_recorded_destination_sends_nothing() -> None:
     requests: list[httpx.Request] = []
     issue = [TRANSITION_CALL_ISSUE_IN_PROGRESS]
     context = AttemptContext()
@@ -411,10 +449,68 @@ async def test_transition_after_an_unknown_outcome_is_never_sent_again() -> None
     assert branch_of(await run("transitionTicket", answer, context, requests, transition=PENDING)) == "retry"
     # Jira applied the toggle late; a resend would move the request back.
     issue[0] = TRANSITION_CALL_ISSUE_WAITING
-    for attempt in (2, 3):
-        context.attempt = attempt
-        repeated = await run("transitionTicket", answer, context, requests, transition=PENDING)
-        assert branch_of(repeated) == "retry"
+    context.attempt = 2
+    repeated = await run("transitionTicket", answer, context, requests, transition=PENDING)
+    assert branch_of(repeated) == "transitioned"
+    assert transition_posts(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_retried_transition_still_in_the_source_resends_the_recorded_transition() -> None:
+    requests: list[httpx.Request] = []
+    # A second Pending would make selecting by name again ambiguous.
+    ambiguous = TRANSITION_CALL_ISSUE_IN_PROGRESS.replace(
+        '"transitions":[',
+        '"transitions":[{"id":"22","name":"Pending","to":{"id":"5","name":"Resolved",'
+        '"statusCategory":{"key":"done"}}},',
+    )
+    result = await run(
+        "transitionTicket", issue_then_post([ambiguous], (204, "")),
+        AttemptContext(2, heartbeat_value=RECORDED_PENDING), requests, transition=PENDING,
+    )
+    assert branch_of(result) == "transitioned"
+    assert posted_transition_ids(requests) == ["21"], "the retry sends the recorded transition ID"
+
+
+@pytest.mark.asyncio
+async def test_retried_transition_moved_elsewhere_is_unavailable_without_sending() -> None:
+    requests: list[httpx.Request] = []
+    result = await run(
+        "transitionTicket", issue_then_post([TRANSITION_CALL_ISSUE_RESOLVED], (204, "")),
+        AttemptContext(2, heartbeat_value=RECORDED_PENDING), requests, transition=PENDING,
+    )
+    assert branch_of(result) == "transitionUnavailable"
+    assert transition_posts(requests) == 0
+
+
+@pytest.mark.asyncio
+async def test_retry_after_a_lost_checkpoint_never_selects_again() -> None:
+    requests: list[httpx.Request] = []
+    # Dex lost the checkpoint after a possible send; selecting Pending again would undo the move.
+    result = await run(
+        "transitionTicket", issue_then_post([TRANSITION_CALL_ISSUE_WAITING], (204, "")), AttemptContext(2),
+        requests, transition=PENDING,
+    )
+    assert branch_of(result) == "retry"
+    assert transition_posts(requests) == 0
+    not_sent = {"callId": str(CALL_ID), "attempt": 1, "state": "notSent"}
+    selected = await run(
+        "transitionTicket", issue_then_post([TRANSITION_CALL_ISSUE_IN_PROGRESS], (204, "")),
+        AttemptContext(2, heartbeat_value=not_sent), requests, transition=PENDING,
+    )
+    assert branch_of(selected) == "transitioned"
+    assert transition_posts(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_retried_transition_with_a_rejected_resend_stays_definite() -> None:
+    requests: list[httpx.Request] = []
+    refusal = '{"errorMessages":[],"errors":{"resolution":"Resolution is required."}}'
+    result = await run(
+        "transitionTicket", issue_then_post([TRANSITION_CALL_ISSUE_IN_PROGRESS], (400, refusal)),
+        AttemptContext(2, heartbeat_value=RECORDED_PENDING), requests, transition=PENDING,
+    )
+    assert branch_of(result) == "providerRejected"
     assert transition_posts(requests) == 1
 
 
@@ -436,13 +532,14 @@ async def test_repeated_transition_recognizes_the_destination_status() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("status", "body"), [(404, "{}"), (200, '{"id":"x"}'), (403, "{}")])
-async def test_repeated_transition_never_selects_a_failure_branch(status: int, body: str) -> None:
+@pytest.mark.parametrize(("status", "branch"), [(500, "retry"), (404, "notFound")])
+async def test_retried_transition_read_failures(status: int, branch: str) -> None:
     requests: list[httpx.Request] = []
     result = await run(
-        "transitionTicket", always(status, body), AttemptContext(2), requests, transition=PENDING
+        "transitionTicket", always(status, "{}"), AttemptContext(2, heartbeat_value=RECORDED_PENDING),
+        requests, transition=PENDING,
     )
-    assert branch_of(result) == "retry"
+    assert branch_of(result) == branch, "a transient read retries and a definite read stays definite"
     assert len(requests) == 1
 
 
@@ -456,7 +553,7 @@ async def test_transition_rate_limit_allows_the_next_attempt_to_send() -> None:
 
     context = AttemptContext()
     assert branch_of(await run("transitionTicket", answer, context, requests, transition=PENDING)) == "retry"
-    assert context.marker is not None and context.marker.state == "canResend"
+    assert context.heartbeat_value == RECORDED_PENDING
     context.attempt = 2
     repeated = await run("transitionTicket", answer, context, requests, transition=PENDING)
     assert branch_of(repeated) == "transitioned"
@@ -519,7 +616,7 @@ async def test_transition_credential_failures_follow_the_send_history() -> None:
     )
     assert branch_of(first) == "defect"
     later = await run(
-        "transitionTicket", always(204, ""), AttemptContext(2), requests,
+        "transitionTicket", always(204, ""), AttemptContext(2, heartbeat_value=RECORDED_PENDING), requests,
         credential_provider=terminal, transition=PENDING,
     )
     assert branch_of(later) == "retry", "a terminal failure after a possible send never selects defect"
@@ -529,5 +626,5 @@ async def test_transition_credential_failures_follow_the_send_history() -> None:
         credential_provider=ScriptedCredentials("transient"), transition=PENDING,
     )
     assert branch_of(transient) == "retry"
-    assert context.marker is not None and context.marker.state == "notSent"
+    assert context.heartbeat_value == {"callId": str(CALL_ID), "attempt": 1, "state": "notSent"}
     assert requests == []

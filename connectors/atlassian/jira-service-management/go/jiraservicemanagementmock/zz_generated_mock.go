@@ -399,7 +399,7 @@ func TransitionTicketNotFound(value jiraservicemanagement.TransitionTicketOutput
 	return connectormock.Branch(jiraservicemanagement.TransitionTicketBranchNotFound, value, failure)
 }
 
-// TransitionTicketTransitionUnavailable selects the transitionUnavailable branch: No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions.
+// TransitionTicketTransitionUnavailable selects the transitionUnavailable branch: No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.
 func TransitionTicketTransitionUnavailable(value jiraservicemanagement.TransitionTicketOutput, failure *sdkgo.Failure) connectormock.Case[jiraservicemanagement.TransitionTicketOutput] {
 	return connectormock.Branch(jiraservicemanagement.TransitionTicketBranchTransitionUnavailable, value, failure)
 }

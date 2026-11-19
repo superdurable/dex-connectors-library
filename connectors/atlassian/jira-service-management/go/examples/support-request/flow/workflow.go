@@ -468,7 +468,7 @@ func MapToPublicReplyInput(request CommentRequest) jiraservicemanagement.AddComm
 	return jiraservicemanagement.AddCommentInput{IssueIDOrKey: request.IssueKey, Body: request.Body, IsPublic: true}
 }
 
-// MapToTransitionTicketInput moves the request by destination status, so a retried Step recognizes a move.
+// MapToTransitionTicketInput moves the request by destination status, so a request already there needs no move.
 func MapToTransitionTicketInput(request StatusChangeRequest) jiraservicemanagement.TransitionTicketInput {
 	return jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: request.IssueKey, DestinationStatusName: request.DestinationStatusName}
 }

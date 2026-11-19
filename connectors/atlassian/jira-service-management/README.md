@@ -231,22 +231,38 @@ Moves the request through its Jira workflow exactly as the Jira connector's
 `transitionIssue` does: it reads the status and available transitions in one
 request, skips a transition the request has already made, selects
 `transitionUnavailable` with up to 50 available transitions when none or
-several match, and reads the request again after any ambiguous response. It
+several match, and records the same transition checkpoint before sending. It
 uses the platform transitions endpoint, which offers an agent every workflow
-transition, rather than the request API's customer transitions. Set
-`DestinationStatusName` whenever the destination is known.
+transition, rather than the request API's customer transitions.
 
-The transition POST goes through the single-dispatch fence with a cap of one
-send, because a workflow can offer a transition with the same name back and a
-second POST could undo the first. A 429, 503, refusal, or provably unsent
-request records `canResend`, and only then may the next attempt transition.
-Any number of such Retries in a row still let the next attempt send, because a
-cap-one fence permits a send only when no earlier send can have taken effect.
-After a possible earlier send, an attempt rereads the request and selects
-`transitioned` when its status equals `DestinationStatusName` or the matched
-transition leads to the current status; otherwise it returns Retry, never a
-failure branch, until the retry budget ends. A 2xx whose body breaks, even at
-the write deadline, is `transitioned`.
+Before the POST, the Step records a heartbeat checkpoint with the chosen
+transition ID, the request's current (source) status ID, and the transition's
+destination status ID; when Dex cannot record it, the attempt returns Retry
+without sending. A 2xx, even one whose body breaks, is `transitioned`. A
+conclusive refusal rereads the request and selects `transitioned` when a
+concurrent attempt already reached the destination, otherwise
+`providerRejected`. A 429, 503, provably unsent request, 409, other 5xx, cut
+body, or dropped connection returns Retry.
+
+A later attempt of the same Call never selects a transition again, because a
+workflow can offer a transition with the same name back and a second selection
+could undo the first. It reads the checkpoint and the request, then selects
+`transitioned` without sending when the request is in the recorded destination,
+sends the recorded transition ID again while the request is still in the
+recorded source status, and selects `transitionUnavailable` without sending
+when someone else moved the request to another status or the recorded
+transition is no longer offered. Dex can lose a recorded heartbeat, so a later
+attempt selects a transition only when the previous attempt recorded `notSent`,
+which every Retry before a send records, or left an earlier release's `notSent`
+or `canResend` marker. Without a checkpoint or that record it selects
+`transitioned` only when the request is already in `DestinationStatusName` or
+the matched transition leads to the current status, and otherwise returns
+Retry without sending. An unreadable checkpoint returns Retry without any
+request; a transient read failure returns Retry and a definite read outcome
+keeps its branch. A terminal credential failure after a checkpoint returns
+Retry instead of `defect`. Run `transitionTicket` in its own Step, as
+`NewTransitionTicketStep` does, because the checkpoint is the Step's heartbeat
+value.
 
 ### addComment
 
@@ -301,8 +317,8 @@ can replay a Step after Worker loss or before a result is committed, so the writ
   verified against a live Atlassian site.
 - **updateTicket** keeps async durability and reads before it writes, so a
   backup attempt finds the change already made. **transitionTicket** uses sync
-  durability for its fence checkpoint and never sends the transition again
-  after a possible send, as described above. Both declare
+  durability for its transition checkpoint and resends only the recorded
+  transition, only from the recorded source status, as described above. Both declare
   `repeatOnUnknown: safe`: an unknown write outcome returns Retry.
 
 Real Dex runs with delayed and retried fake provider requests guard each position:

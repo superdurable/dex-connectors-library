@@ -236,18 +236,55 @@ async function runTransition(client: JiraServiceManagementClient, context: Attem
   catch (error) { if (error instanceof RetryError) return 'retry'; throw error; }
 }
 
-describe('Jira Service Management transition behind the single-dispatch fence', () => {
-  it('never transitions again after an unknown outcome', async () => {
+const recordedPending = { callId, attempt: 1, transitionId: '21', transitionName: 'Pending', sourceStatusId: '3', destinationStatusId: '1' };
+const resolved = '{"id":"10042","key":"ITH-42","fields":{"status":{"id":"5","name":"Resolved","statusCategory":{"key":"done"}}},"transitions":[{"id":"51","name":"Reopen","to":{"id":"1","name":"Waiting for support","statusCategory":{"key":"new"}}}]}';
+const postedTransitionIds = (requests: ProviderRequest[]) => requests.filter(request => request.method === 'POST').map(request => (JSON.parse(Buffer.from(request.body ?? '').toString()) as { transition: { id: string } }).transition.id);
+
+class UnreadableContext extends AttemptContext {
+  override hasLastHeartbeatValue(): boolean { throw new Error('heartbeat unavailable'); }
+}
+
+describe('Jira Service Management transition with a recorded checkpoint', () => {
+  it('records its checkpoint before sending', async () => {
+    const { client } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: 502, body: '{}' });
+    const context = new AttemptContext();
+    expect(await runTransition(client, context)).toBe('retry');
+    expect(context.marker).toEqual(recordedPending);
+    const unreadable = newStallingClient(() => ({ status: 204, body: '' }));
+    expect(await runTransition(unreadable.client, new UnreadableContext(2))).toBe('retry');
+    expect(unreadable.requests, 'an unreadable checkpoint never falls back to selecting again').toEqual([]);
+  });
+
+  it('sends nothing when a retry finds the recorded destination', async () => {
     const issue = { body: inProgress };
     const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: issue.body } : { status: 502, body: '{}' });
     const context = new AttemptContext();
     expect(await runTransition(client, context)).toBe('retry');
     // Jira applied the toggle late; a resend would move the request back.
     issue.body = waiting;
-    for (const attempt of [2, 3]) {
-      context.attempt = attempt;
-      expect(await runTransition(client, context)).toBe('retry');
-    }
+    context.attempt = 2;
+    expect(await runTransition(client, context)).toBe('transitioned');
+    expect(transitionPosts(requests)).toBe(1);
+  });
+
+  it('resends the recorded transition while the request is still in its source status', async () => {
+    // A second Pending would make selecting by name again ambiguous.
+    const ambiguous = inProgress.replace('"transitions":[', '"transitions":[{"id":"22","name":"Pending","to":{"id":"5","name":"Resolved","statusCategory":{"key":"done"}}},');
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: ambiguous } : { status: 204, body: '' });
+    expect(await runTransition(client, new AttemptContext(2, recordedPending))).toBe('transitioned');
+    expect(postedTransitionIds(requests)).toEqual(['21']);
+  });
+
+  it('selects transitionUnavailable without sending when someone else moved the request', async () => {
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: resolved } : { status: 204, body: '' });
+    expect(await runTransition(client, new AttemptContext(2, recordedPending))).toBe('transitionUnavailable');
+    expect(transitionPosts(requests)).toBe(0);
+  });
+
+  it('keeps a refused resend definite', async () => {
+    const refusal = '{"errorMessages":[],"errors":{"resolution":"Resolution is required."}}';
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: 400, body: refusal });
+    expect(await runTransition(client, new AttemptContext(2, recordedPending))).toBe('providerRejected');
     expect(transitionPosts(requests)).toBe(1);
   });
 
@@ -263,9 +300,9 @@ describe('Jira Service Management transition behind the single-dispatch fence', 
     expect(transitionPosts(requests)).toBe(1);
   });
 
-  it.each([[404, '{}'], [200, '{"id":"x"}'], [403, '{}']])('never selects a failure branch after a possible send (HTTP %i)', async (status, body) => {
-    const { client, requests } = newStallingClient(() => ({ status, body }));
-    expect(await runTransition(client, new AttemptContext(2))).toBe('retry');
+  it.each([[500, 'retry'], [404, 'notFound']])('retries a transient read and keeps a definite read after a recorded send (HTTP %i)', async (status, branch) => {
+    const { client, requests } = newStallingClient(() => ({ status, body: '{}' }));
+    expect(await runTransition(client, new AttemptContext(2, recordedPending))).toBe(branch);
     expect(requests).toHaveLength(1);
   });
 
@@ -274,7 +311,7 @@ describe('Jira Service Management transition behind the single-dispatch fence', 
     const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: statuses.shift()!, body: '' });
     const context = new AttemptContext();
     expect(await runTransition(client, context)).toBe('retry');
-    expect(JSON.stringify(context.marker)).toContain('"state":"canResend"');
+    expect(context.marker).toEqual(recordedPending);
     context.attempt = 2;
     expect(await runTransition(client, context)).toBe('transitioned');
     expect(transitionPosts(requests)).toBe(2);
@@ -317,12 +354,22 @@ describe('Jira Service Management transition behind the single-dispatch fence', 
     const terminal = failingCredentials(() => new ReauthorizationRequiredError());
     const answer: Answer = () => ({ status: 204, body: '' });
     expect(await runTransition(newStallingClient(answer, terminal).client, new AttemptContext())).toBe('defect');
-    expect(await runTransition(newStallingClient(answer, terminal).client, new AttemptContext(2))).toBe('retry');
+    expect(await runTransition(newStallingClient(answer, terminal).client, new AttemptContext(2, recordedPending))).toBe('retry');
     const context = new AttemptContext();
     const { client, requests } = newStallingClient(answer, failingCredentials(() => new Error('credential broker unavailable')));
     expect(await runTransition(client, context)).toBe('retry');
-    expect(JSON.stringify(context.marker)).toContain('"state":"notSent"');
+    expect(context.marker, 'a transient failure before any send records notSent').toEqual({ callId, attempt: 1, state: 'notSent' });
     expect(requests).toEqual([]);
+  });
+
+  it('never selects again after a lost checkpoint', async () => {
+    // Dex lost the checkpoint after a possible send; selecting Pending again would undo the move.
+    const lost = newStallingClient(request => request.method === 'GET' ? { status: 200, body: waiting } : { status: 204, body: '' });
+    expect(await runTransition(lost.client, new AttemptContext(2))).toBe('retry');
+    expect(transitionPosts(lost.requests)).toBe(0);
+    const notSent = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgress } : { status: 204, body: '' });
+    expect(await runTransition(notSent.client, new AttemptContext(2, { callId, attempt: 1, state: 'notSent' }))).toBe('transitioned');
+    expect(transitionPosts(notSent.requests)).toBe(1);
   });
 });
 
