@@ -1,0 +1,60 @@
+{
+  "connectorId": "zego",
+  "releaseTag": "connectors/zego/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-zego",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_room_user_count_step",
+      "kind": "query",
+      "operationId": "getRoomUserCount",
+      "inputType": "GetRoomUserCountInput",
+      "description": "Read a ZIM room's current member count without returning the member list.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetRoomUserCountInput identifies a ZIM room created by the application.",
+        "properties": {
+          "roomId": {
+            "description": "RoomID is the application-assigned ZIM room ID, at most 32 supported ASCII bytes.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "roomId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
