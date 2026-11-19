@@ -1,0 +1,70 @@
+{
+  "connectorId": "variflight",
+  "releaseTag": "connectors/variflight/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-variflight",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetFlightStatusStep",
+      "kind": "query",
+      "operationId": "getFlightStatus",
+      "inputType": "GetFlightStatusInput",
+      "description": "Read up to 20 flight statuses for a number and departure date.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "noData",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFlightStatusInput selects a flight number and local departure date.",
+        "properties": {
+          "departureDate": {
+            "description": "DepartureDate is the local flight departure date in YYYY-MM-DD format.",
+            "type": "string"
+          },
+          "flightNumber": {
+            "description": "FlightNumber is the airline code and number, such as GX8915.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "departureDate",
+          "flightNumber"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

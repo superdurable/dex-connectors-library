@@ -7,3 +7,7 @@ The application token is sent in the provider's documented HTTPS query parameter
 The [runnable Dex Flow](go/examples/subscriber-count/README.md) uses a static connection, typed result, strict FDG and mock-backed real Dex integration. Live application authorization and production responses remain unverified. The logo comes from the [official WxPusher GitHub organization](https://github.com/wxpusher).
 
 Python v0.1.0: [package and runnable example](python/README.md).
+
+## TypeScript
+
+`@superdurable/connector-wxpusher` provides `getSubscriberCount` and a runnable Dex Flow in `typescript/examples/basic/`. Its conformance suite replays the Go-recorded provider scenarios.

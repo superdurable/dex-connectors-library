@@ -11,3 +11,7 @@ Sign in to [vivo Developers](https://developers.vivo.com/), open Account Informa
 The [runnable Flow](go/examples/get-online-version/) starts with a Java package name and completes with typed `GetOnlineVersionOutput`. Its default mock returns a published version. Live vivo authorization, app publication and provider response variation remain unverified without a user-controlled Dex Web Connection.
 
 Python v0.1.0: [package and runnable example](python/README.md).
+
+## TypeScript
+
+`@superdurable/connector-vivo` provides `getOnlineVersion` and a runnable Dex Flow in `typescript/examples/basic/`. Its conformance suite replays the Go-recorded signed requests.
