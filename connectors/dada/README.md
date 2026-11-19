@@ -13,3 +13,7 @@ The runnable example is in [`go/examples/order-status`](go/examples/order-status
 ## Python
 
 The [Python package](python/README.md) implements `queryOrderStatus` and includes a [runnable Dex Flow](python/examples/order_status/README.md). Its 13 provider scenarios replay Go-recorded signed requests, outputs, and retry decisions. No live merchant account has been authorized for this port.
+
+## TypeScript
+
+The [TypeScript package](typescript/README.md) implements the same signed query and includes a runnable Dex Flow. Its 13 provider scenarios replay Go-recorded requests and retry decisions.
