@@ -203,9 +203,14 @@ func CreateMessageProviderRejected(value discord.Message, failure *sdkgo.Failure
 	return connectormock.Branch(discord.CreateMessageBranchProviderRejected, value, failure)
 }
 
-// CreateMessageInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized answer now retries, because a resend inside the nonce window returns the same message.
+// CreateMessageInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized answer is an unknown outcome that resends with the same nonce or selects uncertain at the send cap.
 func CreateMessageInvalidResponse(value discord.Message, failure *sdkgo.Failure) connectormock.Case[discord.Message] {
 	return connectormock.Branch(discord.CreateMessageBranchInvalidResponse, value, failure)
+}
+
+// CreateMessageUncertain returns an uncertain createMessage outcome.
+func CreateMessageUncertain(value discord.Message, failure sdkgo.Failure) connectormock.Case[discord.Message] {
+	return connectormock.Uncertain(value, failure)
 }
 
 // CreateMessageDefect selects the defect branch: Local input, connection configuration, or credentials are invalid.
@@ -234,6 +239,12 @@ func CreateMessageUnknownChannel() connectormock.Case[discord.Message] {
 func CreateMessageMissingSendPermission() connectormock.Case[discord.Message] {
 	var value discord.Message
 	return connectormock.Branch(discord.CreateMessageBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Discord denied message creation."})
+}
+
+// CreateMessageMessageOutcomeUnknown is the manifest mock messageOutcomeUnknown: Every connection to Discord closes after dispatch until the send cap is reached, so the message cannot be confirmed.
+func CreateMessageMessageOutcomeUnknown() connectormock.Case[discord.Message] {
+	var value discord.Message
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before Discord confirmed the message."})
 }
 
 // CreateMessageDefault is the manifest default, releaseAnnouncement, which New installs.

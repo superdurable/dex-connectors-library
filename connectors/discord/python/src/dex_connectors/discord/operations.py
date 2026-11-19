@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import TypeVar
 from urllib.parse import quote, urlencode
 
+import httpx
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -25,12 +26,19 @@ from dex_connectors.sdk import (
     Receipt,
 )
 from dex_connectors.sdk.providerhttp import ProviderTransportError, parse_retry_after, read_error_tokens
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    Fence,
+    InsufficientAttemptTimeError,
+)
 
 from ._generated.definitions import ADD_REACTION_DEFINITION as ADD_REACTION_DEFINITION
 from ._generated.definitions import CREATE_MESSAGE_DEFINITION as CREATE_MESSAGE_DEFINITION
+from ._generated.definitions import CREATED, DEFECT, NOT_FOUND, PROVIDER_REJECTED
 from ._generated.definitions import GET_CHANNEL_DEFINITION as GET_CHANNEL_DEFINITION
 from ._generated.definitions import LIST_CHANNEL_MESSAGES_DEFINITION as LIST_CHANNEL_MESSAGES_DEFINITION
-from .client import Client, ProviderResponse
+from .client import USER_AGENT, Client, FencedExchange, ProviderResponse
 from .models import (
     AddedReaction,
     AddReactionInput,
@@ -67,6 +75,8 @@ _DOCUMENTED_CODES = frozenset(
     }
 )
 _NOT_FOUND_CODES = frozenset({"10003", "10008", "10014"})
+# Only these statuses prove Discord refused a send; 408, 409, 429, and other 4xx leave the outcome unknown.
+_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -318,7 +328,7 @@ def _query_outcome(
 def _mutation_outcome(
     branch: str, output: _Output, failure: Failure | None, delay: float, receipt: Receipt
 ) -> MutationAttempt[_Output]:
-    # Both writes are declared safe, so an oversized answer retries instead of selecting invalidResponse.
+    # addReaction is declared safe, so an oversized answer retries instead of selecting invalidResponse.
     if branch in ("retry", "invalidResponse"):
         assert failure is not None
         return MutationAttempt.retry(failure, delay)
@@ -428,7 +438,12 @@ class CreateMessageOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: CreateMessageInput) -> MutationAttempt[Message]:
-        """Send one mention-safe message and classify this attempt."""
+        """Send one mention-safe message under a single-dispatch fence and classify this attempt.
+
+        An unknown outcome resends with the same enforced nonce while possible sends stay
+        below ``call.max_sends`` and selects uncertain at the cap. A definite refusal of the
+        first send selects its branch and is never resent.
+        """
         empty = Message()
         try:
             _snowflake("channelId", input.channel_id)
@@ -460,19 +475,256 @@ class CreateMessageOperation:
             return _mutation_outcome(
                 "defect", empty, _failure("createMessage", FailureKind.VALIDATION, str(error)), 0, Receipt()
             )
-        path = "/channels/" + input.channel_id + "/messages"
-        branch, response, failure, delay, receipt = await _invoke(
-            self.client, call, "createMessage", "POST", path, input.channel_id, encoded
-        )
-        if branch:
-            return _mutation_outcome(branch, empty, failure, delay, receipt)
-        assert response is not None
         try:
-            message = _message(_decode_json(response.body), input.channel_id)
-        except ValueError as error:
-            # A resend inside the nonce window returns the same message, so a malformed answer retries.
-            return MutationAttempt.retry(_failure("createMessage", FailureKind.PROTOCOL, str(error)))
-        return _mutation_outcome("created", message, None, 0, self.client.receipt(call, message.id))
+            fence = Fence(
+                call,
+                CREATE_MESSAGE_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
+            )
+            decision = await fence.decide()
+        except ValueError:
+            return _create_message_branch(
+                DEFECT, FailureKind.LOCAL_DEFECT, "Discord dispatch fence could not be constructed", Receipt()
+            )
+        receipt = self.client.receipt(call, input.channel_id)
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            # An unreadable checkpoint is an unknown outcome; the retry budget bounds these attempts.
+            return _create_message_retry(
+                FailureKind.AVAILABILITY,
+                "Discord dispatch checkpoint is unreadable; no message was sent in this attempt",
+            )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return _create_message_uncertain(
+                FailureKind.TRANSPORT,
+                "an earlier attempt may have created the Discord message, and the send cap is reached",
+                receipt,
+            )
+        if decision.marker is not None and decision.marker.provider_id:
+            # No message ID is checkpointed, but a saved one would prove a created message; never resend it.
+            return _create_message_uncertain(
+                FailureKind.TRANSPORT,
+                "an earlier attempt created the Discord message, but its confirmation was lost",
+                receipt,
+            )
+        # The resend with the same enforced nonce is Discord's only read-back.
+        # This attempt's send would be the last one the cap allows when no further send remains.
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # An earlier send may have created the message, so a refusal of this resend proves nothing.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        token, failure, branch = await self.client.resolve_token(call, "createMessage")
+        if failure is not None or token is None:
+            assert failure is not None
+            return await _local_create_message_failure(
+                fence, has_possible_earlier_send, branch, failure, receipt
+            )
+        headers = {
+            "Accept": "application/json",
+            "Authorization": "Bot " + token,
+            "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
+        }
+        try:
+            request = self.client.http_client.build_request(
+                "POST",
+                self.client.base_url + "/channels/" + input.channel_id + "/messages",
+                headers=headers,
+                content=encoded,
+            )
+        except (httpx.HTTPError, ValueError, TypeError):
+            return await _local_create_message_failure(
+                fence,
+                has_possible_earlier_send,
+                "defect",
+                _failure("createMessage", FailureKind.LOCAL_DEFECT, "Discord request could not be built"),
+                receipt,
+            )
+        observed_statuses: list[int] = []
+
+        async def send(_deadline: datetime) -> FencedExchange:
+            return await self.client.send_fenced(request, observed_statuses)
+
+        try:
+            exchange = await fence.dispatch(send)
+        except (CheckpointError, InsufficientAttemptTimeError):
+            return _create_message_retry(FailureKind.AVAILABILITY, "Discord dispatch was not started")
+        except TimeoutError:
+            # The write window cut the exchange; a status seen at headers still classifies it.
+            status = observed_statuses[-1] if observed_statuses else 0
+            exchange = FencedExchange(status, read_error="read" if status else "request")
+        except Exception:
+            exchange = FencedExchange(read_error="request")
+        return await _classify_create_message(
+            self.client,
+            call,
+            fence,
+            exchange,
+            input.channel_id,
+            can_resend_unknown_outcome,
+            has_possible_earlier_send,
+            receipt,
+        )
+
+
+async def _classify_create_message(
+    client: Client,
+    call: Call,
+    fence: Fence,
+    exchange: FencedExchange,
+    channel_id: str,
+    can_resend_unknown_outcome: bool,
+    has_possible_earlier_send: bool,
+    receipt: Receipt,
+) -> MutationAttempt[Message]:
+    """Classify one dispatched createMessage exchange."""
+    if exchange.status_code == 0:
+        if not exchange.is_request_sent:
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass  # A lost canResend checkpoint leaves the claim, which the next attempt counts.
+            return _create_message_retry(FailureKind.TRANSPORT, "Discord could not be reached before sending")
+        return _resend_or_select_uncertain(
+            can_resend_unknown_outcome,
+            FailureKind.TRANSPORT,
+            "Discord message outcome is unknown",
+            0,
+            receipt,
+        )
+    if not 200 <= exchange.status_code < 300:
+        return await _classify_create_message_refusal(
+            client,
+            fence,
+            exchange,
+            channel_id,
+            can_resend_unknown_outcome,
+            has_possible_earlier_send,
+            receipt,
+        )
+    if exchange.read_error:
+        # Discord answered 2xx before the body broke or overflowed; a resend with the same nonce returns it.
+        return _resend_or_select_uncertain(
+            can_resend_unknown_outcome,
+            FailureKind.TRANSPORT,
+            "Discord answered the message, but its response could not be read",
+            0,
+            receipt,
+        )
+    try:
+        message = _message(_decode_json(exchange.body), channel_id)
+    except ValueError as error:
+        # A resend inside the nonce window returns the same message, so a malformed answer is unknown.
+        return _resend_or_select_uncertain(
+            can_resend_unknown_outcome, FailureKind.PROTOCOL, str(error), 0, receipt
+        )
+    # No message ID is checkpointed: a later resend with the same nonce returns this message.
+    return MutationAttempt.branch_result(CREATED, message, client.receipt(call, message.id))
+
+
+async def _classify_create_message_refusal(
+    client: Client,
+    fence: Fence,
+    exchange: FencedExchange,
+    channel_id: str,
+    can_resend_unknown_outcome: bool,
+    has_possible_earlier_send: bool,
+    receipt: Receipt,
+) -> MutationAttempt[Message]:
+    """Classify a non-2xx answer: 429 and 503 prove no processing, and only a readable
+    allowlisted refusal selects its branch; every other answer is an unknown outcome."""
+    response = ProviderResponse(exchange.status_code, exchange.headers, exchange.body)
+    branch, failure, delay = _classify(response, "createMessage", client.now())
+    if exchange.status_code in (429, 503):
+        try:
+            await fence.record_can_resend()
+        except Exception:
+            return _create_message_retry(
+                FailureKind.AVAILABILITY, "Discord retry checkpoint could not be recorded"
+            )
+        return MutationAttempt.retry(failure, delay)
+    is_definite_refusal = (
+        not exchange.read_error
+        and exchange.status_code in _REFUSAL_STATUSES
+        and branch in (NOT_FOUND, PROVIDER_REJECTED)
+        and not _is_accepted_message_body(exchange.body, channel_id)
+    )
+    if not is_definite_refusal:
+        # An unreadable, contradictory, or unlisted answer cannot prove that Discord created nothing.
+        return _resend_or_select_uncertain(
+            can_resend_unknown_outcome, failure.kind, failure.message, delay, receipt
+        )
+    if has_possible_earlier_send:
+        return _create_message_uncertain(
+            failure.kind,
+            "an earlier attempt may have created the Discord message: " + failure.message,
+            receipt,
+        )
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        pass  # The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+    return MutationAttempt.branch_result(branch, Message(), receipt, failure)
+
+
+async def _local_create_message_failure(
+    fence: Fence, has_possible_earlier_send: bool, branch: str, failure: Failure, receipt: Receipt
+) -> MutationAttempt[Message]:
+    """Handle a failure before dispatch.
+
+    A transient failure retries, recording notSent only when no earlier send may have created
+    the message. A terminal one selects its branch before any possible send and uncertain after one.
+    """
+    if branch == "retry":
+        if not has_possible_earlier_send:
+            try:
+                await fence.record_not_sent()
+            except Exception:
+                pass  # Without notSent the next attempt counts this attempt as a possible send.
+        # After a possible send, notSent would hide that send, so nothing is recorded.
+        return MutationAttempt.retry(failure)
+    if has_possible_earlier_send:
+        return _create_message_uncertain(
+            failure.kind,
+            "an earlier attempt may have created the Discord message: " + failure.message,
+            receipt,
+        )
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        pass  # The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+    return MutationAttempt.branch_result(branch, Message(), Receipt(), failure)
+
+
+def _resend_or_select_uncertain(
+    can_resend_unknown_outcome: bool, kind: FailureKind, message: str, delay: float, receipt: Receipt
+) -> MutationAttempt[Message]:
+    """Retry a possibly created message while the send cap allows another send."""
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return _create_message_retry(kind, message, delay)
+    return _create_message_uncertain(kind, message, receipt)
+
+
+def _is_accepted_message_body(body: bytes, channel_id: str) -> bool:
+    """Report an error body that nevertheless describes a message in the channel."""
+    try:
+        _message(_decode_json(body), channel_id)
+    except ValueError:
+        return False
+    return True
+
+
+def _create_message_branch(
+    branch: str, kind: FailureKind, message: str, receipt: Receipt
+) -> MutationAttempt[Message]:
+    return MutationAttempt.branch_result(branch, Message(), receipt, _failure("createMessage", kind, message))
+
+
+def _create_message_retry(kind: FailureKind, message: str, delay: float = 0) -> MutationAttempt[Message]:
+    return MutationAttempt.retry(_failure("createMessage", kind, message), delay)
+
+
+def _create_message_uncertain(kind: FailureKind, message: str, receipt: Receipt) -> MutationAttempt[Message]:
+    return MutationAttempt.uncertain(Message(), _failure("createMessage", kind, message), receipt)
 
 
 class AddReactionOperation:

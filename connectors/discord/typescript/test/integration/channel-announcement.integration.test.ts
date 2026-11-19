@@ -18,6 +18,7 @@ it('creates a message through real Dex and fails an unwired provider rejection',
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev server');
   const requests: string[] = [];
+  const nonces: string[] = [];
   const server = createServer((request, response) => {
     requests.push(`${request.method} ${request.url}`);
     if (request.method !== 'POST' || request.url !== '/api/v10/channels/100000000000000001/messages') { response.writeHead(404).end(); return; }
@@ -28,6 +29,9 @@ it('creates a message through real Dex and fails an unwired provider rejection',
       const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { content: string; nonce: string; enforce_nonce: boolean; allowed_mentions: { parse: string[] } };
       if (!body.enforce_nonce || !/^[A-Za-z0-9_-]{25}$/.test(body.nonce) || body.allowed_mentions.parse.length !== 0) { response.writeHead(400).end(); return; }
       if (body.content === 'REJECT') { response.writeHead(403, { 'Content-Type': 'application/json' }).end('{"code":50013}'); return; }
+      nonces.push(body.nonce);
+      // A 502 is an unknown outcome, so the connector resends with the same nonce.
+      if (nonces.length === 1) { response.writeHead(502, { 'Content-Type': 'application/json' }).end('{"code":0}'); return; }
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ id: '300000000000000001', channel_id: '100000000000000001', author: { id: '400000000000000001', username: 'releasebot', bot: true }, content: body.content, timestamp: '2026-10-26T12:00:00Z', type: 0 }));
     });
@@ -58,7 +62,9 @@ it('creates a message through real Dex and fails an unwired provider rejection',
     const rejected = await client.waitForFlow(rejectionId, 60_000);
     expect(rejected.status).toBe('failed');
     expect(rejected.errorMessage).toContain('providerRejected');
-    expect(requests).toHaveLength(2);
+    expect(requests).toHaveLength(3);
+    expect(nonces).toHaveLength(2);
+    expect(nonces[1]).toBe(nonces[0]);
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

@@ -10,10 +10,13 @@
 // reaction to a message.
 //
 // CreateMessage sends a nonce derived from the Step's idempotency key with
-// enforce_nonce, so Discord returns the message an earlier attempt created
-// instead of posting a duplicate. Discord enforces a nonce for only a few
-// minutes, so the operation's retry window is two minutes. AddReaction is
-// repeat-safe because Discord keeps one reaction per user and emoji.
+// enforce_nonce under a single-dispatch fence, so a resend inside Discord's
+// nonce window returns the message an earlier attempt created instead of
+// posting a duplicate. An unknown outcome resends while possible sends stay
+// below the Step's send cap, three by default, and selects Uncertain at the
+// cap. Discord enforces a nonce for only a few minutes, so the operation's
+// retry window is two minutes. AddReaction is repeat-safe because Discord
+// keeps one reaction per user and emoji.
 //
 // A Flow opens the connection with NewProjectConnection and adds a generated
 // factory such as NewCreateMessageStep; the runnable examples/channel-announcement
@@ -22,6 +25,7 @@ package discord
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -100,6 +104,8 @@ type providerResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isErrorBodyOversized reports a non-2xx body cut at the error-body limit, so it cannot prove a refusal.
+	isErrorBodyOversized bool
 }
 
 // outcomeDisposition is the class of one unsuccessful exchange before an operation maps it to a branch.
@@ -201,13 +207,22 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 }
 
 func (client *Client) send(call sdkgo.Call, credentials Credentials, request providerRequest) (providerResponse, error) {
+	httpRequest, err := client.newHTTPRequest(call.Context, credentials, request)
+	if err != nil {
+		return providerResponse{}, err
+	}
+	return client.do(httpRequest)
+}
+
+// newHTTPRequest builds one authenticated Discord request without sending it.
+func (client *Client) newHTTPRequest(requestContext context.Context, credentials Credentials, request providerRequest) (*http.Request, error) {
 	var body io.Reader
 	if request.body != nil {
 		body = bytes.NewReader(request.body)
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, client.baseURL+request.path, body)
+	httpRequest, err := http.NewRequestWithContext(requestContext, request.method, client.baseURL+request.path, body)
 	if err != nil {
-		return providerResponse{}, errRequestNotBuilt
+		return nil, errRequestNotBuilt
 	}
 	httpRequest.Header.Set("Accept", "application/json")
 	httpRequest.Header.Set("Authorization", "Bot "+credentials.BotToken.Reveal())
@@ -215,6 +230,12 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 	if request.body != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
 	}
+	return httpRequest, nil
+}
+
+// do sends one built request and reads its bounded response. A response
+// with a status is returned even when its body could not be read.
+func (client *Client) do(httpRequest *http.Request) (providerResponse, error) {
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
 		return providerResponse{}, err
@@ -230,6 +251,7 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
 		if limit == providerhttp.MaxErrorBodyBytes {
 			// An oversized error body still classifies by status alone.
+			response.isErrorBodyOversized = true
 			return response, nil
 		}
 		return response, errResponseTooLarge
@@ -371,10 +393,10 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 	return sdkgo.NewQueryBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
 }
 
-// mutationAttemptForOutcome maps an unsuccessful exchange to Retry or a branch; both writes are repeat-safe.
+// mutationAttemptForOutcome maps an unsuccessful exchange of the repeat-safe addReaction to Retry or a branch.
 func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	// Both writes are declared safe, so an oversized answer retries instead of selecting invalidResponse.
+	// addReaction is declared safe, so an oversized answer retries instead of selecting invalidResponse.
 	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}

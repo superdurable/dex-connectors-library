@@ -9,15 +9,16 @@ Dex Web **Start Flow** and uses every Discord operation:
 2. `GetAnnouncementChannel` calls `discord.NewGetChannelStep` to confirm the
    bot can view the channel, and `AnnouncementChannelFound` records it.
 3. `PostAnnouncementMessage` calls `discord.NewCreateMessageStep`. Its nonce
-   makes a retried post return the first message instead of a duplicate, and
-   `AnnouncementPosted` records the message.
+   makes a resent post return the first message instead of a duplicate, and
+   `AnnouncementPosted` records the message. An outcome still unknown after
+   three sends selects the unwired `uncertain` branch and fails the Flow.
 4. `ReactToAnnouncement` calls `discord.NewAddReactionStep`.
 5. `ReadBackAnnouncementChannel` calls `discord.NewListChannelMessagesStep` for
    the 10 newest messages, and `CompleteAnnouncement` completes with
    `isConfirmed` set when the posted message is among them.
 
 Only happy-path branches are wired. An unknown channel, a missing permission,
-an invalid response, and a local defect fail the Flow. The summary and display
+an invalid response, an unconfirmed message, and a local defect fail the Flow. The summary and display
 RPCs show the request and the `discord-announcement-outcome` Attribute.
 
 ## Validate the Flow Definition
@@ -49,7 +50,7 @@ mkdir -p /tmp/discord-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/discord/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/discord/go \
-  --version v0.3.1 --tag connectors/discord/go/v0.3.1 \
+  --version v0.4.0 --tag connectors/discord/go/v0.4.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/discord-release/connector-release.json \
   --digest-output /tmp/discord-release/connector-release.json.sha256
@@ -106,5 +107,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 
 The real Dex suite runs the Flow against a stateful fake Discord that enforces
 message nonces. It covers the complete announcement, a post that Discord
-applied but answered with 503, which the retry resolves to one message, an
+applied but answered with 502, which the resend resolves to one message, an
 unknown channel, and invalid start input.

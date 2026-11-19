@@ -6,16 +6,16 @@ metadata:
   description: Read Discord channels and bounded pages of channel messages, send nonce-deduplicated bot messages, and add reactions.
   company: Discord
   categories: [communication]
-  version: v0.3.1
+  version: v0.4.0
 spec:
   provider: discord
   languages:
     python:
-      version: v0.1.1
+      version: v0.2.0
       operations: [getChannel, listChannelMessages, createMessage, addReaction]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       package: "@superdurable/connector-discord"
       operations: [getChannel, listChannelMessages, createMessage, addReaction]
       triggers: []
@@ -126,22 +126,26 @@ spec:
       inputType: CreateMessageInput
       outputType: Message
       kind: mutation
-      description: Send one bot text message to a channel, deduplicated by a Discord nonce derived from the idempotency key, with every mention disabled.
+      description: Send one bot text message to a channel with every mention disabled. Every send carries the same enforced Discord nonce derived from the idempotency key, an unknown outcome resends up to the send cap, and synchronous durability preserves the single-dispatch fence after retry or Worker loss.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: "Discord created the message, or returned the message an earlier attempt created with the same nonce."}
         - {id: notFound, goName: NotFound, description: Discord knows no channel with the ID., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized answer now retries, because a resend inside the nonce window returns the same message.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized answer is an unknown outcome that resends with the same nonce or selects uncertain at the send cap.", optional: true, retired: true, retiredReason: "An invalid or oversized answer may follow a created message, so createMessage resends with the same nonce below the send cap and selects uncertain at it instead of invalidResponse."}
+        - {id: uncertain, goName: Uncertain, description: "Discord may have created the message, and the send cap was reached before it could be confirmed; check the channel before sending again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        dispatchFence: true
         # Discord enforces a nonce for only a few minutes, so every retry must fit that window.
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Discord enforces the message nonce for only a few minutes, so stop createMessage retries within two minutes before that deduplication expires."}}
-        # Every attempt sends the same enforced nonce, and the two-minute budget keeps resends inside Discord's deduplication window.
-        repeatOnUnknown: safe
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Discord enforces the message nonce for only a few minutes, so up to three sends and their rate-limit retries stop within two minutes, before that deduplication expires."}}
+        # A duplicate chat message is acceptable. Every send carries the same enforced nonce, which
+        # is the only read-back Discord offers, so resends stay inside its deduplication window.
+        repeatOnUnknown: limited
+        maxSends: 3
       mocks:
         - name: releaseAnnouncement
           branch: created
@@ -156,6 +160,9 @@ spec:
           branch: providerRejected
           description: "Posting to channel 100000000000000403 without Send Messages receives HTTP 403."
           failure: {kind: AUTHORIZATION, message: "Discord denied message creation."}
+        - name: messageOutcomeUnknown
+          description: "Every connection to Discord closes after dispatch until the send cap is reached, so the message cannot be confirmed."
+          uncertain: {failure: {kind: TRANSPORT, message: "The connection closed before Discord confirmed the message."}}
     - name: addReaction
       goName: AddReaction
       inputType: AddReactionInput
