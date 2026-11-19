@@ -5,3 +5,7 @@ This Go connector lists already registered tracking numbers and their package an
 `ListTrackedShipments` calls `POST https://api.17track.net/track/v2.4/gettracklist` with `17token` in the protected request header and a one-based page number in JSON. The [official contract](https://api.17track.net/zh-cn/doc#%E8%8E%B7%E5%8F%96%E5%88%97%E8%A1%A8) defines 40 records per page and a limit of three requests per second. The operation reads shipments already registered in the account; registering a new number is a separate billed action and is not included. HTTP 429, 5xx, and transport failures retry; definite authorization errors fail the Flow.
 
 The [runnable Dex Flow](go/examples/tracked-shipments/README.md) shows setup, pagination, and typed output. The logo uses the [official 17TRACK SVG](https://www.17track.net/assets/logo-full.svg). Live authorization and production responses remain unverified.
+
+## Python
+
+The first Python package release is `v0.1.0`. See the [Python README](python/README.md) and its runnable Flow for the operation contract and local Dex verification.
