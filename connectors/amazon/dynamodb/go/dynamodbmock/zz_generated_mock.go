@@ -19,6 +19,10 @@ import (
 type Mock struct {
 	connection dynamodb.Connection
 	getItem    *connectormock.Query[dynamodb.GetItemInput, dynamodb.ItemResult]
+	putItem    *connectormock.Mutation[dynamodb.PutItemInput, dynamodb.ItemWriteResult]
+	updateItem *connectormock.Mutation[dynamodb.UpdateItemInput, dynamodb.ItemWriteResult]
+	deleteItem *connectormock.Mutation[dynamodb.DeleteItemInput, dynamodb.ItemWriteResult]
+	scanItems  *connectormock.Query[dynamodb.ScanItemsInput, dynamodb.ItemPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getItem: connectormock.NewQuery[dynamodb.GetItemInput, dynamodb.ItemResult](t, dynamodb.GetItemDefinition),
+		getItem:    connectormock.NewQuery[dynamodb.GetItemInput, dynamodb.ItemResult](t, dynamodb.GetItemDefinition),
+		putItem:    connectormock.NewMutation[dynamodb.PutItemInput, dynamodb.ItemWriteResult](t, dynamodb.PutItemDefinition),
+		updateItem: connectormock.NewMutation[dynamodb.UpdateItemInput, dynamodb.ItemWriteResult](t, dynamodb.UpdateItemDefinition),
+		deleteItem: connectormock.NewMutation[dynamodb.DeleteItemInput, dynamodb.ItemWriteResult](t, dynamodb.DeleteItemDefinition),
+		scanItems:  connectormock.NewQuery[dynamodb.ScanItemsInput, dynamodb.ItemPage](t, dynamodb.ScanItemsDefinition),
 	}
 	mock.getItem.Default(GetItemDefault())
+	mock.putItem.Default(PutItemDefault())
+	mock.updateItem.Default(UpdateItemDefault())
+	mock.deleteItem.Default(DeleteItemDefault())
+	mock.scanItems.Default(ScanItemsDefault())
 	connection, err := dynamodb.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-dynamodb", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-dynamodb mock connection: %v", err)
@@ -45,10 +57,42 @@ func (mock *Mock) GetItem() *connectormock.Query[dynamodb.GetItemInput, dynamodb
 	return mock.getItem
 }
 
+// PutItem returns the putItem script.
+func (mock *Mock) PutItem() *connectormock.Mutation[dynamodb.PutItemInput, dynamodb.ItemWriteResult] {
+	return mock.putItem
+}
+
+// UpdateItem returns the updateItem script.
+func (mock *Mock) UpdateItem() *connectormock.Mutation[dynamodb.UpdateItemInput, dynamodb.ItemWriteResult] {
+	return mock.updateItem
+}
+
+// DeleteItem returns the deleteItem script.
+func (mock *Mock) DeleteItem() *connectormock.Mutation[dynamodb.DeleteItemInput, dynamodb.ItemWriteResult] {
+	return mock.deleteItem
+}
+
+// ScanItems returns the scanItems script.
+func (mock *Mock) ScanItems() *connectormock.Query[dynamodb.ScanItemsInput, dynamodb.ItemPage] {
+	return mock.scanItems
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetItem() sdkgo.Query[dynamodb.GetItemInput, dynamodb.ItemResult] {
 	return operations.mock.getItem
+}
+func (operations mockOperations) PutItem() sdkgo.Mutation[dynamodb.PutItemInput, dynamodb.ItemWriteResult] {
+	return operations.mock.putItem
+}
+func (operations mockOperations) UpdateItem() sdkgo.Mutation[dynamodb.UpdateItemInput, dynamodb.ItemWriteResult] {
+	return operations.mock.updateItem
+}
+func (operations mockOperations) DeleteItem() sdkgo.Mutation[dynamodb.DeleteItemInput, dynamodb.ItemWriteResult] {
+	return operations.mock.deleteItem
+}
+func (operations mockOperations) ScanItems() sdkgo.Query[dynamodb.ScanItemsInput, dynamodb.ItemPage] {
+	return operations.mock.scanItems
 }
 
 // GetItemFound selects the found branch: DynamoDB returned the item.
@@ -89,3 +133,143 @@ func GetItemFoundDefault() connectormock.Case[dynamodb.ItemResult] {
 
 // GetItemDefault is the manifest default, foundDefault, which New installs.
 func GetItemDefault() connectormock.Case[dynamodb.ItemResult] { return GetItemFoundDefault() }
+
+// PutItemWritten selects the written branch: DynamoDB accepted the item replacement.
+func PutItemWritten(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.PutItemBranchWritten, value, failure)
+}
+
+// PutItemProviderRejected selects the providerRejected branch: DynamoDB conclusively rejected the write or credentials.
+func PutItemProviderRejected(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.PutItemBranchProviderRejected, value, failure)
+}
+
+// PutItemInvalidResponse selects the invalidResponse branch: DynamoDB returned malformed or oversized write JSON.
+func PutItemInvalidResponse(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.PutItemBranchInvalidResponse, value, failure)
+}
+
+// PutItemDefect selects the defect branch: The table or item is invalid.
+func PutItemDefect(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.PutItemBranchDefect, value, failure)
+}
+
+// PutItemRetry asks Dex to retry the putItem Step, after the delay when it is positive.
+func PutItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Retry[dynamodb.ItemWriteResult](failure, after)
+}
+
+// PutItemWrittenDefault is the manifest mock writtenDefault: Example item was replaced.
+func PutItemWrittenDefault() connectormock.Case[dynamodb.ItemWriteResult] {
+	value := connectormock.MustDecodeOutput[dynamodb.ItemWriteResult](`{"applied":true}`)
+	return connectormock.Branch(dynamodb.PutItemBranchWritten, value, nil)
+}
+
+// PutItemDefault is the manifest default, writtenDefault, which New installs.
+func PutItemDefault() connectormock.Case[dynamodb.ItemWriteResult] { return PutItemWrittenDefault() }
+
+// UpdateItemUpdated selects the updated branch: DynamoDB accepted the absolute attribute update.
+func UpdateItemUpdated(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.UpdateItemBranchUpdated, value, failure)
+}
+
+// UpdateItemProviderRejected selects the providerRejected branch: DynamoDB conclusively rejected the update or credentials.
+func UpdateItemProviderRejected(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.UpdateItemBranchProviderRejected, value, failure)
+}
+
+// UpdateItemInvalidResponse selects the invalidResponse branch: DynamoDB returned malformed or oversized update JSON.
+func UpdateItemInvalidResponse(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.UpdateItemBranchInvalidResponse, value, failure)
+}
+
+// UpdateItemDefect selects the defect branch: The table, key, or attributes are invalid.
+func UpdateItemDefect(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.UpdateItemBranchDefect, value, failure)
+}
+
+// UpdateItemRetry asks Dex to retry the updateItem Step, after the delay when it is positive.
+func UpdateItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Retry[dynamodb.ItemWriteResult](failure, after)
+}
+
+// UpdateItemUpdatedDefault is the manifest mock updatedDefault: Example item attribute was updated.
+func UpdateItemUpdatedDefault() connectormock.Case[dynamodb.ItemWriteResult] {
+	value := connectormock.MustDecodeOutput[dynamodb.ItemWriteResult](`{"applied":true}`)
+	return connectormock.Branch(dynamodb.UpdateItemBranchUpdated, value, nil)
+}
+
+// UpdateItemDefault is the manifest default, updatedDefault, which New installs.
+func UpdateItemDefault() connectormock.Case[dynamodb.ItemWriteResult] {
+	return UpdateItemUpdatedDefault()
+}
+
+// DeleteItemDeleted selects the deleted branch: DynamoDB accepted the deletion.
+func DeleteItemDeleted(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.DeleteItemBranchDeleted, value, failure)
+}
+
+// DeleteItemProviderRejected selects the providerRejected branch: DynamoDB conclusively rejected the deletion or credentials.
+func DeleteItemProviderRejected(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.DeleteItemBranchProviderRejected, value, failure)
+}
+
+// DeleteItemInvalidResponse selects the invalidResponse branch: DynamoDB returned malformed or oversized deletion JSON.
+func DeleteItemInvalidResponse(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.DeleteItemBranchInvalidResponse, value, failure)
+}
+
+// DeleteItemDefect selects the defect branch: The table or key is invalid.
+func DeleteItemDefect(value dynamodb.ItemWriteResult, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Branch(dynamodb.DeleteItemBranchDefect, value, failure)
+}
+
+// DeleteItemRetry asks Dex to retry the deleteItem Step, after the delay when it is positive.
+func DeleteItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamodb.ItemWriteResult] {
+	return connectormock.Retry[dynamodb.ItemWriteResult](failure, after)
+}
+
+// DeleteItemDeletedDefault is the manifest mock deletedDefault: Example item was deleted.
+func DeleteItemDeletedDefault() connectormock.Case[dynamodb.ItemWriteResult] {
+	value := connectormock.MustDecodeOutput[dynamodb.ItemWriteResult](`{"applied":true}`)
+	return connectormock.Branch(dynamodb.DeleteItemBranchDeleted, value, nil)
+}
+
+// DeleteItemDefault is the manifest default, deletedDefault, which New installs.
+func DeleteItemDefault() connectormock.Case[dynamodb.ItemWriteResult] {
+	return DeleteItemDeletedDefault()
+}
+
+// ScanItemsScanned selects the scanned branch: DynamoDB returned an item page, possibly empty.
+func ScanItemsScanned(value dynamodb.ItemPage, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemPage] {
+	return connectormock.Branch(dynamodb.ScanItemsBranchScanned, value, failure)
+}
+
+// ScanItemsProviderRejected selects the providerRejected branch: DynamoDB conclusively rejected the scan or credentials.
+func ScanItemsProviderRejected(value dynamodb.ItemPage, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemPage] {
+	return connectormock.Branch(dynamodb.ScanItemsBranchProviderRejected, value, failure)
+}
+
+// ScanItemsInvalidResponse selects the invalidResponse branch: DynamoDB returned malformed or oversized page JSON.
+func ScanItemsInvalidResponse(value dynamodb.ItemPage, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemPage] {
+	return connectormock.Branch(dynamodb.ScanItemsBranchInvalidResponse, value, failure)
+}
+
+// ScanItemsDefect selects the defect branch: The table, limit, or continuation key is invalid.
+func ScanItemsDefect(value dynamodb.ItemPage, failure *sdkgo.Failure) connectormock.Case[dynamodb.ItemPage] {
+	return connectormock.Branch(dynamodb.ScanItemsBranchDefect, value, failure)
+}
+
+// ScanItemsRetry asks Dex to retry the scanItems Step, after the delay when it is positive.
+func ScanItemsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamodb.ItemPage] {
+	return connectormock.Retry[dynamodb.ItemPage](failure, after)
+}
+
+// ScanItemsScannedDefault is the manifest mock scannedDefault: One example item is in the page.
+func ScanItemsScannedDefault() connectormock.Case[dynamodb.ItemPage] {
+	value := connectormock.MustDecodeOutput[dynamodb.ItemPage](`{"items":[{"pk":{"S":"example"}}],"count":1,"lastEvaluatedKey":{}}`)
+	return connectormock.Branch(dynamodb.ScanItemsBranchScanned, value, nil)
+}
+
+// ScanItemsDefault is the manifest default, scannedDefault, which New installs.
+func ScanItemsDefault() connectormock.Case[dynamodb.ItemPage] { return ScanItemsScannedDefault() }

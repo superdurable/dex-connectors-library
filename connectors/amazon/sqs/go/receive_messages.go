@@ -180,7 +180,7 @@ func (operation ReceiveMessagesOperation) Invoke(call sdkgo.Call, input ReceiveM
 	defer closeResponseBody(response)
 	if !isSuccessStatus(response.StatusCode) {
 		classified := classifyErrorResponse(receiveMessagesOperationID, "receive", client.readErrorResponse(response, session.credentials))
-		return mutationAttemptForFailure(classified, client.receipt(call, classified.requestID, queue.url), "",
+		return mutationAttemptForFailure(call, classified, client.receipt(call, classified.requestID, queue.url), "",
 			ReceiveMessagesBranchProviderRejected, ReceiveMessagesBranchDefect, batch)
 	}
 	receipt := client.receipt(call, safeRequestID(response.Header), queue.url)

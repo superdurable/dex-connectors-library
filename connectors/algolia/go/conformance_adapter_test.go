@@ -26,7 +26,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, conformanceTransportOption{transport})
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"search":     newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.Search(), testConnection),
+		"getObject": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.GetObject(), testConnection),
+		"listIndices": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ListIndices(), testConnection),
+		"search": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.Search(), testConnection),
 		"saveObject": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.SaveObject(), testConnection, scenario.CallID),
+		"partialUpdateObject": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.PartialUpdateObject(), testConnection, scenario.CallID),
+		"deleteObject": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.DeleteObject(), testConnection, scenario.CallID),
 	}}
 }

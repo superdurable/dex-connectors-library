@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Algolia API key from https://www.algolia.com/account/api-keys/restricted under Settings > Team and Access > API Keys > Restricted API Keys > Create API Key; grant search and addObject ACLs. Blank prevents requests. */
+  /** Secret Algolia API key from https://www.algolia.com/account/api-keys/restricted under Settings > Team and Access > API Keys > Restricted API Keys > Create API Key; grant search, addObject, deleteObject, and listIndexes ACLs for the operations you use. Blank prevents requests. */
   apiKey: SecretString;
   /** Public uppercase alphanumeric Algolia Application ID from https://www.algolia.com/account/api-keys/all under Settings > Team and Access > API Keys; blank prevents requests. */
   applicationId: string;

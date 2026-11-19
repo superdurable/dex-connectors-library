@@ -16,12 +16,28 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getObject/foundDefaultObject/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[algolia.ObjectRecord](`{"objectID":"product-1","name":"Meridian notebook"}`)
+			return err
+		}},
+		{name: "listIndices/listedDefaultIndices/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[algolia.IndexPage](`{"items":[{"name":"products","entries":42}],"nbPages":1}`)
+			return err
+		}},
 		{name: "search/searchedDefaultIndex/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[algolia.SearchPage](`{"nbHits":1,"hits":[{"objectID":"product-1","name":"Meridian notebook"}]}`)
 			return err
 		}},
 		{name: "saveObject/savedDefaultObject/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[algolia.SavedObject](`{"objectID":"product-1","taskID":1514562690001}`)
+			return err
+		}},
+		{name: "partialUpdateObject/updatedDefaultObject/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[algolia.SavedObject](`{"objectID":"product-1","taskID":1514562690002}`)
+			return err
+		}},
+		{name: "deleteObject/deletedDefaultObject/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[algolia.SavedObject](`{"objectID":"product-1","taskID":1514562690003}`)
 			return err
 		}},
 	}
@@ -34,10 +50,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetObject().Definition().Operation.OperationID != "getObject" {
+		t.Errorf("getObject mock has another definition")
+	}
+	if mock.ListIndices().Definition().Operation.OperationID != "listIndices" {
+		t.Errorf("listIndices mock has another definition")
+	}
 	if mock.Search().Definition().Operation.OperationID != "search" {
 		t.Errorf("search mock has another definition")
 	}
 	if mock.SaveObject().Definition().Operation.OperationID != "saveObject" {
 		t.Errorf("saveObject mock has another definition")
+	}
+	if mock.PartialUpdateObject().Definition().Operation.OperationID != "partialUpdateObject" {
+		t.Errorf("partialUpdateObject mock has another definition")
+	}
+	if mock.DeleteObject().Definition().Operation.OperationID != "deleteObject" {
+		t.Errorf("deleteObject mock has another definition")
 	}
 }

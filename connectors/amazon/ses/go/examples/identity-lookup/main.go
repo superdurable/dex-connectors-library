@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{identitylookup.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{identitylookup.NewFlow(connection), identitylookup.NewSendFlow(connection), identitylookup.NewCreateFlow(connection), identitylookup.NewTemplatedSendFlow(connection), identitylookup.NewCustomVerificationFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Amazon SES identity lookup Flow: %w", err)
 	}

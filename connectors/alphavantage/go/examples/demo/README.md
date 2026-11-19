@@ -1,6 +1,6 @@
 # Alpha Vantage demo Flow
 
-This runnable Flow calls `getGlobalQuote` with the static `alphavantage` connection. The start input passes through to the generated operation Step; its happy-path result completes the Flow. Dex Web summary and display RPCs show the persisted provider result. Optional provider branches are unwired and fail the Flow when selected.
+This runnable example registers quote and market status Flows with the static `alphavantage` connection. Each start input passes through to its generated operation Step; the happy-path result completes the Flow. Dex Web summary and display RPCs show the persisted provider result. Optional provider branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -9,6 +9,7 @@ From `connectors/alphavantage`, run:
 ```bash
 mkdir -p build
 dexcli visualize ./examples/demo/flow/workflow.go --schema-version 2.0 --json --out ./build/demo
+dexcli visualize ./examples/demo/flow/market_status_workflow.go --schema-version 2.0 --json --out ./build/market-status
 ```
 
 The command must report `valid: true`. A local unpublished module may report `connector_release_required` until its release metadata is supplied.
@@ -30,5 +31,7 @@ In Dex Web Start Flow, choose `AlphaVantageDemo` and enter a unique Flow ID with
 ```
 
 The pull Worker connects to the Dex Server without an inbound listener. The Flow returns `GlobalQuoteOutput`. The provider connection name is fixed in `flow/workflow.go`.
+
+The same Worker also registers `AlphaVantageMarketStatus`. Its input accepts an optional exact `region` name, and the mock-backed integration test starts it for `United States`.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test -race ./...` from the connector directory.

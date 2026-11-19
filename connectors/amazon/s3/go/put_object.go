@@ -142,7 +142,7 @@ func (operation PutObjectOperation) Invoke(call sdkgo.Call, input PutObjectInput
 		classified.failure.Message = statusMessage("S3 rejected the create-only write", errorResponse) +
 			"; the store does not support If-None-Match, so leave isCreateOnly false"
 	}
-	return mutationAttemptForFailure(classified, client.receipt(call, classified.requestID, location), PutObjectBranchProviderRejected, PutObjectBranchDefect, requested)
+	return mutationAttemptForFailure(call, classified, client.receipt(call, classified.requestID, location), PutObjectBranchProviderRejected, PutObjectBranchDefect, requested)
 }
 
 // resolveExistingObject decides whether an earlier attempt of this Step stored the existing object.
@@ -158,7 +158,7 @@ func (operation PutObjectOperation) resolveExistingObject(session *operationSess
 			"an object exists at the key, and reading it needs s3:GetObject to tell this Step's earlier write from another writer's")
 		return sdkgo.NewMutationBranch(PutObjectBranchProviderRejected, requested, &failure, client.receipt(call, classified.requestID, location))
 	case classified != nil:
-		return mutationAttemptForFailure(*classified, client.receipt(call, classified.requestID, location), PutObjectBranchProviderRejected, PutObjectBranchDefect, requested)
+		return mutationAttemptForFailure(call, *classified, client.receipt(call, classified.requestID, location), PutObjectBranchProviderRejected, PutObjectBranchDefect, requested)
 	case existing.isInvalid:
 		return sdkgo.NewMutationBranch(PutObjectBranchProviderRejected, requested, failurePointer(putObjectOperationID, sdkgo.FailureProtocol,
 			"S3 returned invalid metadata for the existing object, so the connector cannot tell who wrote it"), client.receipt(call, existing.requestID, location))
