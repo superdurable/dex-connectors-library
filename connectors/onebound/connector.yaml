@@ -8,6 +8,8 @@ metadata:
   categories: [ecommerce]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, operations: [searchProducts], triggers: []}
   provider: onebound
   codegen:
     go:
