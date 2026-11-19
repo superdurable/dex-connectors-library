@@ -61,5 +61,6 @@ func TestMockAnswersWithRealDex(t *testing.T) {
 	var outcome Outcome
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Len(t, mock.GetFile().Calls(), 1)
+	require.Len(t, mock.GetFileNodes().Calls(), 1)
 	require.Len(t, mock.GetFileComments().Calls(), 1)
 }

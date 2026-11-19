@@ -24,7 +24,8 @@ import (
 func TestDatasetsUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := bigquerymock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	tablesFlow := NewTablesFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, tablesFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,16 @@ func TestDatasetsUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "sample_dataset", output.Datasets[0].ID)
 	require.Equal(t, "Sample Dataset", output.Datasets[0].FriendlyName)
 	require.Len(t, mock.ListDatasets().Calls(), 1)
+	tablesFlowID := "google-bigquery-tables-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	tablesRequest := bigquery.ListTablesInput{ProjectID: "sample-project", DatasetID: "reporting"}
+	_, err = client.StartFlow(ctx, tablesFlow, tablesFlowID, tablesRequest, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	tablesResult, err := client.WaitForFlow(ctx, tablesFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, tablesResult.Status, tablesResult.ErrorMessage)
+	var tablesOutput bigquery.TablesPage
+	require.NoError(t, tablesResult.DecodeSingleOutput(&tablesOutput))
+	require.Len(t, tablesOutput.Tables, 1)
+	require.Equal(t, "daily", tablesOutput.Tables[0].ID)
+	require.Len(t, mock.ListTables().Calls(), 1)
 }

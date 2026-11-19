@@ -1,6 +1,6 @@
 # Figma lookup example
 
-This Worker registers `FigmaLookup` with static connection name `figma`. It calls `getFile and getFileComments` in one typed Flow.
+This Worker registers `FigmaLookup` with static connection name `figma`. It calls `getFile`, `getFileNodes`, and `getFileComments` in one typed Flow.
 
 ## Generate and run
 
@@ -19,7 +19,7 @@ mkdir -p /tmp/figma-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/figma/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/figma/go \
-  --version v0.2.0 --tag connectors/figma/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/figma/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/figma-release/connector-release.json \
   --digest-output /tmp/figma-release/connector-release.json.sha256

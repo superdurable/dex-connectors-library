@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package bigquery exposes typed BigQuery dataset Queries to Dex Flows.
+// Package bigquery exposes typed BigQuery metadata and read Queries to Dex Flows.
 package bigquery
 
 import (
@@ -70,6 +70,14 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) post(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.request(call, http.MethodPost, path, body)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string, body []byte) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -84,21 +92,24 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+accessToken)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if bytes.Contains(body, []byte(accessToken)) {
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if bytes.Contains(responseBody, []byte(accessToken)) {
 		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

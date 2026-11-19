@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: eventbrite
   displayName: Eventbrite
-  description: Read organization and event metadata through Eventbrite API v3.
+  description: Read organization, event, attendee, order, and ticket class metadata and manage events and free ticket classes through Eventbrite API v3.
   company: Eventbrite
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: eventbrite
   languages:
@@ -117,3 +117,340 @@ spec:
           default: true
           description: Metadata for one example attendee.
           output: {id: "13579", eventId: "67890", status: "attending", createdAt: "2026-11-07T10:00:00Z"}
+    - name: getEvent
+      goName: GetEvent
+      inputType: GetEventInput
+      outputType: EventMetadata
+      kind: query
+      description: Read one event's ID, name, and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Eventbrite returned the event.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example published event.
+          output: {id: "67890", name: "Example event", status: "live"}
+    - name: publishEvent
+      goName: PublishEvent
+      inputType: PublishEventInput
+      outputType: EventMetadata
+      kind: mutation
+      description: Publish a draft event; a retry checks its current status before sending again.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: published, goName: Published, description: The event is published.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively refused publication., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: publishedDefault
+          branch: published
+          default: true
+          description: One example event is live.
+          output: {id: "67890", name: "Example event", status: "live"}
+    - name: createEvent
+      goName: CreateEvent
+      inputType: CreateEventInput
+      outputType: EventMetadata
+      kind: mutation
+      description: Create one draft event in an organization.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Eventbrite created the draft event.}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively refused the event., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An earlier create may have succeeded but no event can be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One example draft event.
+          output: {id: "67890", name: "Example event", status: "draft"}
+    - name: copyEvent
+      goName: CopyEvent
+      inputType: CopyEventInput
+      outputType: EventMetadata
+      kind: mutation
+      description: Copy an event into a new draft event with a new ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: copied, goName: Copied, description: Eventbrite returned the new event.}
+        - {id: notFound, goName: NotFound, description: The source event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively refused the copy., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An earlier copy may have succeeded but no new event can be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: copiedDefault
+          branch: copied
+          default: true
+          description: One example copied draft event.
+          output: {id: "67891", name: "Example event copy", status: "draft"}
+    - name: updateEvent
+      goName: UpdateEvent
+      inputType: UpdateEventInput
+      outputType: EventMetadata
+      kind: mutation
+      description: Replace one event's name with the requested text.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The event has the requested name.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively refused the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized event JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example event has its updated name.
+          output: {id: "67890", name: "New event name", status: "draft"}
+    - name: unpublishEvent
+      goName: UnpublishEvent
+      inputType: UnpublishEventInput
+      outputType: EventMetadata
+      kind: mutation
+      description: Remove one live event from publication after checking its current status.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unpublished, goName: Unpublished, description: The event is no longer live.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively refused unpublication., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized event JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: unpublishedDefault
+          branch: unpublished
+          default: true
+          description: One example event is back in draft.
+          output: {id: "67890", name: "Example event", status: "draft"}
+    - name: cancelEvent
+      goName: CancelEvent
+      inputType: CancelEventInput
+      outputType: EventMetadata
+      kind: mutation
+      description: Cancel one event after checking its current status.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: canceled, goName: Canceled, description: The event is canceled.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively refused cancellation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized event JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: canceledDefault
+          branch: canceled
+          default: true
+          description: One example event is canceled.
+          output: {id: "67890", name: "Example event", status: "canceled"}
+    - name: deleteEvent
+      goName: DeleteEvent
+      inputType: DeleteEventInput
+      outputType: DeletedEvent
+      kind: mutation
+      description: Delete an event, treating an already absent event as deleted.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The event is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively refused deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example event is absent.
+          output: {eventId: "67890", deleted: true}
+    - name: listAttendeesByEvent
+      goName: ListAttendeesByEvent
+      inputType: ListAttendeesByEventInput
+      outputType: AttendeesPage
+      kind: query
+      description: List one page of attendee identities and statuses for an event.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Example page without purchaser details.
+          output: {"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}
+    - name: listAttendeesByOrganization
+      goName: ListAttendeesByOrganization
+      inputType: ListAttendeesByOrganizationInput
+      outputType: AttendeesPage
+      kind: query
+      description: List one page of attendee identities and statuses across an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Example page without purchaser details.
+          output: {"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}
+    - name: getOrder
+      goName: GetOrder
+      inputType: GetOrderInput
+      outputType: OrderMetadata
+      kind: query
+      description: Read one order's ID, event ID, status, and creation time without purchaser details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Eventbrite returned the requested order.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Example order without purchaser details.
+          output: {"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}
+    - name: listOrdersByEvent
+      goName: ListOrdersByEvent
+      inputType: ListOrdersByEventInput
+      outputType: OrdersPage
+      kind: query
+      description: List one page of order identities and statuses for an event.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Example page without purchaser details.
+          output: {"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}
+    - name: listOrdersByOrganization
+      goName: ListOrdersByOrganization
+      inputType: ListOrdersByOrganizationInput
+      outputType: OrdersPage
+      kind: query
+      description: List one page of order identities and statuses across an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Example page without purchaser details.
+          output: {"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}
+    - name: getTicketClass
+      goName: GetTicketClass
+      inputType: GetTicketClassInput
+      outputType: TicketClassMetadata
+      kind: query
+      description: Retrieve one ticket class identity, name, and quantity.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Eventbrite returned the ticket class.}
+        - {id: notFound, goName: NotFound, description: The ticket class does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example free ticket class., output: {id: "13579", eventId: "67890", name: General Admission, quantityTotal: 100}}
+    - name: listTicketClasses
+      goName: ListTicketClasses
+      inputType: ListTicketClassesInput
+      outputType: TicketClassesPage
+      kind: query
+      description: List one event's ticket classes with pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example ticket class page., output: {ticketClasses: [{id: "13579", eventId: "67890", name: General Admission, quantityTotal: 100}], pageNumber: 1, pageCount: 1}}
+    - name: updateTicketClass
+      goName: UpdateTicketClass
+      inputType: UpdateTicketClassInput
+      outputType: TicketClassMetadata
+      kind: mutation
+      description: Replace one ticket class name and verify the change.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The ticket class name is confirmed.}
+        - {id: notFound, goName: NotFound, description: The ticket class does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example renamed ticket class., output: {id: "13579", eventId: "67890", name: VIP Admission, quantityTotal: 100}}
+    - name: createTicketClass
+      goName: CreateTicketClass
+      inputType: CreateTicketClassInput
+      outputType: TicketClassMetadata
+      kind: mutation
+      description: Create one free ticket class for an event with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Eventbrite confirmed the ticket class identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Eventbrite may have created a ticket class but its identity is unknown., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example free ticket class., output: {id: "13579", eventId: "67890", name: General Admission, quantityTotal: 100}}

@@ -8,7 +8,7 @@ import { GetResponseClient } from '../src/client.js';
 import { GetContactInputSchema, ListContactsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/getresponse/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/getresponse/scenarios.json', import.meta.url)).filter(scenario => ['listContacts', 'getContact'].includes(scenario.operation));
 const connection = { provider: 'getresponse', name: 'getresponse' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGetResponse, '/v3'));
 

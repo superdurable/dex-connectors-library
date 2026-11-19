@@ -32,9 +32,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			}
 		},
 		actions: map[string]conformanceOperationInvocation{
-			"listObjects":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListObjects(), reference),
+			"listBuckets": newConformanceQueryInvocation(t, scenario.Input, context, client.ListBuckets(), reference),
+			"getBucket": newConformanceQueryInvocation(t, scenario.Input, context, client.GetBucket(), reference),
+			"createBucket": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateBucket(), reference, scenario.CallID),
+			"updateBucketLabels": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateBucketLabels(), reference, scenario.CallID),
+			"deleteBucket": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteBucket(), reference, scenario.CallID),
+			"listObjects": newConformanceQueryInvocation(t, scenario.Input, context, client.ListObjects(), reference),
 			"downloadObject": newConformanceQueryInvocation(t, scenario.Input, context, client.DownloadObject(), reference),
-			"uploadObject":   newConformanceMutationInvocation(t, scenario.Input, context, client.UploadObject(), reference, scenario.CallID),
+			"uploadObject": newConformanceMutationInvocation(t, scenario.Input, context, client.UploadObject(), reference, scenario.CallID),
+			"updateObjectMetadata": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateObjectMetadata(), reference, scenario.CallID),
+			"deleteObject": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteObject(), reference, scenario.CallID),
 		},
 	}
 }

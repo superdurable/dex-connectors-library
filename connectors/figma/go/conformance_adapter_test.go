@@ -24,5 +24,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"getFile":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetFile(), connection),
 		"getFileComments": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetFileComments(), connection),
+		"getFileNodes":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetFileNodes(), connection),
 	}}
 }

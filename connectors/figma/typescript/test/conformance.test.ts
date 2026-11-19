@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { FigmaClient } from '../src/client.js';
 import { GetFileInputSchema, GetFileCommentsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/figma/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/figma/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getFile' || scenario.operation === 'getFileComments');
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeFigma));
 
