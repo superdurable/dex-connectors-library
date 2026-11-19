@@ -16,7 +16,13 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/hackernews/scenarios.json")
+# searchStories is Go only; replay just the operations this package implements.
+PYTHON_OPERATIONS = {"listStoryIDs", "getItem"}
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/hackernews/scenarios.json")
+    if scenario["operation"] in PYTHON_OPERATIONS
+]
 CONNECTION = sdk.ConnectionRef("hacker-news", "public")
 ADAPTER = conformance.PythonOperationAdapter(
     "hacker-news-daily",

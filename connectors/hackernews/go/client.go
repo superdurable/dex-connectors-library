@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package hackernews reads the public Hacker News API through typed Dex Query Steps.
+// Package hackernews reads the public Hacker News API and searches stories through the
+// Hacker News Search API, both through typed Dex Query Steps.
 package hackernews
 
 import (
@@ -35,6 +36,7 @@ func WithHTTPClient(client *http.Client) Option { return httpClientOption{client
 // Client holds immutable HTTP configuration and is safe for concurrent calls.
 type Client struct {
 	baseURL          string
+	searchBaseURL    string
 	maxResponseBytes int64
 	httpClient       *http.Client
 	clock            func() time.Time
@@ -114,7 +116,11 @@ func New(config Config, _ sdkgo.CredentialProvider[Credentials], options ...Opti
 	if err != nil {
 		return nil, fmt.Errorf("Hacker News base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, clock: time.Now}
+	searchBaseURL, err := providerhttp.ValidateBaseURL(config.SearchBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Hacker News Search base URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, searchBaseURL: searchBaseURL, maxResponseBytes: config.MaxResponseBytes, clock: time.Now}
 	for _, option := range options {
 		option.applyClientOption(client)
 	}
@@ -130,6 +136,9 @@ func (client *Client) ListStoryIDs() ListStoryIDsOperation { return ListStoryIDs
 
 // GetItem returns the item query bound to this client.
 func (client *Client) GetItem() GetItemOperation { return GetItemOperation{client} }
+
+// SearchStories returns the story search query bound to this client.
+func (client *Client) SearchStories() SearchStoriesOperation { return SearchStoriesOperation{client} }
 
 // Definition returns the manifest-generated feed query contract.
 func (ListStoryIDsOperation) Definition() sdkgo.QueryDefinition { return ListStoryIDsDefinition }
@@ -150,7 +159,7 @@ func (operation ListStoryIDsOperation) Invoke(call sdkgo.Call, input ListStoryID
 	if input.Limit < 1 || input.Limit > 500 {
 		return failedBranch[StoryIDs]("listStoryIDs", ListStoryIDsBranchDefect, sdkgo.FailureValidation, "limit must be from 1 through 500")
 	}
-	return getJSON(operation.client, call, "listStoryIDs", "/"+input.Feed+"stories.json", func(body []byte) sdkgo.QueryAttempt[StoryIDs] {
+	return getJSON(operation.client, call, "listStoryIDs", operation.client.baseURL+"/"+input.Feed+"stories.json", func(body []byte) sdkgo.QueryAttempt[StoryIDs] {
 		return decodeStoryIDs(body, input.Limit, operation.client.clock)
 	})
 }
@@ -180,7 +189,7 @@ func (operation GetItemOperation) Invoke(call sdkgo.Call, input GetItemInput) sd
 	if input.ID <= 0 {
 		return failedBranch[Item]("getItem", GetItemBranchDefect, sdkgo.FailureValidation, "item ID must be positive")
 	}
-	return getJSON(operation.client, call, "getItem", "/item/"+strconv.FormatInt(input.ID, 10)+".json", func(body []byte) sdkgo.QueryAttempt[Item] {
+	return getJSON(operation.client, call, "getItem", operation.client.baseURL+"/item/"+strconv.FormatInt(input.ID, 10)+".json", func(body []byte) sdkgo.QueryAttempt[Item] {
 		return decodeItem(body, input.ID)
 	})
 }
@@ -210,8 +219,8 @@ func decodeItem(body []byte, requestedID int64) sdkgo.QueryAttempt[Item] {
 	return sdkgo.NewQueryBranch(GetItemBranchFound, *item, nil, sdkgo.Receipt{})
 }
 
-func getJSON[T any](client *Client, call sdkgo.Call, operation, path string, decode func([]byte) sdkgo.QueryAttempt[T]) sdkgo.QueryAttempt[T] {
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+func getJSON[T any](client *Client, call sdkgo.Call, operation, requestURL string, decode func([]byte) sdkgo.QueryAttempt[T]) sdkgo.QueryAttempt[T] {
+	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, requestURL, nil)
 	if err != nil {
 		return failedBranch[T](operation, sdkgo.DefectBranchID, sdkgo.FailureValidation, "Hacker News request configuration is invalid")
 	}

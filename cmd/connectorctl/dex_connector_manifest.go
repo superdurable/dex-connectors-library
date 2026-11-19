@@ -255,7 +255,11 @@ func encodeLanguageManifest(packageManifest dexConnectorPackageManifest) ([]byte
 }
 
 func pythonImportPackageName(connectorDirectory string) string {
-	return strings.NewReplacer("/", "_", "-", "_").Replace(strings.TrimPrefix(connectorDirectory, "connectors/"))
+	packageName := strings.NewReplacer("/", "_", "-", "_").Replace(strings.TrimPrefix(connectorDirectory, "connectors/"))
+	if packageName != "" && packageName[0] >= '0' && packageName[0] <= '9' {
+		return "_" + packageName
+	}
+	return packageName
 }
 
 func staleLanguageManifestFiles(manifestPath string, generated map[string][]byte) ([]string, error) {

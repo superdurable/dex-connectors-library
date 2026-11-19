@@ -51,7 +51,7 @@ func (GetBehaviorSummaryOperation) Definition() sdkgo.QueryDefinition {
 // Invoke acquires an application token and requests one China Standard Time day.
 func (operation GetBehaviorSummaryOperation) Invoke(call sdkgo.Call, input GetBehaviorSummaryInput) sdkgo.QueryAttempt[GetBehaviorSummaryOutput] {
 	start, err := time.ParseInLocation("2006-01-02", input.Date, chinaTime)
-	nowInChina := time.Now().In(chinaTime)
+	nowInChina := operation.client.clock().In(chinaTime)
 	today := time.Date(nowInChina.Year(), nowInChina.Month(), nowInChina.Day(), 0, 0, 0, 0, chinaTime)
 	if err != nil || start.Format("2006-01-02") != input.Date || start.Before(today.AddDate(0, 0, -90)) || start.After(latestAvailableBehaviorDate(nowInChina)) {
 		return behaviorBranch(GetBehaviorSummaryBranchDefect, sdkgo.FailureValidation, "Douyin date must be a completed YYYY-MM-DD day within the previous 90 days")

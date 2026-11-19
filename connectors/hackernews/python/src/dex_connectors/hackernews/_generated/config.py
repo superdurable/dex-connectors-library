@@ -11,5 +11,6 @@ class Config:
     base_url: str = "https://hacker-news.firebaseio.com/v0"
     timeout_seconds: float = 15
     max_response_bytes: int = 1048576
+    search_base_url: str = "https://hn.algolia.com/api/v1"
 
 setattr(Config, '__module__', 'dex_connectors.hackernews.client')

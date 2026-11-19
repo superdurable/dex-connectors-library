@@ -82,12 +82,17 @@ export class SetUserPropertiesOperation implements Mutation<SetUserPropertiesInp
     const retryAfter = parseRetryAfter(header(response.headers, 'retry-after'), new Date());
     if (response.status === 429) return retry('RATE_LIMIT', 'Heap rate limited the request', retryAfter);
     if (response.status === 408 || response.status >= 500) return retry('AVAILABILITY', 'Heap is temporarily unavailable', retryAfter);
+    // Properties overwrite absolute values, so an unknown answer retries.
+    if (response.status !== 200 && !definiteRefusalStatuses.has(response.status))
+      return retry('AVAILABILITY', `Heap answered HTTP ${response.status}, so the outcome is unknown`, retryAfter);
     if (response.status !== 200) return terminal('providerRejected', 'PROVIDER_REJECTION', `Heap rejected HTTP ${response.status}`);
     if (tooLarge || response.body.byteLength > this.client.responseLimit)
-      return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'Heap confirmation exceeded the limit');
+      return retry('RESPONSE_TOO_LARGE', 'Heap confirmation exceeded the limit', 0);
     return newMutationBranch('accepted', { accepted: true });
   }
 }
+
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 function isValidAppID(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= 32 && /^[0-9]+$/.test(value);

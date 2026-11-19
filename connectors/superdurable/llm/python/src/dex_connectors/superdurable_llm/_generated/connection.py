@@ -63,6 +63,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.superdurable_llm.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored LLM credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,14 +88,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("LLM stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("LLM stored credential does not match the connector credential fields")
         if set(material) - set(('api_key',)):
-            raise ValueError("LLM stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("LLM stored credential does not match the connector credential fields")
         api_key = material.get("api_key")
         if api_key is not None and not (isinstance(api_key, str)):
-            raise ValueError("LLM credential api_key has an invalid type")
+            raise CredentialMaterialError("LLM credential api_key has an invalid type")
         if not api_key:
-            raise ValueError("LLM credential api_key is required")
+            raise CredentialMaterialError("LLM credential api_key is required")
         return Credentials(SecretString(api_key))
 
 
@@ -108,12 +124,12 @@ setattr(new_project_connection, '__module__', 'dex_connectors.superdurable_llm.c
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"provider", "baseUrl", "model", "region", "anthropicWorkspaceId", "maxResponseBytes"}:
+    if set(value) - {"provider", "baseUrl", "model", "region", "anthropicWorkspaceId", "maxResponseBytes", "openaiCompatibleApi", "models", "modelContextWindowTokens"}:
         raise ValueError("LLM configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "provider" in value:
         provider = value["provider"]
-        if not (isinstance(provider, str) and provider in ('openai', 'openai-compatible', 'anthropic', 'gemini', 'qwen', 'deepseek', 'meta', 'mistral', 'kimi', 'xai')):
+        if not (isinstance(provider, str) and provider in ('openai', 'openai-compatible', 'anthropic', 'anthropic-compatible', 'gemini', 'qwen', 'deepseek', 'meta', 'mistral', 'kimi', 'xai')):
             raise ValueError("LLM configuration provider has an invalid type")
         config_arguments['provider'] = provider
     else:
@@ -151,4 +167,19 @@ def _decode_config(value: dict[str, Any]) -> Config:
         config_arguments['max_response_bytes'] = max_response_bytes
     else:
         config_arguments['max_response_bytes'] = 0
+    if "openaiCompatibleApi" in value:
+        openai_compatible_api = value["openaiCompatibleApi"]
+        if not (isinstance(openai_compatible_api, str) and openai_compatible_api in ('chat-completions', 'responses')):
+            raise ValueError("LLM configuration openaiCompatibleApi has an invalid type")
+        config_arguments['openai_compatible_api'] = openai_compatible_api
+    if "models" in value:
+        models = value["models"]
+        if not (isinstance(models, list) and all(isinstance(item, str) for item in models)):
+            raise ValueError("LLM configuration models has an invalid type")
+        config_arguments['models'] = tuple(models)
+    if "modelContextWindowTokens" in value:
+        model_context_window_tokens = value["modelContextWindowTokens"]
+        if not (isinstance(model_context_window_tokens, list) and all(isinstance(item, str) for item in model_context_window_tokens)):
+            raise ValueError("LLM configuration modelContextWindowTokens has an invalid type")
+        config_arguments['model_context_window_tokens'] = tuple(model_context_window_tokens)
     return Config(**config_arguments)

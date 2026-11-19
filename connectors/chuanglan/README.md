@@ -7,3 +7,7 @@ The default endpoint is the East China `smssh1` node. Chuanglan [node guidance](
 `getBalance` selects `fetched`, `providerRejected`, `invalidResponse`, or `defect`. HTTP 429, temporary 5xx, and transport failures retry because the lookup is read-only. Optional branches fail the example Flow unless wired by an application.
 
 [Run the balance Flow](go/examples/balance/README.md). Its checked-in mock is synthetic; live balance lookup has not been verified without a user-controlled account in Dex Web Connections.
+
+## TypeScript package
+
+The `@superdurable/connector-chuanglan` package implements `getBalance` with the same request and outcomes as Go. Its [runnable balance Flow](typescript/examples/balance/README.md) passed a real local Dex Worker, Client, retry, and persistence test against a provider stand-in. Eleven Go-recorded scenarios verify exact provider requests and outcomes. A live Chuanglan account lookup remains unverified.

@@ -3,7 +3,6 @@
 """Dex registration and connector Step factory validation."""
 
 from datetime import timedelta
-from types import SimpleNamespace
 from typing import cast
 
 import dex
@@ -38,6 +37,15 @@ from dex_connectors.sdk import (
     StepDefaults,
     raise_dex_retry,
 )
+
+
+class StepIdentityContext:
+    """Step identity that, like a real Dex context, is hashable and weakly referenceable."""
+
+    def __init__(self, flow_id: str, step_execution_id: str) -> None:
+        self.flow_id = flow_id
+        self.step_execution_id = step_execution_id
+
 
 OPERATION = OperationRef("sample", "createItem")
 CONNECTION = ConnectionRef("sample", "main")
@@ -276,7 +284,7 @@ async def test_mutation_step_passes_send_cap_to_every_call() -> None:
     """Every attempt of the Step sees the same send cap on its Call."""
     mutation = TieredMutation(RepeatOnUnknown.LIMITED, 3)
     step = _tiered_step(mutation, 5)
-    context = SimpleNamespace(flow_id="flow-1", step_execution_id="step-1")
+    context = StepIdentityContext(flow_id="flow-1", step_execution_id="step-1")
     for _ in range(2):
         await step.execute(cast(dex.AsyncContext, context), "value")
     assert mutation.call_max_sends == [5, 5]

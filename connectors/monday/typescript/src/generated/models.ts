@@ -42,7 +42,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Maximum complete monday.com API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a board has many long-text columns. An oversized read selects invalidResponse, and an oversized response to an accepted createItem or addUpdate selects uncertain. */
+  /** Maximum complete monday.com API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a board has many long-text columns. An oversized read selects invalidResponse; an oversized response to a write is an unknown outcome, so updateItemColumnValues retries, and createItem or addUpdate resends under the same idempotency key only within the Step's send cap, then selects uncertain. */
   maxResponseBytes?: number;
   /** Non-secret delay between itemChanged Trigger polls of each watched board, as a Go duration of at least 30s such as 2m or 30m; leave it blank to keep the displayed interval. Each poll makes at least one monday.com API call, and every call counts against the account's daily call limit, which resets at midnight UTC (200 calls on Free, 1,000 on Standard or Basic, 10,000 on Pro, 25,000 on Enterprise, shown to account admins at https://monday.com/ under your profile picture > Administration > Usage stats > API); shorten it only when that limit covers the polls of every binding plus the Flows' own calls. Runtime value in milliseconds. */
   pollIntervalMs?: number;
@@ -70,66 +70,85 @@ export interface Credentials {
   refreshToken?: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the selected authorization method. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "api_token", "access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new TypeError("credential api_token has an invalid type");
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new CredentialMaterialError("credential api_token has an invalid type");
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new CredentialMaterialError("credential refresh_token has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "personal-api-token";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "personal-api-token") {
-    if (!fields["api_token"]) throw new TypeError("credential api_token is required");
+    if (!fields["api_token"]) throw new CredentialMaterialError("credential api_token is required");
     if (fields["api_token"]) credentials.apiToken = new SecretString(fields["api_token"] as string);
   } else if (method === "monday-oauth") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
-    if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+    if (!fields["oauth_client_secret"]) throw new CredentialMaterialError("credential oauth_client_secret is required");
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (!fields["refresh_token"]) throw new TypeError("credential refresh_token is required");
+    if (!fields["refresh_token"]) throw new CredentialMaterialError("credential refresh_token is required");
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }
 
 /** Decode shared credential fields for the selected authorization method. */
 export function decodeSharedCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "api_token", "access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new TypeError("credential api_token has an invalid type");
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new CredentialMaterialError("credential api_token has an invalid type");
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new CredentialMaterialError("credential refresh_token has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "personal-api-token";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "personal-api-token") {
-    if (!fields["api_token"]) throw new TypeError("credential api_token is required");
+    if (!fields["api_token"]) throw new CredentialMaterialError("credential api_token is required");
     if (fields["api_token"]) credentials.apiToken = new SecretString(fields["api_token"] as string);
   } else if (method === "monday-oauth") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }

@@ -33,7 +33,7 @@ from ._generated.config import Credentials as Credentials
 from ._generated.definitions import LIST_PHONE_NUMBERS_DEFINITION
 from ._graph_error import decode_graph_error
 from .models import BusinessPhoneNumber, ListPhoneNumbersInput, PhoneNumbersPage
-from .send import SendTemplateMessageOperation, SendTextMessageOperation
+from .send import SendTemplateMessageOperation, SendTextMessageOperation, _is_terminal_credential_error
 
 _NUMERIC_ID = re.compile(r"[0-9]{1,40}\Z")
 
@@ -114,10 +114,17 @@ class ListPhoneNumbersOperation:
             path += "?" + urlencode({"after": input.after})
         try:
             credentials = await self.client.credentials.resolve(call)
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return _retry(FailureKind.AVAILABILITY, "connection credentials are temporarily unavailable")
+            return _branch(
+                "defect", FailureKind.AUTHENTICATION, "connection credentials are unavailable or invalid"
+            )
+        try:
             token = credentials.access_token.reveal()
             if not is_header_safe_credential(token):
                 raise ValueError("invalid system-user token")
-        except (ValueError, LookupError, OSError, AttributeError):
+        except (ValueError, AttributeError):
             return _branch(
                 "defect", FailureKind.AUTHENTICATION, "connection credentials are unavailable or invalid"
             )

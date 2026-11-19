@@ -139,10 +139,16 @@ func standardKey(t *testing.T) []byte {
 type stepContext struct {
 	context.Context
 	step string
+	// attempt is the Step attempt; zero means the first attempt.
+	attempt int32
 }
 
 func newStepContext(step string) *stepContext {
 	return &stepContext{Context: context.Background(), step: step}
+}
+
+func newLaterAttemptStepContext(step string) *stepContext {
+	return &stepContext{Context: context.Background(), step: step, attempt: 2}
 }
 
 func (*stepContext) FlowID() string                                  { return "webhook-form-submission-test" }
@@ -152,7 +158,7 @@ func (context *stepContext) StepExecutionID() string                 { return co
 func (*stepContext) FromStepExecutionID() string                     { return "" }
 func (*stepContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (*stepContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*stepContext) Attempt() int32                                  { return 1 }
+func (context *stepContext) Attempt() int32                          { return max(context.attempt, 1) }
 func (*stepContext) HasTimerFired() bool                             { return false }
 func (*stepContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*stepContext) WaitForMethodFailed() bool                       { return false }

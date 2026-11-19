@@ -62,7 +62,9 @@ func TestConnectionGuidanceCoversEveryVisibleField(t *testing.T) {
 	}
 	require.Equal(t, "https://app.useasy.cn/login", manifest.Spec.Auth.Guide.StartURL)
 	guide := strings.Join(manifest.Spec.Auth.Guide.Steps, " ")
-	for _, text := range []string{"appid", "secretKey", "agent information"} { require.Contains(t, guide, text) }
+	for _, text := range []string{"appid", "secretKey", "agent information"} {
+		require.Contains(t, guide, text)
+	}
 	require.Len(t, manifest.Spec.Operations, 1)
 	require.Equal(t, "listAgents", manifest.Spec.Operations[0].Name)
 	require.Nil(t, manifest.Spec.Operations[0].ConfigurationUI)

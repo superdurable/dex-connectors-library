@@ -88,7 +88,7 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "The ticket exists: Gorgias created it now, or a retried attempt found the ticket an earlier attempt of this Step created.", False),
         BranchDefinition(PROVIDER_REJECTED, "Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but Gorgias did not confirm a ticket for it, so the ticket may still appear; the connector never resends it.", True),
+        BranchDefinition(UNCERTAIN, "A ticket may exist that this Step cannot confirm: the send cap is reached and Gorgias shows no ticket with the Step's external ID, Gorgias accepted the ticket but reading it back failed, or after a possible send the read-back was refused or the credentials became unusable. Below the cap, an unconfirmed send is read back and then resent; an accepted ticket is never resent.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -105,17 +105,16 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
     (
         BranchDefinition(UPDATED, "The ticket holds the requested values, written now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's user.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Gorgias conclusively rejected the change, such as an unknown user or team, or a merged ticket; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", True),
-        BranchDefinition(INVALID_RESPONSE, "Gorgias returned an invalid or oversized ticket, so the change may have been applied.", True),
-        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team, or answered the first ticket read with a 3xx because the ticket was merged; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", True),
+        BranchDefinition(INVALID_RESPONSE, "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on any read is retried.", True),
+        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid; revoked or unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent.", True),
     ),
     StepDefaults(
         timedelta(seconds=45),
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 ADD_NOTE_DEFINITION = MutationDefinition(
@@ -124,7 +123,7 @@ ADD_NOTE_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "The note or reply exists: Gorgias added it now, or a retried attempt found the message an earlier attempt of this Step added.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's user; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but Gorgias did not confirm a message for it, so the note or reply may still appear; the connector never resends it.", True),
+        BranchDefinition(UNCERTAIN, "A note or reply may exist that this Step cannot confirm: the send cap is reached and the ticket shows no message with the Step's external ID, Gorgias accepted the message but reading it back failed, or after a possible send the read-back was refused, the ticket could not be read to route a reply, or the credentials became unusable. Below the cap, an unconfirmed send is read back and then resent; an accepted message is never resent.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

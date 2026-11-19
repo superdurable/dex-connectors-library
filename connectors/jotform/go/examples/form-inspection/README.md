@@ -1,13 +1,13 @@
 # Jotform form-inspection Flow
 
-This runnable Flow calls `listForms` with the static `jotform` connection. Its happy-path form page is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. No submission answers or API key enter the Flow result.
+This runnable Flow calls `listForms` and then `getForm` for the first result with the static `jotform` connection. Its happy-path form page is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. No submission answers or API key enter the Flow result.
 
 ## Strict FDG 2.0 generation
 
 From `connectors/jotform/go`, run:
 
 ```bash
-dexcli visualize ./examples/form-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/jotform-form-inspection-fdg
+dexcli visualize ./examples/form-inspection/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/jotform-form-inspection-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

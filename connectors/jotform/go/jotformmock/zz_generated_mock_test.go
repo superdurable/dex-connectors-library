@@ -16,6 +16,38 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createForm/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jotform.WriteResult](`{"id":"123","accepted":true}`)
+			return err
+		}},
+		{name: "updateFormTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jotform.WriteResult](`{"id":"123","accepted":true}`)
+			return err
+		}},
+		{name: "deleteForm/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jotform.WriteResult](`{"id":"123","accepted":true}`)
+			return err
+		}},
+		{name: "createSubmission/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jotform.WriteResult](`{"id":"456","accepted":true}`)
+			return err
+		}},
+		{name: "updateSubmission/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jotform.WriteResult](`{"id":"456","accepted":true}`)
+			return err
+		}},
+		{name: "deleteSubmission/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jotform.WriteResult](`{"id":"456","accepted":true}`)
+			return err
+		}},
+		{name: "getForm/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jotform.FormMetadata](`{"id":"241234567890123","title":"Contact request","status":"ENABLED"}`)
+			return err
+		}},
+		{name: "listFormSubmissions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[jotform.SubmissionsPage](`{"submissions":[{"id":"456","formId":"123","status":"ACTIVE","createdAt":"2026-01-01 00:00:00"}],"offset":0,"limit":20}`)
+			return err
+		}},
 		{name: "listForms/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[jotform.FormsPage](`{"forms":[{"id":"241234567890123","title":"Contact request","status":"ENABLED"}],"offset":0,"limit":20}`)
 			return err
@@ -34,6 +66,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateForm().Definition().Operation.OperationID != "createForm" {
+		t.Errorf("createForm mock has another definition")
+	}
+	if mock.UpdateFormTitle().Definition().Operation.OperationID != "updateFormTitle" {
+		t.Errorf("updateFormTitle mock has another definition")
+	}
+	if mock.DeleteForm().Definition().Operation.OperationID != "deleteForm" {
+		t.Errorf("deleteForm mock has another definition")
+	}
+	if mock.CreateSubmission().Definition().Operation.OperationID != "createSubmission" {
+		t.Errorf("createSubmission mock has another definition")
+	}
+	if mock.UpdateSubmission().Definition().Operation.OperationID != "updateSubmission" {
+		t.Errorf("updateSubmission mock has another definition")
+	}
+	if mock.DeleteSubmission().Definition().Operation.OperationID != "deleteSubmission" {
+		t.Errorf("deleteSubmission mock has another definition")
+	}
+	if mock.GetForm().Definition().Operation.OperationID != "getForm" {
+		t.Errorf("getForm mock has another definition")
+	}
+	if mock.ListFormSubmissions().Definition().Operation.OperationID != "listFormSubmissions" {
+		t.Errorf("listFormSubmissions mock has another definition")
+	}
 	if mock.ListForms().Definition().Operation.OperationID != "listForms" {
 		t.Errorf("listForms mock has another definition")
 	}

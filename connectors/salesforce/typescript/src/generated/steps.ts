@@ -88,11 +88,14 @@ export interface UpsertRecordByExternalIDStepConfig<StepInput, OperationInput = 
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the upsertRecordByExternalId Step from a named connection. */
 export function newUpsertRecordByExternalIDStep<StepInput, OperationInput = UpsertRecordByExternalIDInput, OperationOutput = UpsertRecordByExternalIDOutput>(configuration: UpsertRecordByExternalIDStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, upserted, multipleMatches, recordRejected, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, upserted, multipleMatches, recordRejected, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.upsertRecordByExternalId(), connection: connection.reference, branches: [
     goToBranch("upserted", upserted),
@@ -119,11 +122,14 @@ export interface UpdateRecordStepConfig<StepInput, OperationInput = UpdateRecord
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateRecord Step from a named connection. */
 export function newUpdateRecordStep<StepInput, OperationInput = UpdateRecordInput, OperationOutput = UpdateRecordOutput>(configuration: UpdateRecordStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, recordRejected, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, recordRejected, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateRecord(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

@@ -5,13 +5,17 @@
 import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';
-import type { GetPostInput, Post } from './models.js';
+import type { GetPostInput, Post, ListSubredditPostsInput, PostPage, SearchPostsInput } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
 export interface Operations {
   /** Invoke getPost through this connection. */
   getPost(): Query<GetPostInput, Post>;
+  /** Invoke listSubredditPosts through this connection. */
+  listSubredditPosts(): Query<ListSubredditPostsInput, PostPage>;
+  /** Invoke searchPosts through this connection. */
+  searchPosts(): Query<SearchPostsInput, PostPage>;
 }
 
 /** Named connector connection kept outside Flow state. */

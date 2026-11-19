@@ -27,12 +27,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	context := singledispatchtest.NewContext("storage-conformance", "provider-step")
 	return &conformanceMappedInvoker{t: t, scenario: scenario,
 		before: func(attempt int) {
-			if attempt > 1 { context.AdvanceAttempt() }
+			if attempt > 1 {
+				context.AdvanceAttempt()
+			}
 		},
 		actions: map[string]conformanceOperationInvocation{
-			"listObjects": newConformanceQueryInvocation(t, scenario.Input, context, client.ListObjects(), reference),
+			"listObjects":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListObjects(), reference),
 			"downloadObject": newConformanceQueryInvocation(t, scenario.Input, context, client.DownloadObject(), reference),
-			"uploadObject": newConformanceMutationInvocation(t, scenario.Input, context, client.UploadObject(), reference, scenario.CallID),
+			"uploadObject":   newConformanceMutationInvocation(t, scenario.Input, context, client.UploadObject(), reference, scenario.CallID),
 		},
 	}
 }

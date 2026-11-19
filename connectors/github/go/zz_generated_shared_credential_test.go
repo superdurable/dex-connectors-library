@@ -374,9 +374,17 @@ var hostKeptCredentialFields = []string{"OAuthClientSecret", "RefreshToken"}
 func sharedCredentialMethods() []sharedCredentialMethod {
 	return []sharedCredentialMethod{
 		{
-			name:               "spec.auth",
-			credential:         `{"access_token":"manifest-access_token","oauth_client_id":"manifest-oauth_client_id","oauth_client_secret":"manifest-oauth_client_secret","refresh_token":"manifest-refresh_token"}`,
-			decoded:            map[string]string{"access_token": "manifest-access_token", "oauth_client_id": "manifest-oauth_client_id", "oauth_client_secret": "manifest-oauth_client_secret", "refresh_token": "manifest-refresh_token"},
+			name:               "github-oauth",
+			credential:         `{"access_token":"manifest-access_token","auth_method":"github-oauth","oauth_client_id":"manifest-oauth_client_id","oauth_client_secret":"manifest-oauth_client_secret","refresh_token":"manifest-refresh_token"}`,
+			decoded:            map[string]string{"access_token": "manifest-access_token", "auth_method": "github-oauth", "oauth_client_id": "manifest-oauth_client_id", "oauth_client_secret": "manifest-oauth_client_secret", "refresh_token": "manifest-refresh_token"},
+			hostKept:           []string{"oauth_client_secret", "refresh_token"},
+			required:           []string{"oauth_client_id", "access_token"},
+			isHostKeptRequired: true,
+		},
+		{
+			name:               "github-oauth-repository",
+			credential:         `{"access_token":"manifest-access_token","auth_method":"github-oauth-repository","oauth_client_id":"manifest-oauth_client_id","oauth_client_secret":"manifest-oauth_client_secret","refresh_token":"manifest-refresh_token"}`,
+			decoded:            map[string]string{"access_token": "manifest-access_token", "auth_method": "github-oauth-repository", "oauth_client_id": "manifest-oauth_client_id", "oauth_client_secret": "manifest-oauth_client_secret", "refresh_token": "manifest-refresh_token"},
 			hostKept:           []string{"oauth_client_secret", "refresh_token"},
 			required:           []string{"oauth_client_id", "access_token"},
 			isHostKeptRequired: true,
@@ -386,6 +394,9 @@ func sharedCredentialMethods() []sharedCredentialMethod {
 
 func sharedCredentialValues(credentials github.Credentials) map[string]string {
 	values := map[string]string{}
+	if credentials.AuthMethodID != "" {
+		values["auth_method"] = credentials.AuthMethodID
+	}
 	if credentials.OAuthClientID != "" {
 		values["oauth_client_id"] = credentials.OAuthClientID
 	}

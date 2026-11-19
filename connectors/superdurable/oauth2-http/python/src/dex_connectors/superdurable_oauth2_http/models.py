@@ -2,6 +2,6 @@
 # SPDX-License-Identifier: MIT
 """Public request and response types."""
 
-from ._generated.models import SendRequestInput, SendRequestOutput
+from ._generated.models import PostNonIdempotentInput, SendRequestInput, SendRequestOutput
 
-__all__ = ["SendRequestInput", "SendRequestOutput"]
+__all__ = ["PostNonIdempotentInput", "SendRequestInput", "SendRequestOutput"]

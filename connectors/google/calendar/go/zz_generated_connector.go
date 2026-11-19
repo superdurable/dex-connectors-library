@@ -563,6 +563,8 @@ type CreateEventStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateEventResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateEventOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.MutationStep[IN, CreateEventInput, CreateEventOutput] {
@@ -643,6 +645,8 @@ type UpdateEventStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateEventResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateEventOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateEventStep[IN any](config UpdateEventStepConfig[IN]) sdkgo.MutationStep[IN, UpdateEventInput, UpdateEventOutput] {

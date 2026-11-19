@@ -78,9 +78,9 @@ export const SchedulePostBranch = {
 export const SchedulePostBranchScheduled = SchedulePostBranch.Scheduled;
 /** Hootsuite definitively rejected the schedule request. */
 export const SchedulePostBranchProviderRejected = SchedulePostBranch.ProviderRejected;
-/** The request may have reached Hootsuite but no message ID was confirmed; inspect Planner before resending. */
+/** Hootsuite may have scheduled the message, but the send cap was reached or Hootsuite returned a message ID without a complete confirmation; inspect Planner before resending. */
 export const SchedulePostBranchUncertain = SchedulePostBranch.Uncertain;
-/** Local post input, credentials, or dispatch checkpoint is invalid. */
+/** Local post input, credentials, or dispatch fence is invalid before any send. */
 export const SchedulePostBranchDefect = SchedulePostBranch.Defect;
 /** Manifest definition for schedulePost. */
 export const SchedulePostDefinition: MutationDefinition = {
@@ -88,10 +88,12 @@ export const SchedulePostDefinition: MutationDefinition = {
   branches: [
     { id: "scheduled", description: "Hootsuite accepted the scheduled message and returned its ID." },
     { id: "providerRejected", description: "Hootsuite definitively rejected the schedule request.", optional: true },
-    { id: "uncertain", description: "The request may have reached Hootsuite but no message ID was confirmed; inspect Planner before resending.", optional: true },
-    { id: "defect", description: "Local post input, credentials, or dispatch checkpoint is invalid.", optional: true },
+    { id: "uncertain", description: "Hootsuite may have scheduled the message, but the send cap was reached or Hootsuite returned a message ID without a complete confirmation; inspect Planner before resending.", optional: true },
+    { id: "defect", description: "Local post input, credentials, or dispatch fence is invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for schedulePost. */
 export const SchedulePostMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

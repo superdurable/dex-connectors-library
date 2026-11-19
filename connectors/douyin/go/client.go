@@ -38,6 +38,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	clock            func() time.Time
 	tokenMu          sync.Mutex
 	tokens           map[string]cachedToken
 }
@@ -51,7 +52,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Validate() != nil || config.Timeout <= 0 || config.MaxResponseBytes <= 0 || config.MaxResponseBytes > 16<<20 {
 		return nil, errors.New("Douyin configuration is invalid")
 	}
-	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, tokens: make(map[string]cachedToken)}
+	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, clock: time.Now, tokens: make(map[string]cachedToken)}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Douyin client option is required")

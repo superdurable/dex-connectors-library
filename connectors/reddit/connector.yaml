@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: reddit
   displayName: Reddit
-  description: Read a post from Reddit's approved OAuth Data API.
+  description: Read posts, list subreddit posts, and search posts through Reddit's approved OAuth Data API.
   company: Reddit
   categories: [social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: reddit
   languages:
@@ -16,9 +16,9 @@ spec:
       operations: [getPost]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.3.0
       package: '@superdurable/connector-reddit'
-      operations: [getPost]
+      operations: [getPost, listSubredditPosts, searchPosts]
       triggers: []
   codegen:
     go:
@@ -43,8 +43,8 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        default: 1048576
-        description: Maximum complete Reddit JSON response in bytes. Blank uses the displayed default; increase only when a post has unusually large metadata.
+        default: 8388608
+        description: Maximum complete Reddit JSON response in bytes, for one post read or one listing or search page. Blank uses the displayed default; increase only when a page of many long or media-heavy posts exceeds it.
   auth:
     type: oauth2
     refreshable: true
@@ -76,7 +76,7 @@ spec:
         - Request Reddit Data API access through the link in the Reddit Data API Wiki and wait for explicit approval before connecting. Commercial uses require separate written approval under Reddit's Responsible Builder Policy.
         - Sign in at https://www.reddit.com/prefs/apps, create or open an approved web app, and register the exact HTTPS redirect URI displayed by Dex Web. Copy the client ID beneath the app name and its client secret into the fields below.
         - Open your Reddit profile menu > Profile and enter your username without /u/ in redditUsername. Dex sends a User-Agent containing the app client ID, connector version, and this username; do not use another person's identity.
-        - Choose Authorize in Dex Web and grant the read scope with permanent duration. Dex stores access and refresh tokens; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - Choose Authorize in Dex Web and grant the read scope with permanent duration; read covers post reads, subreddit listings, and post search. Dex stores access and refresh tokens; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
     oauth2:
       authorizationEndpoint: https://www.reddit.com/api/v1/authorize
       tokenEndpoint: https://www.reddit.com/api/v1/access_token
@@ -123,3 +123,95 @@ spec:
           default: true
           description: One sample post is returned.
           output: {id: t3_abc123, title: Example post, subreddit: example, permalink: /r/example/comments/abc123/example_post/, score: 42}
+    - name: listSubredditPosts
+      goName: ListSubredditPosts
+      inputType: ListSubredditPostsInput
+      outputType: PostPage
+      kind: query
+      description: List one bounded page of posts from a subreddit, or several joined with +, sorted new, hot, top, or rising, with an after cursor.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      pagination: {inputField: after, nextField: after}
+      branches:
+        - {id: listed, goName: Listed, description: Reddit returned one bounded page of posts; the page may be empty.}
+        - {id: subredditUnavailable, goName: SubredditUnavailable, description: "Reddit reports the subreddit missing, banned, private, quarantined, or otherwise closed to the account.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit conclusively rejected the listing or app access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned a malformed or oversized listing., optional: true}
+        - {id: defect, goName: Defect, description: "The subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid.", optional: true}
+      agent:
+        exposed: true
+        # Each listed branch follows a Reddit 3xx or 4xx or precedes the request; invalidResponse stays unlisted.
+        branches: {subredditUnavailable: rejected, providerRejected: rejected, defect: rejected}
+        description: "List one page of posts from a Reddit community, or several joined with +, such as golang+programming. Supply the subreddit name without r/; optionally a sort of new, hot, top, or rising (blank is new), a timeWindow of hour, day, week, month, year, or all for the top sort only (blank is day), a limit from 1 through 100 (blank reads 25), and the after cursor from the previous page to continue while after is present."
+      mocks:
+        - name: newestThreePages
+          branch: listed
+          default: true
+          description: Three newest-first pages with a pinned weekly thread to filter out and a post repeated across a page boundary.
+          pages:
+            - posts:
+                - {id: t3_1a0001, title: Weekly questions thread, subreddit: golang, author: example_moderator, permalink: "https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/", isSelf: true, selfText: Ask small questions here., score: 12, commentCount: 40, createdAt: "2026-11-09T08:00:00Z", isOver18: false, isSpoiler: false, isStickied: true}
+                - {id: t3_1a0003, title: "How do generics interact with interfaces?", subreddit: golang, author: example_author_one, permalink: "https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/", isSelf: true, selfText: "I want a generic Map function that also accepts an interface type.", score: 25, commentCount: 9, createdAt: "2026-11-12T16:30:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+                - {id: t3_1a0002, title: A walkthrough of the new release notes, subreddit: golang, author: example_author_two, permalink: "https://www.reddit.com/r/golang/comments/1a0002/a_walkthrough_of_the_new_release_notes/", linkUrl: "https://example.com/blog/release-notes", isSelf: false, score: 31, commentCount: 4, createdAt: "2026-11-12T09:15:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+              after: t3_1a0002
+            - posts:
+                - {id: t3_1a0002, title: A walkthrough of the new release notes, subreddit: golang, author: example_author_two, permalink: "https://www.reddit.com/r/golang/comments/1a0002/a_walkthrough_of_the_new_release_notes/", linkUrl: "https://example.com/blog/release-notes", isSelf: false, score: 31, commentCount: 4, createdAt: "2026-11-12T09:15:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+                - {id: t3_19zzz9, title: Generic constraints with comparable, subreddit: golang, author: example_author_three, permalink: "https://www.reddit.com/r/golang/comments/19zzz9/generic_constraints_with_comparable/", isSelf: true, selfText: "When should a type parameter use comparable instead of any?", score: 18, commentCount: 6, createdAt: "2026-11-11T20:45:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+              after: t3_19zzz9
+            - posts:
+                - {id: t3_19zzz5, title: Profiling a slow test suite, subreddit: golang, author: example_author_four, permalink: "https://www.reddit.com/r/golang/comments/19zzz5/profiling_a_slow_test_suite/", isSelf: true, selfText: "Which profiler flags help most with slow tests?", score: 7, commentCount: 3, createdAt: "2026-11-10T11:00:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+        - name: subredditMissing
+          branch: subredditUnavailable
+          description: Reddit reports no community with the requested name.
+          failure: {kind: NOT_FOUND, message: "Reddit reports the subreddit missing, banned, private, or restricted."}
+        - name: listingRejected
+          branch: providerRejected
+          description: Reddit refuses the listing for the authorized app.
+          failure: {kind: PROVIDER_REJECTION, message: Reddit rejected HTTP 403}
+    - name: searchPosts
+      goName: SearchPosts
+      inputType: SearchPostsInput
+      outputType: PostPage
+      kind: query
+      description: Search one bounded page of Reddit posts by keyword, optionally within one subreddit, sorted new, relevance, top, hot, or comments, with a time window and an after cursor.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      pagination: {inputField: after, nextField: after}
+      branches:
+        - {id: searched, goName: Searched, description: Reddit returned one bounded page of matching posts; the page may be empty.}
+        - {id: subredditUnavailable, goName: SubredditUnavailable, description: "Reddit reports the subreddit that restricts the search missing, banned, private, quarantined, or otherwise closed to the account.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit conclusively rejected the search or app access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned malformed or oversized search results., optional: true}
+        - {id: defect, goName: Defect, description: "The query, subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid.", optional: true}
+      agent:
+        exposed: true
+        # Each listed branch follows a Reddit 3xx or 4xx or precedes the request; invalidResponse stays unlisted.
+        branches: {subredditUnavailable: rejected, providerRejected: rejected, defect: rejected}
+        description: "Search Reddit posts by keyword, such as generics, optionally within one community. Supply the query text of at most 512 characters; optionally the subreddit name without r/ to search only that community, a sort of new, relevance, top, hot, or comments (blank is new), a timeWindow of hour, day, week, month, year, or all (blank is all), a limit from 1 through 100 (blank reads 25), and the after cursor from the previous page to continue while after is present."
+      mocks:
+        - name: newestMatchesThreePages
+          branch: searched
+          default: true
+          description: Three newest-first pages of matches with a pinned thread to filter out and a match repeated across a page boundary.
+          pages:
+            - posts:
+                - {id: t3_1a0004, title: Generics performance compared with interfaces, subreddit: golang, author: example_author_five, permalink: "https://www.reddit.com/r/golang/comments/1a0004/generics_performance_compared_with_interfaces/", linkUrl: "https://example.com/benchmarks/generics", isSelf: false, score: 44, commentCount: 15, createdAt: "2026-11-13T10:00:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+                - {id: t3_1a0003, title: "How do generics interact with interfaces?", subreddit: golang, author: example_author_one, permalink: "https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/", isSelf: true, selfText: "I want a generic Map function that also accepts an interface type.", score: 25, commentCount: 9, createdAt: "2026-11-12T16:30:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+                - {id: t3_1a0001, title: Weekly questions thread, subreddit: golang, author: example_moderator, permalink: "https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/", isSelf: true, selfText: "Ask small questions here, including generics questions.", score: 12, commentCount: 40, createdAt: "2026-11-09T08:00:00Z", isOver18: false, isSpoiler: false, isStickied: true}
+              after: t3_1a0001
+            - posts:
+                - {id: t3_1a0001, title: Weekly questions thread, subreddit: golang, author: example_moderator, permalink: "https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/", isSelf: true, selfText: "Ask small questions here, including generics questions.", score: 12, commentCount: 40, createdAt: "2026-11-09T08:00:00Z", isOver18: false, isSpoiler: false, isStickied: true}
+                - {id: t3_19zzx1, title: Type inference surprises with generic functions, subreddit: golang, author: example_author_six, permalink: "https://www.reddit.com/r/golang/comments/19zzx1/type_inference_surprises_with_generic_functions/", isSelf: true, selfText: Inference failed until I named the type argument., score: 9, commentCount: 2, createdAt: "2026-11-08T14:20:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+              after: t3_19zzx1
+            - posts:
+                - {id: t3_19zzw0, title: Generic data structures one year later, subreddit: golang, author: example_author_seven, permalink: "https://www.reddit.com/r/golang/comments/19zzw0/generic_data_structures_one_year_later/", linkUrl: "https://example.com/articles/generic-data-structures", isSelf: false, score: 51, commentCount: 22, createdAt: "2026-11-02T18:05:00Z", isOver18: false, isSpoiler: false, isStickied: false}
+        - name: searchSubredditMissing
+          branch: subredditUnavailable
+          description: Reddit reports no community with the subreddit that restricts the search.
+          failure: {kind: NOT_FOUND, message: "Reddit reports the subreddit missing, banned, private, or restricted."}
+        - name: searchRejected
+          branch: providerRejected
+          description: Reddit refuses the search for the authorized app.
+          failure: {kind: PROVIDER_REJECTION, message: Reddit rejected HTTP 403}

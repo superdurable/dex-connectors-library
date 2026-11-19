@@ -20,6 +20,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[reddit.Post](`{"id":"t3_abc123","title":"Example post","subreddit":"example","permalink":"/r/example/comments/abc123/example_post/","score":42}`)
 			return err
 		}},
+		{name: "listSubredditPosts/newestThreePages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_1a0001","title":"Weekly questions thread","subreddit":"golang","author":"example_moderator","permalink":"https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/","isSelf":true,"selfText":"Ask small questions here.","score":12,"commentCount":40,"createdAt":"2026-11-09T08:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":true},{"id":"t3_1a0003","title":"How do generics interact with interfaces?","subreddit":"golang","author":"example_author_one","permalink":"https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/","isSelf":true,"selfText":"I want a generic Map function that also accepts an interface type.","score":25,"commentCount":9,"createdAt":"2026-11-12T16:30:00Z","isOver18":false,"isSpoiler":false,"isStickied":false},{"id":"t3_1a0002","title":"A walkthrough of the new release notes","subreddit":"golang","author":"example_author_two","permalink":"https://www.reddit.com/r/golang/comments/1a0002/a_walkthrough_of_the_new_release_notes/","linkUrl":"https://example.com/blog/release-notes","isSelf":false,"score":31,"commentCount":4,"createdAt":"2026-11-12T09:15:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}],"after":"t3_1a0002"}`)
+			return err
+		}},
+		{name: "listSubredditPosts/newestThreePages/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_1a0002","title":"A walkthrough of the new release notes","subreddit":"golang","author":"example_author_two","permalink":"https://www.reddit.com/r/golang/comments/1a0002/a_walkthrough_of_the_new_release_notes/","linkUrl":"https://example.com/blog/release-notes","isSelf":false,"score":31,"commentCount":4,"createdAt":"2026-11-12T09:15:00Z","isOver18":false,"isSpoiler":false,"isStickied":false},{"id":"t3_19zzz9","title":"Generic constraints with comparable","subreddit":"golang","author":"example_author_three","permalink":"https://www.reddit.com/r/golang/comments/19zzz9/generic_constraints_with_comparable/","isSelf":true,"selfText":"When should a type parameter use comparable instead of any?","score":18,"commentCount":6,"createdAt":"2026-11-11T20:45:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}],"after":"t3_19zzz9"}`)
+			return err
+		}},
+		{name: "listSubredditPosts/newestThreePages/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_19zzz5","title":"Profiling a slow test suite","subreddit":"golang","author":"example_author_four","permalink":"https://www.reddit.com/r/golang/comments/19zzz5/profiling_a_slow_test_suite/","isSelf":true,"selfText":"Which profiler flags help most with slow tests?","score":7,"commentCount":3,"createdAt":"2026-11-10T11:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}]}`)
+			return err
+		}},
+		{name: "searchPosts/newestMatchesThreePages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_1a0004","title":"Generics performance compared with interfaces","subreddit":"golang","author":"example_author_five","permalink":"https://www.reddit.com/r/golang/comments/1a0004/generics_performance_compared_with_interfaces/","linkUrl":"https://example.com/benchmarks/generics","isSelf":false,"score":44,"commentCount":15,"createdAt":"2026-11-13T10:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":false},{"id":"t3_1a0003","title":"How do generics interact with interfaces?","subreddit":"golang","author":"example_author_one","permalink":"https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/","isSelf":true,"selfText":"I want a generic Map function that also accepts an interface type.","score":25,"commentCount":9,"createdAt":"2026-11-12T16:30:00Z","isOver18":false,"isSpoiler":false,"isStickied":false},{"id":"t3_1a0001","title":"Weekly questions thread","subreddit":"golang","author":"example_moderator","permalink":"https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/","isSelf":true,"selfText":"Ask small questions here, including generics questions.","score":12,"commentCount":40,"createdAt":"2026-11-09T08:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":true}],"after":"t3_1a0001"}`)
+			return err
+		}},
+		{name: "searchPosts/newestMatchesThreePages/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_1a0001","title":"Weekly questions thread","subreddit":"golang","author":"example_moderator","permalink":"https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/","isSelf":true,"selfText":"Ask small questions here, including generics questions.","score":12,"commentCount":40,"createdAt":"2026-11-09T08:00:00Z","isOver18":false,"isSpoiler":false,"isStickied":true},{"id":"t3_19zzx1","title":"Type inference surprises with generic functions","subreddit":"golang","author":"example_author_six","permalink":"https://www.reddit.com/r/golang/comments/19zzx1/type_inference_surprises_with_generic_functions/","isSelf":true,"selfText":"Inference failed until I named the type argument.","score":9,"commentCount":2,"createdAt":"2026-11-08T14:20:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}],"after":"t3_19zzx1"}`)
+			return err
+		}},
+		{name: "searchPosts/newestMatchesThreePages/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[reddit.PostPage](`{"posts":[{"id":"t3_19zzw0","title":"Generic data structures one year later","subreddit":"golang","author":"example_author_seven","permalink":"https://www.reddit.com/r/golang/comments/19zzw0/generic_data_structures_one_year_later/","linkUrl":"https://example.com/articles/generic-data-structures","isSelf":false,"score":51,"commentCount":22,"createdAt":"2026-11-02T18:05:00Z","isOver18":false,"isSpoiler":false,"isStickied":false}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +56,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetPost().Definition().Operation.OperationID != "getPost" {
 		t.Errorf("getPost mock has another definition")
+	}
+	if mock.ListSubredditPosts().Definition().Operation.OperationID != "listSubredditPosts" {
+		t.Errorf("listSubredditPosts mock has another definition")
+	}
+	if mock.SearchPosts().Definition().Operation.OperationID != "searchPosts" {
+		t.Errorf("searchPosts mock has another definition")
 	}
 }

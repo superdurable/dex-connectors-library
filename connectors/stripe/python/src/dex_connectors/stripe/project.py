@@ -10,7 +10,7 @@ from dex_connectors.sdk import Call, SecretString
 from dex_connectors.sdk.projectconfig import LoadedProject
 from dex_connectors.sdk.projectconfig.connections import ConnectionKey
 
-from .client import Client
+from .client import Client, CredentialMaterialError
 from .models import Config, Credentials
 
 
@@ -40,16 +40,16 @@ def decode_credentials(material: dict[str, Any]) -> Credentials:
     connector. An API-key-only connection needs no signing secret.
     """
     if not isinstance(material, dict) or set(material) - {"auth_method", "secret_key", "webhook_secret"}:
-        raise ValueError("Stripe connection credentials are invalid")
+        raise CredentialMaterialError("Stripe connection credentials are invalid")
     method = material.get("auth_method", "") or "api-key-with-webhook"
     secret_key = material.get("secret_key", "")
     webhook_secret = material.get("webhook_secret", "")
     if not isinstance(method, str) or not isinstance(secret_key, str) or not isinstance(webhook_secret, str):
-        raise ValueError("Stripe connection credentials are invalid")
+        raise CredentialMaterialError("Stripe connection credentials are invalid")
     if method not in ("api-key-only", "api-key-with-webhook") or not secret_key:
-        raise ValueError("Stripe connection credentials are invalid")
+        raise CredentialMaterialError("Stripe connection credentials are invalid")
     if method == "api-key-with-webhook" and not webhook_secret:
-        raise ValueError("Stripe connection credentials are invalid")
+        raise CredentialMaterialError("Stripe connection credentials are invalid")
     return Credentials(
         SecretString(secret_key), SecretString(webhook_secret) if webhook_secret else None, method
     )

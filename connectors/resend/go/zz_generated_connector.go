@@ -200,7 +200,7 @@ var SendEmailDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendEmailBranchSent, Description: "Resend returned the requested result."},
 		{ID: SendEmailBranchProviderRejected, Description: "The provider definitively rejected the request.", Optional: true},
-		{ID: SendEmailBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: SendEmailBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because the Idempotency-Key makes Resend replay the first send.", Optional: true},
 		{ID: SendEmailBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

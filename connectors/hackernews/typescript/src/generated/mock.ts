@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { ListStoryIDsInput, StoryIDs, GetItemInput, Item } from './models.js';
-import { ListStoryIDsInputSchema, StoryIDsSchema, GetItemInputSchema, ItemSchema } from './models.js';
-import { ProviderID, ConnectorID, ListStoryIDsDefinition, GetItemDefinition } from './definitions.js';
+import type { ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchHit, StorySearchPage } from './models.js';
+import { ListStoryIDsInputSchema, StoryIDsSchema, GetItemInputSchema, ItemSchema, SearchStoriesInputSchema, StorySearchHitSchema, StorySearchPageSchema } from './models.js';
+import { ProviderID, ConnectorID, ListStoryIDsDefinition, GetItemDefinition, SearchStoriesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for ListStoryIDsInput in scripted cases. */
@@ -27,6 +27,29 @@ export const emptyItem: Item = ItemSchema.parse({
   "id": 0,
   "type": '',
   "discussionUrl": '',
+});
+/** Go zero value for SearchStoriesInput in scripted cases. */
+export const emptySearchStoriesInput: SearchStoriesInput = SearchStoriesInputSchema.parse({
+});
+/** Go zero value for StorySearchHit in scripted cases. */
+export const emptyStorySearchHit: StorySearchHit = StorySearchHitSchema.parse({
+  "id": 0,
+  "title": '',
+  "discussionUrl": '',
+  "author": '',
+  "points": 0,
+  "commentCount": 0,
+  "createdAt": '0001-01-01T00:00:00Z',
+  "tags": [],
+});
+/** Go zero value for StorySearchPage in scripted cases. */
+export const emptyStorySearchPage: StorySearchPage = StorySearchPageSchema.parse({
+  "stories": [],
+  "page": 0,
+  "pages": 0,
+  "totalHits": 0,
+  "hitsPerPage": 0,
+  "nextPage": 0,
 });
 
 /** Script the listed branch. */
@@ -82,23 +105,50 @@ export function getItemItemRejected(): Case<Item> {
   return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "getItem", message: "Hacker News rejected the item request." });
 }
 
+/** Script the searched branch. */
+export function searchStoriesSearched(value: StorySearchPage, failure?: Failure): Case<StorySearchPage> { return branchCase("searched", value, failure); }
+/** Script the providerRejected branch. */
+export function searchStoriesProviderRejected(value: StorySearchPage, failure?: Failure): Case<StorySearchPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function searchStoriesInvalidResponse(value: StorySearchPage, failure?: Failure): Case<StorySearchPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function searchStoriesDefect(value: StorySearchPage, failure?: Failure): Case<StorySearchPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of searchStories. */
+export function searchStoriesRetry(failure: Failure, retryAfterMs = 0): Case<StorySearchPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario compilerStories for searchStories. */
+export function searchStoriesCompilerStories(): Case<StorySearchPage> {
+  const value = emptyStorySearchPage;
+  return branchCase("searched", value);
+}
+/** Default searchStories scenario. */
+export function searchStoriesDefault(): Case<StorySearchPage> { return searchStoriesCompilerStories(); }
+/** Manifest scenario searchRejected for searchStories. */
+export function searchStoriesSearchRejected(): Case<StorySearchPage> {
+  const value = emptyStorySearchPage;
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "searchStories", message: "Hacker News Search rejected the story search." });
+}
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #listStoryIDs: MockQuery<ListStoryIDsInput, StoryIDs>;
   readonly #getItem: MockQuery<GetItemInput, Item>;
+  readonly #searchStories: MockQuery<SearchStoriesInput, StorySearchPage>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#listStoryIDs = newQuery<ListStoryIDsInput, StoryIDs>(ListStoryIDsDefinition).default(listStoryIDsDefault());
     this.#getItem = newQuery<GetItemInput, Item>(GetItemDefinition).default(getItemDefault());
+    this.#searchStories = newQuery<SearchStoriesInput, StorySearchPage>(SearchStoriesDefinition).default(searchStoriesDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   listStoryIDs(): MockQuery<ListStoryIDsInput, StoryIDs> { return this.#listStoryIDs; }
   getItem(): MockQuery<GetItemInput, Item> { return this.#getItem; }
+  searchStories(): MockQuery<SearchStoriesInput, StorySearchPage> { return this.#searchStories; }
   assertNoFailures(): void {
     this.#listStoryIDs.assertNoFailures();
     this.#getItem.assertNoFailures();
+    this.#searchStories.assertNoFailures();
   }
 }

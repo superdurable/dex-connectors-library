@@ -88,15 +88,43 @@ func newClaudeMessagesWireFormat(config *Config) (textgen.WireFormat, error) {
 		}
 		format.fixedHeaders.Set("anthropic-workspace-id", workspaceID)
 	}
+	return format.wireFormat(ProviderAnthropic, textgen.RequestFeatures{
+		SupportsInstructions: true, SupportsStructuredOutput: true, SupportsMaxOutputTokens: true,
+		SupportsTemperature: true, SupportsReasoningEffort: true,
+	}, rulesForClaudeModel), nil
+}
+
+// newAnthropicCompatibleMessagesWireFormat returns the Messages wire format
+// for a gateway, with only the request fields every Messages implementation
+// accepts: no effort, and structured output by instruction.
+func newAnthropicCompatibleMessagesWireFormat(*Config) (textgen.WireFormat, error) {
+	format := &messagesWireFormat{fixedHeaders: http.Header{}, defaultMaxOutputTokens: claudeDefaultMaxOutputTokens}
+	format.fixedHeaders.Set("anthropic-version", anthropicVersion)
+	return format.wireFormat(ProviderAnthropicCompatible, textgen.RequestFeatures{
+		SupportsInstructions: true, SupportsStructuredOutput: true, SupportsMaxOutputTokens: true, SupportsTemperature: true,
+	}, rulesForAnthropicCompatibleModel), nil
+}
+
+// anthropicCompatibleModelRules apply to every gateway model, whose limits the connector cannot know.
+var anthropicCompatibleModelRules = textgen.ModelRequestRules{
+	Temperature:      textgen.TemperatureRange(0, 1),
+	StructuredOutput: textgen.StructuredOutputRules{Mode: textgen.StructuredOutputModeJSONObjectWithInstruction},
+}
+
+func rulesForAnthropicCompatibleModel(string) textgen.ModelRequestRules {
+	return anthropicCompatibleModelRules
+}
+
+// wireFormat returns the streaming Messages wire format that names provider in every Failure and Receipt.
+func (format *messagesWireFormat) wireFormat(
+	provider Provider, features textgen.RequestFeatures, rulesForModel func(string) textgen.ModelRequestRules,
+) textgen.WireFormat {
 	return textgen.WireFormat{
-		ProviderName: string(ProviderAnthropic),
-		ModelIDRule:  textgen.ModelIDRuleBody,
-		Features: textgen.RequestFeatures{
-			SupportsInstructions: true, SupportsStructuredOutput: true, SupportsMaxOutputTokens: true,
-			SupportsTemperature: true, SupportsReasoningEffort: true,
-		},
+		ProviderName:       string(provider),
+		ModelIDRule:        textgen.ModelIDRuleBody,
+		Features:           features,
 		CredentialHeader:   textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "},
-		RulesForModel:      rulesForClaudeModel,
+		RulesForModel:      rulesForModel,
 		EncodeRequest:      format.encodeRequest,
 		DecodeResponse:     decodeMessagesResponse,
 		DecodeStream:       decodeMessagesStream,
@@ -105,7 +133,7 @@ func newClaudeMessagesWireFormat(config *Config) (textgen.WireFormat, error) {
 		ErrorTokenPointers: claudeErrorTokenPointers,
 		RequestIDHeaders:   []string{"request-id"},
 		RateLimitHeaders:   claudeRateLimitHeaders,
-	}, nil
+	}
 }
 
 type messagesRequestBody struct {
@@ -146,7 +174,8 @@ func (format *messagesWireFormat) encodeRequest(input textgen.EncodeRequestInput
 		body.Messages = append(body.Messages, messagesRequestTurn{Role: string(message.Role), Content: message.Text})
 	}
 	outputConfig := messagesOutputConfig{Effort: input.Rules.ReasoningEfforts[request.ReasoningEffort]}
-	if output := request.StructuredOutput; output != nil {
+	// The JSON object mode carries the schema in the instructions, which the pipeline has already extended.
+	if output := request.StructuredOutput; output != nil && input.Rules.StructuredOutput.Mode == textgen.StructuredOutputModeJSONSchema {
 		outputConfig.Format = &messagesOutputFormat{Type: "json_schema", Schema: schemaWithRootDescription(output.Schema, output.Description)}
 	}
 	if outputConfig != (messagesOutputConfig{}) {

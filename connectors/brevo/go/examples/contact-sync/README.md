@@ -22,7 +22,7 @@ mkdir -p /tmp/brevo-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/brevo/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/brevo/go \
-  --version v0.2.0 --tag connectors/brevo/go/v0.2.0 \
+  --version v0.2.1 --tag connectors/brevo/go/v0.2.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/brevo-release/connector-release.json \
   --digest-output /tmp/brevo-release/connector-release.json.sha256

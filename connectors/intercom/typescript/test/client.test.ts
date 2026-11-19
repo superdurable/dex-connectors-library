@@ -4,8 +4,9 @@
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { afterEach, expect, it } from "vitest";
-import { SecretString, type Call } from "@superdurable/connectors-sdk";
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from "@superdurable/connectors-sdk/providerhttp";
+import { ReauthorizationRequiredError, SecretString, type Call } from "@superdurable/connectors-sdk";
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from "@superdurable/connectors-sdk/projectconfig";
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError } from "@superdurable/connectors-sdk/providerhttp";
 import { IntercomClient } from "../src/client.js";
 
 const call = {
@@ -244,18 +245,26 @@ it.each([
   if (exchange.outcome === "rateLimited") expect(exchange.retryAfterMs).toBe(expectedMs);
 });
 
-it("keeps a possibly-sent reply checkpoint until read-back confirms the part", async () => {
-  let heartbeat: unknown;
-  const paths: string[] = [];
+/** A Dex attempt context whose heartbeat persists across attempts of one Step execution. */
+function fencedReplyCall() {
+  const state: { heartbeat: unknown; writes: unknown[]; attempt: number } = { heartbeat: undefined, writes: [], attempt: 1 };
   const replyCall = {
     ...call,
     context: {
       ...call.context,
-      hasLastHeartbeatValue: () => heartbeat !== undefined && heartbeat !== null,
-      getLastHeartbeatValue: () => heartbeat,
-      recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+      firstAttemptAt: new Date(1_000),
+      get attempt() { return state.attempt; },
+      hasLastHeartbeatValue: () => state.heartbeat !== undefined && state.heartbeat !== null,
+      getLastHeartbeatValue: () => state.heartbeat,
+      recordHeartbeat: async (value: unknown) => { state.heartbeat = value; state.writes.push(value); },
     },
-  } as Call;
+  } as unknown as Call;
+  return { replyCall, state };
+}
+
+it("reads a possibly-sent reply back before any resend", async () => {
+  const paths: string[] = [];
+  const { replyCall, state } = fencedReplyCall();
   const client = new IntercomClient({}, validCredentials, {
     endpoint: "http://127.0.0.1:0",
     now: () => new Date("2026-10-30T00:00:00Z"),
@@ -272,7 +281,8 @@ it("keeps a possibly-sent reply checkpoint until read-back confirms the part", a
   const input = { conversationId: "2002", adminId: "77", messageType: "comment" as const, body: "Hello" };
   const first = await client.replyToConversation().invoke(replyCall, input);
   expect(first.kind).toBe("retry");
-  expect(heartbeat).toBeTruthy();
+  expect(state.heartbeat).toMatchObject({ callId: call.id, attempt: 1, state: "claimed" });
+  state.attempt = 2;
   const second = await client.replyToConversation().invoke(replyCall, input);
   expect(second.kind).toBe("branch");
   if (second.kind === "branch") {
@@ -282,18 +292,8 @@ it("keeps a possibly-sent reply checkpoint until read-back confirms the part", a
   expect(paths).toEqual(["/conversations/2002/reply", "/conversations/2002"]);
 });
 
-it("treats address refusal as unsent and clears the reply checkpoint", async () => {
-  let heartbeat: unknown;
-  const heartbeatWrites: unknown[] = [];
-  const replyCall = {
-    ...call,
-    context: {
-      ...call.context,
-      hasLastHeartbeatValue: () => heartbeat !== undefined && heartbeat !== null,
-      getLastHeartbeatValue: () => heartbeat,
-      recordHeartbeat: async (value: unknown) => { heartbeat = value; heartbeatWrites.push(value); },
-    },
-  } as Call;
+it("treats address refusal as unsent and records that the reply can be resent", async () => {
+  const { replyCall, state } = fencedReplyCall();
   const client = new IntercomClient({}, validCredentials, {
     endpoint: "http://127.0.0.1:0",
     send: async () => { throw new AddressRefusal("blocked address"); },
@@ -302,17 +302,256 @@ it("treats address refusal as unsent and clears the reply checkpoint", async () 
     conversationId: "2002", adminId: "77", messageType: "comment", body: "Hello",
   });
   expect(attempt.kind).toBe("retry");
-  expect(heartbeatWrites).toHaveLength(2);
-  expect(heartbeatWrites[0]).toMatchObject({ intercomReplyDispatchedCallId: call.id });
-  expect(heartbeat).toBeUndefined();
+  expect(state.writes).toHaveLength(2);
+  expect(state.writes[0]).toMatchObject({ callId: call.id, state: "claimed" });
+  expect(state.heartbeat).toMatchObject({ callId: call.id, state: "canResend" });
+});
+
+const replyInput = { conversationId: "2002", adminId: "77", messageType: "comment" as const, body: "Hello" };
+
+/** Conversation 2002 with the reply part when isFound, or with no parts. */
+function conversationBody(isFound: boolean): Uint8Array {
+  const parts = isFound
+    ? [{ id: "3001", part_type: "comment", body: "Hello", author: { type: "admin", id: "77" }, created_at: 1793318400 }]
+    : [];
+  return Buffer.from(JSON.stringify({
+    type: "conversation", id: "2002", state: "open", open: true,
+    conversation_parts: { conversation_parts: parts, total_count: parts.length },
+  }));
+}
+
+const unusableReplyAnswers = [
+  ["body breaks after the headers", () => { throw new ProviderTransportError(false, 200, {}); }],
+  ["body stalls after the headers", () => { throw new ProviderStalledError(200, {}); }],
+  ["body exceeds the limit", () => { throw new BodyTooLargeError(200, {}); }],
+  ["body reflects the credential", () => ({ status: 200, headers: {}, body: Buffer.from('{"token":"test-token"}') })],
+] as const;
+
+it.each(unusableReplyAnswers)("reads back a 2xx whose %s and never resends it", async (_name, answer) => {
+  for (const [readBack, expectedBranch] of [["found", "replied"], ["absent", "uncertain"]] as const) {
+    const methods: string[] = [];
+    const { replyCall } = fencedReplyCall();
+    const client = new IntercomClient({}, validCredentials, {
+      endpoint: "http://127.0.0.1:0",
+      now: () => new Date("2026-10-30T00:00:00Z"),
+      send: async (request) => {
+        methods.push(request.method);
+        if (request.method === "POST") return answer();
+        return { status: 200, headers: {}, body: conversationBody(readBack === "found") };
+      },
+    });
+    const attempt = await client.replyToConversation().invoke(replyCall, replyInput);
+    expect(attempt.kind, "a 2xx was accepted, so the attempt never retries").not.toBe("retry");
+    if (attempt.kind === "branch") expect(attempt.branch).toBe(expectedBranch);
+    else expect(attempt.kind).toBe(expectedBranch);
+    if (attempt.kind === "branch") expect(attempt.value.wasAlreadyApplied ?? false).toBe(false);
+    expect(methods).toEqual(["POST", "GET"]);
+  }
+});
+
+it.each(unusableReplyAnswers)("keeps reading back a 2xx whose %s when the read-back is rate limited", async (_name, answer) => {
+  for (const [laterReadBack, expectedBranch] of [["found", "replied"], ["absent", "uncertain"]] as const) {
+    const methods: string[] = [];
+    const { replyCall, state } = fencedReplyCall();
+    const client = new IntercomClient({}, validCredentials, {
+      endpoint: "http://127.0.0.1:0",
+      now: () => new Date("2026-10-30T00:00:00Z"),
+      send: async (request) => {
+        methods.push(request.method);
+        if (request.method === "POST") return answer();
+        if (methods.length === 2) return { status: 429, headers: {}, body: Buffer.from("{}") };
+        return { status: 200, headers: {}, body: conversationBody(laterReadBack === "found") };
+      },
+    });
+    expect((await client.replyToConversation().invoke(replyCall, replyInput)).kind).toBe("retry");
+    state.attempt = 2;
+    const attempt = await client.replyToConversation().invoke(replyCall, replyInput);
+    if (attempt.kind === "branch") expect(attempt.branch).toBe(expectedBranch);
+    else expect(attempt.kind).toBe(expectedBranch);
+    expect(methods, "the accepted reply is only read back").toEqual(["POST", "GET", "GET"]);
+  }
+});
+
+it("reads back before sending again after a resend was rate limited", async () => {
+  const methods: string[] = [];
+  const { replyCall, state } = fencedReplyCall();
+  const answers = [
+    { status: 502, headers: {}, body: Buffer.from("{}") },
+    { status: 200, headers: {}, body: conversationBody(false) },
+    { status: 429, headers: {}, body: Buffer.from("{}") },
+    { status: 200, headers: {}, body: conversationBody(true) },
+  ];
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    now: () => new Date("2026-10-30T00:00:00Z"),
+    send: async (request) => {
+      methods.push(request.method);
+      const answer = answers.shift();
+      if (!answer) throw new Error("the reply found in the read-back is never resent");
+      return answer;
+    },
+  });
+  for (const attempt of [1, 2]) {
+    state.attempt = attempt;
+    expect((await client.replyToConversation().invoke(replyCall, replyInput)).kind).toBe("retry");
+  }
+  state.attempt = 3;
+  const third = await client.replyToConversation().invoke(replyCall, replyInput);
+  expect(third.kind).toBe("branch");
+  if (third.kind === "branch") {
+    expect(third.branch).toBe("replied");
+    expect(third.value.wasAlreadyApplied).toBe(true);
+  }
+  expect(methods).toEqual(["POST", "GET", "POST", "GET"]);
+});
+
+it.each([
+  ["transient before any send", false, false, "retry"],
+  ["terminal before any send", false, true, "defect"],
+  ["transient after a possible send", true, false, "retry"],
+  ["terminal after a possible send", true, true, "uncertain"],
+] as const)("maps a %s credential failure", async (_name, hasPossibleEarlierSend, isTerminal, expected) => {
+  const { replyCall, state } = fencedReplyCall();
+  let requestCount = 0;
+  const send = async () => {
+    requestCount++;
+    return { status: 502, headers: {}, body: Buffer.from("{}") };
+  };
+  if (hasPossibleEarlierSend) {
+    const sender = new IntercomClient({}, validCredentials, { endpoint: "http://127.0.0.1:0", send });
+    expect((await sender.replyToConversation().invoke(replyCall, replyInput)).kind).toBe("retry");
+    state.attempt = 2;
+  }
+  const client = new IntercomClient({}, {
+    resolve: async () => {
+      if (isTerminal) return { accessToken: new SecretString("bad token with spaces") };
+      throw new Error("credential store unavailable");
+    },
+  }, { endpoint: "http://127.0.0.1:0", send });
+  const requestsBefore = requestCount;
+  const attempt = await client.replyToConversation().invoke(replyCall, replyInput);
+  expect(requestCount).toBe(requestsBefore);
+  expect(state.heartbeat).toMatchObject({ state: hasPossibleEarlierSend ? "claimed" : "notSent" });
+  if (attempt.kind === "branch") expect(attempt.branch).toBe(expected);
+  else expect(attempt.kind).toBe(expected);
+});
+
+it.each([
+  ["reauthorization", () => new ReauthorizationRequiredError(), "defect"],
+  ["missing connection object", () => new ObjectNotFoundError(), "defect"],
+  ["unselected connection", () => new ConnectionNotSelectedError(), "defect"],
+  ["broker refusal", () => new CredentialBrokerRejectedError(), "defect"],
+  // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+  ["malformed stored material", () => new TypeError("project credential decoding failed"), "defect"],
+  ["broker outage", () => new CredentialBrokerUnavailableError(), "retry"],
+  ["unconfigured static connection", () => new Error("connection is not configured"), "retry"],
+] as const)("classifies a %s resolve failure on a first send", async (_name, error, expected) => {
+  const { replyCall, state } = fencedReplyCall();
+  const client = new IntercomClient({}, { resolve: async () => { throw error(); } }, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => { throw new Error("no request may be sent"); },
+  });
+  const attempt = await client.replyToConversation().invoke(replyCall, replyInput);
+  expect(state.heartbeat).toMatchObject({ state: "notSent" });
+  if (attempt.kind === "branch") expect(attempt.branch).toBe(expected);
+  else expect(attempt.kind).toBe(expected);
+});
+
+it("treats an oversized refusal of a reply as an unknown outcome", async () => {
+  const { replyCall, state } = fencedReplyCall();
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => { throw new BodyTooLargeError(400, {}); },
+  });
+  const attempt = await client.replyToConversation().invoke(replyCall, replyInput);
+  expect(attempt.kind).toBe("retry");
+  if (attempt.kind === "retry") expect(attempt.failure.kind).toBe("RESPONSE_TOO_LARGE");
+  expect(state.heartbeat).toMatchObject({ state: "claimed" });
+});
+
+it("resends a credential-echoing refusal of a reply below the cap and selects uncertain at the cap", async () => {
+  const methods: string[] = [];
+  const { replyCall, state } = fencedReplyCall();
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    now: () => new Date("2026-10-30T00:00:00Z"),
+    send: async (request) => {
+      methods.push(request.method);
+      if (request.method === "GET") return { status: 200, headers: {}, body: conversationBody(false) };
+      return { status: 422, headers: {}, body: Buffer.from('{"type":"error.list","errors":[{"message":"test-token"}]}') };
+    },
+  });
+  for (const attempt of [1, 2, 3]) {
+    state.attempt = attempt;
+    const result = await client.replyToConversation().invoke(replyCall, replyInput);
+    expect(result.kind).toBe("retry");
+    if (result.kind === "retry") expect(result.failure.message).not.toContain("test-token");
+    expect(state.heartbeat).toMatchObject({ state: "claimed" });
+  }
+  state.attempt = 4;
+  const capped = await client.replyToConversation().invoke(replyCall, replyInput);
+  expect(capped.kind).toBe("uncertain");
+  expect(methods.filter((method) => method === "POST")).toHaveLength(3);
+});
+
+const stateInput = { conversationId: "2002", adminId: "77", state: "closed" as const };
+
+it.each([
+  ["invalid 200", 200, '{"type":"conversation","id":"another"}'],
+  ["credential-echoing 200", 200, '{"type":"conversation","id":"2002","title":"test-token"}'],
+  ["credential-echoing 403", 403, '{"type":"error.list","errors":[{"message":"test-token"}]}'],
+  ["unlisted 409", 409, '{"type":"error.list","errors":[{"code":"conflict"}]}'],
+  ["gone 410", 410, '{"type":"error.list","errors":[{"code":"gone"}]}'],
+  ["redirect 302", 302, "{}"],
+] as const)("retries an inconclusive %s read before a state change, without writing", async (_name, status, body) => {
+  const methods: string[] = [];
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async (request) => {
+      methods.push(request.method);
+      return { status, headers: {}, body: Buffer.from(body) };
+    },
+  });
+  const attempt = await client.updateConversationState().invoke(call, stateInput);
+  expect(attempt.kind).toBe("retry");
+  expect(methods).toEqual(["GET"]);
+});
+
+it("retries an oversized 404 read before a state change", async () => {
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => { throw new BodyTooLargeError(404, {}); },
+  });
+  expect((await client.updateConversationState().invoke(call, stateInput)).kind).toBe("retry");
+});
+
+it("keeps a readable listed refusal of the read before a state change definite", async () => {
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => ({ status: 403, headers: {}, body: Buffer.from('{"type":"error.list","errors":[{"code":"forbidden"}]}') }),
+  });
+  const attempt = await client.updateConversationState().invoke(call, stateInput);
+  expect(attempt.kind).toBe("branch");
+  if (attempt.kind === "branch") expect(attempt.branch).toBe("providerRejected");
+});
+
+it("retries a credential-echoing refusal of a state change", async () => {
+  const methods: string[] = [];
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async (request) => {
+      methods.push(request.method);
+      if (request.method === "GET") return { status: 200, headers: {}, body: conversationBody(false) };
+      return { status: 400, headers: {}, body: Buffer.from('{"type":"error.list","errors":[{"message":"test-token"}]}') };
+    },
+  });
+  expect((await client.updateConversationState().invoke(call, stateInput)).kind).toBe("retry");
+  expect(methods).toEqual(["GET", "POST"]);
 });
 
 it("uses Go whitespace for reply body validation and HTML", async () => {
   let sentBody = "";
-  const replyCall = {
-    ...call,
-    context: { ...call.context, hasLastHeartbeatValue: () => false, recordHeartbeat: async () => {} },
-  } as Call;
+  const { replyCall } = fencedReplyCall();
   const client = new IntercomClient({}, validCredentials, {
     endpoint: "http://127.0.0.1:0",
     send: async (request) => {

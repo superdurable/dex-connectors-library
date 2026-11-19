@@ -127,8 +127,12 @@ type replaceAllTextReply struct {
 
 // runGuardedWrite writes one batch only at the required revision, so a repeated dispatch can never apply it twice.
 func runGuardedWrite[OUT any](client *Client, call sdkgo.Call, target guardedWriteTarget, change guardedChange[OUT]) sdkgo.MutationAttempt[OUT] {
-	credential, failure := client.resolveCredential(call, target.operationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveWriteCredential(call, target.operationID)
 	if failure != nil {
+		if isCredentialFailureRetryable || call.Context.Attempt() > 1 {
+			// A transient outage clears later; an earlier attempt may have written, so defect could hide an applied change.
+			return sdkgo.NewMutationRetry[OUT](*failure, 0)
+		}
 		return sdkgo.NewMutationBranch(target.defect, *new(OUT), failure, sdkgo.Receipt{})
 	}
 	document, bodyText, receipt, attempt := readDocumentForWrite[OUT](client, call, &credential, target)
@@ -197,8 +201,11 @@ func guardedWriteAttemptFromResponse[OUT any](
 		return changedDocumentAttempt(target, change, document.RevisionID, bodyText, rereadReceipt)
 	case response.status == http.StatusNotFound:
 		return sdkgo.NewMutationBranch(target.notFound, *new(OUT), docsFailurePointer(sdkgo.FailureNotFound, target.operationID, "document was not found or is not visible to the connection"), receipt)
-	default:
+	case isDefiniteRefusalStatus(response.status):
 		return sdkgo.NewMutationBranch(target.providerRejected, *new(OUT), docsFailurePointer(statusFailureKind(response.status, tokens), target.operationID, "provider rejected the update"), receipt)
+	default:
+		// The revision guard makes a repeated batch harmless, so an unknown outcome repeats.
+		return sdkgo.NewMutationRetry[OUT](docsFailure(statusFailureKind(response.status, tokens), target.operationID, "provider update outcome is unknown; the next attempt reads the revision"), 0)
 	}
 }
 

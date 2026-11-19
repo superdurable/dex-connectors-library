@@ -226,8 +226,9 @@ function writeExchange<T>(exchange: LinearExchange, output: T, receipt: ReceiptD
   return newMutationBranch(exchange.disposition === 'defect' ? 'defect' : 'providerRejected', output, receipt, exchange.failure);
 }
 function updateExchange(exchange: LinearExchange, output: UpdateIssueOutput, receipt: ReceiptDraft): MutationAttempt<UpdateIssueOutput> {
-  if (exchange.disposition === 'retry') return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
-  return newMutationBranch(exchange.disposition === 'invalid' ? 'invalidResponse' : exchange.disposition === 'defect' ? 'defect' : 'providerRejected', output, receipt, exchange.failure);
+  // Repeating the absolute update is safe, so an unusable answer retries.
+  if (exchange.disposition === 'retry' || exchange.disposition === 'invalid') return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
+  return newMutationBranch(exchange.disposition === 'defect' ? 'defect' : 'providerRejected', output, receipt, exchange.failure);
 }
 function readBackWorthy(exchange: LinearExchange): boolean {
   return exchange.disposition === 'invalid' || exchange.disposition === 'retry' && ['AVAILABILITY', 'TRANSPORT'].includes(exchange.failure?.kind ?? '') || exchange.disposition === 'rejected' && ['VALIDATION', 'PROVIDER_REJECTION', 'QUOTA_EXHAUSTED'].includes(exchange.failure?.kind ?? '');

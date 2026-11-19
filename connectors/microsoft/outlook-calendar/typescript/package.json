@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-microsoft-outlook-calendar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Dex Microsoft Outlook Calendar connector for TypeScript",
   "repository": {
@@ -32,7 +32,7 @@
     "check": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

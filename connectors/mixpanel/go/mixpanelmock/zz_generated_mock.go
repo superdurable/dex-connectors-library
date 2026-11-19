@@ -72,7 +72,7 @@ func TrackEventProviderRejected(value mixpanel.EventImportResult, failure *sdkgo
 	return connectormock.Branch(mixpanel.TrackEventBranchProviderRejected, value, failure)
 }
 
-// TrackEventInvalidResponse selects the invalidResponse branch: Mixpanel returned malformed or oversized data.
+// TrackEventInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: a malformed or oversized import confirmation now retries, because the $insert_id makes a resend safe.
 func TrackEventInvalidResponse(value mixpanel.EventImportResult, failure *sdkgo.Failure) connectormock.Case[mixpanel.EventImportResult] {
 	return connectormock.Branch(mixpanel.TrackEventBranchInvalidResponse, value, failure)
 }

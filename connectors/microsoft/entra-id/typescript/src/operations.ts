@@ -5,7 +5,7 @@ import { randomInt } from 'node:crypto';
 import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type MutationAttempt, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { readErrorTokens } from '@superdurable/connectors-sdk/providerhttp';
 import { AddUserToGroupBranch, AddUserToGroupDefinition, CreateUserBranch, CreateUserDefinition, DisableUserBranch, DisableUserDefinition, EnableUserBranch, EnableUserDefinition, GetUserBranch, GetUserDefinition, ListUsersBranch, ListUsersDefinition, RemoveUserFromGroupBranch, RemoveUserFromGroupDefinition, RevokeSignInSessionsBranch, RevokeSignInSessionsDefinition } from './generated/definitions.js';
-import type { AddUserToGroupInput, AddUserToGroupOutput, CreateUserInput, CreateUserOutput, Credentials, DisableUserInput, EnableUserInput, GetUserInput, ListUsersInput, ListUsersOutput, RemoveUserFromGroupInput, RemoveUserFromGroupOutput, RevokeSignInSessionsInput, RevokeSignInSessionsOutput, User } from './generated/models.js';
+import type { AddUserToGroupInput, AddUserToGroupOutput, CreateUserInput, CreateUserOutput, DisableUserInput, EnableUserInput, GetUserInput, ListUsersInput, ListUsersOutput, RemoveUserFromGroupInput, RemoveUserFromGroupOutput, RevokeSignInSessionsInput, RevokeSignInSessionsOutput, User } from './generated/models.js';
 import { EntraClient, userPath, type GraphExchange, type GraphRequest } from './client.js';
 
 const userSelect = 'id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime';
@@ -77,14 +77,20 @@ function failedQuery<T>(client: EntraClient, call: Call, exchange: GraphExchange
   if (exchange.outcome === 'retry') return newQueryRetry(exchange.failure!, exchange.retryAfterMs);
   return newQueryBranch(branchFor(exchange, hasNotFound), empty, exchange.outcome === 'defect' ? zeroReceipt() : client.receipt(call, exchange.response), exchange.failure);
 }
+/** Report a later attempt, whose predecessor may have sent the write. */
+function hasPossibleEarlierAttempt(call: Call): boolean { return (call.context?.attempt ?? 1) > 1; }
+/** Every write is safe to repeat, so an unusable response retries instead of selecting invalidResponse. */
 function failedMutation<T>(client: EntraClient, call: Call, exchange: GraphExchange, empty: T, hasNotFound = true): MutationAttempt<T> {
+  if (exchange.outcome === 'invalidResponse') return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
   if (exchange.outcome === 'retry') return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
   return newMutationBranch(branchFor(exchange, hasNotFound), empty, exchange.outcome === 'defect' ? zeroReceipt() : client.receipt(call, exchange.response), exchange.failure);
 }
-async function credentialsOrDefect(client: EntraClient, call: Call): Promise<Credentials | undefined> { return client.resolve(call); }
 function credentialDefect<T>(operation: string, value: T): QueryAttempt<T> {
   const problem = failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable');
   return newQueryBranch('defect', value, zeroReceipt(), problem);
+}
+function transientCredentialFailure(operation: string): Failure {
+  return failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable; nothing was sent');
 }
 
 /** Read one user from a bounded Microsoft Graph projection. */
@@ -94,7 +100,8 @@ export class GetUserOperation {
   async invoke(call: Call, input: GetUserInput): Promise<QueryAttempt<User>> {
     let key: string;
     try { key = checkUserKey(input.userKey); } catch (error) { return newQueryBranch(GetUserBranch.Defect, zeroUser, zeroReceipt(), failure('getUser', 'VALIDATION', (error as Error).message)); }
-    const credentials = await credentialsOrDefect(this.client, call);
+    const { credentials, isRetryable } = await this.client.resolveCredentialOutcome(call);
+    if (isRetryable) return newQueryRetry(transientCredentialFailure('getUser'));
     if (!credentials) return credentialDefect('getUser', zeroUser);
     const exchange = await this.client.readUser(call, credentials, 'getUser', key, userSelect);
     if (exchange.outcome !== 'succeeded') return failedQuery(this.client, call, exchange, zeroUser);
@@ -137,7 +144,8 @@ export class ListUsersOperation {
   async invoke(call: Call, input: ListUsersInput): Promise<QueryAttempt<ListUsersOutput>> {
     let request: GraphRequest;
     try { request = listRequest(input, this.client.listUsersPageSize); } catch (error) { return newQueryBranch(ListUsersBranch.Defect, { users: [] }, zeroReceipt(), failure('listUsers', 'VALIDATION', (error as Error).message)); }
-    const credentials = await credentialsOrDefect(this.client, call);
+    const { credentials, isRetryable } = await this.client.resolveCredentialOutcome(call);
+    if (isRetryable) return newQueryRetry(transientCredentialFailure('listUsers'));
     if (!credentials) return credentialDefect('listUsers', { users: [] });
     const exchange = await this.client.exchange(call, credentials, 'listUsers', request);
     if (exchange.outcome !== 'succeeded') return failedQuery(this.client, call, exchange, { users: [] }, false);
@@ -159,22 +167,20 @@ async function setAccountEnabled(client: EntraClient, call: Call, rawKey: string
   const operation = enabled ? 'enableUser' : 'disableUser';
   let key: string;
   try { key = checkUserKey(rawKey); } catch (error) { return newMutationBranch('defect', zeroUser, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
-  const credentials = await credentialsOrDefect(client, call);
+  const { credentials, isRetryable } = await client.resolveCredentialOutcome(call);
+  if (isRetryable) return newMutationRetry(transientCredentialFailure(operation));
   if (!credentials) return newMutationBranch('defect', zeroUser, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
   const written = await client.exchange(call, credentials, operation, { method: 'PATCH', path: userPath(key), payload: { accountEnabled: enabled } });
   if (written.outcome !== 'succeeded') return failedMutation(client, call, written, zeroUser);
   const read = await client.readUser(call, credentials, operation, key, userSelect);
   if (read.outcome === 'notFound' && client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph accepted the change but does not return the account yet'));
   if (read.outcome !== 'succeeded') return failedMutation(client, call, read, zeroUser);
-  const receipt = client.receipt(call, read.response);
   let user: User;
   try { user = decodeUser(parseObject(read.response!.body), true); }
-  catch (error) { return newMutationBranch('invalidResponse', zeroUser, receipt, failure(operation, 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
+  catch (error) { return newMutationRetry(failure(operation, 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
   const userReceipt = client.receipt(call, read.response, user.id);
-  if (user.isAccountEnabled !== enabled) {
-    if (client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph does not report the change yet'));
-    return newMutationBranch('providerRejected', user, userReceipt, failure(operation, 'PROVIDER_REJECTION', 'Microsoft Graph returned the account without the requested accountEnabled value'));
-  }
+  // A read that contradicts the accepted absolute write is unknown, and the write is safe to repeat.
+  if (user.isAccountEnabled !== enabled) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph does not report the change yet'));
   return newMutationBranch(enabled ? EnableUserBranch.Enabled : DisableUserBranch.Disabled, user, userReceipt);
 }
 
@@ -202,7 +208,8 @@ export class RevokeSignInSessionsOperation {
     let key: string;
     const zero: RevokeSignInSessionsOutput = { userKey: '' };
     try { key = checkUserKey(input.userKey); } catch (error) { return newMutationBranch('defect', zero, zeroReceipt(), failure('revokeSignInSessions', 'VALIDATION', (error as Error).message)); }
-    const credentials = await credentialsOrDefect(this.client, call);
+    const { credentials, isRetryable } = await this.client.resolveCredentialOutcome(call);
+    if (isRetryable) return newMutationRetry(transientCredentialFailure('revokeSignInSessions'));
     if (!credentials) return newMutationBranch('defect', zero, zeroReceipt(), failure('revokeSignInSessions', 'AUTHENTICATION', 'connection credentials are unavailable'));
     const exchange = await this.client.exchange(call, credentials, 'revokeSignInSessions', { method: 'POST', path: `${userPath(key)}/revokeSignInSessions` });
     if (exchange.outcome !== 'succeeded') return failedMutation(this.client, call, exchange, zero);
@@ -216,7 +223,7 @@ export class RevokeSignInSessionsOperation {
       const parsed = response as { value?: unknown };
       if (parsed.value != null && typeof parsed.value !== 'boolean') throw new TypeError('invalid value');
       if (parsed.value === false) return newMutationBranch(RevokeSignInSessionsBranch.ProviderRejected, output, receipt, failure('revokeSignInSessions', 'PROVIDER_REJECTION', 'Microsoft Graph reported that it did not revoke the sessions'));
-    } catch { return newMutationBranch(RevokeSignInSessionsBranch.InvalidResponse, output, receipt, failure('revokeSignInSessions', 'PROTOCOL', 'provider returned an invalid revocation response')); }
+    } catch { return newMutationRetry(failure('revokeSignInSessions', 'PROTOCOL', 'provider returned an invalid revocation response')); }
     return newMutationBranch(RevokeSignInSessionsBranch.Revoked, output, receipt);
   }
 }
@@ -266,7 +273,8 @@ export class CreateUserOperation {
     let payload: Record<string, unknown>;
     try { payload = createPayload(input, this.client.creationKeyAttribute, key); }
     catch (error) { return newMutationBranch(CreateUserBranch.Defect, zeroCreate, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
-    const credentials = await this.client.resolve(call);
+    const { credentials, isRetryable } = await this.client.resolveCredentialOutcome(call);
+    if (isRetryable) return newMutationRetry(transientCredentialFailure(operation));
     if (!credentials) return newMutationBranch(CreateUserBranch.Defect, zeroCreate, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     try { (payload.passwordProfile as Record<string, unknown>).password = initialPassword(this.client.randomInt ?? randomInt); }
     catch { return newMutationBranch(CreateUserBranch.Defect, zeroCreate, zeroReceipt(), failure(operation, 'LOCAL_DEFECT', 'initial password could not be generated')); }
@@ -284,7 +292,6 @@ export class CreateUserOperation {
     if (written.outcome === 'badRequest') {
       const read = await this.client.readUser(call, credentials, operation, String(payload.userPrincipalName), creationSelect);
       if (read.outcome === 'succeeded') {
-        const receipt = this.client.receipt(call, read.response);
         try {
           const resource = parseObject(read.response!.body);
           const user = decodeUser(resource, true);
@@ -292,18 +299,36 @@ export class CreateUserOperation {
           const attributes = resource.onPremisesExtensionAttributes;
           if (attributes && typeof attributes === 'object' && !Array.isArray(attributes) && (attributes as Record<string, unknown>)[this.client.creationKeyAttribute] === `dex-creation-key:${key}`) return newMutationBranch(CreateUserBranch.Created, { user, wasAlreadyCreated: true }, userReceipt);
           return newMutationBranch(CreateUserBranch.AlreadyExists, { user, wasAlreadyCreated: false }, userReceipt, failure(operation, 'CONFLICT', 'user principal name belongs to an account this Step did not create'));
-        } catch (error) { return newMutationBranch(CreateUserBranch.InvalidResponse, zeroCreate, receipt, failure(operation, 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
+        } catch (error) { return newMutationRetry(failure(operation, 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
       }
       if (read.outcome === 'notFound') {
-        if (this.client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph rejected the account but does not return the user principal name yet'));
+        // After an earlier attempt, the unreadable account may be this Step's.
+        if (hasPossibleEarlierAttempt(call) || this.client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph rejected the account but does not return the user principal name yet'));
         const details = readErrorTokens(written.response!.body, ['/error/details/0/code', '/error/details/1/code', '/error/details/2/code']);
         if (details.includes('ObjectConflict')) return newMutationBranch(CreateUserBranch.AlreadyExists, zeroCreate, this.client.receipt(call, read.response), failure(operation, 'CONFLICT', 'user principal name or mail alias belongs to an object outside the user directory, such as a deleted account'));
         return newMutationBranch(CreateUserBranch.ProviderRejected, zeroCreate, this.client.receipt(call, written.response), written.failure);
       }
       return failedMutation(this.client, call, read, zeroCreate, false);
     }
-    if (written.outcome === 'notFound' || written.outcome === 'rejected') return newMutationBranch(CreateUserBranch.ProviderRejected, zeroCreate, this.client.receipt(call, written.response), written.failure);
+    if (written.outcome === 'notFound' || written.outcome === 'rejected') {
+      const refusal = newMutationBranch(CreateUserBranch.ProviderRejected, zeroCreate, this.client.receipt(call, written.response), written.failure);
+      return hasPossibleEarlierAttempt(call) ? this.confirmRefusal(call, credentials, String(payload.userPrincipalName), key, refusal) : refusal;
+    }
     return failedMutation(this.client, call, written, zeroCreate, false);
+  }
+
+  /** Read the name back, because an earlier attempt may have created the account. */
+  private async confirmRefusal(call: Call, credentials: Parameters<EntraClient['readUser']>[1], principal: string, key: string, refusal: MutationAttempt<CreateUserOutput>): Promise<MutationAttempt<CreateUserOutput>> {
+    const read = await this.client.readUser(call, credentials, 'createUser', principal, creationSelect);
+    if (read.outcome === 'notFound') return refusal;
+    if (read.outcome !== 'succeeded') return failedMutation(this.client, call, read, zeroCreate, false);
+    try {
+      const resource = parseObject(read.response!.body);
+      const user = decodeUser(resource, true);
+      const attributes = resource.onPremisesExtensionAttributes;
+      const isThisStep = !!attributes && typeof attributes === 'object' && !Array.isArray(attributes) && (attributes as Record<string, unknown>)[this.client.creationKeyAttribute] === `dex-creation-key:${key}`;
+      return isThisStep ? newMutationBranch(CreateUserBranch.Created, { user, wasAlreadyCreated: true }, this.client.receipt(call, read.response, user.id)) : refusal;
+    } catch (error) { return newMutationRetry(failure('createUser', 'PROTOCOL', `provider returned an invalid account: ${(error as Error).message}`)); }
   }
 }
 
@@ -321,7 +346,8 @@ export class AddUserToGroupOperation {
     const zero: AddUserToGroupOutput = { groupId: '', userId: '', wasAlreadyMember: false };
     let groupId: string, userId: string;
     try { [groupId, userId] = memberIds(input); } catch (error) { return newMutationBranch(AddUserToGroupBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
-    const credentials = await this.client.resolve(call);
+    const { credentials, isRetryable } = await this.client.resolveCredentialOutcome(call);
+    if (isRetryable) return newMutationRetry(transientCredentialFailure(operation));
     if (!credentials) return newMutationBranch(AddUserToGroupBranch.Defect, zero, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     const output = { groupId, userId, wasAlreadyMember: false };
     const written = await this.client.exchange(call, credentials, operation, { method: 'POST', path: `${memberPath(groupId)}/$ref`, payload: { '@odata.id': `https://graph.microsoft.com/v1.0/directoryObjects/${userId}` } });
@@ -332,9 +358,10 @@ export class AddUserToGroupOperation {
       const receipt = this.client.receipt(call, check.response, userId);
       let isMember = false;
       try { const page = parseObject(check.response!.body); if (page.value != null && !Array.isArray(page.value)) throw new TypeError('invalid members'); isMember = Array.isArray(page.value) && page.value.some((item: unknown) => { if (!item || typeof item !== 'object' || Array.isArray(item)) throw new TypeError('invalid member'); const id = (item as Record<string, unknown>).id; if (id != null && typeof id !== 'string') throw new TypeError('invalid member ID'); return typeof id === 'string' && id.toLowerCase() === userId; }); }
-      catch { return newMutationBranch(AddUserToGroupBranch.InvalidResponse, zero, receipt, failure(operation, 'PROTOCOL', 'provider returned an invalid membership check')); }
+      catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'provider returned an invalid membership check')); }
       if (isMember) return newMutationBranch(AddUserToGroupBranch.Added, { ...output, wasAlreadyMember: true }, receipt);
-      if (this.client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph rejected the membership but does not list it yet'));
+      // After an earlier attempt, the unlisted membership may be this Step's.
+      if (hasPossibleEarlierAttempt(call) || this.client.withinPropagationWindow(call)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Microsoft Graph rejected the membership but does not list it yet'));
       return newMutationBranch(AddUserToGroupBranch.ProviderRejected, zero, this.client.receipt(call, written.response), written.failure);
     }
     if (written.outcome === 'notFound') {
@@ -357,7 +384,8 @@ export class RemoveUserFromGroupOperation {
     const zero: RemoveUserFromGroupOutput = { groupId: '', userId: '', wasAlreadyRemoved: false };
     let groupId: string, userId: string;
     try { [groupId, userId] = memberIds(input); } catch (error) { return newMutationBranch(RemoveUserFromGroupBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
-    const credentials = await this.client.resolve(call);
+    const { credentials, isRetryable } = await this.client.resolveCredentialOutcome(call);
+    if (isRetryable) return newMutationRetry(transientCredentialFailure(operation));
     if (!credentials) return newMutationBranch(RemoveUserFromGroupBranch.Defect, zero, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     const output = { groupId, userId, wasAlreadyRemoved: false };
     const removed = await this.client.exchange(call, credentials, operation, { method: 'DELETE', path: `${memberPath(groupId)}/${userId}/$ref` });

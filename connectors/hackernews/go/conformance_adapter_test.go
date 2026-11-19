@@ -18,11 +18,12 @@ const conformanceFixturePathPrefix = ""
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	connection := sdkgo.ConnectionRef{Provider: "hacker-news", Name: "public"}
-	client, err := New(Config{BaseURL: endpoint}, nil, WithHTTPClient(transport), conformanceClockOption{conformanceFixedClock(t, scenario)})
+	client, err := New(Config{BaseURL: endpoint, SearchBaseURL: endpoint}, nil, WithHTTPClient(transport), conformanceClockOption{conformanceFixedClock(t, scenario)})
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listStoryIDs": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListStoryIDs(), connection),
-		"getItem":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetItem(), connection),
+		"listStoryIDs":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListStoryIDs(), connection),
+		"getItem":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetItem(), connection),
+		"searchStories": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchStories(), connection),
 	}}
 }
 

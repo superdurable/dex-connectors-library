@@ -41,20 +41,35 @@ type testDexContext struct {
 	mutex     sync.Mutex
 	heartbeat json.RawMessage
 	recordErr error
+	attempt   int32
+	// firstAttemptAt defaults to Unix second 1, which makes read-back omit its creation-time filter.
+	firstAttemptAt time.Time
 }
 
 func newTestDexContext(step string) *testDexContext {
-	return &testDexContext{Context: context.Background(), step: step}
+	return &testDexContext{Context: context.Background(), step: step, attempt: 1, firstAttemptAt: time.Unix(1, 0)}
 }
 
-func (*testDexContext) FlowID() string                          { return "clickup-flow" }
-func (*testDexContext) RunID() string                           { return "run" }
-func (*testDexContext) FlowStartedAt() time.Time                { return time.Unix(1, 0) }
-func (dexContext *testDexContext) StepExecutionID() string      { return dexContext.step }
-func (*testDexContext) FromStepExecutionID() string             { return "" }
-func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
-func (*testDexContext) FirstAttemptAt() time.Time               { return time.Unix(1, 0) }
-func (*testDexContext) Attempt() int32                          { return 1 }
+// nextAttempt starts the following attempt of the same Step execution, which sees the last heartbeat.
+func (dexContext *testDexContext) nextAttempt() *testDexContext {
+	dexContext.mutex.Lock()
+	defer dexContext.mutex.Unlock()
+	dexContext.attempt++
+	return dexContext
+}
+
+func (*testDexContext) FlowID() string                        { return "clickup-flow" }
+func (*testDexContext) RunID() string                         { return "run" }
+func (*testDexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (dexContext *testDexContext) StepExecutionID() string    { return dexContext.step }
+func (*testDexContext) FromStepExecutionID() string           { return "" }
+func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (dexContext *testDexContext) FirstAttemptAt() time.Time  { return dexContext.firstAttemptAt }
+func (dexContext *testDexContext) Attempt() int32 {
+	dexContext.mutex.Lock()
+	defer dexContext.mutex.Unlock()
+	return dexContext.attempt
+}
 func (*testDexContext) HasTimerFired() bool                     { return false }
 func (*testDexContext) HasTimerFiredByIndex(int) bool           { return false }
 func (*testDexContext) WaitForMethodFailed() bool               { return false }

@@ -20,6 +20,11 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -52,6 +57,8 @@ class Exchange:
     headers: httpx.Headers = field(default_factory=httpx.Headers)
     body: bytes = b""
     error: str = ""
+    is_error_body_incomplete: bool = False
+    """A non-2xx body that broke or exceeded the error limit, which proves no refusal."""
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -159,7 +166,24 @@ class Client:
                 FailureKind.AUTHENTICATION,
                 "the Calendly connection needs reauthorization; authorize it again in Dex Web Connectors",
             )
-        except Exception:
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
+            return (
+                None,
+                FailureKind.AUTHENTICATION,
+                "the Calendly connection is missing, not selected, or refused by the credential broker; "
+                "check it in Dex Web Connections",
+            )
+        except Exception as error:
+            # Imported here because the generated connection module imports this module.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return (
+                    None,
+                    FailureKind.AUTHENTICATION,
+                    "the stored Calendly connection credentials are malformed; "
+                    "authorize it again in Dex Web Connections",
+                )
             return (
                 None,
                 FailureKind.AVAILABILITY,
@@ -186,8 +210,12 @@ class Client:
         query: dict[str, str] | None = None,
         payload: object | None = None,
         allow_refresh: bool = True,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one call, forcing one OAuth refresh after a 401 when available."""
+        """Send one call, forcing one OAuth refresh after a 401 when available.
+
+        ``observed_statuses`` receives each status once its headers arrive, before the body is read.
+        """
         target = API_BASE + path
         if query:
             target += "?" + query_encode(query)
@@ -217,23 +245,31 @@ class Client:
                 response, _ = await send_traced(self.http_client, request)
             except ProviderTransportError as error:
                 return Exchange(error="notSent" if error.provably_not_sent else "transport")
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             try:
                 limit = (
                     self.config.max_response_bytes
                     if 200 <= response.status_code < 300
                     else MAX_ERROR_BODY_BYTES
                 )
+                is_error_body_incomplete = False
                 try:
                     contents = await read_bounded_body(response, limit)
                 except BodyTooLargeError:
                     if 200 <= response.status_code < 300:
                         return Exchange(response.status_code, response.headers, error="tooLarge")
-                    contents = b""
+                    contents, is_error_body_incomplete = b"", True
                 except ProviderTransportError:
                     if 200 <= response.status_code < 300:
                         return Exchange(response.status_code, response.headers, error="transport")
-                    contents = b""
-                exchange = Exchange(response.status_code, response.headers, contents)
+                    contents, is_error_body_incomplete = b"", True
+                exchange = Exchange(
+                    response.status_code,
+                    response.headers,
+                    contents,
+                    is_error_body_incomplete=is_error_body_incomplete,
+                )
             finally:
                 await response.aclose()
             if (

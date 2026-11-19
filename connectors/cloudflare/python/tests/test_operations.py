@@ -11,12 +11,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.cloudflare import (
     DEFECT,
@@ -36,6 +43,36 @@ from dex_connectors.cloudflare import (
     PurgeRequest,
     Zone,
 )
+from dex_connectors.cloudflare._generated.connection import CredentialMaterialError
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Cloudflare credential api_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(405, json={}),
+        httpx.Response(425, json={}),
+        httpx.Response(200, json={"result": {"id": "x"}}),
+        httpx.Response(200, json={"success": True, "result": {"id": 1}}),
+        httpx.Response(200, content=b"{"),
+        httpx.Response(200, content=b"x" * 400),
+    ],
+)
+async def test_purge_retries_unknown_outcomes(response: httpx.Response) -> None:
+    with pytest.raises(RetryError):
+        await run_mutation(make_client(response).purge_cache_by_urls(), purge_call(), PURGE)
 
 CONNECTION = ConnectionRef("cloudflare", "cloudflare")
 TOKEN = "cloudflare-test-token"
@@ -58,6 +95,49 @@ def make_client(
         StaticCredentialProvider({CONNECTION: Credentials(SecretString(token))}),
         httpx.AsyncClient(transport=httpx.MockTransport(respond)),
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Cloudflare credential api_token is required"), True),
+        (_sdk_wrapped_material_error(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_failures_select_defect_only_when_terminal(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    class FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    client = Client(
+        Config("http://localhost:8848/client/v4"),
+        FailingCredentials(),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    if is_terminal:
+        result = await run_mutation(client.purge_cache_by_urls(), purge_call(), PURGE)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.purge_cache_by_urls(), purge_call(), PURGE)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+    assert requests == []
 
 
 def list_call() -> Call:
@@ -138,14 +218,6 @@ async def test_invalid_purge_is_defect_without_request(value: PurgeCacheByURLsIn
             PROVIDER_REJECTED,
             FailureKind.PROVIDER_REJECTION,
         ),
-        (httpx.Response(200, json={"result": {"id": "x"}}), INVALID_RESPONSE, FailureKind.PROTOCOL),
-        (
-            httpx.Response(200, json={"success": True, "result": {"id": 1}}),
-            INVALID_RESPONSE,
-            FailureKind.PROTOCOL,
-        ),
-        (httpx.Response(200, content=b"{"), INVALID_RESPONSE, FailureKind.PROTOCOL),
-        (httpx.Response(200, content=b"x" * 400), INVALID_RESPONSE, FailureKind.RESPONSE_TOO_LARGE),
     ],
 )
 async def test_purge_branches(response: httpx.Response, branch: str, kind: FailureKind) -> None:

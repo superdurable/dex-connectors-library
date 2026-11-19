@@ -72,7 +72,7 @@ func SendEmailProviderRejected(value resend.SentEmail, failure *sdkgo.Failure) c
 	return connectormock.Branch(resend.SendEmailBranchProviderRejected, value, failure)
 }
 
-// SendEmailInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+// SendEmailInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because the Idempotency-Key makes Resend replay the first send.
 func SendEmailInvalidResponse(value resend.SentEmail, failure *sdkgo.Failure) connectormock.Case[resend.SentEmail] {
 	return connectormock.Branch(resend.SendEmailBranchInvalidResponse, value, failure)
 }

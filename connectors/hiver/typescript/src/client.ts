@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { AddNoteOperation, CreateSharedDraftOperation, GetConversationOperation, ListConversationsOperation, ListInboxesOperation, UpdateConversationOperation } from './operations.js';
 
 /** Provider sender for replay and local testing. */
@@ -16,8 +17,16 @@ export interface HiverClientOptions {
 }
 /** One classified Hiver request. */
 export type HiverExchange = { kind: 'success'; response: ProviderResponse } | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status?: number; response?: ProviderResponse };
+/** A resolved API key, or a credential failure that is terminal or may clear on retry. */
+export type HiverCredentialResult = { kind: 'resolved'; key: string } | { kind: 'terminal' | 'transient' };
 /** One HTTP request's payload. */
-export interface HiverRequest { method: string; path: string; query?: URLSearchParams; json?: unknown; form?: ReadonlyArray<readonly [string, string]>; correlationCallId?: string }
+export interface HiverRequest {
+  method: string; path: string; query?: URLSearchParams; json?: unknown; form?: ReadonlyArray<readonly [string, string]>; correlationCallId?: string;
+  /** Read a GET refusal body in full, as a write does, because the answer decides a write. */ isPreWriteLookup?: boolean;
+}
+
+/** Statuses that prove Hiver applied nothing when their body reads cleanly without a created ID; operations.ts keeps the same set. */
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 /** Hiver's largest list page, which every conversationReceived poll request asks for. */
 export const MaximumPageSize = 100;
@@ -90,12 +99,23 @@ export class HiverClient {
 
   /** Resolve and validate one API key before a request. */
   async resolveKey(call: Call): Promise<string | undefined> {
-    try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.apiKey instanceof SecretString)) return undefined;
-      const key = credentials.apiKey.reveal();
-      return key && isHeaderSafeCredential(key) ? key : undefined;
-    } catch { return undefined; }
+    const result = await this.resolveKeyOrFailure(call);
+    return result.kind === 'resolved' ? result.key : undefined;
+  }
+
+  /**
+   * Resolve one API key, or report whether its failure is terminal: a revoked, absent, or malformed
+   * credential. Any other resolution error is transient and may clear on a later attempt.
+   */
+  async resolveKeyOrFailure(call: Call): Promise<HiverCredentialResult> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) {
+      return { kind: error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error) ? 'terminal' : 'transient' };
+    }
+    if (!(credentials?.apiKey instanceof SecretString)) return { kind: 'terminal' };
+    const key = credentials.apiKey.reveal();
+    return key && isHeaderSafeCredential(key) ? { kind: 'resolved', key } : { kind: 'terminal' };
   }
 
   /** Reserve a spaced request slot, honoring cancellation and rate-limit holds. */
@@ -126,18 +146,31 @@ export class HiverClient {
     if (request.form) { const multipart = encodeMultipart(request.form); body = multipart.body; headers['Content-Type'] = multipart.contentType; }
     const query = request.query?.toString();
     const url = this.baseURL + request.path + (query ? `?${query}` : '');
+    const isWrite = request.method !== 'GET' || request.isPreWriteLookup === true;
     let response: ProviderResponse;
+    // A write reads its whole error body, because only a readable refusal is definite.
+    let isErrorBodyUnreadable = false;
     try {
       response = await this.send({ url, method: request.method, headers, ...(body ? { body } : {}), maxResponseBytes: this.maxResponseBytes,
-        maxErrorResponseBytes: 0, ignoreErrorBodyReadFailure: true, timeoutMs: 12_000, signal,
+        ...(isWrite ? {} : { maxErrorResponseBytes: 0, ignoreErrorBodyReadFailure: true }), timeoutMs: 12_000, signal,
         addressPolicy: 'privateNetworkHTTP' });
     } catch (error) {
+      const errorStatus = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      const errorHeaders = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.headers : undefined;
+      const isErrorStatus = errorStatus !== undefined && errorStatus > 0 && (errorStatus < 200 || errorStatus >= 300);
       if (error instanceof BodyTooLargeError) {
         if (error.status !== undefined && error.status >= 200 && error.status < 300) return this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Hiver response exceeds the configured maxResponseBytes limit', 0, error.status);
-        if (error.status !== undefined && error.headers) response = { status: error.status, headers: error.headers, body: Buffer.alloc(0) };
+        if (error.status !== undefined && error.headers) { response = { status: error.status, headers: error.headers, body: Buffer.alloc(0) }; isErrorBodyUnreadable = true; }
         else return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver response could not be read');
       } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.failure('notSent', operation, 'TRANSPORT', 'Hiver could not be reached; no request was sent');
-      else return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver request failed before a response arrived');
+      else if (isErrorStatus && errorHeaders) {
+        // The status still classifies a 429 or 5xx; a refusal status becomes unknown below.
+        response = { status: errorStatus, headers: errorHeaders, body: Buffer.alloc(0) };
+        isErrorBodyUnreadable = true;
+      } else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.status > 0 && error.headers) {
+        // Keep the status so a write Hiver accepted is never resent.
+        return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver response could not be read', 0, error.status, { status: error.status, headers: error.headers, body: Buffer.alloc(0) });
+      } else return this.failure('unavailable', operation, 'TRANSPORT', 'Hiver request failed before a response arrived');
     }
     const status = response.status;
     const retryAfterMs = parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now());
@@ -149,6 +182,11 @@ export class HiverClient {
     }
     this.rateLimitPenalty = 0;
     if (status === 408 || status >= 500) return this.failure('unavailable', operation, 'AVAILABILITY', `Hiver could not complete the request (HTTP ${status})`, retryAfterMs, status, response);
+    // A credential-reflecting refusal body is untrusted, so it is treated like an unreadable one.
+    if (status < 200 || status >= 300) isErrorBodyUnreadable ||= key !== '' && Buffer.from(response.body).includes(Buffer.from(key));
+    if (isWrite && isErrorBodyUnreadable && definiteRefusalStatuses.has(status)) {
+      return this.failure('unavailable', operation, 'TRANSPORT', `Hiver answered HTTP ${status}, but its oversized or unreadable body may hide an accepted write`, 0, status, response);
+    }
     if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', 'Hiver found no such resource (HTTP 404)', 0, status, response);
     if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `Hiver redirected the request (HTTP ${status}), which the connector never follows`, 0, status, response);
     if (status < 200 || status >= 300) {

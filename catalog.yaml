@@ -320,6 +320,7 @@ directories:
   - connectors/superdurable/email
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
+  - connectors/superdurable/web-feed
   - connectors/superdurable/webhook
   - connectors/surveymonkey
   - connectors/suxin

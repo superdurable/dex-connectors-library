@@ -289,7 +289,7 @@ func UploadFileProviderRejected(value onedrive.UploadFileOutput, failure *sdkgo.
 	return connectormock.Branch(onedrive.UploadFileBranchProviderRejected, value, failure)
 }
 
-// UploadFileInvalidResponse selects the invalidResponse branch: Microsoft Graph returned an invalid or oversized response while reading back a conflicting item.
+// UploadFileInvalidResponse selects the invalidResponse branch: Retained for compatibility and no longer selected: an invalid or oversized read-back of a conflicting item now retries.
 func UploadFileInvalidResponse(value onedrive.UploadFileOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.UploadFileOutput] {
 	return connectormock.Branch(onedrive.UploadFileBranchInvalidResponse, value, failure)
 }
@@ -337,12 +337,12 @@ func CreateFolderNameConflict(value onedrive.CreateFolderOutput, failure *sdkgo.
 	return connectormock.Branch(onedrive.CreateFolderBranchNameConflict, value, failure)
 }
 
-// CreateFolderProviderRejected selects the providerRejected branch: Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.
+// CreateFolderProviderRejected selects the providerRejected branch: Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota.
 func CreateFolderProviderRejected(value onedrive.CreateFolderOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.CreateFolderOutput] {
 	return connectormock.Branch(onedrive.CreateFolderBranchProviderRejected, value, failure)
 }
 
-// CreateFolderInvalidResponse selects the invalidResponse branch: Microsoft Graph returned an invalid or oversized response to the creation or its read-back.
+// CreateFolderInvalidResponse selects the invalidResponse branch: Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.
 func CreateFolderInvalidResponse(value onedrive.CreateFolderOutput, failure *sdkgo.Failure) connectormock.Case[onedrive.CreateFolderOutput] {
 	return connectormock.Branch(onedrive.CreateFolderBranchInvalidResponse, value, failure)
 }

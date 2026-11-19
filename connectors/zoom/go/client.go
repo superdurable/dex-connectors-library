@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -193,7 +194,7 @@ func (client *Client) ListPastMeetingParticipants() ListPastMeetingParticipantsO
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		return Credentials{}, failurePointer(operation, sdkgo.FailureAuthentication, "Zoom connection requires reauthorization; reconnect the connection"), false
 	case err != nil:
 		return Credentials{}, failurePointer(operation, sdkgo.FailureAvailability, "Zoom connection credentials could not be refreshed"), true
@@ -202,6 +203,13 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	default:
 		return credentials, nil, false
 	}
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // exchange sends one request under the Step context, and once more after a refresh when an unfenced call
@@ -291,8 +299,9 @@ func (client *Client) sendOnce(
 	}()
 	response := providerResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header.Clone()}
 	if !isSuccessStatus(httpResponse.StatusCode) {
-		response.body, err = io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes))
-		response.hasBodyReadFailed = err != nil
+		response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, providerhttp.MaxErrorBodyBytes)
+		response.isBodyTooLarge = errors.Is(err, providerhttp.ErrBodyTooLarge)
+		response.hasBodyReadFailed = err != nil && !response.isBodyTooLarge
 		return response, true, nil
 	}
 	response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)

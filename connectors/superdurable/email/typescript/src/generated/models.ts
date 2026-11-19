@@ -84,20 +84,39 @@ export interface Credentials {
   username: string;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["password", "smtp_password", "smtp_username", "username"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["password"] != null && !(typeof fields["password"] === 'string')) throw new TypeError("credential password has an invalid type");
-  if (fields["smtp_password"] != null && !(typeof fields["smtp_password"] === 'string')) throw new TypeError("credential smtp_password has an invalid type");
-  if (fields["smtp_username"] != null && !(typeof fields["smtp_username"] === 'string')) throw new TypeError("credential smtp_username has an invalid type");
-  if (fields["username"] != null && !(typeof fields["username"] === 'string')) throw new TypeError("credential username has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["password"] != null && !(typeof fields["password"] === 'string')) throw new CredentialMaterialError("credential password has an invalid type");
+  if (fields["smtp_password"] != null && !(typeof fields["smtp_password"] === 'string')) throw new CredentialMaterialError("credential smtp_password has an invalid type");
+  if (fields["smtp_username"] != null && !(typeof fields["smtp_username"] === 'string')) throw new CredentialMaterialError("credential smtp_username has an invalid type");
+  if (fields["username"] != null && !(typeof fields["username"] === 'string')) throw new CredentialMaterialError("credential username has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["username"]) throw new TypeError("credential username is required");
+  if (!fields["username"]) throw new CredentialMaterialError("credential username is required");
   credentials.username = (fields["username"] ?? '') as string;
-  if (!fields["password"]) throw new TypeError("credential password is required");
+  if (!fields["password"]) throw new CredentialMaterialError("credential password is required");
   credentials.password = new SecretString((fields["password"] ?? '') as string);
   credentials.smtpUsername = (fields["smtp_username"] ?? '') as string;
   credentials.smtpPassword = new SecretString((fields["smtp_password"] ?? '') as string);

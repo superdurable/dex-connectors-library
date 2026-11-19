@@ -28,28 +28,32 @@ func TestClientAgentToolsClassifyProviderOutcomes(t *testing.T) {
 			_, err = fmt.Fprint(w, `{"id":42001,"type":"story","by":"compilerdev","time":1793016000,"title":"A compiler release"}`)
 		case "/item/42002.json":
 			_, err = fmt.Fprint(w, `null`)
+		case "/search":
+			_, err = fmt.Fprint(w, `{"hits":[{"objectID":"42001","title":"A compiler release","author":"compilerdev","points":100,"num_comments":40,"created_at_i":1793016000,"_tags":["story"]}],"page":0,"nbPages":1,"nbHits":1}`)
 		default:
 			w.WriteHeader(http.StatusForbidden)
 		}
 		require.NoError(t, err)
 	}))
 	defer server.Close()
-	client, err := hackernews.New(hackernews.Config{BaseURL: server.URL}, nil)
+	client, err := hackernews.New(hackernews.Config{BaseURL: server.URL, SearchBaseURL: server.URL}, nil)
 	require.NoError(t, err)
 	connection, err := hackernews.NewConnection(client, sdkgo.ConnectionRef{Provider: "hacker-news", Name: "public"})
 	require.NoError(t, err)
 
 	tools, err := connection.AgentTools()
 	require.NoError(t, err)
-	require.Equal(t, []string{"hacker-news-daily_list_story_ids", "hacker-news-daily_get_item"}, agentToolNames(tools))
+	require.Equal(t, []string{"hacker-news-daily_list_story_ids", "hacker-news-daily_get_item", "hacker-news-daily_search_stories"}, agentToolNames(tools))
 	for _, tool := range tools {
 		require.Equal(t, sdkgo.AgentToolEffectRead, tool.Metadata().Effect())
 		require.Equal(t, connection.Reference(), tool.Connection())
 	}
-	listStoryIDs, getItem := tools[0], tools[1]
+	listStoryIDs, getItem, searchStories := tools[0], tools[1], tools[2]
 	// Empty feed and zero limit select defaults, so agents may omit both.
 	require.Equal(t, []string(nil), agentToolRequiredInputs(t, listStoryIDs))
 	require.Equal(t, []string{"id"}, agentToolRequiredInputs(t, getItem))
+	// Every search filter is optional, and an empty query searches all stories.
+	require.Equal(t, []string(nil), agentToolRequiredInputs(t, searchStories))
 
 	attempts := []struct {
 		name      string
@@ -64,6 +68,9 @@ func TestClientAgentToolsClassifyProviderOutcomes(t *testing.T) {
 		{"listStoryIDs providerRejected", listStoryIDs, `{"feed":"best","limit":2}`, sdkgo.AgentToolAttemptRejected, hackernews.ListStoryIDsBranchProviderRejected},
 		{"getItem found", getItem, `{"id":42001}`, sdkgo.AgentToolAttemptSucceeded, hackernews.GetItemBranchFound},
 		{"getItem notFound", getItem, `{"id":42002}`, sdkgo.AgentToolAttemptRejected, hackernews.GetItemBranchNotFound},
+		{"searchStories searched", searchStories, `{"query":"compiler"}`, sdkgo.AgentToolAttemptSucceeded, hackernews.SearchStoriesBranchSearched},
+		{"searchStories providerRejected", searchStories, `{"query":"compiler","sortBy":"date"}`, sdkgo.AgentToolAttemptRejected, hackernews.SearchStoriesBranchProviderRejected},
+		{"searchStories defect", searchStories, `{"query":"compiler","hitsPerPage":101}`, sdkgo.AgentToolAttemptRejected, hackernews.SearchStoriesBranchDefect},
 	}
 	for _, expected := range attempts {
 		t.Run(expected.name, func(t *testing.T) {
@@ -99,6 +106,15 @@ func TestMockConnectionAgentToolsRunScriptedBranches(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
 	require.Equal(t, hackernews.GetItemBranchNotFound, attempt.Branch)
+
+	// The default search mock pages from zero, so page 1 answers with the second page.
+	attempt, err = tools[2].RunAttempt(singledispatchtest.NewContext("agent-host", "mock-search"), json.RawMessage(`{"query":"compiler","page":1}`))
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptSucceeded, attempt.Outcome)
+	var searched hackernews.StorySearchPage
+	require.NoError(t, json.Unmarshal(attempt.Value, &searched))
+	require.Equal(t, 1, searched.Page)
+	require.Equal(t, 2, searched.NextPage)
 }
 
 func agentToolNames(tools []sdkgo.AgentTool) []string {

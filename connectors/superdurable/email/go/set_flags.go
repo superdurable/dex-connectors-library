@@ -62,7 +62,7 @@ func (operation SetFlagsOperation) Invoke(call sdkgo.Call, input SetFlagsInput) 
 	}
 	credentials, failure := operation.client.resolveCredentials(call, setFlagsOperation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(SetFlagsBranchDefect, MessageFlags{}, failure, sdkgo.Receipt{})
+		return repeatSafeWriteCredentialAttempt[MessageFlags](call, SetFlagsBranchDefect, *failure)
 	}
 	ctx, cancel := context.WithTimeout(call.Context, imapOperationTimeout)
 	defer cancel()

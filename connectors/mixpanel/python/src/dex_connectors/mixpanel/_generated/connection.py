@@ -71,6 +71,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.mixpanel.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Mixpanel credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -80,19 +96,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Mixpanel stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Mixpanel stored credential does not match the connector credential fields")
         if set(material) - set(('service_account_username', 'service_account_secret')):
-            raise ValueError("Mixpanel stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Mixpanel stored credential does not match the connector credential fields")
         service_account_username = material.get("service_account_username")
         if service_account_username is not None and not (isinstance(service_account_username, str)):
-            raise ValueError("Mixpanel credential service_account_username has an invalid type")
+            raise CredentialMaterialError("Mixpanel credential service_account_username has an invalid type")
         service_account_secret = material.get("service_account_secret")
         if service_account_secret is not None and not (isinstance(service_account_secret, str)):
-            raise ValueError("Mixpanel credential service_account_secret has an invalid type")
+            raise CredentialMaterialError("Mixpanel credential service_account_secret has an invalid type")
         if not service_account_username:
-            raise ValueError("Mixpanel credential service_account_username is required")
+            raise CredentialMaterialError("Mixpanel credential service_account_username is required")
         if not service_account_secret:
-            raise ValueError("Mixpanel credential service_account_secret is required")
+            raise CredentialMaterialError("Mixpanel credential service_account_secret is required")
         return Credentials(SecretString(service_account_username), SecretString(service_account_secret))
 
 

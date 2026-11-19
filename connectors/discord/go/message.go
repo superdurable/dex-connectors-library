@@ -5,6 +5,7 @@ package discord
 
 import (
 	"errors"
+	"regexp"
 	"time"
 )
 
@@ -68,7 +69,7 @@ func convertProviderMessage(message providerMessage, channelID string) (Message,
 	if message.Content == nil || message.Type == nil {
 		return Message{}, errors.New("Discord returned a message without content or type")
 	}
-	timestamp, err := time.Parse(time.RFC3339Nano, message.Timestamp)
+	timestamp, err := parseMessageTimestamp(message.Timestamp)
 	if err != nil {
 		return Message{}, errors.New("Discord returned a message without a valid timestamp")
 	}
@@ -77,7 +78,7 @@ func convertProviderMessage(message providerMessage, channelID string) (Message,
 		Author: MessageAuthor{ID: message.Author.ID, Username: message.Author.Username, IsBot: message.Author.Bot},
 	}
 	if message.EditedTimestamp != nil {
-		edited, err := time.Parse(time.RFC3339Nano, *message.EditedTimestamp)
+		edited, err := parseMessageTimestamp(*message.EditedTimestamp)
 		if err != nil {
 			return Message{}, errors.New("Discord returned a message with an invalid edited timestamp")
 		}
@@ -85,4 +86,15 @@ func convertProviderMessage(message providerMessage, channelID string) (Message,
 		converted.EditedTimestamp = &edited
 	}
 	return converted, nil
+}
+
+// zonelessTimestampPattern matches an ISO 8601 timestamp without an offset, which Discord means as UTC.
+var zonelessTimestampPattern = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?$`)
+
+// parseMessageTimestamp parses an RFC 3339 timestamp, reading one without an offset as UTC.
+func parseMessageTimestamp(value string) (time.Time, error) {
+	if zonelessTimestampPattern.MatchString(value) {
+		return time.Parse("2006-01-02T15:04:05.999999999", value)
+	}
+	return time.Parse(time.RFC3339Nano, value)
 }

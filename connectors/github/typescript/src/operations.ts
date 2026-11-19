@@ -13,13 +13,13 @@ const emptyPullRequests: MergedPullRequestPage = { pullRequests: [], totalCount:
 const emptyFiles: PullRequestFilePage = { files: [], nextPage: 0 };
 const emptyReleases: ReleasePage = { releases: [], nextPage: 0 };
 const emptyCommits: CommitPage = { commits: [], nextPage: 0 };
-const loginPattern = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
-const repositoryPattern = /^[A-Za-z0-9._-]{1,100}$/;
+export const loginPattern = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
+export const repositoryPattern = /^[A-Za-z0-9._-]{1,100}$/;
 const shaPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const encoder = new TextEncoder();
 
 type Terminal = { branch: string; failure: ReturnType<typeof failure>; receipt: ReceiptDraft };
-function invalid<Input>(operation: string, output: Input, message: string): QueryAttempt<Input> {
+export function invalid<Input>(operation: string, output: Input, message: string): QueryAttempt<Input> {
   return newQueryBranch('defect', output, {}, failure(operation, 'VALIDATION', message));
 }
 function isTerminal(exchange: GitHubExchange): exchange is Terminal { return 'failure' in exchange && exchange.branch !== undefined; }
@@ -31,10 +31,10 @@ function classify<Input>(operation: string, output: Input, exchange: GitHubExcha
   if (!hasRequiredScopes(exchange.response.headers)) return newQueryBranch('insufficientScope', output, exchange.receipt, failure(operation, 'AUTHORIZATION', 'GitHub OAuth grant does not match required scopes'));
   return undefined;
 }
-function decode(body: Uint8Array): unknown { return JSON.parse(Buffer.from(body).toString('utf8'), (key, value: unknown, context?: { source?: string }) => { if (typeof value === 'number' && ['id', 'number', 'public_repos', 'followers', 'following', 'stargazers_count', 'forks_count', 'open_issues_count', 'total_count', 'additions', 'deletions', 'changes'].includes(key) && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid GitHub integer'); return value; }) as unknown; }
-function record(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid GitHub object'); return value as Record<string, unknown>; }
-function stringField(source: Record<string, unknown>, key: string): string { const value = source[key]; if (value == null) return ''; if (typeof value !== 'string') throw new TypeError(`invalid GitHub ${key}`); return value; }
-function integerField(source: Record<string, unknown>, key: string): number { const value = source[key]; if (value == null) return 0; if (!Number.isSafeInteger(value)) throw new TypeError(`invalid GitHub ${key}`); return value as number; }
+export function decode(body: Uint8Array): unknown { return JSON.parse(Buffer.from(body).toString('utf8'), (key, value: unknown, context?: { source?: string }) => { if (typeof value === 'number' && ['id', 'number', 'public_repos', 'followers', 'following', 'stargazers_count', 'forks_count', 'open_issues_count', 'total_count', 'additions', 'deletions', 'changes', 'comments'].includes(key) && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid GitHub integer'); return value; }) as unknown; }
+export function record(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid GitHub object'); return value as Record<string, unknown>; }
+export function stringField(source: Record<string, unknown>, key: string): string { const value = source[key]; if (value == null) return ''; if (typeof value !== 'string') throw new TypeError(`invalid GitHub ${key}`); return value; }
+export function integerField(source: Record<string, unknown>, key: string): number { const value = source[key]; if (value == null) return 0; if (!Number.isSafeInteger(value)) throw new TypeError(`invalid GitHub ${key}`); return value as number; }
 function booleanField(source: Record<string, unknown>, key: string): boolean { const value = source[key]; if (value == null) return false; if (typeof value !== 'boolean') throw new TypeError(`invalid GitHub ${key}`); return value; }
 function validateUser(source: Record<string, unknown>): void {
   for (const key of ['login', 'name', 'avatar_url', 'html_url', 'company', 'blog', 'location', 'bio', 'twitter_username']) stringField(source, key);
@@ -50,19 +50,19 @@ function validateRepositoryFields(source: Record<string, unknown>): void {
     if (!Array.isArray(source.topics) || source.topics.some(item => typeof item !== 'string')) throw new TypeError('invalid GitHub topics');
   }
 }
-function bounded(value: string, maximumBytes: number): string {
+export function bounded(value: string, maximumBytes: number): string {
   const trimmed = value.trim();
   if (encoder.encode(trimmed).length <= maximumBytes) return trimmed;
   let result = '';
   for (const character of trimmed) { if (encoder.encode(result + character).length > maximumBytes) break; result += character; }
   return result;
 }
-function safeURL(value: string): string {
+export function safeURL(value: string): string {
   const boundedValue = bounded(value, 2048);
   try { const url = new URL(boundedValue); return (url.protocol === 'https:' || url.protocol === 'http:') && url.hostname ? url.toString() : ''; } catch { return ''; }
 }
 function nonNegative(value: number): number { return Math.max(value, 0); }
-function timestamp(value: unknown, required = false): string | undefined {
+export function timestamp(value: unknown, required = false): string | undefined {
   if (value == null) { if (required) throw new TypeError('missing GitHub timestamp'); return undefined; }
   if (typeof value !== 'string') throw new TypeError('invalid GitHub timestamp');
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
@@ -83,14 +83,14 @@ function timestamp(value: unknown, required = false): string | undefined {
   const fraction = (match[7] ?? '').slice(0, 9).replace(/0+$/, '');
   return `${date.toISOString().slice(0, 19)}${fraction ? `.${fraction}` : ''}Z`;
 }
-function truncateCharacters(value: string, maximum: number): [string, boolean] { const characters = Array.from(value); return [characters.slice(0, maximum).join(''), characters.length > maximum]; }
+export function truncateCharacters(value: string, maximum: number): [string, boolean] { const characters = Array.from(value); return [characters.slice(0, maximum).join(''), characters.length > maximum]; }
 function repo(owner: string, repository: string, operation: string): [string, string] | QueryAttempt<never> {
   const trimmedOwner = owner.trim(), trimmedRepository = repository.trim();
   if (!loginPattern.test(trimmedOwner)) return invalid(operation, undefined as never, 'GitHub repository owner is invalid');
   if (!repositoryPattern.test(trimmedRepository) || trimmedRepository === '.' || trimmedRepository === '..') return invalid(operation, undefined as never, 'GitHub repository name is invalid');
   return [trimmedOwner, trimmedRepository];
 }
-function page(pageSize: number | undefined, pageNumber: number | undefined, defaultSize: number, operation: string): [number, number] | QueryAttempt<never> {
+export function page(pageSize: number | undefined, pageNumber: number | undefined, defaultSize: number, operation: string): [number, number] | QueryAttempt<never> {
   const size = pageSize || defaultSize, number = pageNumber || 1;
   if (!Number.isSafeInteger(size) || !Number.isSafeInteger(number) || size < 1 || size > 100 || number < 1) return invalid(operation, undefined as never, 'page size must be 1 through 100 and page must be positive');
   return [size, number];
@@ -99,7 +99,7 @@ function window(start: string, end: string, subject: string, operation: string):
   try { const from = timestamp(start, true)!, to = timestamp(end, true)!; if (new Date(from).getTime() < new Date(to).getTime()) return; } catch { /* Invalid dates select the same defect branch. */ }
   return invalid(operation, undefined as never, `${subject} window must have a start before its end`);
 }
-function nextPage(headers: Record<string, string | string[] | undefined>, current: number): number {
+export function nextPage(headers: Record<string, string | string[] | undefined>, current: number): number {
   for (const [name, values] of Object.entries(headers)) {
     if (name.toLowerCase() !== 'link') continue;
     for (const link of Array.isArray(values) ? values : [values ?? '']) {
@@ -117,7 +117,7 @@ function nextPage(headers: Record<string, string | string[] | undefined>, curren
   }
   return 0;
 }
-function invalidResponse<Input>(operation: string, output: Input, message: string, receipt: ReceiptDraft): QueryAttempt<Input> { return newQueryBranch('invalidResponse', output, receipt, failure(operation, 'PROTOCOL', message)); }
+export function invalidResponse<Input>(operation: string, output: Input, message: string, receipt: ReceiptDraft): QueryAttempt<Input> { return newQueryBranch('invalidResponse', output, receipt, failure(operation, 'PROTOCOL', message)); }
 function commonInput(input: { owner: string; repository: string; pageSize?: number | undefined; page?: number | undefined }, operation: string, defaultSize: number, output: unknown): [string, string, number, number] | QueryAttempt<unknown> {
   const pair = repo(input.owner, input.repository, operation);
   if (!Array.isArray(pair)) return invalid(operation, output, pair.failure?.message ?? 'GitHub repository is invalid');
@@ -364,7 +364,7 @@ export class ListCommitsOperation implements Query<ListCommitsInput, CommitPage>
 
 function validFilename(value: string): boolean { return value !== '' && encoder.encode(value).length <= 4096 && !value.includes('\0'); }
 function validQueryText(value: string, maximumBytes: number, allowSpace: boolean): boolean { return encoder.encode(value).length <= maximumBytes && !/\p{Cc}/u.test(value) && (allowSpace || !/\s/u.test(value)); }
-function providerTime(value: string): string { return new Date(timestamp(value, true)!).toISOString().replace(/\.\d{3}Z$/, 'Z'); }
+export function providerTime(value: string): string { return new Date(timestamp(value, true)!).toISOString().replace(/\.\d{3}Z$/, 'Z'); }
 
 function isPlainEmail(value: string): boolean {
   const address = emailAddresses.parseOneAddress({ input: value, rfc6532: true });

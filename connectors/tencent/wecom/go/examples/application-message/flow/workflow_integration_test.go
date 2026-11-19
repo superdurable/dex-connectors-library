@@ -42,7 +42,7 @@ func TestApplicationMessageUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, mock.SendApplicationMessage().Calls(), 1)
 }
 
-// A 500 after WeCom read the send is safe to retry: the identical request is suppressed by WeCom's duplicate check.
+// A 500 after WeCom read the send resends below the cap; WeCom's duplicate check should suppress the identical request.
 func TestApplicationMessageRetriesAnUnconfirmedSendWithIdenticalBytesWithRealDex(t *testing.T) {
 	provider := &fakeApplicationProvider{t: t}
 	server := httptest.NewServer(provider)

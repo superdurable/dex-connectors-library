@@ -1,6 +1,6 @@
 # Microsoft Entra ID Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id`.
 
@@ -26,8 +26,11 @@ an onboarding Flow can swap providers:
 - `entraid.NewAddUserToGroupStep` and `entraid.NewRemoveUserFromGroupStep`
   change one direct group membership.
 
-Every Mutation converges when a Step repeats, so all eight operations use async
-Execute durability and none declares an `uncertain` branch. The connector never
+Every Mutation converges when a Step repeats, so each declares
+`repeatOnUnknown: safe`, retries an unknown outcome, and declares no
+`uncertain` branch; all eight operations use async Execute durability. On a
+later attempt, `createUser` reads the name back before accepting a refusal, and
+a taken name or a membership that is not readable yet keeps retrying. The connector never
 deletes or renames accounts, changes passwords after creation, assigns
 licenses or directory roles, or edits groups. This release has no Triggers and
 no Studio pickers.
@@ -178,10 +181,10 @@ that this connector does not send, so Microsoft rejects them.
 
 `disableUser` and `enableUser` send `PATCH /users/{key}` with only
 `{"accountEnabled": false}` or `true`, which Microsoft answers with 204, then
-read the account back. A read-back that still shows the old value is retried
-within the one-minute window and then selects `providerRejected` with the
-returned account; so does an account synchronized from on-premises Active
-Directory, which Graph cannot change. Disabling keeps the account's data.
+read the account back. A read-back that still shows the old value contradicts
+the accepted write, so it is retried within the retry budget. Graph refuses an
+account synchronized from on-premises Active Directory with a 400 or 403, which
+selects `providerRejected`. Disabling keeps the account's data.
 
 `revokeSignInSessions` calls `POST /users/{key}/revokeSignInSessions`, which
 resets `signInSessionsValidFromDateTime` to now. Microsoft documents a 2xx
@@ -240,12 +243,13 @@ apart.
 
 | Outcome | Branch or Retry |
 | --- | --- |
-| Invalid input, configuration, or credential | `defect`, before any request |
+| Invalid input or configuration; a terminal credential failure (reauthorization required, a missing or unselected connection, a broker refusal, in Python and TypeScript malformed stored credential material, or a token that fails local checks) | `defect`, before any request |
+| Any other credential failure, such as a broker outage or an unconfigured static connection | Retry, before any request |
 | 404 | `notFound` where the operation declares it, after the checks above |
 | 400 | read-back or membership check for `createUser` and `addUserToGroup`, otherwise `providerRejected` |
-| 401 (after one refresh and resend only when the stored token has expired), 403, and other 4xx | `providerRejected` |
-| Malformed or oversized response | `invalidResponse`, or Retry when a write may have been applied |
-| 429, 408, 5xx except 501, 409 `Directory_ConcurrencyViolation`, transport failure | Retry, honoring `Retry-After` up to one hour |
+| 401 (after one refresh and resend only when the stored token has expired), 403, 411, 413, 414, 415, 422 | `providerRejected` |
+| Malformed or oversized response | `invalidResponse` for a Query; Retry for every Mutation |
+| 429, 408, 5xx, any other status such as 3xx, 409, or 412, an oversized error body, transport failure | Retry, honoring `Retry-After` up to one hour |
 
 Failures carry a safe message, the failure kind, and only a documented Graph
 error code such as `Authorization_RequestDenied`, never `error.message`,
@@ -311,7 +315,7 @@ revokes its sign-in sessions, and removes the membership.
 
 ## Python package
 
-[`python/`](python/) releases `dex-connector-microsoft-entra-id==0.1.0` independently of the Go module. It implements all eight operations with generated typed models, Step factories, connection codecs, and app-only or delegated OAuth refresh. The [Python user lookup example](python/examples/user_lookup/flow.py) runs a real Dex Worker and Client with the static `entra-directory` connection name; its [integration test](python/examples/user_lookup/integration_test.py) uses a local Graph stand-in. Go-recorded [conformance scenarios](../../../conformance/connectors/microsoft/entra-id/scenarios.json) replay each operation through the Python package. See the [Python package README](python/README.md) for installation and Worker commands.
+[`python/`](python/) releases `dex-connector-microsoft-entra-id==0.1.1` independently of the Go module. It implements all eight operations with generated typed models, Step factories, connection codecs, and app-only or delegated OAuth refresh. The [Python user lookup example](python/examples/user_lookup/flow.py) runs a real Dex Worker and Client with the static `entra-directory` connection name; its [integration test](python/examples/user_lookup/integration_test.py) uses a local Graph stand-in. Go-recorded [conformance scenarios](../../../conformance/connectors/microsoft/entra-id/scenarios.json) replay each operation through the Python package. See the [Python package README](python/README.md) for installation and Worker commands.
 
 ## Verification
 

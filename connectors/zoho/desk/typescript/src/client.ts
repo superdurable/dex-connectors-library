@@ -1,11 +1,18 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+
+/** A credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
+    || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, CreateTicketOperation, UpdateTicketOperation, AddCommentOperation } from './operations.js';
 
 const dataCenterHosts: Record<string, string> = {
@@ -44,6 +51,8 @@ export interface ExchangeFailure {
   retryAfterMs: number;
   /** Response metadata for the receipt. */
   response?: ProviderResponse;
+  /** A non-2xx body was oversized or reflected the credential, so it cannot prove a refusal. */
+  isErrorBodyUnreadable?: boolean;
 }
 
 /** Complete Zoho Desk response or classified failure. */
@@ -105,7 +114,7 @@ export class ZohoDeskClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, this.operationSignal(call)); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError) return this.failure('rejected', operation, 'AUTHENTICATION', 'Zoho authorization is revoked or expired; reconnect the connection');
+      if (isTerminalCredentialError(error)) return this.failure('rejected', operation, 'AUTHENTICATION', 'Zoho authorization is revoked or expired; reconnect the connection');
       return this.failure('unavailable', operation, 'AUTHENTICATION', 'Zoho credentials are temporarily unavailable');
     }
     if (!this.hasValidCredentials(credentials)) return this.failure('defect', operation, 'AUTHENTICATION', 'Zoho Desk connection credentials are missing or invalid');
@@ -114,9 +123,13 @@ export class ZohoDeskClient {
     return { credentials, baseURL: this.apiBaseURL ?? `https://${host}/api/v1` };
   }
 
-  /** Send one provider exchange and refresh a rejected access token once. */
-  async exchange(call: Call, operation: string, session: { credentials: Credentials; baseURL: string }, method: string, path: string, query?: Record<string, string>, payload?: unknown): Promise<ExchangeResult> {
-    if (this.operationSignal(call).aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
+  /**
+   * Send one provider exchange and refresh a rejected access token once. A fenced write passes the Dispatch
+   * signal, which also bounds the request, and is sent once without that refresh, so the fence counts every send.
+   */
+  async exchange(call: Call, operation: string, session: { credentials: Credentials; baseURL: string }, method: string, path: string, query?: Record<string, string>, payload?: unknown, fenceSignal?: AbortSignal): Promise<ExchangeResult> {
+    const signal = fenceSignal ? AbortSignal.any([this.operationSignal(call), fenceSignal]) : this.operationSignal(call);
+    if (signal.aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
     let encoded: Uint8Array | undefined;
     try { if (payload !== undefined) encoded = Buffer.from(JSON.stringify(payload)); }
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', 'Zoho Desk request could not be built') }; }
@@ -125,11 +138,11 @@ export class ZohoDeskClient {
       let observedStatus = 0;
       let observedHeaders: ProviderResponse['headers'] = {};
       const token = session.credentials.accessToken.reveal();
-      if (this.operationSignal(call).aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
+      if (signal.aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
       const request: ProviderRequest = {
         url: target, method, headers: { Authorization: `Zoho-oauthtoken ${token}`, orgId: this.orgId, Accept: 'application/json', ...(encoded ? { 'Content-Type': 'application/json' } : {}) },
         ...(encoded ? { body: encoded } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: MaxErrorBodyBytes,
-        timeoutMs: 10_000, signal: this.operationSignal(call),
+        timeoutMs: 10_000, signal,
         onResponseChunk: (_chunk, status, headers) => { observedStatus = status; observedHeaders = headers; },
         addressPolicy: this.apiBaseURL ? 'privateNetworkHTTP' : 'publicHTTPS',
       };
@@ -139,32 +152,55 @@ export class ZohoDeskClient {
         if (error instanceof BodyTooLargeError) {
           const status = error.status ?? observedStatus;
           const responseWithoutBody = status === 0 ? undefined : { status, headers: error.headers ?? observedHeaders, body: new Uint8Array() };
-          if (responseWithoutBody && (responseWithoutBody.status < 200 || responseWithoutBody.status >= 300)) return { outcome: classifyStatus(responseWithoutBody, operation, this.now()) };
+          if (responseWithoutBody && (responseWithoutBody.status < 200 || responseWithoutBody.status >= 300)) return { outcome: { ...classifyStatus(responseWithoutBody, operation, this.now()), isErrorBodyUnreadable: true } };
           return { outcome: this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Zoho Desk response exceeds the configured maxResponseBytes limit', 0, responseWithoutBody) };
+        }
+        // Keep a status whose headers arrived, so an accepted write is never resent.
+        if (observedStatus === 0 && (error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined) {
+          observedStatus = error.status;
+          observedHeaders = error.headers ?? {};
         }
         if (observedStatus !== 0) {
           const partialResponse = { status: observedStatus, headers: observedHeaders, body: new Uint8Array() };
-          if (observedStatus === 503) return { outcome: classifyStatus(partialResponse, operation, this.now()) };
+          // A 429 or 503 status proves Zoho Desk did not process the request, even when its body broke.
+          if (observedStatus === 503 || observedStatus === 429) return { outcome: classifyStatus(partialResponse, operation, this.now()) };
           return { outcome: this.failure('unavailable', operation, 'TRANSPORT', 'Zoho Desk response could not be read', 0, partialResponse) };
         }
         if (error instanceof ProviderTransportError && error.isProvablyNotSent) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'Zoho Desk could not be reached; no request was sent') };
         if (error instanceof AddressRefusal) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'Zoho Desk could not be reached; no request was sent') };
         return { outcome: this.failure('unavailable', operation, 'TRANSPORT', 'Zoho Desk request failed before a response arrived') };
       }
-      if (response.status === 401 && attempt === 0 && 'resolveAfterRejection' in this.credentials) {
+      if (response.status === 401 && attempt === 0 && !fenceSignal && 'resolveAfterRejection' in this.credentials) {
         try {
           const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, this.operationSignal(call));
           if (this.hasValidCredentials(replacement) && replacement.authMethodId === session.credentials.authMethodId) { session.credentials = replacement; continue; }
         } catch { /* The original 401 remains authoritative when refresh fails. */ }
       }
+      // The SDK truncates an error body at the limit without an error, so a full-length body counts as oversized.
+      let isErrorBodyUnreadable = response.body.length >= MaxErrorBodyBytes;
       if (token && Buffer.from(response.body).includes(Buffer.from(token))) {
         if (response.status >= 200 && response.status < 300) return { outcome: this.failure('invalid', operation, 'PROTOCOL', 'Zoho Desk response reflected the connection credential', 0, response) };
         response = { ...response, body: new Uint8Array() };
+        isErrorBodyUnreadable = true;
       }
       if (response.status >= 200 && response.status < 300) return { response };
-      return { outcome: classifyStatus(response, operation, this.now()) };
+      const classified = classifyStatus(response, operation, this.now());
+      return { outcome: isErrorBodyUnreadable ? { ...classified, isErrorBodyUnreadable } : classified };
     }
     throw new Error('Zoho Desk credential retry exhausted');
+  }
+
+  /**
+   * Refresh after a 401 on a fenced write without resending it. Returns 'replacement' for a changed, usable token in
+   * the same data center, 'unavailable' for a transient refresh failure, and 'reconnect' otherwise.
+   */
+  async replaceRejectedCredentials(call: Call, rejected: Credentials): Promise<'replacement' | 'reconnect' | 'unavailable'> {
+    if (!('resolveAfterRejection' in this.credentials)) return 'reconnect';
+    let replacement: Credentials;
+    try { replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, this.operationSignal(call)); }
+    catch (error) { return isTerminalCredentialError(error) ? 'reconnect' : 'unavailable'; }
+    return this.hasValidCredentials(replacement) && replacement.authMethodId === rejected.authMethodId &&
+      replacement.accessToken.reveal() !== rejected.accessToken.reveal() ? 'replacement' : 'reconnect';
   }
 
   private hasValidCredentials(credentials: Credentials): boolean {

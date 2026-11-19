@@ -1,15 +1,18 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package reddit exposes post metadata Queries to approved Reddit Data API users.
+// Package reddit exposes post, subreddit listing, and post search Queries to approved Reddit Data API users.
 package reddit
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -72,6 +75,7 @@ type providerResponse struct {
 	body       []byte
 	status     int
 	retryAfter time.Duration
+	location   string
 	err        error
 }
 
@@ -104,9 +108,24 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	// Closing after the bounded read cannot change the response decision.
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	if response.StatusCode == http.StatusTooManyRequests && retryAfter == 0 {
+		retryAfter = rateLimitResetDelay(response.Header.Get("X-Ratelimit-Reset"))
+	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if bytes.Contains(body, []byte(accessToken)) {
 		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, location: response.Header.Get("Location"), err: err}
+}
+
+// rateLimitResetDelay converts X-Ratelimit-Reset seconds to a Retry delay, rounded up and capped like Retry-After.
+func rateLimitResetDelay(value string) time.Duration {
+	seconds, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	if err != nil || math.IsNaN(seconds) || seconds <= 0 {
+		return 0
+	}
+	if seconds >= providerhttp.MaxRetryAfterDelay.Seconds() {
+		return providerhttp.MaxRetryAfterDelay
+	}
+	return time.Duration(math.Ceil(seconds)) * time.Second
 }

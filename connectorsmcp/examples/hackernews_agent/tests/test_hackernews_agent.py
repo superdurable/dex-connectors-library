@@ -107,7 +107,8 @@ async def running_hacker_news_server(binary: Path, work_dir: Path) -> AsyncItera
     write_hacker_news_connections_file(connections_file)
     command = hacker_news_serve_command(binary, work_dir / "hacker-news-state", connections_file)
     async with running_server(command, work_dir / "hacker-news-mcp.log") as ready:
-        assert ready.tools == [GET_ITEM_MCP_TOOL_NAME, LIST_STORY_IDS_MCP_TOOL_NAME], ready.warnings
+        # The connector may expose more operations; the agent needs these two.
+        assert {GET_ITEM_MCP_TOOL_NAME, LIST_STORY_IDS_MCP_TOOL_NAME} <= set(ready.tools), ready.warnings
         yield ready
 
 

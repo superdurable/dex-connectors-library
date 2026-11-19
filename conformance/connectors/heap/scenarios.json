@@ -125,13 +125,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "accepted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -142,7 +139,7 @@
           "Plan": "Pro"
         }
       },
-      "name": "setUserProperties-invalidResponse",
+      "name": "setUserProperties-oversized-confirmation-retries",
       "operation": "setUserProperties"
     },
     {
@@ -257,6 +254,51 @@
         }
       },
       "name": "setUserProperties-serverUnavailable",
+      "operation": "setUserProperties"
+    },
+    {
+      "callId": "741e0028-34e1-567a-a9d7-f3854bd7b57f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_user_properties",
+          "requestBody": {
+            "app_id": "12345",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 425
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "553cdb69d4ffcf63c3466982a7f855b8aa43d9b6e9e40d93bca0bf91aa484932",
+      "input": {
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setUserProperties-unlisted-status-retries",
       "operation": "setUserProperties"
     },
     {

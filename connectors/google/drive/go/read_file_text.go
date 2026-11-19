@@ -89,7 +89,10 @@ func (operation ReadFileTextOperation) Invoke(call sdkgo.Call, input ReadFileTex
 	if !isDriveID(input.FileID) {
 		return sdkgo.NewQueryBranch(ReadFileTextBranchDefect, ReadFileTextOutput{}, driveFailurePointer(sdkgo.FailureValidation, readFileTextOperationID, "fileId must be a Drive file ID"), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, readFileTextOperationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveCredential(call, readFileTextOperationID)
+	if failure != nil && isCredentialFailureRetryable {
+		return sdkgo.NewQueryRetry[ReadFileTextOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ReadFileTextBranchDefect, ReadFileTextOutput{}, failure, sdkgo.Receipt{})
 	}

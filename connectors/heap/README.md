@@ -1,6 +1,6 @@
 # Heap connector
 
-The Go, Python, and TypeScript `setUserProperties` Mutations send absolute string property values for one stable identity to Heap's server-side [Add User Properties API](https://developers.heap.io/reference/add-user-properties). Repeating the same request overwrites those values with themselves; the Result only reports acceptance and never returns identity or properties.
+The Go, Python, and TypeScript `setUserProperties` Mutations send absolute string property values for one stable identity to Heap's server-side [Add User Properties API](https://developers.heap.io/reference/add-user-properties). Repeating the same request overwrites those values with themselves, so the manifest declares `repeatOnUnknown: safe`: only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 selects `providerRejected`, while any other status and an oversized confirmation retry. The Result only reports acceptance and never returns identity or properties.
 
 ## Connect
 

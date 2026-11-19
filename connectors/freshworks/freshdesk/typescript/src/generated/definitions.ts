@@ -78,11 +78,11 @@ export const CreateTicketBranch = {
   Uncertain: "uncertain",
   Defect: "defect",
 } as const;
-/** Freshdesk created the ticket and returned it. */
+/** Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned. */
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
 /** Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it. */
+/** The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again. */
 export const CreateTicketBranchUncertain = CreateTicketBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
@@ -90,9 +90,9 @@ export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
 export const CreateTicketDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createTicket" },
   branches: [
-    { id: "created", description: "Freshdesk created the ticket and returned it." },
+    { id: "created", description: "Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned." },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -116,9 +116,9 @@ export const UpdateTicketBranchUpdated = UpdateTicketBranch.Updated;
 export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
 /** Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket. */
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
-/** Freshdesk returned an invalid or oversized ticket, so the change may have been applied. */
+/** Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on the read or after the change repeats the absolute change. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
-/** Local input, connection configuration, or connector definition is invalid. */
+/** Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries. */
 export const UpdateTicketBranchDefect = UpdateTicketBranch.Defect;
 /** Manifest definition for updateTicket. */
 export const UpdateTicketDefinition: MutationDefinition = {
@@ -127,12 +127,11 @@ export const UpdateTicketDefinition: MutationDefinition = {
     { id: "updated", description: "The ticket holds the requested values, written now or by an earlier attempt." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent.", optional: true },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", optional: true },
-    { id: "invalidResponse", description: "Freshdesk returned an invalid or oversized ticket, so the change may have been applied.", optional: true },
-    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "invalidResponse", description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on the read or after the change repeats the absolute change.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateTicket. */
 export const UpdateTicketMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -145,13 +144,13 @@ export const AddNoteBranch = {
   Uncertain: "uncertain",
   Defect: "defect",
 } as const;
-/** Freshdesk added the note or reply and returned it. */
+/** Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned. */
 export const AddNoteBranchAdded = AddNoteBranch.Added;
 /** The ticket does not exist or is not visible to the connection's agent; nothing was added. */
 export const AddNoteBranchNotFound = AddNoteBranch.NotFound;
 /** Freshdesk conclusively rejected the note or reply; nothing was added. */
 export const AddNoteBranchProviderRejected = AddNoteBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it. */
+/** The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again. */
 export const AddNoteBranchUncertain = AddNoteBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddNoteBranchDefect = AddNoteBranch.Defect;
@@ -159,10 +158,10 @@ export const AddNoteBranchDefect = AddNoteBranch.Defect;
 export const AddNoteDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "addNote" },
   branches: [
-    { id: "added", description: "Freshdesk added the note or reply and returned it." },
+    { id: "added", description: "Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", optional: true },
     { id: "providerRejected", description: "Freshdesk conclusively rejected the note or reply; nothing was added.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

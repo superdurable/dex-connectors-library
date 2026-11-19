@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { CreatePageOperation, GetPageOperation, QueryDatabaseOperation, SearchOperation, UpdatePagePropertiesOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.notion.com';
@@ -17,7 +17,14 @@ const maximumPollPageSize = 100;
 export type NotionRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
 
 /** One provider exchange, including positive evidence about request dispatch. */
-export type NotionExchange = { response: ProviderResponse; receipt: ReceiptDraft } | { failure: Failure; disposition: 'retry' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect' | 'uncertain' | 'committed'; retryAfterMs?: number; receipt: ReceiptDraft; providerId?: string; isProvablyNotSent?: boolean; providerErrorCode?: string };
+/**
+ * One classified Notion exchange. For a create, `uncertain` means the outcome is unknown and a capped
+ * resend may follow, and `acceptedUnreadable` means a 2xx accepted it, so a resend would duplicate it.
+ */
+export type NotionExchange = { response: ProviderResponse; receipt: ReceiptDraft } | { failure: Failure; disposition: 'retry' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect' | 'uncertain' | 'acceptedUnreadable' | 'committed'; retryAfterMs?: number; receipt: ReceiptDraft; providerId?: string; isProvablyNotSent?: boolean; providerErrorCode?: string };
+
+/** Statuses other than 404 that prove Notion refused a write; any other failure leaves it unknown. */
+const ConclusiveRejectionStatuses: ReadonlySet<number> = new Set([400, 401, 403, 411, 413, 414, 415, 422]);
 /** A classified exchange before any successful response. */
 export type NotionExchangeFailure = Extract<NotionExchange, { failure: Failure }>;
 
@@ -82,16 +89,19 @@ export class NotionClient {
   /** Resolve a credential before a single-dispatch write is claimed. */
   async resolveToken(call: Call, operation: string, signal?: AbortSignal): Promise<{ token: string } | { outcome: NotionExchangeFailure }> {
     const emptyReceipt = this.receipt(call);
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, signal ?? call.context.cancellationSignal);
-      const token = credentials.apiToken instanceof SecretString ? credentials.apiToken.reveal() : '';
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid Notion token');
-      return { token };
+      credentials = await this.credentials.resolve(call, signal ?? call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection must be authorized again'), receipt: emptyReceipt, isProvablyNotSent: true } };
-      if (error instanceof CredentialBrokerUnavailableError || error instanceof DOMException && error.name === 'AbortError') return { outcome: { disposition: 'retry', failure: failure(operation, 'AUTHENTICATION', 'Notion credential broker is temporarily unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
-      return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) {
+        return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
+      }
+      return { outcome: { disposition: 'retry', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are temporarily unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
     }
+    const token = credentials.apiToken instanceof SecretString ? credentials.apiToken.reveal() : '';
+    if (!isHeaderSafeCredential(token)) return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
+    return { token };
   }
 
   /** Send one bounded API request and classify its transport and HTTP outcome. */
@@ -113,8 +123,19 @@ export class NotionClient {
     let response: ProviderResponse;
     try { response = await this.send(request); }
     catch (error) {
+      const status = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
       if (error instanceof BodyTooLargeError && error.status !== undefined) {
         response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array(this.maxResponseBytes + 1) };
+        // An unreadable refusal cannot prove the write was refused.
+        if (mode !== 'read' && (error.status < 200 || error.status >= 300) && error.status !== 429) {
+          return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'retry', failure: failure(operation, 'TRANSPORT', `Notion ${subject} outcome is unknown after an unreadable HTTP ${error.status}`), receipt: this.receipt(call, response, providerObjectId) };
+        }
+      } else if (mode === 'unkeyedWrite' && status !== undefined && status >= 200 && status < 300) {
+        // Notion accepted this write before its body broke, so it is never resent.
+        return { disposition: 'acceptedUnreadable', failure: failure(operation, 'TRANSPORT', `Notion accepted the ${subject} but its response was interrupted`), receipt: emptyReceipt };
+      } else if (status === 429) {
+        // A 429 proves Notion wrote nothing, even when its body breaks, as in Go and Python.
+        return { disposition: 'retry', failure: failure(operation, 'RATE_LIMIT', `Notion ${subject} is temporarily unavailable`), receipt: emptyReceipt, isProvablyNotSent: mode === 'unkeyedWrite' };
       } else {
         const isProvablyNotSent = error instanceof ProviderTransportError && error.isProvablyNotSent;
         const disposition = mode === 'unkeyedWrite' && !isProvablyNotSent ? 'uncertain' : 'retry';
@@ -125,9 +146,13 @@ export class NotionClient {
     const status = response.status;
     const isBlocked = status === 429 && readToken(response.body, 'additional_data', 'rate_limit_reason') === 'public_api_request_blocked';
     if (isBlocked) return { disposition: 'providerRejected', failure: failure(operation, 'PROVIDER_REJECTION', 'Notion blocked API access'), receipt };
+    const retryAfterHeader = response.headers['retry-after'];
+    const retryAfterMs = parseRetryAfter(Array.isArray(retryAfterHeader) ? retryAfterHeader[0] ?? '' : retryAfterHeader ?? '', this.now());
+    if (mode === 'unkeyedWrite' && (status === 409 || status === 529)) {
+      // The owner rules treat 409 and every 5xx without a saved ID as an unknown outcome.
+      return { disposition: 'uncertain', failure: failure(operation, status === 409 ? 'CONFLICT' : 'AVAILABILITY', `Notion could not complete the ${subject} transaction`), retryAfterMs, receipt };
+    }
     if (status === 429 || status === 529 || status === 409 || (mode !== 'unkeyedWrite' && (status === 408 || status >= 500))) {
-      const retryAfter = response.headers['retry-after'];
-      const retryAfterMs = parseRetryAfter(Array.isArray(retryAfter) ? retryAfter[0] ?? '' : retryAfter ?? '', this.now());
       return { disposition: 'retry', failure: failure(operation, status === 429 || status === 529 ? 'RATE_LIMIT' : status === 409 ? 'CONFLICT' : 'AVAILABILITY', `Notion ${subject} is temporarily unavailable`), retryAfterMs, receipt, isProvablyNotSent: mode === 'unkeyedWrite' };
     }
     if (status === 503 && mode === 'unkeyedWrite') {
@@ -140,13 +165,18 @@ export class NotionClient {
       if (providerId) return { disposition: 'committed', failure: failure(operation, 'AVAILABILITY', 'Notion saved the page'), providerId, receipt };
     }
     if (status === 404) return { disposition: 'notFound', failure: failure(operation, 'NOT_FOUND', `Notion ${subject} was not found`), receipt };
-    if (status >= 400 && status < 500 && status !== 408) {
+    const isWrite = mode !== 'read';
+    if (status >= 400 && status < 500 && status !== 408 && (!isWrite || ConclusiveRejectionStatuses.has(status))) {
       const providerErrorCode = readTopLevelToken(response.body, 'code');
       return { disposition: 'providerRejected', failure: failure(operation, status === 400 ? 'VALIDATION' : status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION', `Notion rejected ${subject} with HTTP ${status}`), receipt, ...(providerErrorCode ? { providerErrorCode } : {}) };
     }
-    if (status < 200 || status >= 300) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, status >= 500 ? 'AVAILABILITY' : 'PROTOCOL', `Notion returned HTTP ${status}`), receipt };
-    if (response.body.length > this.maxResponseBytes) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Notion response exceeds the configured limit'), receipt };
-    if (Buffer.from(response.body).includes(Buffer.from(token))) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, 'PROTOCOL', 'Notion response contains credential material'), receipt };
+    // Any other write status leaves the write unknown: a repeatable write retries and a create may resend.
+    if (isWrite && (status < 200 || status >= 300)) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'retry', failure: failure(operation, 'AVAILABILITY', `Notion ${subject} outcome is unknown after HTTP ${status}`), retryAfterMs, receipt };
+    if (status < 200 || status >= 300) return { disposition: 'invalidResponse', failure: failure(operation, status >= 500 ? 'AVAILABILITY' : 'PROTOCOL', `Notion returned HTTP ${status}`), receipt };
+    // An unusable accepted write is never resent, and an absolute write simply repeats.
+    const unusableAccepted = mode === 'unkeyedWrite' ? 'acceptedUnreadable' : mode === 'repeatableWrite' ? 'retry' : 'invalidResponse';
+    if (response.body.length > this.maxResponseBytes) return { disposition: unusableAccepted, failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Notion response exceeds the configured limit'), receipt };
+    if (Buffer.from(response.body).includes(Buffer.from(token))) return { disposition: unusableAccepted, failure: failure(operation, 'PROTOCOL', 'Notion response contains credential material'), receipt };
     return { response, receipt };
   }
 }

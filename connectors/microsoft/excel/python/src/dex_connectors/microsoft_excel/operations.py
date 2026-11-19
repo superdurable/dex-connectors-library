@@ -21,9 +21,22 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import parse_retry_after
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+)
 
 from ._generated.definitions import (
     APPEND_TABLE_ROWS_DEFINITION,
@@ -35,6 +48,7 @@ from .client import (
     Client,
     GraphResponse,
     GraphTransportError,
+    InvalidCredentialMaterialError,
     compact_json,
     path_escape,
     range_url,
@@ -72,13 +86,47 @@ _QUERY_SELECT_VALUES = "?$select=address,rowCount,columnCount,values"
 _QUERY_SELECT_TEXTS = "?$select=address,rowCount,columnCount,values,text"
 
 
+# Only these statuses prove Microsoft refused a write; every other status is an unknown outcome.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+# A queued append gets time to land before the next attempt reads the key column.
+_UNKNOWN_APPEND_RETRY_DELAY_SECONDS = 10
+
+
 @dataclass(frozen=True, slots=True)
 class _DispatchMarker:
+    """Checkpoint that releases before 0.1.1 recorded before an append."""
+
     dispatched_call_id: str = field(metadata={"dex_json_name": "microsoftExcelDispatchedCallId"})
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "microsoft-excel", operation, message)
+
+
+def _write_credential_failure(operation: str, error: Exception) -> tuple[Failure, bool]:
+    """Describe a write's credential failure and report whether it can clear without reauthorization."""
+    if _is_terminal_credential_error(error):
+        message, is_retryable = "connection credentials are unavailable", False
+    else:
+        message, is_retryable = "connection credentials are temporarily unavailable", True
+    return _failure(operation, FailureKind.AUTHENTICATION, message), is_retryable
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure no later attempt resolves without a person."""
+    # Imported here because the generated connection module imports this one.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+            InvalidCredentialMaterialError,
+        ),
+    )
 
 
 def _receipt(client: Client, call: Call, response: GraphResponse | None = None) -> Receipt:
@@ -656,12 +704,12 @@ class UpdateValuesOperation:
             )
         try:
             credential = await self.client.resolve_credentials(call)
-        except Exception:
+        except Exception as error:
+            credential_failure, is_retryable = _write_credential_failure(operation, error)
+            if is_retryable:
+                return MutationAttempt.retry(credential_failure)
             return MutationAttempt.branch_result(
-                "defect",
-                UpdateValuesOutput(),
-                Receipt(),
-                _failure(operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
+                "defect", UpdateValuesOutput(), Receipt(), credential_failure
             )
         try:
             response = await self.client.request(
@@ -705,6 +753,14 @@ class UpdateValuesOperation:
         tokens = _tokens(response.body)
         category = _error_class(response.status, tokens)
         kind = _status_kind(response.status, tokens)
+        if response.status not in _DEFINITE_REFUSAL_STATUSES:
+            # The write is repeat-safe, so an unknown outcome is written again.
+            return MutationAttempt.retry(
+                _failure(
+                    operation, kind, "provider did not confirm the write; the same values are written again"
+                ),
+                _retry_after(response, self.client.now()),
+            )
         if category == "retry":
             return MutationAttempt.retry(
                 _failure(operation, kind, "provider temporarily rejected the write"),
@@ -729,8 +785,136 @@ class UpdateValuesOperation:
         )
 
 
+def _is_definite_append_refusal(response: GraphResponse) -> bool:
+    """Report a refusal status whose body carries no appended table row.
+
+    An empty body, including an oversized one the client drops, proves nothing.
+    """
+    if response.status not in _DEFINITE_REFUSAL_STATUSES or not response.body:
+        return False
+    try:
+        document: Any = json.loads(response.body)
+    except (ValueError, UnicodeError):
+        return True
+    index = document.get("index") if isinstance(document, dict) else None
+    return not isinstance(index, int) or isinstance(index, bool)
+
+
+@dataclass(slots=True)
+class _AppendAttempt:
+    """Single-dispatch state of one appendTableRows attempt."""
+
+    fence: Fence | None
+    decision_kind: DecisionKind | None
+    # A refusal or local failure cannot prove nothing was appended.
+    has_possible_earlier_send: bool
+    # The send cap is reached, or an older release's marker forbids a resend.
+    is_send_forbidden: bool
+
+    @staticmethod
+    async def decide(call: Call) -> _AppendAttempt | MutationAttempt[AppendTableRowsOutput]:
+        """Decide before any credential lookup whether this attempt may send."""
+        if _has_legacy_dispatch_marker(call):
+            return _AppendAttempt(None, None, True, True)
+        try:
+            fence = Fence(
+                call,
+                APPEND_TABLE_ROWS_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
+            )
+        except ValueError:
+            return MutationAttempt.branch_result(
+                "defect",
+                AppendTableRowsOutput(),
+                Receipt(),
+                _failure(
+                    "appendTableRows",
+                    FailureKind.LOCAL_DEFECT,
+                    "append dispatch fence could not be constructed",
+                ),
+            )
+        decision = await fence.decide()
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                _failure(
+                    "appendTableRows",
+                    FailureKind.AVAILABILITY,
+                    "the append dispatch checkpoint is unreadable; nothing was sent in this attempt",
+                )
+            )
+        return _AppendAttempt(
+            fence,
+            decision.kind,
+            decision.prior_send_upper_bound > 0,
+            decision.kind == DecisionKind.READ_BACK_REQUIRED,
+        )
+
+    def local_failure(
+        self, branch: str, failure: Failure, receipt: Receipt
+    ) -> MutationAttempt[AppendTableRowsOutput]:
+        """Select branch only when no earlier send may have appended rows."""
+        if self.has_possible_earlier_send:
+            return MutationAttempt.uncertain(
+                AppendTableRowsOutput(),
+                Failure(
+                    failure.kind,
+                    failure.provider,
+                    failure.operation,
+                    failure.message + "; an earlier attempt may have appended the rows",
+                ),
+                receipt,
+            )
+        return MutationAttempt.branch_result(branch, AppendTableRowsOutput(), receipt, failure)
+
+    async def read_failure(
+        self, outcome: tuple[str, Failure | None, float, Receipt]
+    ) -> MutationAttempt[AppendTableRowsOutput]:
+        """Keep a pre-send read Retry countable and guard a terminal read after a possible send."""
+        branch, failure, delay, receipt = outcome
+        assert failure is not None
+        if branch == "retry":
+            await self.record_not_sent()
+            return MutationAttempt.retry(failure, delay)
+        return self.local_failure(branch, failure, receipt)
+
+    async def record_not_sent(self) -> None:
+        """Keep the send count of a first-send attempt that retries before sending.
+
+        After a possible earlier send it records nothing, so the next attempt keeps counting that send.
+        """
+        if (
+            self.fence is not None
+            and self.decision_kind == DecisionKind.SEND_ALLOWED
+            and not self.has_possible_earlier_send
+        ):
+            try:
+                await self.fence.record_not_sent()
+            except Exception:
+                pass  # A lost notSent only overcounts sends, so the cap still holds.
+
+    async def record_can_resend(self) -> None:
+        """Record that Microsoft did not apply this attempt's append."""
+        if self.fence is not None:
+            try:
+                await self.fence.record_can_resend()
+            except Exception:
+                pass  # A lost canResend counts this send, so the cap still holds.
+
+
+def _has_legacy_dispatch_marker(call: Call) -> bool:
+    """Report an older release's marker; such an attempt kept no send count, so it is never resent."""
+    context = call.context
+    try:
+        if context is None or not context.has_last_heartbeat_value():
+            return False
+        marker = context.get_last_heartbeat_value(_DispatchMarker)
+    except Exception:
+        return False
+    return marker is not None and marker.dispatched_call_id == str(call.id)
+
+
 class AppendTableRowsOperation:
-    """Append missing table rows once per Dex Step execution."""
+    """Append missing table rows while possible sends stay below the send cap."""
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -773,43 +957,43 @@ class AppendTableRowsOperation:
             return MutationAttempt.branch_result(
                 "defect", zero, Receipt(), _failure(operation, FailureKind.VALIDATION, str(error))
             )
+        attempt = await _AppendAttempt.decide(call)
+        if isinstance(attempt, MutationAttempt):
+            return attempt
         try:
             credential = await self.client.resolve_credentials(call)
-        except Exception:
-            return MutationAttempt.branch_result(
-                "defect",
-                zero,
-                Receipt(),
-                _failure(operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
-            )
+        except Exception as error:
+            credential_failure, is_retryable = _write_credential_failure(operation, error)
+            if is_retryable:
+                await attempt.record_not_sent()
+                return MutationAttempt.retry(credential_failure)
+            return attempt.local_failure("defect", credential_failure, Receipt())
         columns, outcome = await _columns(self.client, call, credential, operation, input, "invalidResponse")
         if outcome is not None:
-            return _mutation_outcome(outcome, zero)
+            return await attempt.read_failure(outcome)
         assert columns is not None
         column_by_name = dict(columns)
         if input.key_column not in column_by_name or any(
             name not in column_by_name for row in rows_input for name in row
         ):
-            return MutationAttempt.branch_result(
+            return attempt.local_failure(
                 "columnsMismatch",
-                zero,
-                Receipt(),
                 _failure(
                     operation,
                     FailureKind.VALIDATION,
                     "the table has no column with the key column's name or with a name a row uses",
                 ),
+                Receipt(),
             )
         if len(rows_input) * len(columns) > self.client.config.max_cells:
-            return MutationAttempt.branch_result(
+            return attempt.local_failure(
                 "defect",
-                zero,
-                Receipt(),
                 _failure(
                     operation,
                     FailureKind.VALIDATION,
                     "rows times table columns exceed the configured cell limit",
                 ),
+                Receipt(),
             )
         key_url = (
             table_url(input.drive_id, input.workbook_id, input.table)
@@ -822,7 +1006,7 @@ class AppendTableRowsOperation:
             self.client, call, credential, operation, "GET", key_url, oversized_branch="invalidResponse"
         )
         if outcome is not None:
-            return _mutation_outcome(outcome, zero)
+            return await attempt.read_failure(outcome)
         assert response is not None
         receipt = _receipt(self.client, call, response)
         try:
@@ -830,15 +1014,14 @@ class AppendTableRowsOperation:
             if count != 1:
                 raise ValueError("key column width differs")
         except (ValueError, LookupError):
-            return MutationAttempt.branch_result(
+            return attempt.local_failure(
                 "invalidResponse",
-                zero,
-                receipt,
                 _failure(
                     operation,
                     FailureKind.PROTOCOL,
                     "provider returned an invalid key column response before the append was sent",
                 ),
+                receipt,
             )
         stored = [row[0] for row in values]
         present, missing, indexes = [], [], []
@@ -848,18 +1031,11 @@ class AppendTableRowsOperation:
             else:
                 missing.append(key)
                 indexes.append(index)
-        context = call.context
-        try:
-            has_prior = bool(
-                context.get_last_heartbeat_value(_DispatchMarker)
-                if context and context.has_last_heartbeat_value()
-                else None
-            )
-        except Exception:
-            has_prior = True  # An unreadable checkpoint still prevents a repeated append.
         if not missing:
             return MutationAttempt.branch_result(
-                "appended", AppendTableRowsOutput((), tuple(present), has_prior), receipt
+                "appended",
+                AppendTableRowsOutput((), tuple(present), attempt.has_possible_earlier_send),
+                receipt,
             )
         body = compact_json(
             {
@@ -868,57 +1044,68 @@ class AppendTableRowsOperation:
                 ]
             }
         )
-        if has_prior:
+        if attempt.is_send_forbidden or attempt.fence is None:
             return MutationAttempt.uncertain(
                 AppendTableRowsOutput((), tuple(present)),
                 _failure(
                     operation,
                     FailureKind.TRANSPORT,
-                    "an earlier attempt of this Step sent the append, "
-                    "and the key column does not show every row yet",
+                    "the append reached the send cap, and the key column does not show every row yet",
                 ),
                 receipt,
             )
-        if context is None:
-            return MutationAttempt.retry(
-                _failure(
-                    operation,
-                    FailureKind.AVAILABILITY,
-                    "Dex did not record the dispatch checkpoint; nothing was sent",
+        append_url = table_url(input.drive_id, input.workbook_id, input.table) + "/rows/add"
+        observed_statuses: list[int] = []
+        try:
+            appended = await attempt.fence.dispatch(
+                lambda _: self.client.request(
+                    call, credential, "POST", append_url, body, observed_statuses=observed_statuses
                 )
             )
-        try:
-            await context.heartbeat(_DispatchMarker(str(call.id)))
-        except Exception:
-            return MutationAttempt.retry(
-                _failure(
-                    operation,
-                    FailureKind.AVAILABILITY,
-                    "Dex did not record the dispatch checkpoint; nothing was sent",
-                )
-            )
-        try:
-            appended = await self.client.request(
-                call,
-                credential,
-                "POST",
-                table_url(input.drive_id, input.workbook_id, input.table) + "/rows/add",
-                body,
-            )
-        except GraphTransportError as error:
-            if not error.is_request_built:
-                await context.heartbeat()
+        except TimeoutError:
+            if any(200 <= status < 300 for status in observed_statuses):
+                # The write window cut the body after a 2xx, which proves the append, so it is never resent.
                 return MutationAttempt.branch_result(
-                    "defect", zero, Receipt(), _failure(operation, FailureKind.LOCAL_DEFECT, str(error))
+                    "appended",
+                    AppendTableRowsOutput(tuple(missing), tuple(present)),
+                    _receipt(self.client, call),
                 )
             return MutationAttempt.retry(
                 _failure(
                     operation,
                     FailureKind.TRANSPORT,
-                    "append outcome is unknown; the next attempt checks the key column "
-                    "instead of sending again",
+                    "append outcome is unknown; the next attempt checks the key column before any resend",
                 ),
-                10,
+                _UNKNOWN_APPEND_RETRY_DELAY_SECONDS,
+            )
+        except GraphTransportError as error:
+            if not error.is_request_built:
+                await attempt.record_can_resend()
+                return attempt.local_failure(
+                    "defect", _failure(operation, FailureKind.LOCAL_DEFECT, str(error)), Receipt()
+                )
+            if 200 <= error.status < 300:
+                # A 2xx status proves the append, even when its body then breaks, so it is never resent.
+                return MutationAttempt.branch_result(
+                    "appended",
+                    AppendTableRowsOutput(tuple(missing), tuple(present)),
+                    _receipt(self.client, call),
+                )
+            return MutationAttempt.retry(
+                _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "append outcome is unknown; the next attempt checks the key column before any resend",
+                ),
+                _UNKNOWN_APPEND_RETRY_DELAY_SECONDS,
+            )
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            return MutationAttempt.retry(
+                _failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "Dex did not record the dispatch checkpoint; nothing was sent",
+                )
             )
         append_receipt = _receipt(self.client, call, appended)
         if 200 <= appended.status < 300:
@@ -927,25 +1114,38 @@ class AppendTableRowsOperation:
             )
         tokens = _tokens(appended.body)
         kind = _status_kind(appended.status, tokens)
-        if appended.status == 408 or not (400 <= appended.status < 500 or appended.status in (501, 503)):
+        if appended.status in (429, 503):
+            await attempt.record_can_resend()
+            return MutationAttempt.retry(
+                _failure(operation, kind, "provider temporarily refused the append; nothing was written"),
+                _retry_after(appended, self.client.now()),
+            )
+        if not _is_definite_append_refusal(appended):
             return MutationAttempt.retry(
                 _failure(
                     operation,
                     kind,
-                    "append outcome is unknown; the next attempt checks the key column "
-                    "instead of sending again",
+                    "append outcome is unknown; the next attempt checks the key column before any resend",
                 ),
-                10,
+                _UNKNOWN_APPEND_RETRY_DELAY_SECONDS,
             )
-        try:
-            await context.heartbeat()
-        except Exception:
-            pass  # A failed clear leaves the marker, so the next attempt does not send again.
+        await attempt.record_can_resend()
         category = _error_class(appended.status, tokens)
         if category == "retry":
             return MutationAttempt.retry(
                 _failure(operation, kind, "provider temporarily refused the append; nothing was written"),
                 _retry_after(appended, self.client.now()),
+            )
+        if attempt.has_possible_earlier_send:
+            return MutationAttempt.uncertain(
+                AppendTableRowsOutput((), tuple(present)),
+                _failure(
+                    operation,
+                    kind,
+                    "provider refused the append after an earlier unconfirmed send, "
+                    "and the key column does not show every row",
+                ),
+                append_receipt,
             )
         if category == "notFound":
             return MutationAttempt.branch_result(

@@ -53,7 +53,7 @@ export interface CreateDocumentStepConfig<StepInput, OperationInput = CreateDocu
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Google returned an invalid or oversized duplicate-lookup response before the creation was sent. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** A creation may have been sent but its outcome cannot be confirmed, so the document may exist; the connector sends nothing after selecting this branch. */
+  /** A creation may have been sent and cannot be confirmed: the duplicate lookup found nothing when the send cap was reached, including after Google accepted it with an unusable response that carries no file ID, Google refused a resend, or the connection needed reauthorization after a possible send; the document may exist, and the connector sends nothing after selecting this branch. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -92,11 +92,14 @@ export interface ReplaceDocumentTextStepConfig<StepInput, OperationInput = Repla
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the replaceDocumentText Step from a named connection. */
 export function newReplaceDocumentTextStep<StepInput, OperationInput = ReplaceDocumentTextInput, OperationOutput = ReplaceDocumentTextOutput>(configuration: ReplaceDocumentTextStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, replaced, placeholderNotFound, revisionChanged, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, replaced, placeholderNotFound, revisionChanged, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.replaceDocumentText(), connection: connection.reference, branches: [
     goToBranch("replaced", replaced),
@@ -127,11 +130,14 @@ export interface AppendTextStepConfig<StepInput, OperationInput = AppendTextInpu
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the appendText Step from a named connection. */
 export function newAppendTextStep<StepInput, OperationInput = AppendTextInput, OperationOutput = AppendTextOutput>(configuration: AppendTextStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, appended, revisionChanged, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, appended, revisionChanged, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.appendText(), connection: connection.reference, branches: [
     goToBranch("appended", appended),

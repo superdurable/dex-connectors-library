@@ -4,66 +4,132 @@
 
 /** Validated authorization declaration for manifest-backed token renewal. */
 export const Authorization = {
-  "fields": [
+  "defaultMethod": "github-oauth",
+  "methods": [
     {
-      "name": "oauth_client_id",
-      "required": true,
-      "type": "string"
+      "fields": [
+        {
+          "name": "oauth_client_id",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "oauth_client_secret",
+          "required": true,
+          "type": "secretString"
+        },
+        {
+          "name": "access_token",
+          "required": true,
+          "type": "secretString"
+        },
+        {
+          "name": "refresh_token",
+          "required": false,
+          "type": "secretString"
+        }
+      ],
+      "id": "github-oauth",
+      "oauth2": {
+        "clientIDCredential": "oauth_client_id",
+        "clientSecretCredential": "oauth_client_secret",
+        "credentialMappings": [
+          {
+            "credential": "access_token",
+            "source": "access_token"
+          },
+          {
+            "credential": "refresh_token",
+            "source": "refresh_token"
+          }
+        ],
+        "refresh": {
+          "exactScopes": true,
+          "missingExpiry": "reject",
+          "requiredScopes": [
+            "read:user",
+            "user:email"
+          ],
+          "scopeSeparators": "whitespaceAndComma",
+          "terminalErrorCodes": [
+            "bad_refresh_token",
+            "incorrect_client_credentials",
+            "invalid_client",
+            "invalid_grant"
+          ],
+          "tokenExchangeTimeout": "15s"
+        },
+        "scopes": [
+          "read:user",
+          "user:email",
+          "offline_access"
+        ],
+        "tokenEndpoint": "https://github.com/login/oauth/access_token"
+      },
+      "type": "oauth2"
     },
     {
-      "name": "oauth_client_secret",
-      "required": true,
-      "type": "secretString"
-    },
-    {
-      "name": "access_token",
-      "required": true,
-      "type": "secretString"
-    },
-    {
-      "name": "refresh_token",
-      "required": false,
-      "type": "secretString"
+      "fields": [
+        {
+          "name": "oauth_client_id",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "oauth_client_secret",
+          "required": true,
+          "type": "secretString"
+        },
+        {
+          "name": "access_token",
+          "required": true,
+          "type": "secretString"
+        },
+        {
+          "name": "refresh_token",
+          "required": false,
+          "type": "secretString"
+        }
+      ],
+      "id": "github-oauth-repository",
+      "oauth2": {
+        "clientIDCredential": "oauth_client_id",
+        "clientSecretCredential": "oauth_client_secret",
+        "credentialMappings": [
+          {
+            "credential": "access_token",
+            "source": "access_token"
+          },
+          {
+            "credential": "refresh_token",
+            "source": "refresh_token"
+          }
+        ],
+        "refresh": {
+          "exactScopes": true,
+          "missingExpiry": "reject",
+          "requiredScopes": [
+            "repo"
+          ],
+          "scopeSeparators": "whitespaceAndComma",
+          "terminalErrorCodes": [
+            "bad_refresh_token",
+            "incorrect_client_credentials",
+            "invalid_client",
+            "invalid_grant"
+          ],
+          "tokenExchangeTimeout": "15s"
+        },
+        "scopes": [
+          "repo",
+          "offline_access"
+        ],
+        "tokenEndpoint": "https://github.com/login/oauth/access_token"
+      },
+      "type": "oauth2"
     }
   ],
-  "oauth2": {
-    "clientIDCredential": "oauth_client_id",
-    "clientSecretCredential": "oauth_client_secret",
-    "credentialMappings": [
-      {
-        "credential": "access_token",
-        "source": "access_token"
-      },
-      {
-        "credential": "refresh_token",
-        "source": "refresh_token"
-      }
-    ],
-    "refresh": {
-      "exactScopes": true,
-      "missingExpiry": "reject",
-      "requiredScopes": [
-        "read:user",
-        "user:email"
-      ],
-      "scopeSeparators": "whitespaceAndComma",
-      "terminalErrorCodes": [
-        "bad_refresh_token",
-        "incorrect_client_credentials",
-        "invalid_client",
-        "invalid_grant"
-      ],
-      "tokenExchangeTimeout": "15s"
-    },
-    "scopes": [
-      "read:user",
-      "user:email",
-      "offline_access"
-    ],
-    "tokenEndpoint": "https://github.com/login/oauth/access_token"
-  },
-  "refreshable": true,
-  "type": "oauth2"
+  "refreshable": true
 };
 
 /** Stored credential names mapped to runtime credential properties. */

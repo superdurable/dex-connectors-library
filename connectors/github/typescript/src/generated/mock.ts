@@ -2,11 +2,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, Repository, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequest, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFile, PullRequestFilePage, ListReleasesInput, Release, ReleasePage, ListCommitsInput, CommitSummary, CommitPage } from './models.js';
-import { GetAuthenticatedProfileInputSchema, AuthenticatedProfileSchema, ListPublicRepositoriesInputSchema, RepositorySchema, PublicRepositoriesSchema, ListMergedPullRequestsInputSchema, MergedPullRequestSchema, MergedPullRequestPageSchema, ListPullRequestFilesInputSchema, PullRequestFileSchema, PullRequestFilePageSchema, ListReleasesInputSchema, ReleaseSchema, ReleasePageSchema, ListCommitsInputSchema, CommitSummarySchema, CommitPageSchema } from './models.js';
-import { ProviderID, ConnectorID, GetAuthenticatedProfileDefinition, ListPublicRepositoriesDefinition, ListMergedPullRequestsDefinition, ListPullRequestFilesDefinition, ListReleasesDefinition, ListCommitsDefinition } from './definitions.js';
+import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, Repository, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequest, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFile, PullRequestFilePage, ListReleasesInput, Release, ReleasePage, ListCommitsInput, CommitSummary, CommitPage, ListIssuesInput, Issue, IssuePage, CreateIssueInput, CreatedIssue, SetIssueStateInput, UpdatedIssueState, ReplaceIssueLabelsInput, ReplacedIssueLabels, CreateIssueCommentInput, CreatedIssueComment } from './models.js';
+import { GetAuthenticatedProfileInputSchema, AuthenticatedProfileSchema, ListPublicRepositoriesInputSchema, RepositorySchema, PublicRepositoriesSchema, ListMergedPullRequestsInputSchema, MergedPullRequestSchema, MergedPullRequestPageSchema, ListPullRequestFilesInputSchema, PullRequestFileSchema, PullRequestFilePageSchema, ListReleasesInputSchema, ReleaseSchema, ReleasePageSchema, ListCommitsInputSchema, CommitSummarySchema, CommitPageSchema, ListIssuesInputSchema, IssueSchema, IssuePageSchema, CreateIssueInputSchema, CreatedIssueSchema, SetIssueStateInputSchema, UpdatedIssueStateSchema, ReplaceIssueLabelsInputSchema, ReplacedIssueLabelsSchema, CreateIssueCommentInputSchema, CreatedIssueCommentSchema } from './models.js';
+import { ProviderID, ConnectorID, GetAuthenticatedProfileDefinition, ListPublicRepositoriesDefinition, ListMergedPullRequestsDefinition, ListPullRequestFilesDefinition, ListReleasesDefinition, ListCommitsDefinition, ListIssuesDefinition, CreateIssueDefinition, SetIssueStateDefinition, ReplaceIssueLabelsDefinition, CreateIssueCommentDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for GetAuthenticatedProfileInput in scripted cases. */
@@ -121,6 +121,73 @@ export const emptyCommitSummary: CommitSummary = CommitSummarySchema.parse({
 export const emptyCommitPage: CommitPage = CommitPageSchema.parse({
   "commits": [],
   "nextPage": 0,
+});
+/** Go zero value for ListIssuesInput in scripted cases. */
+export const emptyListIssuesInput: ListIssuesInput = ListIssuesInputSchema.parse({
+  "owner": '',
+  "repository": '',
+});
+/** Go zero value for Issue in scripted cases. */
+export const emptyIssue: Issue = IssueSchema.parse({
+  "number": 0,
+  "nodeId": '',
+  "title": '',
+  "bodyTruncated": false,
+  "state": '',
+  "comments": 0,
+  "createdAt": '0001-01-01T00:00:00Z',
+  "updatedAt": '0001-01-01T00:00:00Z',
+});
+/** Go zero value for IssuePage in scripted cases. */
+export const emptyIssuePage: IssuePage = IssuePageSchema.parse({
+  "issues": [],
+  "nextPage": 0,
+});
+/** Go zero value for CreateIssueInput in scripted cases. */
+export const emptyCreateIssueInput: CreateIssueInput = CreateIssueInputSchema.parse({
+  "owner": '',
+  "repository": '',
+  "title": '',
+});
+/** Go zero value for CreatedIssue in scripted cases. */
+export const emptyCreatedIssue: CreatedIssue = CreatedIssueSchema.parse({
+  "owner": '',
+  "repository": '',
+  "title": '',
+});
+/** Go zero value for SetIssueStateInput in scripted cases. */
+export const emptySetIssueStateInput: SetIssueStateInput = SetIssueStateInputSchema.parse({
+  "owner": '',
+  "repository": '',
+  "issueNumber": 0,
+  "state": '',
+});
+/** Go zero value for UpdatedIssueState in scripted cases. */
+export const emptyUpdatedIssueState: UpdatedIssueState = UpdatedIssueStateSchema.parse({
+  "number": 0,
+});
+/** Go zero value for ReplaceIssueLabelsInput in scripted cases. */
+export const emptyReplaceIssueLabelsInput: ReplaceIssueLabelsInput = ReplaceIssueLabelsInputSchema.parse({
+  "owner": '',
+  "repository": '',
+  "issueNumber": 0,
+  "labels": [],
+});
+/** Go zero value for ReplacedIssueLabels in scripted cases. */
+export const emptyReplacedIssueLabels: ReplacedIssueLabels = ReplacedIssueLabelsSchema.parse({
+  "number": 0,
+  "labels": [],
+});
+/** Go zero value for CreateIssueCommentInput in scripted cases. */
+export const emptyCreateIssueCommentInput: CreateIssueCommentInput = CreateIssueCommentInputSchema.parse({
+  "owner": '',
+  "repository": '',
+  "issueNumber": 0,
+  "body": '',
+});
+/** Go zero value for CreatedIssueComment in scripted cases. */
+export const emptyCreatedIssueComment: CreatedIssueComment = CreatedIssueCommentSchema.parse({
+  "issueNumber": 0,
 });
 
 /** Script the profileLoaded branch. */
@@ -503,6 +570,311 @@ export function listCommitsDefectFailure(): Case<CommitPage> {
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "listCommits", message: "Local input, connection configuration, or connector definition is invalid." });
 }
 
+/** Script the listed branch. */
+export function listIssuesListed(value: IssuePage, failure?: Failure): Case<IssuePage> { return branchCase("listed", value, failure); }
+/** Script the insufficientScope branch. */
+export function listIssuesInsufficientScope(value: IssuePage, failure?: Failure): Case<IssuePage> { return branchCase("insufficientScope", value, failure); }
+/** Script the authorizationRevoked branch. */
+export function listIssuesAuthorizationRevoked(value: IssuePage, failure?: Failure): Case<IssuePage> { return branchCase("authorizationRevoked", value, failure); }
+/** Script the notFound branch. */
+export function listIssuesNotFound(value: IssuePage, failure?: Failure): Case<IssuePage> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function listIssuesProviderRejected(value: IssuePage, failure?: Failure): Case<IssuePage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listIssuesInvalidResponse(value: IssuePage, failure?: Failure): Case<IssuePage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listIssuesDefect(value: IssuePage, failure?: Failure): Case<IssuePage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listIssues. */
+export function listIssuesRetry(failure: Failure, retryAfterMs = 0): Case<IssuePage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario threePagesNewestFirst for listIssues. */
+export function listIssuesThreePagesNewestFirst(): Case<IssuePage> {
+  const value = emptyIssuePage;
+  return branchCase("listed", value);
+}
+/** Default listIssues scenario. */
+export function listIssuesDefault(): Case<IssuePage> { return listIssuesThreePagesNewestFirst(); }
+/** Manifest scenario noIssues for listIssues. */
+export function listIssuesNoIssues(): Case<IssuePage> {
+  const value = IssuePageSchema.parse({"issues":[],"nextPage":0});
+  return branchCase("listed", value);
+}
+/** Manifest scenario rateLimited for listIssues. */
+export function listIssuesRateLimited(): Case<IssuePage> {
+  return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "listIssues", message: "GitHub rate limit was reached." }, 1000);
+}
+/** Manifest scenario insufficientScopeFailure for listIssues. */
+export function listIssuesInsufficientScopeFailure(): Case<IssuePage> {
+  const value = emptyIssuePage;
+  return branchCase("insufficientScope", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "listIssues", message: "The OAuth grant does not match the scopes of the connection's authorization method." });
+}
+/** Manifest scenario authorizationRevokedFailure for listIssues. */
+export function listIssuesAuthorizationRevokedFailure(): Case<IssuePage> {
+  const value = emptyIssuePage;
+  return branchCase("authorizationRevoked", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "listIssues", message: "The OAuth grant is invalid or revoked." });
+}
+/** Manifest scenario notFoundFailure for listIssues. */
+export function listIssuesNotFoundFailure(): Case<IssuePage> {
+  const value = emptyIssuePage;
+  return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "listIssues", message: "The repository was not found or the connection cannot read it." });
+}
+/** Manifest scenario providerRejectedFailure for listIssues. */
+export function listIssuesProviderRejectedFailure(): Case<IssuePage> {
+  const value = emptyIssuePage;
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "listIssues", message: "GitHub conclusively rejected the issue query." });
+}
+/** Manifest scenario invalidResponseFailure for listIssues. */
+export function listIssuesInvalidResponseFailure(): Case<IssuePage> {
+  const value = emptyIssuePage;
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "listIssues", message: "GitHub returned an invalid or oversized issue response." });
+}
+/** Manifest scenario defectFailure for listIssues. */
+export function listIssuesDefectFailure(): Case<IssuePage> {
+  const value = emptyIssuePage;
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "listIssues", message: "Local input, connection configuration, or connector definition is invalid." });
+}
+
+/** Script the created branch. */
+export function createIssueCreated(value: CreatedIssue, failure?: Failure): Case<CreatedIssue> { return branchCase("created", value, failure); }
+/** Script the insufficientScope branch. */
+export function createIssueInsufficientScope(value: CreatedIssue, failure?: Failure): Case<CreatedIssue> { return branchCase("insufficientScope", value, failure); }
+/** Script the authorizationRevoked branch. */
+export function createIssueAuthorizationRevoked(value: CreatedIssue, failure?: Failure): Case<CreatedIssue> { return branchCase("authorizationRevoked", value, failure); }
+/** Script the notFound branch. */
+export function createIssueNotFound(value: CreatedIssue, failure?: Failure): Case<CreatedIssue> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function createIssueProviderRejected(value: CreatedIssue, failure?: Failure): Case<CreatedIssue> { return branchCase("providerRejected", value, failure); }
+/** Script the defect branch. */
+export function createIssueDefect(value: CreatedIssue, failure?: Failure): Case<CreatedIssue> { return branchCase("defect", value, failure); }
+/** Script a safe retry of createIssue. */
+export function createIssueRetry(failure: Failure, retryAfterMs = 0): Case<CreatedIssue> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain createIssue attempt. */
+export function createIssueUncertain(value: CreatedIssue, failure: Failure): Case<CreatedIssue> { return uncertainCase(value, failure); }
+/** Manifest scenario bugReportCreated for createIssue. */
+export function createIssueBugReportCreated(): Case<CreatedIssue> {
+  const value = CreatedIssueSchema.parse({"assignees":["octocat"],"createdAt":"2026-03-07T10:15:00Z","id":2876543210,"labels":["bug"],"nodeId":"I_kwDOAbCdEs6rdmCq","number":42,"owner":"octocat","repository":"hello-world","state":"open","title":"Crash when saving an empty draft","url":"https://github.com/octocat/hello-world/issues/42"});
+  return branchCase("created", value);
+}
+/** Default createIssue scenario. */
+export function createIssueDefault(): Case<CreatedIssue> { return createIssueBugReportCreated(); }
+/** Manifest scenario rateLimited for createIssue. */
+export function createIssueRateLimited(): Case<CreatedIssue> {
+  return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "createIssue", message: "GitHub rate limit was reached." }, 1000);
+}
+/** Manifest scenario insufficientScopeFailure for createIssue. */
+export function createIssueInsufficientScopeFailure(): Case<CreatedIssue> {
+  const value = CreatedIssueSchema.parse({"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"});
+  return branchCase("insufficientScope", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "createIssue", message: "The connection does not use the github-oauth-repository method." });
+}
+/** Manifest scenario authorizationRevokedFailure for createIssue. */
+export function createIssueAuthorizationRevokedFailure(): Case<CreatedIssue> {
+  const value = CreatedIssueSchema.parse({"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"});
+  return branchCase("authorizationRevoked", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "createIssue", message: "The OAuth grant is invalid or revoked." });
+}
+/** Manifest scenario notFoundFailure for createIssue. */
+export function createIssueNotFoundFailure(): Case<CreatedIssue> {
+  const value = CreatedIssueSchema.parse({"owner":"octocat","repository":"missing-repository","title":"Crash when saving an empty draft"});
+  return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "createIssue", message: "The repository was not found or the connection cannot reach it." });
+}
+/** Manifest scenario issuesDisabledRejection for createIssue. */
+export function createIssueIssuesDisabledRejection(): Case<CreatedIssue> {
+  const value = CreatedIssueSchema.parse({"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"});
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "createIssue", message: "GitHub rejected the issue with HTTP 410." });
+}
+/** Manifest scenario createOutcomeUnknown for createIssue. */
+export function createIssueCreateOutcomeUnknown(): Case<CreatedIssue> {
+  const value = CreatedIssueSchema.parse({"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"});
+  return uncertainCase(value, { kind: "AVAILABILITY", provider: ConnectorID, operation: "createIssue", message: "GitHub issue creation outcome is unknown." });
+}
+/** Manifest scenario defectFailure for createIssue. */
+export function createIssueDefectFailure(): Case<CreatedIssue> {
+  const value = CreatedIssueSchema.parse({"owner":"octocat","repository":"hello-world","title":""});
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "createIssue", message: "GitHub issue title is required." });
+}
+
+/** Script the updated branch. */
+export function setIssueStateUpdated(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("updated", value, failure); }
+/** Script the insufficientScope branch. */
+export function setIssueStateInsufficientScope(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("insufficientScope", value, failure); }
+/** Script the authorizationRevoked branch. */
+export function setIssueStateAuthorizationRevoked(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("authorizationRevoked", value, failure); }
+/** Script the notFound branch. */
+export function setIssueStateNotFound(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function setIssueStateProviderRejected(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function setIssueStateInvalidResponse(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function setIssueStateDefect(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("defect", value, failure); }
+/** Script a safe retry of setIssueState. */
+export function setIssueStateRetry(failure: Failure, retryAfterMs = 0): Case<UpdatedIssueState> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario closedCompleted for setIssueState. */
+export function setIssueStateClosedCompleted(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42,"state":"closed","stateReason":"completed","updatedAt":"2026-03-08T09:30:00Z","url":"https://github.com/octocat/hello-world/issues/42"});
+  return branchCase("updated", value);
+}
+/** Default setIssueState scenario. */
+export function setIssueStateDefault(): Case<UpdatedIssueState> { return setIssueStateClosedCompleted(); }
+/** Manifest scenario reopened for setIssueState. */
+export function setIssueStateReopened(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42,"state":"open","stateReason":"reopened","updatedAt":"2026-03-09T14:00:00Z","url":"https://github.com/octocat/hello-world/issues/42"});
+  return branchCase("updated", value);
+}
+/** Manifest scenario rateLimited for setIssueState. */
+export function setIssueStateRateLimited(): Case<UpdatedIssueState> {
+  return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "setIssueState", message: "GitHub rate limit was reached." }, 1000);
+}
+/** Manifest scenario insufficientScopeFailure for setIssueState. */
+export function setIssueStateInsufficientScopeFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("insufficientScope", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "setIssueState", message: "The connection does not use the github-oauth-repository method." });
+}
+/** Manifest scenario authorizationRevokedFailure for setIssueState. */
+export function setIssueStateAuthorizationRevokedFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("authorizationRevoked", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "setIssueState", message: "The OAuth grant is invalid or revoked." });
+}
+/** Manifest scenario notFoundFailure for setIssueState. */
+export function setIssueStateNotFoundFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":4242});
+  return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "setIssueState", message: "The repository or issue was not found or the connection cannot reach it." });
+}
+/** Manifest scenario issueDeletedRejection for setIssueState. */
+export function setIssueStateIssueDeletedRejection(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "setIssueState", message: "GitHub rejected the issue state update with HTTP 410." });
+}
+/** Manifest scenario invalidResponseFailure for setIssueState. */
+export function setIssueStateInvalidResponseFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "setIssueState", message: "GitHub returned an invalid issue." });
+}
+/** Manifest scenario defectFailure for setIssueState. */
+export function setIssueStateDefectFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "setIssueState", message: "GitHub issue state reason reopened requires state open." });
+}
+
+/** Script the replaced branch. */
+export function replaceIssueLabelsReplaced(value: ReplacedIssueLabels, failure?: Failure): Case<ReplacedIssueLabels> { return branchCase("replaced", value, failure); }
+/** Script the insufficientScope branch. */
+export function replaceIssueLabelsInsufficientScope(value: ReplacedIssueLabels, failure?: Failure): Case<ReplacedIssueLabels> { return branchCase("insufficientScope", value, failure); }
+/** Script the authorizationRevoked branch. */
+export function replaceIssueLabelsAuthorizationRevoked(value: ReplacedIssueLabels, failure?: Failure): Case<ReplacedIssueLabels> { return branchCase("authorizationRevoked", value, failure); }
+/** Script the notFound branch. */
+export function replaceIssueLabelsNotFound(value: ReplacedIssueLabels, failure?: Failure): Case<ReplacedIssueLabels> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function replaceIssueLabelsProviderRejected(value: ReplacedIssueLabels, failure?: Failure): Case<ReplacedIssueLabels> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function replaceIssueLabelsInvalidResponse(value: ReplacedIssueLabels, failure?: Failure): Case<ReplacedIssueLabels> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function replaceIssueLabelsDefect(value: ReplacedIssueLabels, failure?: Failure): Case<ReplacedIssueLabels> { return branchCase("defect", value, failure); }
+/** Script a safe retry of replaceIssueLabels. */
+export function replaceIssueLabelsRetry(failure: Failure, retryAfterMs = 0): Case<ReplacedIssueLabels> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario triagedLabels for replaceIssueLabels. */
+export function replaceIssueLabelsTriagedLabels(): Case<ReplacedIssueLabels> {
+  const value = ReplacedIssueLabelsSchema.parse({"labels":["bug","triaged"],"number":42,"url":"https://github.com/octocat/hello-world/issues/42"});
+  return branchCase("replaced", value);
+}
+/** Default replaceIssueLabels scenario. */
+export function replaceIssueLabelsDefault(): Case<ReplacedIssueLabels> { return replaceIssueLabelsTriagedLabels(); }
+/** Manifest scenario labelsCleared for replaceIssueLabels. */
+export function replaceIssueLabelsLabelsCleared(): Case<ReplacedIssueLabels> {
+  const value = ReplacedIssueLabelsSchema.parse({"labels":[],"number":42,"url":"https://github.com/octocat/hello-world/issues/42"});
+  return branchCase("replaced", value);
+}
+/** Manifest scenario rateLimited for replaceIssueLabels. */
+export function replaceIssueLabelsRateLimited(): Case<ReplacedIssueLabels> {
+  return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "replaceIssueLabels", message: "GitHub rate limit was reached." }, 1000);
+}
+/** Manifest scenario insufficientScopeFailure for replaceIssueLabels. */
+export function replaceIssueLabelsInsufficientScopeFailure(): Case<ReplacedIssueLabels> {
+  const value = ReplacedIssueLabelsSchema.parse({"labels":null,"number":42});
+  return branchCase("insufficientScope", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "replaceIssueLabels", message: "The connection does not use the github-oauth-repository method." });
+}
+/** Manifest scenario authorizationRevokedFailure for replaceIssueLabels. */
+export function replaceIssueLabelsAuthorizationRevokedFailure(): Case<ReplacedIssueLabels> {
+  const value = ReplacedIssueLabelsSchema.parse({"labels":null,"number":42});
+  return branchCase("authorizationRevoked", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "replaceIssueLabels", message: "The OAuth grant is invalid or revoked." });
+}
+/** Manifest scenario notFoundFailure for replaceIssueLabels. */
+export function replaceIssueLabelsNotFoundFailure(): Case<ReplacedIssueLabels> {
+  const value = ReplacedIssueLabelsSchema.parse({"labels":null,"number":4242});
+  return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "replaceIssueLabels", message: "The repository or issue was not found or the connection cannot reach it." });
+}
+/** Manifest scenario invalidLabelRejection for replaceIssueLabels. */
+export function replaceIssueLabelsInvalidLabelRejection(): Case<ReplacedIssueLabels> {
+  const value = ReplacedIssueLabelsSchema.parse({"labels":null,"number":42});
+  return branchCase("providerRejected", value, { kind: "VALIDATION", provider: ConnectorID, operation: "replaceIssueLabels", message: "GitHub rejected the issue labels with HTTP 422." });
+}
+/** Manifest scenario invalidResponseFailure for replaceIssueLabels. */
+export function replaceIssueLabelsInvalidResponseFailure(): Case<ReplacedIssueLabels> {
+  const value = ReplacedIssueLabelsSchema.parse({"labels":null,"number":42});
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "replaceIssueLabels", message: "GitHub returned an invalid label list." });
+}
+/** Manifest scenario defectFailure for replaceIssueLabels. */
+export function replaceIssueLabelsDefectFailure(): Case<ReplacedIssueLabels> {
+  const value = ReplacedIssueLabelsSchema.parse({"labels":null,"number":42});
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "replaceIssueLabels", message: "GitHub issue labels must be one line of 1 through 50 characters." });
+}
+
+/** Script the created branch. */
+export function createIssueCommentCreated(value: CreatedIssueComment, failure?: Failure): Case<CreatedIssueComment> { return branchCase("created", value, failure); }
+/** Script the insufficientScope branch. */
+export function createIssueCommentInsufficientScope(value: CreatedIssueComment, failure?: Failure): Case<CreatedIssueComment> { return branchCase("insufficientScope", value, failure); }
+/** Script the authorizationRevoked branch. */
+export function createIssueCommentAuthorizationRevoked(value: CreatedIssueComment, failure?: Failure): Case<CreatedIssueComment> { return branchCase("authorizationRevoked", value, failure); }
+/** Script the notFound branch. */
+export function createIssueCommentNotFound(value: CreatedIssueComment, failure?: Failure): Case<CreatedIssueComment> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function createIssueCommentProviderRejected(value: CreatedIssueComment, failure?: Failure): Case<CreatedIssueComment> { return branchCase("providerRejected", value, failure); }
+/** Script the defect branch. */
+export function createIssueCommentDefect(value: CreatedIssueComment, failure?: Failure): Case<CreatedIssueComment> { return branchCase("defect", value, failure); }
+/** Script a safe retry of createIssueComment. */
+export function createIssueCommentRetry(failure: Failure, retryAfterMs = 0): Case<CreatedIssueComment> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain createIssueComment attempt. */
+export function createIssueCommentUncertain(value: CreatedIssueComment, failure: Failure): Case<CreatedIssueComment> { return uncertainCase(value, failure); }
+/** Manifest scenario triageNoteCreated for createIssueComment. */
+export function createIssueCommentTriageNoteCreated(): Case<CreatedIssueComment> {
+  const value = CreatedIssueCommentSchema.parse({"commentId":1987654321,"createdAt":"2026-03-07T10:20:00Z","issueNumber":42,"url":"https://github.com/octocat/hello-world/issues/42#issuecomment-1987654321"});
+  return branchCase("created", value);
+}
+/** Default createIssueComment scenario. */
+export function createIssueCommentDefault(): Case<CreatedIssueComment> { return createIssueCommentTriageNoteCreated(); }
+/** Manifest scenario rateLimited for createIssueComment. */
+export function createIssueCommentRateLimited(): Case<CreatedIssueComment> {
+  return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "createIssueComment", message: "GitHub rate limit was reached." }, 1000);
+}
+/** Manifest scenario insufficientScopeFailure for createIssueComment. */
+export function createIssueCommentInsufficientScopeFailure(): Case<CreatedIssueComment> {
+  const value = CreatedIssueCommentSchema.parse({"issueNumber":42});
+  return branchCase("insufficientScope", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "createIssueComment", message: "The connection does not use the github-oauth-repository method." });
+}
+/** Manifest scenario authorizationRevokedFailure for createIssueComment. */
+export function createIssueCommentAuthorizationRevokedFailure(): Case<CreatedIssueComment> {
+  const value = CreatedIssueCommentSchema.parse({"issueNumber":42});
+  return branchCase("authorizationRevoked", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "createIssueComment", message: "The OAuth grant is invalid or revoked." });
+}
+/** Manifest scenario notFoundFailure for createIssueComment. */
+export function createIssueCommentNotFoundFailure(): Case<CreatedIssueComment> {
+  const value = CreatedIssueCommentSchema.parse({"issueNumber":4242});
+  return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "createIssueComment", message: "The repository or issue was not found or the connection cannot reach it." });
+}
+/** Manifest scenario issueDeletedRejection for createIssueComment. */
+export function createIssueCommentIssueDeletedRejection(): Case<CreatedIssueComment> {
+  const value = CreatedIssueCommentSchema.parse({"issueNumber":42});
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "createIssueComment", message: "GitHub rejected the comment with HTTP 410." });
+}
+/** Manifest scenario commentOutcomeUnknown for createIssueComment. */
+export function createIssueCommentCommentOutcomeUnknown(): Case<CreatedIssueComment> {
+  const value = CreatedIssueCommentSchema.parse({"issueNumber":42});
+  return uncertainCase(value, { kind: "AVAILABILITY", provider: ConnectorID, operation: "createIssueComment", message: "GitHub comment creation outcome is unknown." });
+}
+/** Manifest scenario defectFailure for createIssueComment. */
+export function createIssueCommentDefectFailure(): Case<CreatedIssueComment> {
+  const value = CreatedIssueCommentSchema.parse({"issueNumber":42});
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "createIssueComment", message: "GitHub comment body is required." });
+}
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getAuthenticatedProfile: MockQuery<GetAuthenticatedProfileInput, AuthenticatedProfile>;
@@ -511,6 +883,11 @@ export class GeneratedMock implements Operations {
   readonly #listPullRequestFiles: MockQuery<ListPullRequestFilesInput, PullRequestFilePage>;
   readonly #listReleases: MockQuery<ListReleasesInput, ReleasePage>;
   readonly #listCommits: MockQuery<ListCommitsInput, CommitPage>;
+  readonly #listIssues: MockQuery<ListIssuesInput, IssuePage>;
+  readonly #createIssue: MockMutation<CreateIssueInput, CreatedIssue>;
+  readonly #setIssueState: MockMutation<SetIssueStateInput, UpdatedIssueState>;
+  readonly #replaceIssueLabels: MockMutation<ReplaceIssueLabelsInput, ReplacedIssueLabels>;
+  readonly #createIssueComment: MockMutation<CreateIssueCommentInput, CreatedIssueComment>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
@@ -520,6 +897,11 @@ export class GeneratedMock implements Operations {
     this.#listPullRequestFiles = newQuery<ListPullRequestFilesInput, PullRequestFilePage>(ListPullRequestFilesDefinition).default(listPullRequestFilesDefault());
     this.#listReleases = newQuery<ListReleasesInput, ReleasePage>(ListReleasesDefinition).default(listReleasesDefault());
     this.#listCommits = newQuery<ListCommitsInput, CommitPage>(ListCommitsDefinition).default(listCommitsDefault());
+    this.#listIssues = newQuery<ListIssuesInput, IssuePage>(ListIssuesDefinition).default(listIssuesDefault());
+    this.#createIssue = newMutation<CreateIssueInput, CreatedIssue>(CreateIssueDefinition).default(createIssueDefault());
+    this.#setIssueState = newMutation<SetIssueStateInput, UpdatedIssueState>(SetIssueStateDefinition).default(setIssueStateDefault());
+    this.#replaceIssueLabels = newMutation<ReplaceIssueLabelsInput, ReplacedIssueLabels>(ReplaceIssueLabelsDefinition).default(replaceIssueLabelsDefault());
+    this.#createIssueComment = newMutation<CreateIssueCommentInput, CreatedIssueComment>(CreateIssueCommentDefinition).default(createIssueCommentDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
@@ -530,6 +912,11 @@ export class GeneratedMock implements Operations {
   listPullRequestFiles(): MockQuery<ListPullRequestFilesInput, PullRequestFilePage> { return this.#listPullRequestFiles; }
   listReleases(): MockQuery<ListReleasesInput, ReleasePage> { return this.#listReleases; }
   listCommits(): MockQuery<ListCommitsInput, CommitPage> { return this.#listCommits; }
+  listIssues(): MockQuery<ListIssuesInput, IssuePage> { return this.#listIssues; }
+  createIssue(): MockMutation<CreateIssueInput, CreatedIssue> { return this.#createIssue; }
+  setIssueState(): MockMutation<SetIssueStateInput, UpdatedIssueState> { return this.#setIssueState; }
+  replaceIssueLabels(): MockMutation<ReplaceIssueLabelsInput, ReplacedIssueLabels> { return this.#replaceIssueLabels; }
+  createIssueComment(): MockMutation<CreateIssueCommentInput, CreatedIssueComment> { return this.#createIssueComment; }
   assertNoFailures(): void {
     this.#getAuthenticatedProfile.assertNoFailures();
     this.#listPublicRepositories.assertNoFailures();
@@ -537,5 +924,10 @@ export class GeneratedMock implements Operations {
     this.#listPullRequestFiles.assertNoFailures();
     this.#listReleases.assertNoFailures();
     this.#listCommits.assertNoFailures();
+    this.#listIssues.assertNoFailures();
+    this.#createIssue.assertNoFailures();
+    this.#setIssueState.assertNoFailures();
+    this.#replaceIssueLabels.assertNoFailures();
+    this.#createIssueComment.assertNoFailures();
   }
 }

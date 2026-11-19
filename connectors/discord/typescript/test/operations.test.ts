@@ -5,7 +5,9 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { DiscordClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const call = { id: 'deb1de08-84b3-554e-91d5-e46e685d1f56', idempotencyKey: 'test-key',
   connection: { provider: 'discord', name: 'discord' }, operation: { connectorId: 'discord', operationId: 'addReaction' },
@@ -13,6 +15,33 @@ const call = { id: 'deb1de08-84b3-554e-91d5-e46e685d1f56', idempotencyKey: 'test
 const channelId = '100000000000000001';
 const messageId = '300000000000000001';
 const credential = { resolve: async () => ({ botToken: new SecretString('MTAxTESTbot.token-part.0123456789abcdef') }) };
+
+const listedMessage: Record<string, unknown> = {
+  id: messageId, channel_id: channelId, author: { id: '123456789012345678', username: 'dex-bot', bot: true },
+  content: 'Release', timestamp: '2026-10-13T20:00:00+00:00', type: 0,
+};
+
+it.each([
+  ...['id', 'channel_id', 'author', 'content', 'type', 'timestamp'].map(field => ({ name: `without ${field}`, message: Object.fromEntries(Object.entries(listedMessage).filter(([key]) => key !== field)) })),
+  { name: 'author without ID', message: { ...listedMessage, author: { username: 'dex-bot' } } },
+  { name: 'hour 24 timestamp', message: { ...listedMessage, timestamp: '2026-10-13T24:00:00+00:00' } },
+])('selects invalidResponse for a listed message $name', async ({ message }) => {
+  const client = new DiscordClient({}, credential, { send: async () => ({ status: 200, headers: {}, body: Buffer.from(JSON.stringify([message])) }) });
+  const listCall = { ...call, operation: { connectorId: 'discord', operationId: 'listChannelMessages' } } as Call;
+  expect(await client.listChannelMessages().invoke(listCall, { channelId, limit: 10 })).toMatchObject({ kind: 'branch', branch: 'invalidResponse' });
+});
+
+/** A first createMessage attempt whose single-dispatch fence starts without a checkpoint. */
+function createMessageCall(): Call {
+  let heartbeat: unknown;
+  const context = {
+    attempt: 1, runId: 'run', flowId: 'channel-announcement-flow', flowStartedAt: new Date('1970-01-01T00:00:01Z'),
+    deadline: new Date(Date.now() + 30_000), cancellationSignal: new AbortController().signal,
+    hasLastHeartbeatValue: () => heartbeat !== undefined, getLastHeartbeatValue: () => heartbeat,
+    recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+  };
+  return { ...call, operation: { connectorId: 'discord', operationId: 'createMessage' }, context } as unknown as Call;
+}
 
 it('treats revoked credentials as a terminal rejection without HTTP', async () => {
   let requestCount = 0;
@@ -23,6 +52,32 @@ it('treats revoked credentials as a terminal rejection without HTTP', async () =
   expect(result.kind).toBe('branch');
   if (result.kind === 'branch') { expect(result.branch).toBe('providerRejected'); expect(result.failure?.kind).toBe('AUTHENTICATION'); }
   expect(requestCount).toBe(0);
+});
+
+it.each([
+  { error: new ObjectNotFoundError(), branch: 'defect' },
+  { error: new ConnectionNotSelectedError(), branch: 'defect' },
+  { error: new CredentialBrokerRejectedError(), branch: 'defect' },
+  { error: new CredentialMaterialError('credential bot_token is required'), branch: 'defect' },
+  { error: new TypeError('project credential decoding failed'), branch: 'defect' },
+  { error: new CredentialBrokerUnavailableError(), branch: undefined },
+  { error: new Error('connection is not configured'), branch: undefined },
+  { error: new TypeError('fetch failed'), branch: undefined },
+])('retries a transient credential failure and keeps a terminal one: $error.name', async ({ error, branch }) => {
+  let requestCount = 0;
+  const client = new DiscordClient({}, { resolve: async () => { throw error; } }, {
+    send: async () => { requestCount++; throw new Error('unexpected request'); },
+  });
+  const result = await client.createMessage().invoke(createMessageCall(), { channelId, content: 'hello' });
+  if (branch) expect(result).toMatchObject({ kind: 'branch', branch });
+  else expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+  expect(requestCount).toBe(0);
+});
+
+it.each([[302, 'retry'], [425, 'retry'], [501, 'retry'], [200, 'uncertain'], [422, 'providerRejected']])('classifies a createMessage HTTP %i answer as %s', async (status, expected) => {
+  const client = new DiscordClient({}, credential, { send: async () => ({ status, headers: {}, body: Buffer.from('{"code":0}') }) });
+  const result = await client.createMessage().invoke(createMessageCall(), { channelId, content: 'hello' });
+  expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);
 });
 
 it('uses Go PathEscape for Unicode reactions and retries a refused local connection', async () => {
@@ -58,12 +113,12 @@ it('matches Go TrimSpace for message content and reaction emoji', async () => {
     return { status: 204, headers: {}, body: Buffer.alloc(0) };
   } });
 
-  const blank = await client.createMessage().invoke(call, { channelId, content: '\u0085' });
+  const blank = await client.createMessage().invoke(createMessageCall(), { channelId, content: '\u0085' });
   expect(blank.kind).toBe('branch');
   if (blank.kind === 'branch') expect(blank.branch).toBe('defect');
   expect(requestCount).toBe(0);
 
-  const message = await client.createMessage().invoke(call, { channelId, content: '\uFEFF' });
+  const message = await client.createMessage().invoke(createMessageCall(), { channelId, content: '\uFEFF' });
   expect(message.kind).toBe('branch');
   if (message.kind === 'branch') expect(message.branch).toBe('created');
   expect(requestCount).toBe(1);

@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext, loadScenarios, scenarioCall } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { YouTubeClient } from '../src/client.js';
 
 const connection = { provider: 'google', name: 'youtube' };
@@ -35,7 +36,7 @@ it('classifies a wrong-typed video statistic as invalidResponse', async () => {
   expect(attempt.failure?.kind).toBe('PROTOCOL');
 });
 
-it('keeps the insert claim after an ambiguous resend that follows a credential refresh', async () => {
+it('counts an ambiguous resend that follows a credential refresh toward the send cap', async () => {
   const inserts: string[] = [];
   let forcedRefreshes = 0;
   const credentialFor = (token: string) => ({ ...credentials, authMethodId: 'google-oauth-manage', accessToken: new SecretString(token) });
@@ -59,8 +60,224 @@ it('keeps the insert claim after an ambiguous resend that follows a credential r
     const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
     kinds.push((await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' })).kind);
   }
-  expect(kinds).toEqual(['retry', 'uncertain', 'uncertain']);
-  expect(inserts).toEqual(['rejected-token', 'replacement-token']);
+  expect(kinds).toEqual(['retry', 'retry', 'uncertain']);
+  // The refreshed resend shares one fence claim with the rejected insert.
+  expect(inserts).toEqual(['rejected-token', 'replacement-token', 'rejected-token', 'rejected-token']);
   expect(forcedRefreshes).toBe(1);
-  expect(context.marker).toEqual({ callId: scenario.callId, attempt: 1, state: 'claimed' });
+  expect(context.marker).toEqual({ callId: scenario.callId, attempt: 3, state: 'claimed', sendCount: 3 });
+});
+
+const emptyListing = new TextEncoder().encode('{"pageInfo":{"totalResults":0},"items":[]}');
+const manageCredentials = { ...credentials, authMethodId: 'google-oauth-manage' };
+
+async function runAttempts(send: (request: ProviderRequest) => Promise<{ status: number; headers: Record<string, string>; body: Uint8Array }>, attempts: number, provider: unknown = new StaticCredentialProvider([[connection, manageCredentials]]), context = new HeartbeatContext(undefined, undefined, `youtube-${Math.random()}`)) {
+  const client = new YouTubeClient({ endpoint: 'http://127.0.0.1:42501/youtube/v3' }, provider as never, { send });
+  const scenario = recorded.find(candidate => candidate.operation === 'addPlaylistItem')!;
+  const results = [];
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    context.attempt = attempt;
+    const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
+    results.push(await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' }));
+  }
+  return { results, context };
+}
+
+it.each([
+  ['{"kind":"youtube#playlistItem"}', 'dex:acceptedWithoutItemId'],
+  ['{"id":"UExpdGVt","snippet":7}', 'UExpdGVt'],
+])('saves the acceptance of %s before the listing that follows it', async (acceptedBody, expectedMarker) => {
+  const context = new HeartbeatContext(undefined, undefined, `youtube-${Math.random()}`);
+  let isInserted = false;
+  const markersSeenByListing: string[] = [];
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') {
+      if (isInserted) markersSeenByListing.push(JSON.stringify(context.marker));
+      return { status: 200, headers: {}, body: emptyListing };
+    }
+    isInserted = true;
+    return { status: 200, headers: {}, body: new TextEncoder().encode(acceptedBody) };
+  };
+  const { results } = await runAttempts(send, 1, undefined, context);
+  expect(results[0]!.kind).toBe('retry');
+  expect(markersSeenByListing[0]).toContain(`"providerId":"${expectedMarker}"`);
+});
+
+it('reads the playlist back before resending after a rate-limited resend', async () => {
+  const methods: string[] = [];
+  const statuses = [500, 429, 500];
+  const send = async (request: ProviderRequest) => {
+    methods.push(request.method ?? 'GET');
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    return { status: statuses[methods.filter(method => method === 'POST').length - 1]!, headers: {}, body: new Uint8Array() };
+  };
+  const { results } = await runAttempts(send, 3);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'retry', 'retry']);
+  // Attempt 3 follows a canResend marker yet still lists the playlist before inserting.
+  expect(methods).toEqual(['GET', 'POST', 'GET', 'POST', 'GET', 'POST']);
+});
+
+it('resends after HTTP 503 without counting the insert', async () => {
+  let inserts = 0;
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    inserts++;
+    return { status: 503, headers: {}, body: new Uint8Array() };
+  };
+  const { results, context } = await runAttempts(send, 4);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'retry', 'retry', 'retry']);
+  expect(inserts).toBe(4);
+  expect(JSON.stringify(context.marker)).toContain('"state":"canResend"');
+});
+
+it('never resends an insert whose 2xx body breaks after the headers', async () => {
+  let inserts = 0;
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    inserts++;
+    throw new ProviderTransportError(false, 200, {});
+  };
+  const { results } = await runAttempts(send, 4);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'retry', 'retry', 'uncertain']);
+  expect(inserts).toBe(1);
+});
+
+it('lists again on the next attempt after a transient listing failure follows an accepted insert', async () => {
+  let inserts = 0;
+  let listings = 0;
+  const item = { id: 'UExpdGVt', snippet: { playlistId: 'PLexample123', title: 'Launch', position: 0, publishedAt: '2026-10-13T17:00:00Z', resourceId: { kind: 'youtube#video', videoId: 'dQw4w9WgXcQ' } }, contentDetails: { videoPublishedAt: '2026-10-01T16:00:00Z' } };
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') {
+      listings++;
+      if (listings === 2) return { status: 503, headers: {}, body: new Uint8Array() };
+      return { status: 200, headers: {}, body: listings > 2 ? new TextEncoder().encode(JSON.stringify({ pageInfo: { totalResults: 1 }, items: [item] })) : emptyListing };
+    }
+    inserts++;
+    return { status: 200, headers: {}, body: new TextEncoder().encode('{"kind":"youtube#playlistItem"}') };
+  };
+  const { results } = await runAttempts(send, 2);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'branch']);
+  expect(results[1]!.kind === 'branch' && results[1]!.branch).toBe('added');
+  expect(inserts).toBe(1);
+});
+
+it('lists a refusal carrying an item ID and never resends it', async () => {
+  let inserts = 0;
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    inserts++;
+    return { status: 409, headers: {}, body: new TextEncoder().encode('{"kind":7,"id":"UExpdGVt"}') };
+  };
+  const { results } = await runAttempts(send, 4);
+  expect(results[3]!.kind).toBe('uncertain');
+  expect(inserts).toBe(1);
+});
+
+it('treats an oversized refusal body as an unknown outcome', async () => {
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    throw new BodyTooLargeError(400, {});
+  };
+  const { results } = await runAttempts(send, 1);
+  expect(results[0]!.kind).toBe('retry');
+});
+
+it('retries a transient credential failure before the first insert and records notSent', async () => {
+  const provider = { resolve: async () => { throw new Error('credential store unavailable'); } };
+  const { results, context } = await runAttempts(async () => { throw new Error('no request is expected'); }, 1, provider);
+  expect(results[0]!.kind).toBe('retry');
+  expect(JSON.stringify(context.marker)).toContain('notSent');
+});
+
+it('retries a transient credential failure after a possible insert', async () => {
+  let inserts = 0;
+  let isUnavailable = false;
+  const provider = { resolve: async () => { if (isUnavailable) throw new Error('credential store unavailable'); return manageCredentials; } };
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    inserts++;
+    return { status: 500, headers: {}, body: new Uint8Array() };
+  };
+  const context = new HeartbeatContext(undefined, undefined, 'youtube-credential-transient');
+  const first = await runAttempts(send, 1, provider, context);
+  expect(first.results[0]!.kind).toBe('retry');
+  isUnavailable = true;
+  const client = new YouTubeClient({ endpoint: 'http://127.0.0.1:42501/youtube/v3' }, provider as never, { send });
+  context.attempt = 2;
+  const scenario = recorded.find(candidate => candidate.operation === 'addPlaylistItem')!;
+  const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
+  expect((await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' })).kind).toBe('retry');
+  expect(inserts).toBe(1);
+});
+
+it.each([
+  { name: 'reauthorization', failure: new ReauthorizationRequiredError(), isTerminal: true },
+  { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
+  { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
+  { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+  // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+  { name: 'malformed stored material', failure: new TypeError('project credential decoding failed'), isTerminal: true },
+  { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
+  { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
+])('classifies a $name credential failure before and after a possible insert', async ({ failure, isTerminal }) => {
+  let inserts = 0;
+  let isUnavailable = false;
+  const provider = { resolve: async () => { if (isUnavailable) throw failure; return manageCredentials; } };
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    inserts++;
+    return { status: 500, headers: {}, body: new Uint8Array() };
+  };
+  const firstSendProvider = { resolve: async () => { throw failure; } };
+  const firstSend = await runAttempts(send, 1, firstSendProvider);
+  expect(firstSend.results[0]!.kind).toBe(isTerminal ? 'branch' : 'retry');
+  const context = new HeartbeatContext(undefined, undefined, 'youtube-credential-classification');
+  const first = await runAttempts(send, 1, provider, context);
+  expect(first.results[0]!.kind).toBe('retry');
+  isUnavailable = true;
+  const client = new YouTubeClient({ endpoint: 'http://127.0.0.1:42501/youtube/v3' }, provider as never, { send });
+  context.attempt = 2;
+  const scenario = recorded.find(candidate => candidate.operation === 'addPlaylistItem')!;
+  const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
+  expect((await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' })).kind).toBe(isTerminal ? 'uncertain' : 'retry');
+  expect(inserts).toBe(1);
+});
+
+it('retries a transient refresh failure after a 401 on a resend and records canResend', async () => {
+  let inserts = 0;
+  const provider = { resolve: async () => manageCredentials, resolveWithRefresh: async () => manageCredentials, resolveAfterRejection: async () => { throw new Error('token endpoint unavailable'); } };
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    inserts++;
+    return { status: inserts === 1 ? 500 : 401, headers: {}, body: new Uint8Array() };
+  };
+  const { results, context } = await runAttempts(send, 2, provider);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'retry']);
+  expect(inserts).toBe(2);
+  expect(JSON.stringify(context.marker)).toContain('"state":"canResend"');
+});
+
+it('retries a saved-item read-back below the cap without inserting', async () => {
+  const send = async (request: ProviderRequest) => {
+    if (request.method !== 'GET') throw new Error('no insert is expected');
+    return { status: 200, headers: {}, body: emptyListing };
+  };
+  const scenario = recorded.find(candidate => candidate.name === 'addPlaylistItem-saved-item-lagging-readback-retries')!;
+  const context = new HeartbeatContext(scenario.priorHeartbeat, undefined, 'youtube-saved-item');
+  const client = new YouTubeClient({ endpoint: 'http://127.0.0.1:42501/youtube/v3' }, new StaticCredentialProvider([[connection, manageCredentials]]), { send });
+  const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
+  expect((await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' })).kind).toBe('retry');
+});
+
+it('retries a failed listing below the send cap', async () => {
+  let gets = 0;
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') {
+      gets++;
+      if (gets === 1) return { status: 200, headers: {}, body: emptyListing };
+      return { status: 403, headers: {}, body: new TextEncoder().encode('{"error":{"errors":[{"reason":"quotaExceeded"}]}}') };
+    }
+    return { status: 500, headers: {}, body: new Uint8Array() };
+  };
+  const { results } = await runAttempts(send, 2);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'retry']);
 });

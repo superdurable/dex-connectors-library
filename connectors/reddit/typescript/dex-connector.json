@@ -1,10 +1,10 @@
 {
   "connectorId": "reddit",
-  "releaseTag": "connectors/reddit/go/v0.1.0",
+  "releaseTag": "connectors/reddit/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-reddit",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "factories": [
     {
@@ -65,6 +65,195 @@
         },
         "required": [
           "postId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newListSubredditPostsStep",
+      "kind": "query",
+      "operationId": "listSubredditPosts",
+      "inputType": "ListSubredditPostsInput",
+      "description": "List one page of posts from a Reddit community, or several joined with +, such as golang+programming. Supply the subreddit name without r/; optionally a sort of new, hot, top, or rising (blank is new), a timeWindow of hour, day, week, month, year, or all for the top sort only (blank is day), a limit from 1 through 100 (blank reads 25), and the after cursor from the previous page to continue while after is present.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected",
+          "subredditUnavailable": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "subredditUnavailable",
+          "field": "subredditUnavailable",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSubredditPostsInput selects one page of posts from one subreddit or several joined with +.",
+        "properties": {
+          "after": {
+            "description": "After is the previous page's After cursor, a full t3_ post ID. Blank reads the first page.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the most posts on the page, 1 through 100; blank or 0 reads 25. Reddit may return fewer posts while After still continues the listing.",
+            "type": "integer"
+          },
+          "sort": {
+            "description": "Sort orders the listing: new, hot, top, or rising. Blank lists new posts, newest first.",
+            "enum": [
+              "hot",
+              "new",
+              "rising",
+              "top"
+            ],
+            "type": "string"
+          },
+          "subreddit": {
+            "description": "Subreddit is one community name without r/, such as golang, or up to 10 names joined with +, such as golang+programming. Each name has 2 to 21 letters, digits, or underscores and does not start with an underscore.",
+            "type": "string"
+          },
+          "timeWindow": {
+            "description": "TimeWindow limits a top listing to posts from the last hour, day, week, month, or year, or all time. Only the top sort accepts it; blank then reads the last day. Every other sort requires it blank.",
+            "enum": [
+              "all",
+              "day",
+              "hour",
+              "month",
+              "week",
+              "year"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "subreddit"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newSearchPostsStep",
+      "kind": "query",
+      "operationId": "searchPosts",
+      "inputType": "SearchPostsInput",
+      "description": "Search Reddit posts by keyword, such as generics, optionally within one community. Supply the query text of at most 512 characters; optionally the subreddit name without r/ to search only that community, a sort of new, relevance, top, hot, or comments (blank is new), a timeWindow of hour, day, week, month, year, or all (blank is all), a limit from 1 through 100 (blank reads 25), and the after cursor from the previous page to continue while after is present.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected",
+          "subredditUnavailable": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "searched",
+          "field": "searched",
+          "optional": false
+        },
+        {
+          "id": "subredditUnavailable",
+          "field": "subredditUnavailable",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchPostsInput selects one page of Reddit search results for posts.",
+        "properties": {
+          "after": {
+            "description": "After is the previous page's After cursor, a full t3_ post ID. Blank reads the first page.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the most posts on the page, 1 through 100; blank or 0 reads 25. Reddit may return fewer posts while After still continues the results.",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Query is the search text Reddit matches against posts, such as generics, at most 512 characters. It is sent to Reddit unchanged and must not be blank.",
+            "type": "string"
+          },
+          "sort": {
+            "description": "Sort orders the results: new, relevance, top, hot, or comments, which puts the most commented posts first. Blank returns the newest matching posts first.",
+            "enum": [
+              "comments",
+              "hot",
+              "new",
+              "relevance",
+              "top"
+            ],
+            "type": "string"
+          },
+          "subreddit": {
+            "description": "Subreddit restricts the search to one community, named without r/, such as golang. Blank searches all of Reddit.",
+            "type": "string"
+          },
+          "timeWindow": {
+            "description": "TimeWindow limits the results to posts from the last hour, day, week, month, or year, or all time. Blank searches all time.",
+            "enum": [
+              "all",
+              "day",
+              "hour",
+              "month",
+              "week",
+              "year"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
         ],
         "type": "object"
       }

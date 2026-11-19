@@ -22,12 +22,19 @@ _FIELDS = frozenset(
 )
 
 
+class StoredCredentialMaterialError(ValueError):
+    """Stored Gmail credential material fails decoding, so only reconnection can repair it."""
+
+
 def decode_credentials(value: dict[str, Any], *, shared: bool = False) -> Credentials:
-    """Decode Go-compatible project material, validating the selected auth method."""
+    """Decode Go-compatible project material, validating the selected auth method.
+
+    Raises StoredCredentialMaterialError, a ValueError, for malformed or incomplete material.
+    """
     if not isinstance(value, dict) or set(value) - _FIELDS:
-        raise ValueError("Gmail credential fields are invalid")
+        raise StoredCredentialMaterialError("Gmail credential fields are invalid")
     if any(not isinstance(item, str) for item in value.values()):
-        raise ValueError("Gmail credential fields are invalid")
+        raise StoredCredentialMaterialError("Gmail credential fields are invalid")
     method = value.get("auth_method") or "google-oauth"
     credentials = Credentials(
         access_token=SecretString(value.get("access_token", "")),
@@ -54,9 +61,9 @@ def decode_credentials(value: dict[str, Any], *, shared: bool = False) -> Creden
         else:
             required += (credentials.service_account_key.reveal(),)
     else:
-        raise ValueError("Gmail authorization method is invalid")
+        raise StoredCredentialMaterialError("Gmail authorization method is invalid")
     if any(not field for field in required):
-        raise ValueError("Gmail credential material is incomplete")
+        raise StoredCredentialMaterialError("Gmail credential material is incomplete")
     return credentials
 
 

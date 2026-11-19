@@ -113,9 +113,10 @@ func TestSummarizeTextExampleConfirmsInterruptedStreamWithRealDex(t *testing.T) 
 
 const uncertainSummaryReason = "openai createResponse (connection openai-api) selected branch uncertain with no target"
 
-// TestSummarizeTextExampleFailsClosedAfterWorkerLossBeforeAResponseIDWithRealDex
+// TestSummarizeTextExampleBoundsResendsAfterWorkerLossBeforeAResponseIDWithRealDex
 // loses the Worker after OpenAI received the create request but before any Response ID.
-func TestSummarizeTextExampleFailsClosedAfterWorkerLossBeforeAResponseIDWithRealDex(t *testing.T) {
+// Later attempts resend while possible creates stay below the cap of 3; the fake answers them 500.
+func TestSummarizeTextExampleBoundsResendsAfterWorkerLossBeforeAResponseIDWithRealDex(t *testing.T) {
 	provider := textgentest.NewFakeProvider(t, textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}, integrationAPIKey)
 	provider.EnqueueReplies(textgentest.FakeReply{
 		Delay: 10 * time.Minute, Header: http.Header{"Content-Type": {"text/event-stream"}},
@@ -125,12 +126,12 @@ func TestSummarizeTextExampleFailsClosedAfterWorkerLossBeforeAResponseIDWithReal
 	result := waitForSummaryResult(t, ctx, client, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status, "the unwired uncertain branch fails the Flow")
 	require.Contains(t, result.ErrorMessage, uncertainSummaryReason)
-	require.Equal(t, []string{http.MethodPost}, providerMethods(provider), "a Response may exist, so the next attempt must not create another")
+	require.Equal(t, []string{http.MethodPost, http.MethodPost, http.MethodPost}, providerMethods(provider), "the send cap allows three billed creates")
 }
 
-// TestSummarizeTextExampleNeverResendsAfterWorkerLossWithRealDex loses the Worker
+// TestSummarizeTextExampleBoundsResendsAfterWorkerLossWithRealDex loses the Worker
 // after it queued the Response ID checkpoint, whose persistence no Dex Client API shows.
-func TestSummarizeTextExampleNeverResendsAfterWorkerLossWithRealDex(t *testing.T) {
+func TestSummarizeTextExampleBoundsResendsAfterWorkerLossWithRealDex(t *testing.T) {
 	provider := textgentest.NewFakeProvider(t, textgen.CredentialHeader{Name: "Authorization", Prefix: "Bearer "}, integrationAPIKey)
 	created := responsesEvent("response.created", map[string]any{"response": map[string]any{"id": "resp_resumed", "status": "in_progress"}})
 	delta := responsesEvent("response.output_text.delta", map[string]any{"item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": "Partial "})
@@ -151,12 +152,12 @@ func TestSummarizeTextExampleNeverResendsAfterWorkerLossWithRealDex(t *testing.T
 	methods := providerMethods(provider)
 	require.NotEmpty(t, methods)
 	require.Equal(t, http.MethodPost, methods[0])
-	require.NotContains(t, methods[1:], http.MethodPost, "the next attempt must never create another billed Response")
-	// Reading the Response back and failing closed are both correct; only a second POST is not.
+	// Without the persisted Response ID, later attempts resend up to the cap of 3: the queued JSON
+	// reply is no stream, and the empty fake queue answers 500, so the third create is uncertain.
 	if result.Status == dex.FlowFailed {
-		t.Log("Dex had not persisted the Response ID checkpoint; the resumed attempt failed closed")
+		t.Log("Dex had not persisted the Response ID checkpoint; the resumed attempts resent up to the cap")
 		require.Contains(t, result.ErrorMessage, uncertainSummaryReason)
-		require.Equal(t, []string{http.MethodPost}, methods)
+		require.Equal(t, []string{http.MethodPost, http.MethodPost, http.MethodPost}, methods)
 		return
 	}
 	t.Log("the resumed attempt read the checkpointed Response back")

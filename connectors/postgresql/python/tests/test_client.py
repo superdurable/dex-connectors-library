@@ -6,6 +6,7 @@ import asyncio
 import json
 import re
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 import pytest
@@ -16,16 +17,32 @@ from dex_connectors.sdk import (
     FailureKind,
     IdempotencyKey,
     OperationRef,
+    ReauthorizationRequiredError,
+    RepeatOnUnknown,
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    RejectedCredentialNotRefreshedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
+from dex_connectors.sdk.singledispatch import Marker, State
 from psycopg import generators, pq
 
+import dex_connectors.postgresql.connection as postgresql_connection
 from dex_connectors.postgresql import Client, Config, Credentials, ExecuteStatementInput, QueryRowsInput
+from dex_connectors.postgresql._generated.definitions import (
+    EXECUTE_DEFINITION,
+    EXECUTE_NON_IDEMPOTENT_DEFINITION,
+)
 from dex_connectors.postgresql.client import (
     _bind_parameters,
     _classify_failure,
     _command_name,
+    _CredentialMaterialError,
     _decode_column,
     _read_result,
 )
@@ -205,6 +222,7 @@ class _Connection:
         ("22P02", "statement", "rejected", FailureKind.VALIDATION),
         ("42601", "statement", "rejected", FailureKind.VALIDATION),
         ("57P01", "commit", "uncertain", FailureKind.AVAILABILITY),
+        ("40003", "commit", "uncertain", FailureKind.AVAILABILITY),
         ("23505", "commit", "rejected", FailureKind.CONFLICT),
         ("40001", "commit", "retry", FailureKind.CONFLICT),
     ],
@@ -479,7 +497,7 @@ async def test_duplicate_described_columns_are_defects_before_execution(
 
 
 @pytest.mark.asyncio
-async def test_execute_limits_commit_and_uncertainty(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_execute_limits_commit_and_retries_unknown_commit(monkeypatch: pytest.MonkeyPatch) -> None:
     statement = "INSERT INTO t VALUES ($1, $2) RETURNING id"
     connection = _Connection(statement, _Result((("id", 23),), ((b"1",),), 1), "INSERT 0 1")
 
@@ -501,19 +519,28 @@ async def test_execute_limits_commit_and_uncertainty(monkeypatch: pytest.MonkeyP
     assert limited.branch == "limitExceeded"
     assert all(sql != "COMMIT" for sql, _ in connection.statements)
     connection.commit_error = OSError("lost after send")
-    uncertain = await _client().execute().invoke(_call("execute"), input)
-    assert uncertain.kind == "uncertain" and uncertain.branch == "uncertain"
+    unknown = await _client().execute().invoke(_call("execute"), input)
+    # execute is repeat-safe, so an unknown COMMIT runs again instead of selecting uncertain.
+    assert unknown.kind == "retry" and unknown.failure.kind == FailureKind.TRANSPORT
 
 
 @pytest.mark.asyncio
-async def test_missing_credentials_are_terminal() -> None:
-    client = Client(Config("localhost", "test", "test", ssl_mode="disable"), StaticCredentialProvider({}))
+async def test_an_empty_password_is_terminal_and_an_unconfigured_connection_retries() -> None:
+    empty = StaticCredentialProvider({REFERENCE: Credentials(SecretString(""))})
+    client = Client(Config("localhost", "test", "test", ssl_mode="disable"), empty)
     query = await client.query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
     execute = await client.execute().invoke(
         _call("execute"), ExecuteStatementInput("INSERT INTO t VALUES (1)")
     )
     assert query.branch == "defect" and query.failure.kind == FailureKind.AUTHENTICATION
     assert execute.branch == "defect" and execute.failure.kind == FailureKind.AUTHENTICATION
+    unconfigured = Client(
+        Config("localhost", "test", "test", ssl_mode="disable"), StaticCredentialProvider({})
+    )
+    retried = await unconfigured.execute().invoke(
+        _call("execute"), ExecuteStatementInput("INSERT INTO t VALUES (1)")
+    )
+    assert retried.kind == "retry" and retried.failure.kind == FailureKind.AVAILABILITY
 
 
 @pytest.mark.asyncio
@@ -624,5 +651,305 @@ async def test_call_deadline_classifies_connect_and_commit(monkeypatch: pytest.M
 
     monkeypatch.setattr(Client, "_connect", connect)
     execute = await _client().execute().invoke(_call("execute"), ExecuteStatementInput(statement))
-    assert execute.kind == "uncertain" and execute.failure.kind == FailureKind.TRANSPORT
+    assert execute.kind == "retry" and execute.failure.kind == FailureKind.TRANSPORT
     assert any(sql == "COMMIT" for sql, _ in connection.statements)
+
+
+class _AttemptContext:
+    """Keep the last heartbeat across Execute attempts like Dex does."""
+
+    def __init__(self) -> None:
+        self.attempt = 1
+        self.run_id = "run"
+        self.deadline = datetime.now(UTC) + timedelta(seconds=30)
+        self.heartbeat_value: object = None
+        self.read_error: Exception | None = None
+
+    @property
+    def marker(self) -> Marker | None:
+        """Decode the fenced call's marker from a single-marker or per-call map heartbeat."""
+        if isinstance(self.heartbeat_value, Marker):
+            return self.heartbeat_value
+        if not isinstance(self.heartbeat_value, dict):
+            return None
+        entry = self.heartbeat_value.get("singleDispatchMarkers", {}).get(str(CALL_ID))
+        return None if entry is None else Marker.from_wire(entry)
+
+    def has_last_heartbeat_value(self) -> bool:
+        if self.read_error is not None:
+            raise self.read_error
+        return self.heartbeat_value is not None
+
+    def get_last_heartbeat_value(self, value_type: object) -> object:
+        if isinstance(self.heartbeat_value, Marker) and value_type is not Marker:
+            marker = self.heartbeat_value
+            return {"singleDispatchMarkers": {str(marker.call_id): marker.to_wire()}}
+        if isinstance(self.heartbeat_value, dict) and value_type is Marker:
+            return self.marker
+        return self.heartbeat_value
+
+    async def heartbeat(self, value: object = None) -> None:
+        self.heartbeat_value = value
+
+
+_BALANCE_STATEMENT = "UPDATE balances SET amount = amount + $1::numeric WHERE account_id = $2"
+_BALANCE_INPUT = ExecuteStatementInput(_BALANCE_STATEMENT, ("25.00", "acct_1"))
+
+
+def _fenced_call(context: _AttemptContext) -> Call:
+    return Call(
+        CALL_ID,
+        REFERENCE,
+        OperationRef("postgresql", "executeNonIdempotent"),
+        IdempotencyKey(CALL_ID),
+        context=context,  # type: ignore[arg-type]
+    )
+
+
+def _balance_connection(monkeypatch: pytest.MonkeyPatch) -> _Connection:
+    connection = _Connection(_BALANCE_STATEMENT, _Result((), (), 1), "UPDATE 1")
+
+    async def connect(_: Client, password: str) -> _Connection:
+        connection.closed = False
+        return connection
+
+    monkeypatch.setattr(Client, "_connect", connect)
+    return connection
+
+
+def _commit_count(connection: _Connection) -> int:
+    return sum(1 for sql, _ in connection.statements if sql == "COMMIT")
+
+
+def test_execute_tiers_are_declared() -> None:
+    assert EXECUTE_DEFINITION.repeat_on_unknown == RepeatOnUnknown.SAFE
+    assert EXECUTE_NON_IDEMPOTENT_DEFINITION.repeat_on_unknown == RepeatOnUnknown.UNSAFE
+    assert EXECUTE_NON_IDEMPOTENT_DEFINITION.step_defaults.execute_durability == 1
+
+
+@pytest.mark.asyncio
+async def test_non_idempotent_claims_before_commit_and_commits_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = _balance_connection(monkeypatch)
+    context = _AttemptContext()
+    outcome = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert outcome.kind == "branch" and outcome.branch == "completed"
+    assert outcome.value.rows_affected == 1
+    assert context.marker is not None and context.marker.state == State.CLAIMED
+    assert _commit_count(connection) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "commit_error",
+    [OSError("lost after send"), psycopg.errors.lookup("57P01")("terminated"), asyncio.CancelledError],
+    ids=["connection lost", "backend terminated", "never answered"],
+)
+async def test_non_idempotent_selects_uncertain_and_never_runs_again(
+    monkeypatch: pytest.MonkeyPatch, commit_error: Exception | type[BaseException]
+) -> None:
+    connection = _balance_connection(monkeypatch)
+    if commit_error is asyncio.CancelledError:
+        connection.commit_wait = asyncio.Event()
+        monkeypatch.setattr("dex_connectors.postgresql.client._call_deadline_seconds", lambda _: 0.05)
+    else:
+        assert isinstance(commit_error, Exception)
+        connection.commit_error = commit_error
+    context = _AttemptContext()
+    first = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert first.kind == "uncertain" and first.branch == "uncertain"
+    assert first.failure is not None and first.failure.operation == "executeNonIdempotent"
+
+    connection.statements.clear()
+    context.attempt = 2
+    again = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert again.kind == "uncertain"
+    assert connection.statements == [], "a later attempt never connects"
+
+
+@pytest.mark.asyncio
+async def test_non_idempotent_resends_only_after_a_proven_rollback(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = _balance_connection(monkeypatch)
+    connection.commit_error = psycopg.errors.lookup("40001")("serialization")
+    context = _AttemptContext()
+    first = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert first.kind == "retry"
+    assert context.marker is not None and context.marker.state == State.CAN_RESEND
+
+    connection.commit_error = None
+    context.attempt = 2
+    second = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert second.kind == "branch" and second.branch == "completed"
+    assert _commit_count(connection) == 2
+
+    lost = _balance_connection(monkeypatch)
+    lost.statement_error = OSError("dropped before commit")
+    lost_context = _AttemptContext()
+    retried = await _client().execute_non_idempotent().invoke(_fenced_call(lost_context), _BALANCE_INPUT)
+    assert retried.kind == "retry" and _commit_count(lost) == 0
+    assert lost_context.marker is not None and lost_context.marker.state == State.NOT_SENT
+
+
+@pytest.mark.asyncio
+async def test_non_idempotent_never_records_not_sent_after_a_possible_earlier_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = _balance_connection(monkeypatch)
+    connection.statement_error = OSError("dropped before commit")
+    context = _AttemptContext()
+    # A canResend marker that still counts one possibly effective send keeps a send allowed.
+    seeded = Marker(CALL_ID, 2, State.CAN_RESEND, send_count=1)
+    context.heartbeat_value = seeded
+    context.attempt = 3
+    outcome = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    # A transient failure returns Retry; the attempt after it still treats the earlier send as possible.
+    assert outcome.kind == "retry" and _commit_count(connection) == 0
+    assert context.heartbeat_value is seeded, "notSent would hide the earlier possible COMMIT"
+    connection.statements.clear()
+    context.attempt = 4
+    later = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert later.kind == "uncertain" and connection.statements == []
+
+    refused = _balance_connection(monkeypatch)
+    refused.statement_error = psycopg.errors.CheckViolation("secret value")
+    refused_context = _AttemptContext()
+    refused_context.heartbeat_value = seeded
+    refused_context.attempt = 3
+    terminal = await _client().execute_non_idempotent().invoke(_fenced_call(refused_context), _BALANCE_INPUT)
+    assert terminal.kind == "uncertain" and _commit_count(refused) == 0
+    assert refused_context.heartbeat_value is seeded
+
+
+@pytest.mark.asyncio
+async def test_an_unavailable_credential_broker_returns_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = _balance_connection(monkeypatch)
+
+    class _UnavailableBroker:
+        async def resolve(self, call: Call) -> Credentials:
+            raise CredentialBrokerUnavailableError()
+
+    client = Client(Config("localhost", "test", "test", ssl_mode="disable"), _UnavailableBroker())
+    query = await client.query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
+    execute = await client.execute().invoke(_call("execute"), _BALANCE_INPUT)
+    context = _AttemptContext()
+    fenced = await client.execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert query.kind == "retry" and query.failure.kind == FailureKind.AVAILABILITY
+    assert execute.kind == "retry" and execute.failure.kind == FailureKind.AVAILABILITY
+    assert fenced.kind == "retry" and fenced.failure.kind == FailureKind.AVAILABILITY
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+    assert connection.statements == []
+
+
+_CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (ReauthorizationRequiredError(), True),
+    (ObjectNotFoundError(), True),
+    (ConnectionNotSelectedError(), True),
+    (CredentialBrokerRejectedError(), True),
+    (CredentialBrokerUnavailableError(), False),
+    (ValueError("connection is not configured"), False),
+    (RejectedCredentialNotRefreshedError(), False),
+    (TimeoutError(), False),
+    (RuntimeError("unlisted"), False),
+    (_CredentialMaterialError("PostgreSQL credential password is required"), True),
+]
+
+
+@pytest.mark.asyncio
+async def test_project_credential_source_rejects_malformed_material_as_terminal() -> None:
+    """The project source raises the terminal material error for malformed stored material."""
+
+    class MalformedProject:
+        async def resolve_credential(self, key: object, call_id: str) -> object:
+            return ["not", "a", "mapping"]
+
+    source = postgresql_connection._ProjectCredentialSource(MalformedProject(), object())  # type: ignore[arg-type]
+    with pytest.raises(_CredentialMaterialError):
+        await source.resolve(_call("execute"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("error", "is_terminal"), _CREDENTIAL_FAILURES)
+async def test_credential_failures_are_classified_before_and_after_a_possible_commit(
+    monkeypatch: pytest.MonkeyPatch, error: Exception, is_terminal: bool
+) -> None:
+    connection = _balance_connection(monkeypatch)
+
+    class _FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = Client(Config("localhost", "test", "test", ssl_mode="disable"), _FailingCredentials())
+    execute = await client.execute().invoke(_call("execute"), _BALANCE_INPUT)
+    context = _AttemptContext()
+    first = await client.execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    for attempt in (execute, first):
+        if is_terminal:
+            assert attempt.branch == "defect"
+        else:
+            assert attempt.kind == "retry"
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+
+    later_context = _AttemptContext()
+    later_context.heartbeat_value = Marker(CALL_ID, 2, State.CAN_RESEND, send_count=1)
+    later_context.attempt = 3
+    later = await client.execute_non_idempotent().invoke(_fenced_call(later_context), _BALANCE_INPUT)
+    assert later.kind == ("uncertain" if is_terminal else "retry")
+    assert connection.statements == []
+
+
+@pytest.mark.asyncio
+async def test_non_idempotent_selects_uncertain_after_a_lost_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = _balance_connection(monkeypatch)
+    context = _AttemptContext()
+    context.attempt = 2
+    outcome = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert outcome.kind == "uncertain"
+    assert connection.statements == []
+
+
+@pytest.mark.asyncio
+async def test_non_idempotent_retries_an_unreadable_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = _balance_connection(monkeypatch)
+    context = _AttemptContext()
+    context.read_error = OSError("heartbeat store unavailable")
+    outcome = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert outcome.kind == "retry" and outcome.failure.kind == FailureKind.AVAILABILITY
+    assert connection.statements == []
+
+
+@pytest.mark.asyncio
+async def test_non_idempotent_rejects_a_definite_refusal_without_committing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = _balance_connection(monkeypatch)
+    connection.statement_error = psycopg.errors.CheckViolation("secret value")
+    context = _AttemptContext()
+    outcome = await _client().execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    assert outcome.kind == "branch" and outcome.branch == "providerRejected"
+    assert outcome.failure is not None and "secret" not in outcome.failure.message
+    assert _commit_count(connection) == 0
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+
+    deferred = _balance_connection(monkeypatch)
+    deferred.commit_error = psycopg.errors.UniqueViolation("deferred")
+    deferred_context = _AttemptContext()
+    at_commit = (
+        await _client().execute_non_idempotent().invoke(_fenced_call(deferred_context), _BALANCE_INPUT)
+    )
+    assert at_commit.kind == "branch" and at_commit.branch == "providerRejected"
+    assert deferred_context.marker is not None and deferred_context.marker.state == State.CAN_RESEND
+
+    limited = (
+        await _client()
+        .execute_non_idempotent()
+        .invoke(
+            _fenced_call(_AttemptContext()),
+            ExecuteStatementInput(_BALANCE_STATEMENT, ("25.00", "acct_1"), 0, 0),
+        )
+    )
+    assert limited.branch == "limitExceeded"
+    defect = (
+        await _client()
+        .execute_non_idempotent()
+        .invoke(_fenced_call(_AttemptContext()), ExecuteStatementInput("COMMIT"))
+    )
+    assert defect.branch == "defect"

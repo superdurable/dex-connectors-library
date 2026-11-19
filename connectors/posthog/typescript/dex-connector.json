@@ -1,10 +1,10 @@
 {
   "connectorId": "posthog",
-  "releaseTag": "connectors/posthog/go/v0.2.0",
+  "releaseTag": "connectors/posthog/go/v0.2.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-posthog",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {

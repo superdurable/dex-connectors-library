@@ -198,6 +198,47 @@ func TestCreateUserRejectsA400WithoutAConflictOnceTheWindowEnds(t *testing.T) {
 	requireSafeFailure(t, late.Failure)
 }
 
+func TestCreateUserReadsBackARefusalAfterAnEarlierAttempt(t *testing.T) {
+	graph := graphfake.New(t.Cleanup)
+	existingID := graph.SeedUser("ada.lovelace@contoso.com", true, map[string]any{"extensionAttribute15": "dex-creation-key:hire-42"})
+	graph.Intercept = func(request graphfake.Request, _ int) (graphfake.Answer, bool) {
+		if request.Method == http.MethodPost {
+			return graphfake.Answer{Status: http.StatusForbidden, Body: graphfake.GraphError("Authorization_RequestDenied")}, true
+		}
+		return graphfake.Answer{}, false
+	}
+	client := newTestClient(t, graph, entraid.Config{})
+	input := validCreateUserInput()
+	input.ProvisioningKey = "hire-42"
+
+	first, err := sdkgo.RunMutation(newTestDexContext("refused-first"), client.CreateUser(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, entraid.CreateUserBranchProviderRejected, first.Branch, "a first attempt's refusal is definite")
+	later := newTestDexContext("refused-later")
+	later.attempt = 2
+	confirmed, err := sdkgo.RunMutation(later, client.CreateUser(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, entraid.CreateUserBranchCreated, confirmed.Branch, "the earlier attempt created this Step's account")
+	require.True(t, confirmed.Value.WasAlreadyCreated)
+	require.Equal(t, existingID, confirmed.Value.User.ID)
+}
+
+func TestCreateUserKeepsWaitingForAnUnreadableNameAfterAnEarlierAttempt(t *testing.T) {
+	graph := graphfake.New(t.Cleanup)
+	graph.SeedUser("ada.lovelace@contoso.com", true, nil)
+	graph.Intercept = func(request graphfake.Request, _ int) (graphfake.Answer, bool) {
+		if request.Method == http.MethodGet {
+			return graphfake.Answer{Status: http.StatusNotFound, Body: graphfake.GraphError("Request_ResourceNotFound")}, true
+		}
+		return graphfake.Answer{}, false
+	}
+	client := newTestClient(t, graph, entraid.Config{})
+	late := newLateTestDexContext("create-late")
+	late.attempt = 2
+	_, err := sdkgo.RunMutation(late, client.CreateUser(), testConnection, validCreateUserInput())
+	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "the unreadable account may be this Step's")
+}
+
 func TestCreateUserRetriesAnUnusableSuccessAndRejectsConclusiveErrors(t *testing.T) {
 	graph := graphfake.New(t.Cleanup)
 	graph.Intercept = func(request graphfake.Request, index int) (graphfake.Answer, bool) {

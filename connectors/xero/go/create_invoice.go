@@ -151,7 +151,7 @@ func (operation CreateInvoiceOperation) Invoke(call sdkgo.Call, input CreateInvo
 		method: http.MethodPut, path: "/Invoices", query: url.Values{"unitdp": {unitAmountDecimalPlaces}}, payload: payload, isMutation: true,
 	})
 	receipt := client.receipt(call, result, "")
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
+	if attempt, isTerminal := mutationAttemptForExchange(call, result, requested, receipt, mutationBranches{
 		providerRejected: CreateInvoiceBranchProviderRejected, dailyLimitReached: CreateInvoiceBranchDailyLimitReached, defect: CreateInvoiceBranchDefect,
 	}); isTerminal {
 		return attempt
@@ -166,8 +166,8 @@ func (operation CreateInvoiceOperation) Invoke(call sdkgo.Call, input CreateInvo
 		invoice, err = decodeInvoice(wire)
 	}
 	if err != nil {
-		return sdkgo.NewMutationUncertain(requested, xeroFailure(sdkgo.FailureProtocol, createInvoiceOperationID,
-			"Xero accepted the invoice but returned an unusable invoice: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[CreateInvoiceOutput](xeroFailure(sdkgo.FailureProtocol, createInvoiceOperationID,
+			"Xero accepted the invoice but returned an unusable invoice: "+err.Error()), 0)
 	}
 	receipt.ProviderObjectID = invoice.InvoiceID
 	return sdkgo.NewMutationBranch(CreateInvoiceBranchCreated, CreateInvoiceOutput{

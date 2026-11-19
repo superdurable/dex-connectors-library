@@ -26,10 +26,6 @@ func acceptedEntityID(body []byte, entityName string) string {
 }
 
 // readAcceptedEntity checks a provider-assigned ID without resending an accepted write.
-func readAcceptedEntity(client *Client, call sdkgo.Call, operation string, entityName string, entityID string) ([]byte, bool) {
-	if entityID == "" {
-		return nil, false
-	}
-	result := client.exchange(call, operation, quickbooksRequest{method: http.MethodGet, path: "/" + entityName + "/" + entityID})
-	return result.response.body, result.outcome == exchangeSucceeded
+func readAcceptedEntity(client *Client, call sdkgo.Call, operation string, entityName string, entityID string) quickbooksExchange {
+	return client.exchange(call, operation, quickbooksRequest{method: http.MethodGet, path: "/" + entityName + "/" + entityID})
 }

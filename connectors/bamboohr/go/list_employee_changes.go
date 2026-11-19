@@ -130,7 +130,10 @@ func (operation ListEmployeeChangesOperation) Invoke(call sdkgo.Call, input List
 	if err := validateListEmployeeChangesInput(input); err != nil {
 		return sdkgo.NewQueryBranch(ListEmployeeChangesBranchDefect, ListEmployeeChangesOutput{}, bambooHRFailurePointer(sdkgo.FailureValidation, listEmployeeChangesOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, listEmployeeChangesOperation)
+	credentials, failure, isTransient := operation.client.resolveCredentials(call, listEmployeeChangesOperation)
+	if isTransient {
+		return sdkgo.NewQueryRetry[ListEmployeeChangesOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ListEmployeeChangesBranchDefect, ListEmployeeChangesOutput{}, failure, sdkgo.Receipt{})
 	}

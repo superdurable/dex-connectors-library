@@ -4,7 +4,9 @@
 package intercom_test
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -133,7 +135,11 @@ func TestStateWriteFailuresRetryOrSelectBranches(t *testing.T) {
 	}{
 		{name: "server error", status: http.StatusInternalServerError, body: `{"type":"error.list","errors":[{"code":"server_error"}]}`, isRetry: true},
 		{name: "missing conversation", status: http.StatusNotFound, body: `{"type":"error.list","errors":[{"code":"not_found"}]}`, branch: intercom.UpdateConversationStateBranchNotFound},
-		{name: "unchanged state returned", status: http.StatusOK, body: "", branch: intercom.UpdateConversationStateBranchInvalidResponse},
+		{name: "unchanged state returned", status: http.StatusOK, body: "", isRetry: true},
+		{name: "invalid answer after the change", status: http.StatusOK, body: `{"type":"conversation","id":"another"}`, isRetry: true},
+		{name: "conflict", status: http.StatusConflict, body: `{"type":"error.list","errors":[{"code":"conflict"}]}`, isRetry: true},
+		{name: "gone", status: http.StatusGone, body: `{"type":"error.list","errors":[{"code":"not_found"}]}`, isRetry: true},
+		{name: "redirect", status: http.StatusFound, body: `{}`, isRetry: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, _ int) {
@@ -154,6 +160,120 @@ func TestStateWriteFailuresRetryOrSelectBranches(t *testing.T) {
 			require.Equal(t, test.branch, result.Branch)
 		})
 	}
+}
+
+func TestOversizedStateWriteAnswersRetry(t *testing.T) {
+	for name, status := range map[string]int{"accepted": http.StatusOK, "refused": http.StatusBadRequest, "missing": http.StatusNotFound} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodGet {
+					writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+					return
+				}
+				writeJSON(t, response, status, `{"type":"error.list","padding":"`+strings.Repeat("a", 8000)+`"}`)
+			})
+			client, err := intercom.New(intercom.Config{MaxResponseBytes: 4096}, testCredentialProvider(), intercom.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newTestDexContext("state-oversized-"+name), client.UpdateConversationState(), intercomConnection,
+				intercom.UpdateConversationStateInput{ConversationID: testConversation, AdminID: testAdminID, State: intercom.ConversationStateClosed})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an answer too large to inspect leaves the absolute change unknown, so it retries")
+		})
+	}
+}
+
+func TestStateCredentialFailures(t *testing.T) {
+	for name, test := range map[string]struct {
+		err     error
+		isRetry bool
+	}{
+		"transient": {err: errors.New("credential store unavailable"), isRetry: true},
+		"terminal":  {err: sdkgo.NewReauthorizationRequiredError(errors.New("token revoked"))},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingIntercom(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request may be sent") })
+			client, err := intercom.New(intercom.Config{}, failingCredentialProvider{err: test.err}, intercom.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newTestDexContext("state-credentials-"+name), client.UpdateConversationState(), intercomConnection,
+				intercom.UpdateConversationStateInput{ConversationID: testConversation, AdminID: testAdminID, State: intercom.ConversationStateClosed})
+			if test.isRetry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, intercom.UpdateConversationStateBranchDefect, result.Branch)
+		})
+	}
+}
+
+func TestStateReadFailuresAroundTheWrite(t *testing.T) {
+	for name, read := range map[string]struct {
+		status int
+		body   string
+	}{
+		"invalid 200":            {status: http.StatusOK, body: `{"type":"conversation","id":"another"}`},
+		"credential-echoing 200": {status: http.StatusOK, body: `{"type":"conversation","id":"` + testConversation + `","title":"` + testAccessToken + `"}`},
+		"oversized 200":          {status: http.StatusOK, body: `{"type":"conversation","padding":"` + strings.Repeat("a", 8000) + `"}`},
+		"oversized 404":          {status: http.StatusNotFound, body: `{"type":"error.list","padding":"` + strings.Repeat("a", 8000) + `"}`},
+		"credential-echoing 403": {status: http.StatusForbidden, body: `{"type":"error.list","errors":[{"message":"` + testAccessToken + `"}]}`},
+		"unlisted 409":           {status: http.StatusConflict, body: `{"type":"error.list","errors":[{"code":"conflict"}]}`},
+		"gone 410":               {status: http.StatusGone, body: `{"type":"error.list","errors":[{"code":"gone"}]}`},
+		"redirect 302":           {status: http.StatusFound, body: `{}`},
+	} {
+		t.Run("inconclusive read before the change retries: "+name, func(t *testing.T) {
+			provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, read.status, read.body)
+			})
+			client, err := intercom.New(intercom.Config{MaxResponseBytes: 4096}, testCredentialProvider(), intercom.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newTestDexContext("state-inconclusive-read"), client.UpdateConversationState(), intercomConnection,
+				intercom.UpdateConversationStateInput{ConversationID: testConversation, AdminID: testAdminID, State: intercom.ConversationStateClosed})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "only a readable listed refusal selects a branch on the read before the change")
+			require.Equal(t, 1, provider.requestCount(), "nothing was written")
+		})
+	}
+	t.Run("readable listed refusal on the read before the change stays definite", func(t *testing.T) {
+		provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+			writeJSON(t, response, http.StatusForbidden, `{"type":"error.list","errors":[{"code":"forbidden"}]}`)
+		})
+		result, err := sdkgo.RunMutation(newTestDexContext("state-refused-read"), newIntercomClient(t, provider.URL).UpdateConversationState(), intercomConnection,
+			intercom.UpdateConversationStateInput{ConversationID: testConversation, AdminID: testAdminID, State: intercom.ConversationStateClosed})
+		require.NoError(t, err)
+		require.Equal(t, intercom.UpdateConversationStateBranchProviderRejected, result.Branch)
+	})
+	t.Run("credential-echoing refusal of the write retries", func(t *testing.T) {
+		provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+			if request.Method == http.MethodGet {
+				writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+				return
+			}
+			writeJSON(t, response, http.StatusBadRequest, `{"type":"error.list","errors":[{"message":"`+testAccessToken+`"}]}`)
+		})
+		_, err := sdkgo.RunMutation(newTestDexContext("state-echoing-refusal"), newIntercomClient(t, provider.URL).UpdateConversationState(), intercomConnection,
+			intercom.UpdateConversationStateInput{ConversationID: testConversation, AdminID: testAdminID, State: intercom.ConversationStateClosed})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+		require.Equal(t, 2, provider.requestCount(), "the unknown write retries without a reconciling read")
+	})
+	t.Run("failed reread after a refusal retries", func(t *testing.T) {
+		provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, index int) {
+			switch {
+			case request.Method == http.MethodPost:
+				writeJSON(t, response, http.StatusBadRequest, `{"type":"error.list","errors":[{"code":"parameter_invalid"}]}`)
+			case index == 0:
+				writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+			default:
+				writeJSON(t, response, http.StatusOK, `{"type":"conversation","id":"another"}`)
+			}
+		})
+		_, err := sdkgo.RunMutation(newTestDexContext("state-invalid-reread"), newIntercomClient(t, provider.URL).UpdateConversationState(), intercomConnection,
+			intercom.UpdateConversationStateInput{ConversationID: testConversation, AdminID: testAdminID, State: intercom.ConversationStateClosed})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+		require.Equal(t, 3, provider.requestCount())
+	})
 }
 
 func TestUpdateConversationStateValidatesInputBeforeAnyRequest(t *testing.T) {

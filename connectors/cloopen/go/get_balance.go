@@ -40,7 +40,7 @@ func (operation GetBalanceOperation) Invoke(call sdkgo.Call, _ GetBalanceInput) 
 		return balanceBranch(GetBalanceBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	accountSID := credentials.AccountSID.Reveal()
-	timestamp := time.Now().UTC().Format("20060102150405")
+	timestamp := operation.client.now().UTC().Format("20060102150405")
 	digest := md5.Sum([]byte(accountSID + credentials.AuthToken.Reveal() + timestamp))
 	signature := strings.ToUpper(hex.EncodeToString(digest[:]))
 	requestURL := operation.client.baseURL + "/2013-12-26/Accounts/" + accountSID + "/AccountInfo?sig=" + signature

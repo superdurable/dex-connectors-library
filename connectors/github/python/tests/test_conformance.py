@@ -15,29 +15,44 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/github/scenarios.json")
+# listIssues and createIssue are Go only; replay just the operations this package implements.
+PYTHON_OPERATIONS = {
+    "getAuthenticatedProfile", "listPublicRepositories", "listMergedPullRequests", "listPullRequestFiles",
+    "listReleases", "listCommits",
+}
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/github/scenarios.json")
+    if scenario["operation"] in PYTHON_OPERATIONS
+]
 CONNECTION = sdk.ConnectionRef("github", "github")
 
 
 class _RejectedCredentialSource:
     async def resolve(self, call: sdk.Call) -> github.Credentials:
         return github.Credentials(
-            "", sdk.SecretString(""), sdk.SecretString("rejected-token"), sdk.SecretString("")
+            oauth_client_id="",
+            oauth_client_secret=sdk.SecretString(""),
+            access_token=sdk.SecretString("rejected-token"),
+            refresh_token=sdk.SecretString(""),
         )
 
     async def resolve_after_rejection(self, call: sdk.Call) -> github.Credentials:
         return github.Credentials(
-            "", sdk.SecretString(""), sdk.SecretString("replacement-token"), sdk.SecretString("")
+            oauth_client_id="",
+            oauth_client_secret=sdk.SecretString(""),
+            access_token=sdk.SecretString("replacement-token"),
+            refresh_token=sdk.SecretString(""),
         )
 
 
 def _client(http_client: object, recorder: object) -> github.Client:
     token = "" if recorder.scenario["name"] == "getAuthenticatedProfile-defect" else "manifest-access-token"
     credentials = github.Credentials(
-        "manifest-client-id",
-        sdk.SecretString("manifest-client-secret"),
-        sdk.SecretString(token),
-        sdk.SecretString(""),
+        oauth_client_id="manifest-client-id",
+        oauth_client_secret=sdk.SecretString("manifest-client-secret"),
+        access_token=sdk.SecretString(token),
+        refresh_token=sdk.SecretString(""),
     )
     return github.Client(
         github.Config(

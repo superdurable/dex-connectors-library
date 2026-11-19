@@ -5,7 +5,7 @@ import { it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { RedditClient } from '../src/client.js';
-import { GetPostInputSchema } from '../src/generated/models.js';
+import { GetPostInputSchema, ListSubredditPostsInputSchema, SearchPostsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/reddit/scenarios.json', import.meta.url));
@@ -26,5 +26,7 @@ async function invokeReddit(scenario: Scenario, recorder: ExchangeRecorder) {
     reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false,
   };
   if (scenario.operation === 'getPost') return client.getPost().invoke(call, GetPostInputSchema.parse(scenario.input));
+  if (scenario.operation === 'listSubredditPosts') return client.listSubredditPosts().invoke(call, ListSubredditPostsInputSchema.parse(scenario.input));
+  if (scenario.operation === 'searchPosts') return client.searchPosts().invoke(call, SearchPostsInputSchema.parse(scenario.input));
   throw new Error(`unknown Reddit operation ${scenario.operation}`);
 }

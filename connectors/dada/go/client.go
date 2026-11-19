@@ -25,8 +25,10 @@ import (
 // Option configures the HTTP transport without changing a connection.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ client *http.Client }
+type clockOption struct{ now func() time.Time }
 
 func (option httpClientOption) applyClientOption(client *Client) { client.httpClient = option.client }
+func (option clockOption) applyClientOption(client *Client)      { client.now = option.now }
 
 // WithHTTPClient supplies a transport for production or provider tests.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -37,6 +39,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // New validates Dada configuration without contacting the provider.
@@ -56,12 +59,15 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsedURL.Path != "" {
 		return nil, errors.New("Dada API URL must be a host root without a path")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Dada client option is required")
 		}
 		option.applyClientOption(client)
+	}
+	if client.now == nil {
+		return nil, errors.New("Dada clock is required")
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil
@@ -98,7 +104,7 @@ func (client *Client) queryOrderStatus(call sdkgo.Call, input QueryOrderStatusIn
 	if err != nil {
 		return providerResponse{err: errInput}
 	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(client.now().Unix(), 10)
 	bodyString := string(businessBody)
 	signature := signRequest(appSecret, appKey, bodyString, sourceID, timestamp)
 	envelope := struct {
@@ -126,7 +132,7 @@ func (client *Client) queryOrderStatus(call sdkgo.Call, input QueryOrderStatusIn
 	}
 	defer func() { _ = response.Body.Close() }()
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), err: err}
+	return providerResponse{body: body, status: response.StatusCode, retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()), err: err}
 }
 
 func signRequest(appSecret string, appKey string, body string, sourceID string, timestamp string) string {

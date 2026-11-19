@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateTaskOperation, FindMemberByEmailOperation, GetTaskOperation, SearchTasksOperation, UpdateTaskOperation, UpdateTaskTagsOperation } from './operations.js';
 
 const apiBaseURL = 'https://api.clickup.com/api/v2';
@@ -20,11 +21,13 @@ export interface ClickUpClientOptions {
   /** Override only with a ClickUp compatible test endpoint. */
   apiBaseURL?: string;
 }
-/** Outcome of one ClickUp HTTP exchange. */
+/**
+ * Outcome of one ClickUp HTTP exchange; `status` is the HTTP status of a response without a usable body, or 0.
+ * `isErrorBodyTooLarge` marks a non-2xx body over maxResponseBytes, which cannot prove a write refusal.
+ */
 export type Exchange =
   | { kind: 'succeeded'; response: ProviderResponse }
-  | { kind: 'notFound' | 'notSent' | 'rateLimited' | 'unconfirmed' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number };
-
+  | { kind: 'notFound' | 'notSent' | 'rateLimited' | 'unconfirmed' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status: number; isErrorBodyTooLarge?: boolean };
 /** Authenticated ClickUp API client; credentials are resolved for each request. */
 export class ClickUpClient {
   private readonly endpoint: string;
@@ -64,15 +67,15 @@ export class ClickUpClient {
 
   /** Send a bounded API request and classify its response; signal can bound a multi-request operation. */
   async exchange(call: Call, operation: string, method: string, path: string, query?: URLSearchParams, payload?: unknown, signal = call.context.cancellationSignal): Promise<Exchange> {
-    let token: string;
-    try {
-      const credentials = await this.credentials.resolve(call, signal);
-      if (!(credentials.apiToken instanceof SecretString)) throw new TypeError('missing token');
-      token = credentials.apiToken.reveal();
-      if (!isHeaderSafeCredential(token) || !token.startsWith('pk_') || token.length <= 3) throw new TypeError('invalid token');
-    } catch {
-      return this.outcome('defect', operation, 'AUTHENTICATION', 'ClickUp connection credentials are unavailable');
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, signal); }
+    catch (error) {
+      if (isTerminalCredentialError(error)) return this.outcome('defect', operation, 'AUTHENTICATION', 'ClickUp connection credentials are missing or need reauthorization');
+      // A transient store or broker failure happens before the request, so it is proven not sent.
+      return this.outcome('notSent', operation, 'AVAILABILITY', 'ClickUp connection credentials could not be read, so nothing was sent');
     }
+    const token = credentials.apiToken instanceof SecretString ? credentials.apiToken.reveal() : '';
+    if (!isHeaderSafeCredential(token) || !token.startsWith('pk_') || token.length <= 3) return this.outcome('defect', operation, 'AUTHENTICATION', 'ClickUp connection credentials are invalid');
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload)); }
     catch { return this.outcome('defect', operation, 'LOCAL_DEFECT', 'ClickUp request could not be built'); }
@@ -84,26 +87,39 @@ export class ClickUpClient {
         addressPolicy: this.endpoint === apiBaseURL ? 'publicHTTPS' : 'privateNetworkHTTP',
         timeoutMs: 9_000, signal });
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return this.outcome('invalid', operation, 'RESPONSE_TOO_LARGE', 'ClickUp response exceeds the configured maxResponseBytes limit');
+      const status = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status ?? 0 : 0;
+      const isSuccessStatus = status >= 200 && status < 300;
+      if (error instanceof BodyTooLargeError && (isSuccessStatus || status === 0)) return this.outcome('invalid', operation, 'RESPONSE_TOO_LARGE', 'ClickUp response exceeds the configured maxResponseBytes limit', 0, status);
+      if (error instanceof BodyTooLargeError) {
+        // Go and Python classify a large error body by status; it cannot prove a write refusal.
+        const classified = this.classifyFailureStatus(operation, { status, headers: error.headers ?? {}, body: new Uint8Array() });
+        return classified.kind === 'succeeded' ? classified : { ...classified, isErrorBodyTooLarge: true };
+      }
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.outcome('notSent', operation, 'TRANSPORT', 'ClickUp could not be reached; no request was sent');
+      // Keep a 2xx status so an accepted write is never resent.
+      if (isSuccessStatus) return this.outcome('unconfirmed', operation, 'TRANSPORT', 'ClickUp response could not be read', 0, status);
       return this.outcome('unconfirmed', operation, 'TRANSPORT', 'ClickUp request failed before a response arrived');
     }
     if (response.status >= 200 && response.status < 300) {
-      if (Buffer.from(response.body).includes(Buffer.from(token))) return this.outcome('invalid', operation, 'PROTOCOL', 'ClickUp response reflected the connection credential');
+      if (Buffer.from(response.body).includes(Buffer.from(token))) return this.outcome('invalid', operation, 'PROTOCOL', 'ClickUp response reflected the connection credential', 0, response.status);
       return { kind: 'succeeded', response };
     }
+    return this.classifyFailureStatus(operation, response);
+  }
+
+  private classifyFailureStatus(operation: string, response: ProviderResponse): Exchange {
     const status = response.status;
     const code = readErrorCode(response.body);
     const withCode = (message: string) => message + (code ? ` [${code}]` : '');
-    if (status === 429) return this.outcome('rateLimited', operation, 'RATE_LIMIT', withCode('ClickUp rate limited the token (HTTP 429)'), this.rateLimitDelay(response));
-    if (status === 408 || status >= 500) return this.outcome('unconfirmed', operation, 'AVAILABILITY', withCode(`ClickUp could not complete the request (HTTP ${status})`));
-    if (status === 404 || status === 410) return this.outcome('notFound', operation, 'NOT_FOUND', withCode(`ClickUp found no such resource (HTTP ${status})`));
+    if (status === 429) return this.outcome('rateLimited', operation, 'RATE_LIMIT', withCode('ClickUp rate limited the token (HTTP 429)'), this.rateLimitDelay(response), status);
+    if (status === 408 || status >= 500) return this.outcome('unconfirmed', operation, 'AVAILABILITY', withCode(`ClickUp could not complete the request (HTTP ${status})`), 0, status);
+    if (status === 404 || status === 410) return this.outcome('notFound', operation, 'NOT_FOUND', withCode(`ClickUp found no such resource (HTTP ${status})`), 0, status);
     if (status === 401 && ['OAUTH_023', 'OAUTH_026', 'OAUTH_027', ...Array.from({ length: 17 }, (_, index) => `OAUTH_${String(index + 29).padStart(3, '0')}`)].includes(code))
-      return this.outcome('notFound', operation, 'AUTHORIZATION', withCode("ClickUp reports that the resource's Workspace is not authorized for the token (HTTP 401)"));
-    if (status >= 300 && status < 400) return this.outcome('rejected', operation, 'PROTOCOL', `ClickUp redirected the request (HTTP ${status})`);
-    if (status === 401) return this.outcome('rejected', operation, 'AUTHENTICATION', withCode('ClickUp rejected the personal API token (HTTP 401)'));
+      return this.outcome('notFound', operation, 'AUTHORIZATION', withCode("ClickUp reports that the resource's Workspace is not authorized for the token (HTTP 401)"), 0, status);
+    if (status >= 300 && status < 400) return this.outcome('rejected', operation, 'PROTOCOL', `ClickUp redirected the request (HTTP ${status})`, 0, status);
+    if (status === 401) return this.outcome('rejected', operation, 'AUTHENTICATION', withCode('ClickUp rejected the personal API token (HTTP 401)'), 0, status);
     const kind: Failure['kind'] = status === 403 ? 'AUTHORIZATION' : status === 409 ? 'CONFLICT' : [400, 422].includes(status) ? 'VALIDATION' : 'PROVIDER_REJECTION';
-    return this.outcome('rejected', operation, kind, withCode(`ClickUp rejected the request (HTTP ${status})`));
+    return this.outcome('rejected', operation, kind, withCode(`ClickUp rejected the request (HTTP ${status})`), 0, status);
   }
 
   private rateLimitDelay(response: ProviderResponse): number {
@@ -114,9 +130,15 @@ export class ClickUpClient {
     return Number.isSafeInteger(reset) && reset > 0 ? Math.min(60_000, Math.max(1_000, reset * 1_000 - this.now().getTime())) : 0;
   }
 
-  private outcome(kind: Exclude<Exchange['kind'], 'succeeded'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0): Exchange {
-    return { kind, failure: { kind: failureKind, provider: 'clickup', operation, message }, retryAfterMs };
+  private outcome(kind: Exclude<Exchange['kind'], 'succeeded'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0, status = 0): Exchange {
+    return { kind, failure: { kind: failureKind, provider: 'clickup', operation, message }, retryAfterMs, status };
   }
+}
+
+/** Report a credential resolution failure that no retry fixes; others, such as store reads, may pass. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
 }
 
 function readErrorCode(body: Uint8Array): string {

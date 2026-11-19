@@ -69,9 +69,9 @@ GET_TICKET_DEFINITION = QueryDefinition(
 CREATE_TICKET_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, CREATE_TICKET_OPERATION_ID),
     (
-        BranchDefinition(CREATED, "Freshdesk created the ticket and returned it.", False),
+        BranchDefinition(CREATED, "Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned.", False),
         BranchDefinition(PROVIDER_REJECTED, "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", True),
+        BranchDefinition(UNCERTAIN, "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -89,25 +89,24 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The ticket holds the requested values, written now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent.", True),
         BranchDefinition(PROVIDER_REJECTED, "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", True),
-        BranchDefinition(INVALID_RESPONSE, "Freshdesk returned an invalid or oversized ticket, so the change may have been applied.", True),
-        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+        BranchDefinition(INVALID_RESPONSE, "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on the read or after the change repeats the absolute change.", True),
+        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 ADD_NOTE_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, ADD_NOTE_OPERATION_ID),
     (
-        BranchDefinition(ADDED, "Freshdesk added the note or reply and returned it.", False),
+        BranchDefinition(ADDED, "Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Freshdesk conclusively rejected the note or reply; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it.", True),
+        BranchDefinition(UNCERTAIN, "The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

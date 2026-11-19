@@ -4,11 +4,13 @@
 package sqs_test
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go/internal/sqsfake"
 )
 
@@ -62,6 +64,40 @@ func TestChangeMessageVisibilitySelectsReceiptHandleInvalidForAMessageNoLongerIn
 	require.Equal(t, sqs.ChangeMessageVisibilityBranchReceiptHandleInvalid, result.Branch)
 	require.Contains(t, result.Failure.Message, "MessageNotInflight")
 	requireNoSecrets(t, result)
+}
+
+func TestARepeatedReleaseThatFindsTheMessageReleasedSelectsChanged(t *testing.T) {
+	queues := newFakeQueues(t)
+	client := newFakeClient(t, queues)
+	queues.Send(ordersQueue, sqsfake.SentMessage{Body: orderCreatedBody})
+	received := receiveOne(t, client, "receive").Value.Messages[0]
+	queues.ExpireVisibility(ordersQueue)
+	release := sqs.ChangeMessageVisibilityInput{ReceiptHandle: received.ReceiptHandle, VisibilityTimeoutSeconds: 0}
+
+	repeated, err := runMutation(t, newDexContext("release").nextAttempt(), client.ChangeMessageVisibility(), release)
+	require.NoError(t, err)
+	require.Equal(t, sqs.ChangeMessageVisibilityBranchChanged, repeated.Branch, "an earlier attempt may have released it")
+
+	first, err := runMutation(t, newDexContext("first"), client.ChangeMessageVisibility(), release)
+	require.NoError(t, err)
+	require.Equal(t, sqs.ChangeMessageVisibilityBranchReceiptHandleInvalid, first.Branch)
+	extend := release
+	extend.VisibilityTimeoutSeconds = 60
+	extended, err := runMutation(t, newDexContext("extend").nextAttempt(), client.ChangeMessageVisibility(), extend)
+	require.NoError(t, err)
+	require.Equal(t, sqs.ChangeMessageVisibilityBranchReceiptHandleInvalid, extended.Branch)
+}
+
+func TestAcknowledgementsRetryAnUnlistedStatusBecauseItsOutcomeIsUnknown(t *testing.T) {
+	queues := newFakeQueues(t)
+	client := newFakeClient(t, queues)
+	for _, status := range []int{http.StatusMethodNotAllowed, http.StatusConflict, http.StatusTooEarly, http.StatusUnavailableForLegalReasons} {
+		queues.Intercept(func(sqsfake.Request) *sqsfake.Response { return &sqsfake.Response{StatusCode: status, Code: "Unlisted"} })
+		_, err := runMutation(t, newDexContext("delete"), client.DeleteMessage(), sqs.DeleteMessageInput{ReceiptHandle: "AQEB-handle"})
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		_, err = runMutation(t, newDexContext("change"), client.ChangeMessageVisibility(), sqs.ChangeMessageVisibilityInput{ReceiptHandle: "AQEB-handle", VisibilityTimeoutSeconds: 60})
+		requireRetry(t, err, sdkgo.FailureAvailability)
+	}
 }
 
 func TestChangeMessageVisibilityRejectsATimeoutOutsideTheSQSRangeWithoutARequest(t *testing.T) {

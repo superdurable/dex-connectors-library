@@ -1,0 +1,465 @@
+{
+  "connector": "sendcloud",
+  "scenarios": [
+    {
+      "callId": "50201cf1-3a37-54d6-9e36-33d1bc89a912",
+      "exchanges": [
+        {
+          "body": "{\"result\":true,\"statusCode\":200,\"info\":{\"avaliableBalance\":40.54,\"balance\":44.02,\"quota\":2500,\"todayUsedQuota\":2}}",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "availableBalance": "40.54",
+          "balance": "44.02",
+          "dailyQuota": 2500,
+          "todayUsedQuota": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-retrieved",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "b6ecd24e-a7ee-5386-b8de-92a8d42be355",
+      "exchanges": [
+        {
+          "body": "{\"result\":false,\"statusCode\":40005,\"info\":{}}",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableBalance": "",
+          "balance": "",
+          "dailyQuota": 0,
+          "todayUsedQuota": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-authenticationRejected",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "e37423e3-c618-5aae-93f0-f6fd95e35a9f",
+      "exchanges": [
+        {
+          "body": "{\"result\":false,\"statusCode\":40018,\"info\":{}}",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "availableBalance": "",
+          "balance": "",
+          "dailyQuota": 0,
+          "todayUsedQuota": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-authorizationRejected",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "0ba7e528-d2ec-5a71-a50f-1f8e661e8267",
+      "exchanges": [
+        {
+          "body": "unauthorized",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availableBalance": "",
+          "balance": "",
+          "dailyQuota": 0,
+          "todayUsedQuota": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-httpRejected",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "bb955c2c-a23d-529f-9df9-28a20e508f65",
+      "exchanges": [
+        {
+          "body": "{",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availableBalance": "",
+          "balance": "",
+          "dailyQuota": 0,
+          "todayUsedQuota": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-invalidResponse",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "3b56b5d6-2cb0-5923-aac1-c5e6f656a042",
+      "exchanges": [
+        {
+          "body": "{\"result\":true,\"statusCode\":200,\"info\":{\"avaliableBalance\":40.54,\"balance\":44.02,\"quota\":2500,\"todayUsedQuota\":2}}",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "availableBalance": "",
+          "balance": "",
+          "dailyQuota": 0,
+          "todayUsedQuota": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-oversized",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "1a4be41a-9817-54a0-8daf-2fede96c6ab5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "availableBalance": "",
+          "balance": "",
+          "dailyQuota": 0,
+          "todayUsedQuota": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-defect",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "acafdbda-fe20-5f2b-9e3d-be7cb39b747e",
+      "exchanges": [
+        {
+          "body": "{\"result\":false,\"statusCode\":50000,\"info\":{}}",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-rateCode",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "358824ec-6466-53db-b964-047152227a9e",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-rateLimited",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "0a945f0b-ded9-5ac6-b220-b2a32c1c04b2",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-unavailable",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "b76f33aa-c3a5-546a-8969-180089feb1ce",
+      "exchanges": [
+        {
+          "form": {
+            "apiKey": [
+              "test-api-key"
+            ],
+            "apiUser": [
+              "test-api-user"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/userinfo/get",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-transportFailure",
+      "operation": "getAccountBalance"
+    }
+  ],
+  "schemaVersion": 1
+}

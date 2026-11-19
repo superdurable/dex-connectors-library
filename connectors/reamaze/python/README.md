@@ -2,13 +2,13 @@
 
 `dex-connector-reamaze` provides six async Re:amaze operations for Dex Flows: search and read conversations, create and update conversations, add a reply or internal note, and find a contact by email. It also provides the `conversationCreated` poll Trigger. It uses the `dex_connectors.reamaze` import package, requires Python 3.11 or newer, and depends on `dex-connectors-sdk>=0.12.0`, which adds the poll Trigger kit.
 
-Install `dex-connector-reamaze==0.2.0` after release. The
+Install `dex-connector-reamaze==0.2.1` after release. The
 [contact lookup example](examples/find_contact/README.md) contains the Worker,
 Client start command, and a real Dex integration test.
 
 Configure `brand` as the lowercase subdomain in `https://{brand}.reamaze.io`; set `email` to the staff login address and store the user's API token in the secret `api_token` credential field. Re:amaze calls use HTTP Basic on the brand's `/api/v1` endpoint. Each call reads current credentials, and the token is kept out of Flow inputs and results.
 
-The write operations preserve Go's branch identities and Dex retry behavior. `createConversation` and `replyToConversation` use a single-dispatch heartbeat fence and read-back to avoid resending a request whose outcome is unknown. `updateConversation` reads the conversation before setting absolute status, assignee, and tag values. An unwired optional branch fails the Flow.
+The write operations preserve Go's branch identities and Dex retry behavior. `createConversation` and `replyToConversation` use a single-dispatch heartbeat fence with the manifest send cap: an unknown outcome is read back first, resent while the cap allows when no record is found, and reported `uncertain` at the cap. A 2xx whose body breaks, is oversized, or does not decode is never resent: it is read back in the same attempt and reported `uncertain` unless found. `updateConversation` reads the conversation before setting absolute status, assignee, and tag values. An unwired optional branch fails the Flow.
 
 For `findContactByEmail`, `notFound` means a successful contact search returned no exact email match. A 404 response from `/contacts` selects `providerRejected`.
 

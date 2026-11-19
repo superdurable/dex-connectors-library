@@ -25,6 +25,7 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
+    DispatchNotAllowedError,
     Fence,
     InsufficientAttemptTimeError,
 )
@@ -53,9 +54,24 @@ from .models import (
     PostThreadReplyInput,
 )
 
+# Only these statuses prove Graph refused a write; every other status is an unknown outcome.
+_CONCLUSIVE_REJECTION_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
 
 def _empty_receipt() -> Receipt:
     return Receipt()
+
+
+def _accepted_message_id(body: bytes) -> str:
+    """Return the body's message ID when it matches Graph's format, whatever the other fields hold."""
+    try:
+        resource = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    if not isinstance(resource, dict):
+        return ""
+    message_id = resource.get("id")
+    return message_id if isinstance(message_id, str) and MESSAGE_ID.fullmatch(message_id) else ""
 
 
 def _go_json_body(value: object) -> bytes:
@@ -229,9 +245,10 @@ def _write_classification(
         )
     status = exchange.status
     if 200 <= status < 300:
+        # Graph stored the message even when its response is unusable.
         if exchange.body_read_failed:
             return (
-                "ambiguous",
+                "acceptedUnreadable",
                 _failure(
                     client,
                     operation,
@@ -242,7 +259,7 @@ def _write_classification(
             )
         if exchange.body_too_large:
             return (
-                "ambiguous",
+                "acceptedUnreadable",
                 _failure(
                     client,
                     operation,
@@ -254,7 +271,7 @@ def _write_classification(
             )
         if exchange.reflects_secret:
             return (
-                "ambiguous",
+                "acceptedUnreadable",
                 _failure(
                     client,
                     operation,
@@ -286,7 +303,7 @@ def _write_classification(
             ),
             client.retry_after(exchange),
         )
-    if status == 501 or (400 <= status < 500 and status not in (408, 409, 429)):
+    if status in _CONCLUSIVE_REJECTION_STATUSES:
         return "rejected", _rejection(client, operation, subject, exchange), 0
     return (
         "ambiguous",
@@ -469,9 +486,14 @@ class _PostOperation:
         self.client = client
 
     async def _send(self, call: Call, post: _Post) -> MutationAttempt[PostMessageOutput]:
+        """Resend an unknown outcome while possible sends stay below `call.max_sends`.
+
+        A post that can be read back is looked for before each resend and at
+        the cap; otherwise uncertain is selected at the cap.
+        """
         client = self.client
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
             decision = await fence.decide()
         except Exception:
             return MutationAttempt.branch_result(
@@ -486,17 +508,19 @@ class _PostOperation:
                 ),
             )
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                post.requested,
+            return MutationAttempt.retry(
                 _failure(
                     client,
                     post.operation,
-                    FailureKind.TRANSPORT,
-                    "the Microsoft Teams dispatch checkpoint is unavailable, "
-                    "so the message is not sent again",
-                ),
-                _empty_receipt(),
+                    FailureKind.AVAILABILITY,
+                    "the Microsoft Teams dispatch checkpoint is unreadable; "
+                    "no message was sent in this attempt",
+                )
             )
+        # This attempt's send is the last one the cap allows when no further send remains.
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # An earlier send may have posted, so a refusal or local failure now cannot prove nothing changed.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         try:
             credentials = await client.resolve_credentials(call)
         except Exception as error:
@@ -507,56 +531,84 @@ class _PostOperation:
                 else "Microsoft Teams connection credentials are temporarily unavailable"
             )
             failure = _failure(client, post.operation, FailureKind.AUTHENTICATION, message)
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            # notSent after a possible earlier send would let the next attempt skip read-back.
+            if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
                 try:
                     await fence.record_not_sent()
                 except Exception:
                     failure = replace(
                         failure, message=failure.message + "; the not-sent checkpoint also failed"
                     )
-                if must_reauthorize:
-                    return MutationAttempt.branch_result("defect", post.requested, _empty_receipt(), failure)
+            if not must_reauthorize:
                 return MutationAttempt.retry(failure)
-            return (
-                MutationAttempt.uncertain(post.requested, failure, _empty_receipt())
-                if must_reauthorize
-                else MutationAttempt.retry(failure)
-            )
+            if has_possible_earlier_send:
+                return MutationAttempt.uncertain(post.requested, failure, _empty_receipt())
+            return MutationAttempt.branch_result("defect", post.requested, _empty_receipt(), failure)
+        saved_message_id = decision.marker.provider_id if decision.marker else ""
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            return await self._reconcile(
-                call, credentials, post, decision.marker.provider_id if decision.marker else ""
-            )
+            reconciled, _ = await self._reconcile(call, credentials, post, saved_message_id, False)
+            return reconciled
+        # SEND_ALLOWED after a canResend marker can follow an earlier unknown send, so it reads back too.
+        # A saved message ID proves Graph stored an earlier post, so it is read back and never resent.
+        if (has_possible_earlier_send or saved_message_id) and (post.read_back_path or saved_message_id):
+            reconciled, should_resend = await self._reconcile(call, credentials, post, saved_message_id, True)
+            if not should_resend:
+                return reconciled
         payload = _go_json_body(post.body)
+        observed_statuses: list[int] = []
+        has_send_started = False
+
+        async def send_post(deadline: datetime) -> tuple[Exchange, Any]:
+            nonlocal has_send_started
+            has_send_started = True
+            return await client.exchange(
+                call,
+                credentials,
+                "POST",
+                post.path,
+                payload,
+                retry_rejected=False,
+                timeout=max(0, (deadline - datetime.now(UTC)).total_seconds()),
+                observed_statuses=observed_statuses,
+            )
+
         try:
-            exchange, credentials = await fence.dispatch(
-                lambda deadline: client.exchange(
-                    call,
-                    credentials,
-                    "POST",
-                    post.path,
-                    payload,
-                    retry_rejected=False,
-                    timeout=max(0, (deadline - datetime.now(UTC)).total_seconds()),
+            exchange, credentials = await fence.dispatch(send_post)
+        except Exception as error:
+            # A Fence error raised before the POST started, such as a failed notSent write, sent nothing.
+            if not has_send_started or isinstance(
+                error, (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError)
+            ):
+                return MutationAttempt.retry(
+                    _failure(
+                        client,
+                        post.operation,
+                        FailureKind.AVAILABILITY,
+                        f"the {post.subject} was not sent before the dispatch deadline",
+                    )
                 )
-            )
-        except (CheckpointError, InsufficientAttemptTimeError):
-            return MutationAttempt.retry(
-                _failure(
-                    client,
-                    post.operation,
-                    FailureKind.AVAILABILITY,
-                    f"the {post.subject} was not sent before the dispatch deadline",
+            if any(200 <= status < 300 for status in observed_statuses):
+                return self._retry_read_back_or_select_uncertain(
+                    post,
+                    False,
+                    _failure(
+                        client,
+                        post.operation,
+                        FailureKind.TRANSPORT,
+                        f"Microsoft Graph accepted the {post.subject} but its response was interrupted",
+                    ),
+                    _empty_receipt(),
                 )
-            )
-        except Exception:
-            return MutationAttempt.uncertain(
-                post.requested,
+            return self._resend_or_select_uncertain(
+                post,
+                can_resend_unknown_outcome,
                 _failure(
                     client,
                     post.operation,
                     FailureKind.TRANSPORT,
                     "Microsoft Teams message dispatch outcome is unknown",
                 ),
+                0,
                 _empty_receipt(),
             )
         if exchange.status == 401 and isinstance(client.credentials, RejectedCredentialRefreshingProvider):
@@ -589,30 +641,36 @@ class _PostOperation:
         )
         receipt = client.receipt(call, exchange)
         if category == "accepted":
-            try:
-                resource = json.loads(exchange.body)
-                if (
-                    isinstance(resource, dict)
-                    and isinstance(resource.get("id"), str)
-                    and MESSAGE_ID.fullmatch(resource["id"])
-                ):
-                    try:
-                        await fence.record_provider_id(resource["id"])
-                    except Exception:
-                        pass
-                decoded_message = decode_message(resource)
-                return MutationAttempt.branch_result(
-                    "sent",
-                    _posted_output(post.requested, decoded_message, False),
-                    client.receipt(call, exchange, decoded_message.id),
-                )
-            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError):
-                failure = _failure(
+            message_id = _accepted_message_id(exchange.body)
+            is_message_id_saved = False
+            if message_id:
+                try:
+                    await fence.record_provider_id(message_id)
+                    is_message_id_saved = True
+                except Exception:
+                    pass  # Without a saved ID the post cannot be read back, so uncertain is selected below.
+                try:
+                    decoded_message = decode_message(json.loads(exchange.body))
+                    return MutationAttempt.branch_result(
+                        "sent",
+                        _posted_output(post.requested, decoded_message, False),
+                        client.receipt(call, exchange, decoded_message.id),
+                    )
+                except (ValueError, TypeError, KeyError, AttributeError, UnicodeDecodeError):
+                    pass
+            return self._retry_read_back_or_select_uncertain(
+                post,
+                is_message_id_saved,
+                _failure(
                     client,
                     post.operation,
                     FailureKind.PROTOCOL,
                     f"Microsoft Graph accepted the {post.subject} but returned an unusable message",
-                )
+                ),
+                receipt,
+            )
+        elif category == "acceptedUnreadable":
+            return self._retry_read_back_or_select_uncertain(post, False, failure, receipt)
         elif category == "notApplied":
             assert failure is not None
             try:
@@ -621,17 +679,83 @@ class _PostOperation:
                 failure = replace(failure, message=failure.message + "; the safe-resend checkpoint failed")
             return MutationAttempt.retry(failure, delay)
         elif category == "rejected":
+            rejected_message_id = _accepted_message_id(exchange.body)
+            if rejected_message_id:
+                # A message ID in a refusal shows Graph stored the post, so it is never resent.
+                is_message_id_saved = False
+                try:
+                    await fence.record_provider_id(rejected_message_id)
+                    is_message_id_saved = True
+                except Exception:
+                    pass  # Without a saved ID the post cannot be read back, so uncertain is selected.
+                return self._retry_read_back_or_select_uncertain(
+                    post,
+                    is_message_id_saved,
+                    _failure(
+                        client,
+                        post.operation,
+                        FailureKind.PROTOCOL,
+                        f"Microsoft Graph refused the {post.subject} but returned a message ID",
+                    ),
+                    receipt,
+                )
+            if has_possible_earlier_send:
+                failure = replace(
+                    failure,
+                    message=failure.message
+                    + f"; an earlier attempt of this Step may have sent the {post.subject}",
+                )
+                return MutationAttempt.uncertain(post.requested, failure, receipt)
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass  # The refusal ends the Step, so a lost checkpoint cannot cause a resend.
             return MutationAttempt.branch_result("providerRejected", post.requested, receipt, failure)
         elif category == "defect":
+            if has_possible_earlier_send:
+                return MutationAttempt.uncertain(post.requested, failure, receipt)
             return MutationAttempt.branch_result("defect", post.requested, receipt, failure)
-        assert failure is not None
-        if not post.read_back_path:
-            return MutationAttempt.uncertain(post.requested, failure, receipt)
-        return MutationAttempt.retry(failure, max(delay, 5))
+        return self._resend_or_select_uncertain(post, can_resend_unknown_outcome, failure, delay, receipt)
+
+    def _resend_or_select_uncertain(
+        self,
+        post: _Post,
+        can_resend_unknown_outcome: bool,
+        failure: Failure,
+        delay: float,
+        receipt: Receipt,
+    ) -> MutationAttempt[PostMessageOutput]:
+        """Retry an unknown outcome; a readable post is read back first on the next attempt."""
+        if post.read_back_path:
+            # The claim stays the last marker, so the next attempt counts this send and reads back.
+            return MutationAttempt.retry(failure, max(delay, 5))
+        if can_resend_unknown_outcome:
+            return MutationAttempt.retry(failure, delay)
+        failure = replace(
+            failure,
+            message=failure.message + f"; the send cap is reached, so the {post.subject} is not sent again",
+        )
+        return MutationAttempt.uncertain(post.requested, failure, receipt)
+
+    def _retry_read_back_or_select_uncertain(
+        self, post: _Post, is_message_id_saved: bool, failure: Failure, receipt: Receipt
+    ) -> MutationAttempt[PostMessageOutput]:
+        """Never resend a post Graph stored; retry only to read a saved message ID back."""
+        if is_message_id_saved and post.read_back_path:
+            suffix = "; the next attempt reads the stored message back by its ID"
+            return MutationAttempt.retry(replace(failure, message=failure.message + suffix))
+        suffix = f"; Graph stored the {post.subject}, so it is not sent again"
+        failure = replace(failure, message=failure.message + suffix)
+        return MutationAttempt.uncertain(post.requested, failure, receipt)
 
     async def _reconcile(
-        self, call: Call, credentials: Any, post: _Post, provider_id: str
-    ) -> MutationAttempt[PostMessageOutput]:
+        self, call: Call, credentials: Any, post: _Post, provider_id: str, is_resend_allowed: bool
+    ) -> tuple[MutationAttempt[PostMessageOutput], bool]:
+        """Read the provider only.
+
+        When `is_resend_allowed`, a definite absence or an inconclusive
+        listing returns `True` as the second value instead of a final uncertain.
+        """
         client = self.client
         if not post.read_back_path:
             return MutationAttempt.uncertain(
@@ -644,7 +768,7 @@ class _PostOperation:
                     "and the connection cannot read it back, so it is not sent again",
                 ),
                 client.receipt(call, Exchange()),
-            )
+            ), False
         if provider_id and not MESSAGE_ID.fullmatch(provider_id):
             return MutationAttempt.uncertain(
                 post.requested,
@@ -655,7 +779,7 @@ class _PostOperation:
                     "the earlier Microsoft Teams message has an invalid provider ID",
                 ),
                 _empty_receipt(),
-            )
+            ), False
         path = post.read_back_path + ("/" + provider_id if provider_id else "")
         exchange, _ = await client.exchange(
             call, credentials, "GET", path, query=None if provider_id else {"$top": "50"}
@@ -666,7 +790,7 @@ class _PostOperation:
         receipt = client.receipt(call, exchange, provider_id)
         if category == "retry":
             assert failure is not None
-            return MutationAttempt.retry(failure, delay)
+            return MutationAttempt.retry(failure, delay), False
         if provider_id:
             if category == "read":
                 try:
@@ -675,7 +799,7 @@ class _PostOperation:
                         decoded_message = decode_message(resource)
                         return MutationAttempt.branch_result(
                             "sent", _posted_output(post.requested, decoded_message, True), receipt
-                        )
+                        ), False
                 except (ValueError, TypeError, KeyError, UnicodeDecodeError, json.JSONDecodeError):
                     pass
             return MutationAttempt.uncertain(
@@ -687,7 +811,7 @@ class _PostOperation:
                     "the earlier Microsoft Teams message could not be confirmed by its provider ID",
                 ),
                 receipt,
-            )
+            ), False
         if category != "read":
             assert failure is not None
             return MutationAttempt.uncertain(
@@ -700,7 +824,7 @@ class _PostOperation:
                     f"be read back, so it is not sent again: {failure.message}",
                 ),
                 receipt,
-            )
+            ), is_resend_allowed
         try:
             collection = json.loads(exchange.body)
             if not isinstance(collection, dict) or not isinstance(collection.get("value"), list):
@@ -716,7 +840,7 @@ class _PostOperation:
                     "and the messages read back are invalid",
                 ),
                 receipt,
-            )
+            ), is_resend_allowed
         first_attempt = (
             getattr(
                 call.context,
@@ -773,11 +897,12 @@ class _PostOperation:
                 "sent",
                 _posted_output(post.requested, matches[0], True),
                 client.receipt(call, exchange, matches[0].id),
-            )
+            ), False
         kind = FailureKind.TRANSPORT if not matches else FailureKind.CONFLICT
         reason = (
             "the newest messages show no match" if not matches else "several identical messages were found"
         )
+        # Several matches mean a duplicate may already exist, so another send is never allowed.
         return MutationAttempt.uncertain(
             post.requested,
             _failure(
@@ -788,7 +913,7 @@ class _PostOperation:
                 f"and {reason}, so it is not sent again",
             ),
             receipt,
-        )
+        ), is_resend_allowed and not matches
 
 
 class PostChannelMessageOperation(_PostOperation):

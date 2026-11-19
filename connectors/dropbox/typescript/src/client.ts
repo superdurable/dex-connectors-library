@@ -6,10 +6,12 @@ import {
   type Call, type CredentialProvider, type CredentialRefreshDriver,
 } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
+import { isCredentialMaterialError } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './models.js';
 import {
@@ -97,15 +99,16 @@ export class DropboxClient {
     call: Call, url: string, body: Uint8Array | undefined, headers: Record<string, string>,
     successLimit: number, isDownload = false,
   ): Promise<DropboxExchange> {
-    let token: string;
+    let credentials: Credentials;
     try {
-      const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      if (!(credentials.accessToken instanceof SecretString)) return { status: 0, body: new Uint8Array(), metadata: '', retryAfterMs: 0, error: 'credential' };
-      token = credentials.accessToken.reveal();
+      credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
-      return { status: 0, body: new Uint8Array(), metadata: '', retryAfterMs: 0,
-        error: error instanceof ReauthorizationRequiredError ? 'credential' : 'refresh' };
+      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+        || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+        || isCredentialMaterialError(error);
+      return { status: 0, body: new Uint8Array(), metadata: '', retryAfterMs: 0, error: isTerminal ? 'credential' : 'refresh' };
     }
+    const token = credentials.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';
     if (!token || !isHeaderSafeCredential(token)) return { status: 0, body: new Uint8Array(), metadata: '', retryAfterMs: 0, error: 'credential' };
     const endpoint = new URL(url);
     const request: ProviderRequest = {

@@ -1,10 +1,10 @@
 {
   "connectorId": "zoho-crm",
-  "releaseTag": "connectors/zoho/crm/go/v0.24.0",
+  "releaseTag": "connectors/zoho/crm/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-zoho-crm",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

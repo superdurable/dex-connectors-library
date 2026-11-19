@@ -236,6 +236,28 @@ type ListEntriesOperation struct{ client *Client }
 // ListEntries returns this client's typed operation.
 func (client *Client) ListEntries() ListEntriesOperation { return ListEntriesOperation{client} }
 
+// GetAsset returns this client's typed asset Query.
+func (client *Client) GetAsset() GetAssetOperation { return GetAssetOperation{client} }
+
+// ListAssets returns this client's typed asset collection Query.
+func (client *Client) ListAssets() ListAssetsOperation { return ListAssetsOperation{client} }
+
+// GetContentType returns this client's typed content type Query.
+func (client *Client) GetContentType() GetContentTypeOperation {
+	return GetContentTypeOperation{client}
+}
+
+// ListContentTypes returns this client's typed content model Query.
+func (client *Client) ListContentTypes() ListContentTypesOperation {
+	return ListContentTypesOperation{client}
+}
+
+// GetSpace returns this client's typed space Query.
+func (client *Client) GetSpace() GetSpaceOperation { return GetSpaceOperation{client} }
+
+// ListLocales returns this client's typed locale Query.
+func (client *Client) ListLocales() ListLocalesOperation { return ListLocalesOperation{client} }
+
 // Definition returns the generated operation contract.
 func (ListEntriesOperation) Definition() sdkgo.QueryDefinition { return ListEntriesDefinition }
 

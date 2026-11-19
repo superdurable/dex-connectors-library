@@ -4,12 +4,14 @@
 package airtable_test
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/airtable/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestUpdateRecordsPatchesNamedFieldsByRecordID(t *testing.T) {
@@ -51,6 +53,27 @@ func TestUpdateRecordsSelectsNotFoundForAMissingRecord(t *testing.T) {
 	requireSecretSafeFailure(t, result.Failure)
 }
 
+func TestWritesRetryAStatusThatDoesNotProveARefusal(t *testing.T) {
+	for _, status := range []int{http.StatusConflict, http.StatusNotImplemented, http.StatusFound, http.StatusTeapot} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			provider := newRecordingAirtable(t, func(response http.ResponseWriter, _ recordedRequest) {
+				writeJSON(t, response, status, `{"error":{"type":"UNKNOWN","message":"`+providerMessageSentinel+`"}}`)
+			})
+			client := newTestClient(t, provider.URL, airtable.Config{})
+			_, err := sdkgo.RunMutation(newStepDexContext("update-unknown"), client.UpdateRecords(), airtableConnection, airtable.UpdateRecordsInput{
+				BaseID: testBaseID, TableIDOrName: testTableID,
+				Records: []airtable.RecordUpdate{{ID: "recPolicyStandard", Fields: map[string]airtable.CellValue{"Status": airtable.TextCellValue("done")}}},
+			})
+			requireRetry(t, err)
+			_, err = sdkgo.RunMutation(newStepDexContext("upsert-unknown"), client.UpsertRecords(), airtableConnection, airtable.UpsertRecordsInput{
+				BaseID: testBaseID, TableIDOrName: testTableID, FieldsToMergeOn: []string{"Case ID"},
+				Records: []airtable.RecordUpsert{{Fields: map[string]airtable.CellValue{"Case ID": airtable.TextCellValue("case-1")}}},
+			})
+			requireRetry(t, err)
+		})
+	}
+}
+
 func TestUpdateRecordsRejectsUnsafeInputWithoutARequest(t *testing.T) {
 	provider := newRecordingAirtable(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeJSON(t, response, http.StatusOK, `{}`)
@@ -74,15 +97,79 @@ func TestUpdateRecordsRejectsUnsafeInputWithoutARequest(t *testing.T) {
 	require.Empty(t, provider.recordedRequests())
 }
 
-func TestUpdateRecordsSelectsInvalidResponseForAnotherRecord(t *testing.T) {
+func TestUpdateRecordsRetriesAnAnswerForAnotherRecord(t *testing.T) {
 	provider := newRecordingAirtable(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeJSON(t, response, http.StatusOK, `{"records":[{"id":"recSomeoneElse001","createdTime":"2026-09-12T21:03:48.000Z","fields":{}}]}`)
 	})
 	client := newTestClient(t, provider.URL, airtable.Config{})
-	result, err := sdkgo.RunMutation(newStepDexContext("update-other"), client.UpdateRecords(), airtableConnection, airtable.UpdateRecordsInput{
+	_, err := sdkgo.RunMutation(newStepDexContext("update-other"), client.UpdateRecords(), airtableConnection, airtable.UpdateRecordsInput{
 		BaseID: testBaseID, TableIDOrName: testTableID,
 		Records: []airtable.RecordUpdate{{ID: "recPolicyStandard", Fields: map[string]airtable.CellValue{"Status": airtable.TextCellValue("done")}}},
 	})
-	require.NoError(t, err)
-	require.Equal(t, airtable.UpdateRecordsBranchInvalidResponse, result.Branch)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "repeating absolute values is safe")
+	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+}
+
+type failingCredentials struct{ resolveErr error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (airtable.Credentials, error) {
+	return airtable.Credentials{}, credentials.resolveErr
+}
+
+func TestUpdateRecordsRetriesATransientCredentialFailure(t *testing.T) {
+	for name, resolveErr := range map[string]error{
+		"broker unavailable":    projectconfig.ErrCredentialBrokerUnavailable,
+		"static not configured": errors.New("connection is not configured"),
+		"unlisted error":        errors.New("credential store hiccup"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := airtable.New(airtable.Config{Endpoint: "http://127.0.0.1:1"}, failingCredentials{resolveErr: resolveErr})
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newStepDexContext("update-broker-outage"), client.UpdateRecords(), airtableConnection, airtable.UpdateRecordsInput{
+				BaseID: testBaseID, TableIDOrName: testTableID,
+				Records: []airtable.RecordUpdate{{ID: "recPolicyStandard", Fields: map[string]airtable.CellValue{"Status": airtable.TextCellValue("done")}}},
+			})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an earlier attempt may have applied the write, so defect would be wrong")
+		})
+	}
+}
+
+func TestUpdateRecordsSelectsATerminalBranchForATerminalCredentialFailure(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		branch     sdkgo.BranchID
+	}{
+		"sdk reauthorization":           {sdkgo.NewReauthorizationRequiredError(nil), airtable.UpdateRecordsBranchProviderRejected},
+		"projectconfig reauthorization": {projectconfig.ErrReauthorizationRequired, airtable.UpdateRecordsBranchProviderRejected},
+		"object not found":              {projectconfig.ErrObjectNotFound, airtable.UpdateRecordsBranchDefect},
+		"connection not selected":       {projectconfig.ErrConnectionNotSelected, airtable.UpdateRecordsBranchDefect},
+		"broker rejected":               {projectconfig.ErrCredentialBrokerRejected, airtable.UpdateRecordsBranchDefect},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := airtable.New(airtable.Config{Endpoint: "http://127.0.0.1:1"}, failingCredentials{resolveErr: testCase.resolveErr})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newStepDexContext("update-terminal-credential"), client.UpdateRecords(), airtableConnection, airtable.UpdateRecordsInput{
+				BaseID: testBaseID, TableIDOrName: testTableID,
+				Records: []airtable.RecordUpdate{{ID: "recPolicyStandard", Fields: map[string]airtable.CellValue{"Status": airtable.TextCellValue("done")}}},
+			})
+			require.NoError(t, err)
+			require.Equal(t, testCase.branch, result.Branch)
+		})
+	}
+}
+
+func TestUpdateRecordsRetriesAnOversizedAnswer(t *testing.T) {
+	provider := newRecordingAirtable(t, func(response http.ResponseWriter, _ recordedRequest) {
+		writeJSON(t, response, http.StatusOK, `{"records":[{"id":"recPolicyStandard","createdTime":"2026-09-12T21:03:48.000Z","fields":{"Status":"done"}}]}`)
+	})
+	client := newTestClient(t, provider.URL, airtable.Config{MaxResponseBytes: 16})
+	_, err := sdkgo.RunMutation(newStepDexContext("update-oversized"), client.UpdateRecords(), airtableConnection, airtable.UpdateRecordsInput{
+		BaseID: testBaseID, TableIDOrName: testTableID,
+		Records: []airtable.RecordUpdate{{ID: "recPolicyStandard", Fields: map[string]airtable.CellValue{"Status": airtable.TextCellValue("done")}}},
+	})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureResponseTooLarge, retry.Failure.Kind)
 }

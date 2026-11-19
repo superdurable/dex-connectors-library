@@ -243,7 +243,7 @@ func UpsertWebhookProviderRejected(value typeform.Webhook, failure *sdkgo.Failur
 	return connectormock.Branch(typeform.UpsertWebhookBranchProviderRejected, value, failure)
 }
 
-// UpsertWebhookInvalidResponse selects the invalidResponse branch: Typeform answered 2xx with a malformed or oversized body, so it may have stored the webhook without this Result describing it.
+// UpsertWebhookInvalidResponse selects the invalidResponse branch: Retained for compatibility and no longer selected: a malformed or oversized 2xx body now retries the idempotent PUT.
 func UpsertWebhookInvalidResponse(value typeform.Webhook, failure *sdkgo.Failure) connectormock.Case[typeform.Webhook] {
 	return connectormock.Branch(typeform.UpsertWebhookBranchInvalidResponse, value, failure)
 }

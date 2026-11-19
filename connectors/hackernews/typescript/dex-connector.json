@@ -1,10 +1,10 @@
 {
   "connectorId": "hacker-news-daily",
-  "releaseTag": "connectors/hackernews/go/v0.25.0",
+  "releaseTag": "connectors/hackernews/go/v0.26.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-hackernews",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "factories": [
     {
@@ -123,6 +123,102 @@
         "required": [
           "id"
         ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newSearchStoriesStep",
+      "kind": "query",
+      "operationId": "searchStories",
+      "inputType": "SearchStoriesInput",
+      "description": "Search Hacker News stories, including Ask HN and Show HN posts, by keyword. Give query words; optionally sortBy date for newest first, tags show_hn, ask_hn, or front_page, createdAfter and createdBefore as RFC 3339 times, minPoints, and a zero-based page with hitsPerPage from 1 to 100. Returns story IDs, titles, source and discussion URLs, authors, points, comment counts, creation times, plain story text, and the next page number, which is zero after the last page.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "searched",
+          "field": "searched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchStoriesInput selects one page of a keyword story search. Every field is optional.",
+        "properties": {
+          "createdAfter": {
+            "description": "CreatedAfter keeps stories submitted strictly after this time. Zero sets no lower bound.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBefore": {
+            "description": "CreatedBefore keeps stories submitted strictly before this time. Zero sets no upper bound. When both bounds are set, CreatedBefore must be later than CreatedAfter.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "hitsPerPage": {
+            "description": "HitsPerPage is the page size from 1 through 100. Zero selects 20.",
+            "type": "integer"
+          },
+          "minPoints": {
+            "description": "MinPoints keeps stories with at least this many points. Zero sets no minimum; negative is invalid.",
+            "type": "integer"
+          },
+          "page": {
+            "description": "Page is the zero-based result page. Zero selects the first page. Page times HitsPerPage must stay below 1000, because the Search API serves only the first 1000 hits of a query.",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Query is the full-text keyword query, at most 512 bytes, matched against story titles, URLs, authors, and submitted text. Quoted phrases and -excluded words follow the Search API syntax. Empty matches every story that the other filters allow.",
+            "type": "string"
+          },
+          "sortBy": {
+            "description": "SortBy is relevance or date. Empty selects relevance; date returns the newest stories first.",
+            "enum": [
+              "date",
+              "relevance"
+            ],
+            "type": "string"
+          },
+          "tags": {
+            "description": "Tags lists story, show_hn, ask_hn, or front_page. A story must carry every listed tag. The story tag is always applied, so empty searches all stories, including Ask HN and Show HN posts.",
+            "items": {
+              "enum": [
+                "ask_hn",
+                "front_page",
+                "show_hn",
+                "story"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
         "type": "object"
       }
     }

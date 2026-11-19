@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -156,12 +157,13 @@ func (operation TrackEventOperation) Invoke(call sdkgo.Call, input TrackEventInp
 		if status == 0 {
 			return sdkgo.NewMutationBranch(TrackEventBranchDefect, EventImportResult{}, failure, sdkgo.Receipt{})
 		}
-		if status < 0 {
-			return sdkgo.NewMutationRetry[EventImportResult](*failure, retryAfter)
-		}
-		return sdkgo.NewMutationBranch(TrackEventBranchInvalidResponse, EventImportResult{}, failure, sdkgo.Receipt{})
+		// The $insert_id deduplicates a resend, so an oversized confirmation retries instead of selecting invalidResponse.
+		return sdkgo.NewMutationRetry[EventImportResult](*failure, retryAfter)
 	}
 	if status != http.StatusOK {
+		if !isDefiniteRefusalStatus(status) {
+			return sdkgo.NewMutationRetry[EventImportResult](*mixpanelFailure(name, sdkgo.FailureAvailability, "Mixpanel answered event import with HTTP "+strconv.Itoa(status)+", so its outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(TrackEventBranchProviderRejected, EventImportResult{}, mixpanelFailure(name, rejectionKind(status), "Mixpanel rejected event import with HTTP "+strconv.Itoa(status)), sdkgo.Receipt{})
 	}
 	var answer struct {
@@ -170,7 +172,7 @@ func (operation TrackEventOperation) Invoke(call sdkgo.Call, input TrackEventInp
 		Status   string `json:"status"`
 	}
 	if json.Unmarshal(body, &answer) != nil || answer.Code != 200 || answer.Imported != 1 || answer.Status != "OK" {
-		return sdkgo.NewMutationBranch(TrackEventBranchInvalidResponse, EventImportResult{}, mixpanelFailure(name, sdkgo.FailureProtocol, "Mixpanel returned an invalid import confirmation"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[EventImportResult](*mixpanelFailure(name, sdkgo.FailureProtocol, "Mixpanel returned an unusable import confirmation"), 0)
 	}
 	return sdkgo.NewMutationBranch(TrackEventBranchImported, EventImportResult{Imported: true}, nil, sdkgo.Receipt{})
 }
@@ -221,8 +223,19 @@ func (operation ExportEventsOperation) Invoke(call sdkgo.Call, input ExportEvent
 	return sdkgo.NewQueryBranch(ExportEventsBranchExported, result, nil, sdkgo.Receipt{})
 }
 
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func (client *Client) send(call sdkgo.Call, method, address string, payload []byte, operation string) ([]byte, int, *sdkgo.Failure, time.Duration) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		// A negative status retries; a passing credential outage sent nothing.
+		return nil, -1, mixpanelFailure(operation, sdkgo.FailureAvailability, "Mixpanel credentials are temporarily unavailable"), 0
+	}
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.ServiceAccountUsername.Reveal()) || !providerhttp.IsHeaderSafeCredential(credentials.ServiceAccountSecret.Reveal()) {
 		return nil, 0, mixpanelFailure(operation, sdkgo.FailureAuthentication, "Mixpanel credentials are unavailable or invalid"), 0
 	}
@@ -257,6 +270,16 @@ func (client *Client) send(call sdkgo.Call, method, address string, payload []by
 		return nil, -1, mixpanelFailure(operation, sdkgo.FailureAvailability, "Mixpanel response was interrupted"), 0
 	}
 	return body, response.StatusCode, nil, 0
+}
+
+// isDefiniteRefusalStatus reports a status that proves Mixpanel refused the import.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func rejectionKind(status int) sdkgo.FailureKind {

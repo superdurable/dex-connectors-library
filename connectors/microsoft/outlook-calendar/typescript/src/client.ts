@@ -1,9 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence } from "@superdurable/connectors-sdk/singledispatch";
 import {
+  definitionMaxSends,
   newMutationBranch,
   newMutationRetry,
+  newMutationUncertain,
   newQueryBranch,
   newQueryRetry,
   zeroReceipt,
@@ -157,43 +160,15 @@ function failedQuery<T>(
     );
   return newQueryRetry(failure(op, "AVAILABILITY", "provider is unavailable"));
 }
-function failedMutation<T>(
-  op: string,
-  error: RequestFailure,
-  empty: T,
-  call: Call,
-  http: GraphHTTP,
-): MutationAttempt<T> {
-  if (error.kind === "RESPONSE_TOO_LARGE")
-    return newMutationBranch(
-      "invalidResponse",
-      empty,
-      receipt(call, error.response, "", http.now),
-      failure(op, error.kind, error.message),
-    );
-  if (error.kind === "LOCAL_DEFECT")
-    return newMutationBranch(
-      "defect",
-      empty,
-      zeroReceipt(),
-      failure(op, error.kind, error.message),
-    );
-  return newMutationRetry(
-    failure(
-      op,
-      "TRANSPORT",
-      op === "createEvent"
-        ? "create outcome is unknown; the retry looks the idempotency key up first"
-        : "update outcome is unknown; the retry rereads the event first",
-    ),
-  );
-}
 function failedValidation<T>(
   op: string,
   error: unknown,
   empty: T,
 ): QueryAttempt<T> {
   const source = error instanceof RequestFailure ? error.kind : "VALIDATION";
+  // Only a non-terminal credential failure carries AVAILABILITY here.
+  if (source === "AVAILABILITY")
+    return newQueryRetry(failure(op, source, (error as Error).message));
   return newQueryBranch(
     "defect",
     empty,
@@ -821,52 +796,6 @@ function createPayload(
       : {}),
   };
 }
-function existingCreate(
-  result: LookupResult,
-  call: Call,
-  http: GraphHTTP,
-): MutationAttempt<CreateEventOutput> {
-  const op = "createEvent",
-    empty = emptyCreate();
-  const resultReceipt = receipt(
-    call,
-    result.response,
-    result.value.id,
-    http.now,
-  );
-  if (result.outcome === "found")
-    return newMutationBranch(
-      "created",
-      {
-        event: result.value,
-        wasAlreadyCreated: true,
-        ...(result.duplicates.length
-          ? { duplicateEventIds: result.duplicates }
-          : {}),
-      },
-      resultReceipt,
-    );
-  if (result.outcome === "retry")
-    return newMutationRetry(
-      result.problem ?? failure(op, "AVAILABILITY", "provider is unavailable"),
-      result.delay,
-    );
-  if (result.outcome === "invalidResponse")
-    return newMutationBranch(
-      "invalidResponse",
-      empty,
-      resultReceipt,
-      result.problem,
-    );
-  if (result.outcome === "defect")
-    return newMutationBranch("defect", empty, zeroReceipt(), result.problem);
-  return newMutationBranch(
-    "providerRejected",
-    empty,
-    resultReceipt,
-    result.problem,
-  );
-}
 /** Create an event using Graph transaction and extended property idempotency. */
 export class CreateEventOperation
   implements Mutation<CreateEventInput, CreateEventOutput>
@@ -885,7 +814,7 @@ export class CreateEventOperation
     const op = "createEvent",
       empty = emptyCreate(),
       key = call.idempotencyKey ?? "";
-    let display: string, credentials: Credentials, root: string;
+    let display: string;
     try {
       CreateEventInputSchema.parse(input);
       validateCalendarId(input.calendarId ?? "");
@@ -897,93 +826,212 @@ export class CreateEventOperation
       validateEventTimes(input.start, input.end, input.isAllDay ?? false);
       validateAttendees(input.attendees ?? []);
       display = displayZone(input.start.timeZone);
-      ({ credentials, root } = await this.http.resolve(call));
     } catch (error) {
       return failedValidation(op, error, empty);
     }
-    const previous = await lookup(
-      this.http,
-      call,
-      credentials,
-      root,
-      key,
-      input.calendarId ?? "",
-      display,
-      op,
-    );
-    if (previous.outcome !== "missing")
-      return existingCreate(previous, call, this.http);
+    const operationMaxSends = definitionMaxSends(CreateEventDefinition);
+    const maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+    let fence: Fence;
+    try {
+      fence = newFence(call, 30_000, { maxSends: operationMaxSends });
+    } catch {
+      return newMutationBranch("defect", empty, zeroReceipt(), failure(op, "LOCAL_DEFECT", "createEvent dispatch fence is unavailable"));
+    }
+    const decision = fence.decide();
+    // An unreadable checkpoint is an unknown outcome; the retry budget bounds these attempts.
+    if (decision.kind === "failClosed")
+      return newMutationRetry(failure(op, "TRANSPORT", "an earlier attempt may have created the event, and its dispatch checkpoint is unreadable"));
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    const providerId = decision.marker?.providerId ?? "";
+    return new CreateEventAttempt(this.http, call, fence, input, key, display, {
+      hasPossibleEarlierSend: decision.kind !== "sendAllowed" || priorSends > 0 || providerId !== "",
+      canResendUnknownOutcome: priorSends + 1 < maxSends,
+      isSendForbidden: decision.kind === "readBackRequired" || providerId !== "",
+    }).run();
+  }
+}
+
+type Fence = ReturnType<typeof newFence>;
+/** A 2xx whose event ID could not be read is recorded so that no later attempt POSTs again. */
+const acceptedEventProviderId = "accepted";
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** An allowlisted refusal status whose body carries no created item ID. */
+function isDefiniteGraphRefusal(response: GraphResponse): boolean {
+  if (!definiteRefusalStatuses.has(response.status)) return false;
+  try {
+    const document = JSON.parse(Buffer.from(response.body).toString("utf8")) as unknown;
+    if (!document || typeof document !== "object" || Array.isArray(document)) return true;
+    const id = (document as { id?: unknown }).id;
+    return id === undefined || id === null || id === "";
+  } catch {
+    return true;
+  }
+}
+
+/** Report a Fence error raised before the POST left the process. */
+function isFenceRefusalBeforeSend(error: unknown): boolean {
+  if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError) return true;
+  // The Fence raises this for a short window whose notSent checkpoint also failed.
+  return error instanceof AggregateError && error.errors.some((cause) => cause instanceof InsufficientTimeError);
+}
+
+/** One createEvent attempt's Fence decision and resolved connection. */
+class CreateEventAttempt {
+  private credentials?: Credentials;
+  private root = "";
+  constructor(
+    private readonly http: GraphHTTP,
+    private readonly call: Call,
+    private readonly fence: Fence,
+    private readonly input: CreateEventInput,
+    private readonly key: string,
+    private readonly display: string,
+    private readonly state: { hasPossibleEarlierSend: boolean; canResendUnknownOutcome: boolean; isSendForbidden: boolean },
+  ) {}
+
+  /** Resolve credentials, read the marker back, and POST only when the cap allows. */
+  async run(): Promise<MutationAttempt<CreateEventOutput>> {
+    try {
+      ({ credentials: this.credentials, root: this.root } = await this.http.resolve(this.call));
+    } catch (error) {
+      if (!(error instanceof RequestFailure)) throw error;
+      return this.credentialFailure(error);
+    }
+    const decided = await this.lookUp();
+    if (decided) return decided;
+    if (this.state.isSendForbidden)
+      return this.uncertain(failure("createEvent", "TRANSPORT", "an earlier attempt may have created the event, and the marker lookup cannot confirm it"));
+    return this.send();
+  }
+
+  private async credentialFailure(error: RequestFailure): Promise<MutationAttempt<CreateEventOutput>> {
+    const problem = failure("createEvent", error.kind, error.message);
+    const isRetryable = error.kind === "AVAILABILITY";
+    if (this.state.hasPossibleEarlierSend)
+      return isRetryable ? newMutationRetry(problem) : this.uncertain(failure("createEvent", error.kind, "an earlier attempt may have created the event, and the connection credentials are unavailable to confirm it"));
+    try { await this.fence.recordNotSent(); }
+    catch { return newMutationRetry(failure("createEvent", "AVAILABILITY", "credentials and the no-send checkpoint are unavailable")); }
+    return isRetryable ? newMutationRetry(problem) : newMutationBranch("defect", emptyCreate(), zeroReceipt(), problem);
+  }
+
+  private lookup(): Promise<LookupResult> {
+    return lookup(this.http, this.call, this.credentials!, this.root, this.key, this.input.calendarId ?? "", this.display, "createEvent");
+  }
+
+  private async recordProviderId(providerId: string): Promise<boolean> {
+    try { await this.fence.recordProviderId(providerId); return true; } catch { return false; }
+  }
+
+  private created(result: LookupResult | { value: Event; duplicates: string[]; response: GraphResponse }, isExisting: boolean): MutationAttempt<CreateEventOutput> {
+    return newMutationBranch("created", {
+      event: result.value, wasAlreadyCreated: isExisting,
+      ...(result.duplicates.length ? { duplicateEventIds: result.duplicates } : {}),
+    }, receipt(this.call, result.response, result.value.id, this.http.now));
+  }
+
+  private async lookUp(): Promise<MutationAttempt<CreateEventOutput> | undefined> {
+    const result = await this.lookup();
+    const problem = result.problem ?? failure("createEvent", "AVAILABILITY", "provider is unavailable");
+    if (result.outcome === "missing") return undefined;
+    if (result.outcome === "found") {
+      await this.recordProviderId(result.value.id);
+      return this.created(result, true);
+    }
+    if (["providerRejected", "notFound"].includes(result.outcome) && isDefiniteGraphRefusal(result.response)) {
+      if (this.state.hasPossibleEarlierSend) return this.uncertain(problem, result.response);
+      // Nothing was sent; a lost checkpoint leaves no claim to misreport.
+      await this.fence.recordNotSent().catch(() => undefined);
+      return newMutationBranch("providerRejected", emptyCreate(), receipt(this.call, result.response, "", this.http.now), problem);
+    }
+    if (result.outcome === "invalidResponse" && !this.state.hasPossibleEarlierSend) {
+      // Nothing was sent yet, so an unusable lookup answer can end the Step without a duplicate.
+      await this.fence.recordNotSent().catch(() => undefined);
+      return newMutationBranch("invalidResponse", emptyCreate(), receipt(this.call, result.response, "", this.http.now), problem);
+    }
+    if (result.outcome === "defect") {
+      if (this.state.hasPossibleEarlierSend) return this.uncertain(problem);
+      await this.fence.recordNotSent().catch(() => undefined);
+      return newMutationBranch("defect", emptyCreate(), zeroReceipt(), problem);
+    }
+    // A transient, unlisted, or unreadable lookup answer leaves the outcome unknown.
+    return newMutationRetry(problem, result.delay);
+  }
+
+  private async send(): Promise<MutationAttempt<CreateEventOutput>> {
+    const op = "createEvent";
     let response: GraphResponse;
     try {
-      response = await this.http.send(
-        call,
-        credentials,
-        "POST",
-        calendarPath(root, input.calendarId ?? "") + "/events",
-        undefined,
-        createPayload(input, key),
-      );
+      response = await this.fence.dispatch((signal) => this.http.send(this.call, this.credentials!, "POST",
+        calendarPath(this.root, this.input.calendarId ?? "") + "/events", undefined, createPayload(this.input, this.key), "", "", signal));
     } catch (error) {
-      if (error instanceof RequestFailure)
-        return failedMutation(op, error, empty, call, this.http);
-      throw error;
-    }
-    const observed = receipt(call, response, "", this.http.now);
-    if (response.status >= 200 && response.status < 300) {
-      try {
-        const created = event(
-          decodeJSON(response.body),
-          input.calendarId ?? "",
-          display,
-        );
-        if (created.transactionId && created.transactionId !== key)
-          throw new TypeError("another transactionId");
-        return newMutationBranch(
-          "created",
-          { event: created, wasAlreadyCreated: false },
-          receipt(call, response, created.id, this.http.now),
-        );
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message === "another transactionId"
-            ? "provider returned an event with another transactionId"
-            : "provider returned an invalid event: " +
-              (error instanceof Error ? error.message : "");
-        return newMutationBranch(
-          "invalidResponse",
-          empty,
-          observed,
-          failure(op, "PROTOCOL", message),
-        );
+      if (isFenceRefusalBeforeSend(error))
+        return newMutationRetry(failure(op, "AVAILABILITY", "the event POST was not sent in this attempt"));
+      if (!(error instanceof RequestFailure)) return this.resendOrUncertain(failure(op, "TRANSPORT", "create outcome is unknown; the retry looks the idempotency key up first"), 0);
+      if (error.response.status >= 200 && error.response.status < 300) return this.acceptedWithoutEvent(error.response);
+      if (error.kind === "AVAILABILITY" && error.response.status === 401) {
+        // Graph refused the POST, and the credential refresh failed transiently.
+        await this.fence.recordCanResend().catch(() => undefined);
+        return newMutationRetry(failure(op, error.kind, error.message));
       }
+      if (error.kind === "LOCAL_DEFECT" && !this.state.hasPossibleEarlierSend)
+        return newMutationBranch("defect", emptyCreate(), zeroReceipt(), failure(op, error.kind, error.message));
+      return this.resendOrUncertain(failure(op, "TRANSPORT", "create outcome is unknown; the retry looks the idempotency key up first"), 0, error.response);
     }
-    if ([400, 409].includes(response.status)) {
-      const again = await lookup(
-        this.http,
-        call,
-        credentials,
-        root,
-        key,
-        input.calendarId ?? "",
-        display,
-        op,
-      );
-      if (again.outcome !== "missing")
-        return existingCreate(again, call, this.http);
+    if (response.status === 429 || response.status === 503) {
       const result = classification(response);
-      if (response.status === 409)
-        return newMutationRetry(
-          failure(op, result.kind, result.message),
-          result.delay,
-        );
-      return newMutationBranch(
-        "providerRejected",
-        empty,
-        observed,
-        failure(op, result.kind, result.message),
-      );
+      // Graph did not process the POST, so it does not count against the cap.
+      await this.fence.recordCanResend().catch(() => undefined);
+      return newMutationRetry(failure(op, result.kind, result.message), result.delay);
     }
-    return classifiedMutation(op, response, empty, call, this.http);
+    if (response.status >= 200 && response.status < 300) {
+      let created: Event;
+      try {
+        created = event(decodeJSON(response.body), this.input.calendarId ?? "", this.display);
+        if (created.transactionId && created.transactionId !== this.key) throw new TypeError("another transactionId");
+      } catch {
+        return this.acceptedWithoutEvent(response);
+      }
+      await this.recordProviderId(created.id);
+      return this.created({ value: created, duplicates: [], response }, false);
+    }
+    const result = classification(response);
+    const problem = failure(op, result.kind, result.message);
+    if (response.status === 400 || response.status === 409) {
+      const again = await this.lookup();
+      if (again.outcome === "found") {
+        await this.recordProviderId(again.value.id);
+        return this.created(again, true);
+      }
+      if (again.outcome !== "missing") return this.resendOrUncertain(problem, result.delay, response);
+    }
+    // Only an allowlisted refusal proves nothing was created; any other answer is unknown.
+    if (!isDefiniteGraphRefusal(response)) return this.resendOrUncertain(problem, result.delay, response);
+    if (this.state.hasPossibleEarlierSend) return this.uncertain(problem, response);
+    // A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
+    await this.fence.recordCanResend().catch(() => undefined);
+    return newMutationBranch("providerRejected", emptyCreate(), receipt(this.call, response, "", this.http.now), problem);
+  }
+
+  /** Never resend after a 2xx: record acceptance and read the marker back. */
+  private async acceptedWithoutEvent(response: GraphResponse): Promise<MutationAttempt<CreateEventOutput>> {
+    const problem = failure("createEvent", "PROTOCOL", "Graph accepted the event, but its response is unusable");
+    if (!(await this.recordProviderId(acceptedEventProviderId))) return this.uncertain(problem, response);
+    const result = await this.lookup();
+    if (result.outcome === "found") {
+      await this.recordProviderId(result.value.id);
+      return this.created(result, false);
+    }
+    // The marker index may lag the create; the next attempt only reads back.
+    return newMutationRetry(problem);
+  }
+
+  private resendOrUncertain(problem: Failure, delay: number, response?: GraphResponse): MutationAttempt<CreateEventOutput> {
+    return this.state.canResendUnknownOutcome ? newMutationRetry(problem, delay) : this.uncertain(problem, response);
+  }
+
+  private uncertain(problem: Failure, response?: GraphResponse): MutationAttempt<CreateEventOutput> {
+    return newMutationUncertain(emptyCreate(), problem, response ? receipt(this.call, response, "", this.http.now) : zeroReceipt());
   }
 }
 function updateApplied(current: Event, input: UpdateEventInput): boolean {
@@ -1095,6 +1143,9 @@ export class UpdateEventOperation
       display = displayZone(input.timeZone || input.start?.timeZone);
       ({ credentials, root } = await this.http.resolve(call));
     } catch (error) {
+      // A later attempt may follow an applied PATCH, so defect would misreport it.
+      if (error instanceof RequestFailure && error.kind === "AUTHENTICATION" && (call.context?.attempt ?? 1) > 1)
+        return newMutationRetry(failure(op, error.kind, error.message));
       return failedValidation(op, error, empty);
     }
     const current = await readEvent(
@@ -1112,22 +1163,19 @@ export class UpdateEventOperation
       input.eventId,
       this.http.now,
     );
-    if (current.outcome === "retry")
+    const isLaterAttempt = (call.context?.attempt ?? 1) > 1;
+    if (current.outcome === "notFound")
+      return newMutationBranch("notFound", empty, readReceipt, current.problem);
+    if (current.outcome === "providerRejected" && isDefiniteGraphRefusal(current.response))
+      return newMutationBranch("providerRejected", empty, readReceipt, current.problem);
+    if (current.outcome === "defect" && !isLaterAttempt)
+      return newMutationBranch("defect", empty, zeroReceipt(), current.problem);
+    // A transient, unlisted, or unusable pre-write read is unknown, and the update is safe to repeat.
+    if (current.outcome !== "found")
       return newMutationRetry(
         current.problem ??
           failure(op, "AVAILABILITY", "provider is unavailable"),
         current.delay,
-      );
-    if (current.outcome !== "found")
-      return newMutationBranch(
-        ["notFound", "providerRejected", "invalidResponse"].includes(
-          current.outcome,
-        )
-          ? current.outcome
-          : "defect",
-        empty,
-        current.outcome === "defect" ? zeroReceipt() : readReceipt,
-        current.problem,
       );
     if (current.value.isCancelled)
       return newMutationBranch(
@@ -1154,9 +1202,10 @@ export class UpdateEventOperation
         current.value.etag ?? "",
       );
     } catch (error) {
-      if (error instanceof RequestFailure)
-        return failedMutation(op, error, empty, call, this.http);
-      throw error;
+      if (!(error instanceof RequestFailure)) throw error;
+      if (error.kind === "LOCAL_DEFECT")
+        return newMutationBranch("defect", empty, zeroReceipt(), failure(op, error.kind, error.message));
+      return newMutationRetry(failure(op, "TRANSPORT", "update outcome is unknown; the retry rereads the event first"));
     }
     const observed = receipt(call, response, input.eventId, this.http.now);
     if ([409, 412].includes(response.status)) {
@@ -1176,8 +1225,12 @@ export class UpdateEventOperation
         observed,
         failure(op, "NOT_FOUND", "event was not found"),
       );
-    if (response.status < 200 || response.status >= 300)
+    if (response.status < 200 || response.status >= 300) {
+      const result = classification(response);
+      if (result.retry || !isDefiniteGraphRefusal(response))
+        return newMutationRetry(failure(op, result.kind, result.message), result.delay);
       return classifiedMutation(op, response, empty, call, this.http);
+    }
     try {
       return newMutationBranch(
         "updated",
@@ -1188,10 +1241,8 @@ export class UpdateEventOperation
         observed,
       );
     } catch (error) {
-      return newMutationBranch(
-        "invalidResponse",
-        empty,
-        observed,
+      // The PATCH is absolute, so the retry rereads the event and finds the change if it applied.
+      return newMutationRetry(
         failure(
           op,
           "PROTOCOL",

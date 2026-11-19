@@ -56,12 +56,12 @@ func (operation ListKnowledgeBasesOperation) Invoke(call sdkgo.Call, _ ListKnowl
 	if err != nil || credentials.Validate() != nil || !isValidCredential(credentials.AccessKey.Reveal()) || !isValidCredential(credentials.SecurityKey.Reveal()) || !isValidCredential(credentials.TenantID.Reveal()) {
 		return knowledgeBaseBranch(ListKnowledgeBasesBranchDefect, sdkgo.FailureAuthentication, "CTYun credentials or tenant ID are unavailable or invalid")
 	}
-	requestID, err := newRequestID()
+	requestID, err := operation.client.requestID()
 	if err != nil {
 		return knowledgeBaseRetry(sdkgo.FailureAvailability, "CTYun request ID could not be generated", 0)
 	}
 	beijing := time.FixedZone("CST", 8*3600)
-	date := time.Now().In(beijing).Format("20060102T150405Z")
+	date := operation.client.now().In(beijing).Format("20060102T150405Z")
 	signature := signAuthorization(credentials.AccessKey.Reveal(), credentials.SecurityKey.Reveal(), requestID, date)
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, operation.client.baseURL+knowledgeBasesPath, nil)
 	if err != nil {

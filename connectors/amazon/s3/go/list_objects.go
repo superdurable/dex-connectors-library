@@ -106,7 +106,10 @@ func (operation ListObjectsOperation) Invoke(call sdkgo.Call, input ListObjectsI
 	if err != nil {
 		return sdkgo.NewQueryBranch(ListObjectsBranchDefect, ListObjectsOutput{}, defectFailure(listObjectsOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, failure := client.startSession(call, listObjectsOperationID)
+	session, cancel, failure, shouldRetry := client.startSession(call, listObjectsOperationID)
+	if shouldRetry {
+		return sdkgo.NewQueryRetry[ListObjectsOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ListObjectsBranchDefect, ListObjectsOutput{}, failure, sdkgo.Receipt{})
 	}

@@ -1,0 +1,622 @@
+{
+  "connector": "ctyun",
+  "scenarios": [
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"200\",\"message\":\"Success\",\"returnObj\":[{\"id\":280,\"name\":\"Example knowledge base\",\"count\":4,\"private\":\"omitted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "knowledgeBases": [
+            {
+              "fileCount": 4,
+              "id": 280,
+              "name": "Example knowledge base"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-success",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":200,\"returnObj\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-empty",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-http-rejected",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"40003\",\"error\":\"KQA_40003\",\"message\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-business-auth",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"40005\",\"error\":\"KQA_40005\",\"message\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-business-rejected",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-missing-list",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":200,\"returnObj\":[{\"name\":\"x\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-invalid-item",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-malformed",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"200\",\"message\":\"Success\",\"returnObj\":[{\"id\":280,\"name\":\"Example knowledge base\",\"count\":4,\"private\":\"omitted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-oversize",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-rate-limit",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-server-error",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statusCode\":\"40004\",\"error\":\"KQA_40004\",\"message\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-business-temporary",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/infobases/list",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Ctyun-Eop-Request-Id": [
+              "123e4567-e89b-42d3-a456-426614174000"
+            ],
+            "Eop-Authorization": [
+              "AKIDEXAMPLE headers=ctyun-eop-request-id;eop-date Signature=ZK7DjlGezhhcWoYuzphrZ/5wuoklj9LAlPfn/jv/56g="
+            ],
+            "Eop-Date": [
+              "20261116T203456Z"
+            ],
+            "Tenantid": [
+              "tenant-example"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-transport-before-send",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "knowledgeBases": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-missing-credentials",
+      "operation": "listKnowledgeBases"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-16T12:34:56Z",
+      "input": {},
+      "name": "listKnowledgeBases-id-generation-failure",
+      "operation": "listKnowledgeBases"
+    }
+  ],
+  "schemaVersion": 1
+}

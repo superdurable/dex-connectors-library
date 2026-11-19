@@ -18,8 +18,9 @@ providers' live models. Custom endpoints use manual model entry. The Query follo
 | Provider | `provider` | API and wire format | Default model | Regions | Key |
 | --- | --- | --- | --- | --- | --- |
 | OpenAI | `openai` | Responses API, `POST https://api.openai.com/v1/responses` | `gpt-6-sol` | `global` | `sk-` project key |
-| OpenAI-compatible gateway | `openai-compatible` | Chat Completions, `baseUrl` ending in `/v1` | required, no default | `global` | gateway-issued key |
+| OpenAI-compatible gateway | `openai-compatible` | Chat Completions, or the Responses API when `openaiCompatibleApi` is `responses`, `baseUrl` ending in `/v1` | required, no default | `global` | gateway-issued key |
 | Claude | `anthropic` | Messages API, `POST https://api.anthropic.com/v1/messages` | `claude-sonnet-5` | `global` | `sk-ant-` key |
+| Anthropic-compatible gateway | `anthropic-compatible` | Messages API, `POST <baseUrl>/v1/messages` | required, no default | `global` | gateway-issued key |
 | Gemini | `gemini` | `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `gemini-3.5-flash-lite` | `global` | `AIza` key |
 | Qwen | `qwen` | Model Studio Chat Completions, `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` | `qwen3.7-plus` | `global` (Singapore), `hong-kong`, `china` (Beijing) | `sk-` key of the same region |
 | DeepSeek | `deepseek` | Chat Completions, `https://api.deepseek.com` | `deepseek-flash` | `global` | `sk-` key |
@@ -38,7 +39,7 @@ Gemini's `generateContent`.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go@v0.25.0
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go@v0.26.0
 ```
 
 The package name, `llm`, is the last element of the module path, so import
@@ -49,7 +50,7 @@ it without an alias:
 ```
 
 The TypeScript package `@superdurable/connector-superdurable-llm` implements
-the same `generateText` operation for all ten providers. Its
+the same `generateText` operation for all eleven providers. Its
 [`summarize-text` example](typescript/examples/summarize-text/README.md)
 opens the static `llm` connection, runs a real Dex Worker, and persists text
 deltas. [TypeScript package documentation](typescript/README.md) covers local
@@ -91,10 +92,13 @@ One connection names one provider and holds one key:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `provider` | required | `openai`, `openai-compatible`, `anthropic`, `gemini`, `qwen`, `deepseek`, `meta`, `mistral`, `kimi`, or `xai`. Every Step on the connection calls this provider. Use one connection per provider. |
-| `api_key` | required, secret | The provider's API key from its key page below. It is sent only to that provider's API host: in `x-goog-api-key` for Gemini and as an `Authorization` bearer token for every other provider. |
-| `baseUrl` | blank | Required only for `openai-compatible`: the gateway API root ending in `/v1`, such as `https://example.com/v1`. Every fixed provider rejects a value. The connector appends `/chat/completions`. |
-| `model` | blank | The model for Steps that pick none, written as the provider names it, such as `claude-opus-5-5`. Required for `openai-compatible`, which has no default; blank uses a fixed provider's default model in the table above. |
+| `provider` | required | `openai`, `openai-compatible`, `anthropic`, `anthropic-compatible`, `gemini`, `qwen`, `deepseek`, `meta`, `mistral`, `kimi`, or `xai`. Every Step on the connection calls this provider. Use one connection per provider. |
+| `api_key` | required, secret | The provider's API key from its key page below. It is sent only to that provider's API host: in `x-goog-api-key` for Gemini and as an `Authorization` bearer token for every other provider, including both custom gateways. |
+| `baseUrl` | blank | Required only for the custom gateways. For `openai-compatible`, the gateway API root ending in `/v1`, such as `https://example.com/v1`; the connector appends `/chat/completions`, or `/responses`. For `anthropic-compatible`, the Anthropic root the gateway documents for `ANTHROPIC_BASE_URL`, without `/v1`, such as `https://example.com/anthropic`; the connector appends `/v1/messages`. Every fixed provider rejects a value. |
+| `model` | blank | The model for Steps that pick none, written as the provider names it, such as `claude-opus-5-5`. Required for `openai-compatible` and `anthropic-compatible`, which have no default; blank uses a fixed provider's default model in the table above. |
+| `openaiCompatibleApi` | `chat-completions` | Only for `openai-compatible`: `chat-completions` calls `<baseUrl>/chat/completions`, and `responses` calls `<baseUrl>/responses` with `store: false`. Choose `responses` only when the gateway documents that endpoint. Any other provider with `responses` stops the Worker. |
+| `models` | empty list | The model IDs the connection offers to applications and agents that read it, one entry per model. Entries follow the provider's model-ID rule (1 to 256 printable ASCII characters without spaces; Gemini's path rule for `gemini`), are unique after trimming, and number at most 100. When set, `model`, or the provider's default model when `model` is blank, must be one of them. `generateText` does not reject a Step model outside the list. |
+| `modelContextWindowTokens` | empty list | Context windows of listed models, one `<model ID>=<tokens>` entry per model, such as `my-gateway-model=128000`. The last `=` separates the tokens, a whole number from 1 to 100000000; each model ID must be in `models` and appear at most once. Set it for custom-endpoint models that readers cannot look up. `generateText` does not read it. |
 | `region` | `global` | The regional API platform of the key; see [Regions](#regions). |
 | `anthropicWorkspaceId` | blank | Only for `anthropic` with a key that spans several workspaces: the `wrkspc_` ID from Claude Console > Settings > Workspaces, sent as `anthropic-workspace-id`. Any other provider with a value stops the Worker. |
 | `maxResponseBytes` | blank | The complete response limit in bytes, counting every byte of a stream. Blank uses 64 MiB for `deepseek`, whose streams carry keep-alive comments and reasoning chunks, and 8 MiB for every other provider. Larger responses select `invalidResponse`. |
@@ -108,6 +112,7 @@ authorization guide links every provider's key page:
 | OpenAI | [Platform > API keys](https://platform.openai.com/api-keys) |
 | OpenAI-compatible gateway | Your gateway's administration page and API keys path; [example.com](https://example.com) is a placeholder, never a key destination |
 | Claude | [Claude Console > Settings > API keys](https://platform.claude.com/settings/keys) |
+| Anthropic-compatible gateway | Your gateway's administration page and API keys path; the gateway must accept the key as a bearer token (`ANTHROPIC_AUTH_TOKEN`) |
 | Gemini | [Google AI Studio > API keys](https://aistudio.google.com/api-keys) |
 | Qwen | [Model Studio](https://bailian.console.aliyun.com/) > API Key, in the key's region |
 | DeepSeek | [DeepSeek Platform > API keys](https://platform.deepseek.com/api_keys) |
@@ -118,10 +123,14 @@ authorization guide links every provider's key page:
 
 `New` validates the connection before the Worker starts: a missing or
 unknown provider, a region the provider does not serve, a model ID the
-provider's model-ID rule rejects, or an `anthropicWorkspaceId` on another
-provider is an error that never repeats the configured model or workspace
-ID. For `openai-compatible`, it also requires `model` and `baseUrl`, checks
-the `/v1` suffix and rejects URL credentials, queries, fragments, insecure
+provider's model-ID rule rejects, an `anthropicWorkspaceId` on another
+provider, an `openaiCompatibleApi` of `responses` on another provider, or an
+invalid `models` or `modelContextWindowTokens` entry is an error that never
+repeats the configured model or workspace ID; list errors name the entry's
+position. For `openai-compatible` and `anthropic-compatible`, it also
+requires `model` and `baseUrl`, checks the `/v1` suffix (`openai-compatible`)
+or rejects a URL ending in `/v1` or `/messages` (`anthropic-compatible`), and
+rejects URL credentials, queries, fragments, insecure
 public HTTP, private IPs, link-local IPs, and metadata IPs. It resolves DNS
 at call time and dials only an allowed address, so the key stays on the
 configured host; redirects are not followed. Loopback HTTP is allowed for
@@ -155,7 +164,8 @@ A model is the provider's own model ID, such as `gpt-6-luna`,
 provider: the connection's `provider` selects the API. The request's trimmed
 `Model` wins; a blank one uses the connection's `model`, and a blank
 connection model uses a fixed provider's default model. `openai-compatible`
-requires a connection model even when a Step picks one. An application builds
+and `anthropic-compatible` require a connection model even when a Step picks
+one. An application builds
 the request `Model` from the Step's model pick and any code fallback.
 
 Every provider except Gemini accepts any model ID of 1 to 256 printable
@@ -352,6 +362,40 @@ model ID and a secret key from the gateway's administration page and API
 documentation. Studio asks for the model manually because its host setup
 commands cannot call a model-list URL supplied by connection configuration.
 It never sends the key to a fixed provider's model-list host.
+
+Set `openaiCompatibleApi` to `responses` for a gateway that documents the
+Responses API, such as one that serves some models only there. The connector
+then sends `POST <baseUrl>/responses` with the request, stream, `store: false`,
+structured output, and error handling of the [OpenAI](#openai-openai)
+provider. Model limits follow the OpenAI table for OpenAI model IDs; every
+other model ID receives every field as written. Blank or `chat-completions`
+keeps Chat Completions, so a connection saved before the field behaves as
+before.
+
+### Anthropic-compatible gateway (`anthropic-compatible`)
+
+Set `baseUrl` to the Anthropic root that the gateway documents for
+`ANTHROPIC_BASE_URL`, without `/v1`, for example
+`https://example.com/anthropic`. The connector sends
+`POST <baseUrl>/v1/messages` with `anthropic-version: 2023-06-01` and the
+key as an `Authorization` bearer token, so the gateway must accept bearer
+keys, as gateways documented for `ANTHROPIC_AUTH_TOKEN` do. It reuses the
+[Claude](#claude-anthropic) request, stream, unstreamed-reply, finish reason,
+and error handling, with only the fields every Messages implementation
+accepts:
+
+| `GenerateTextRequest` | Messages API |
+| --- | --- |
+| `Model` | `model` |
+| `Instructions` | `system` |
+| `Messages[]` (`user` or `assistant`) | `messages[]` with string `content` |
+| `StructuredOutput` | a JSON schema instruction appended to `system`; the reply is checked against the schema |
+| `MaxOutputTokens` (zero sends 16000) | `max_tokens` |
+| `Temperature` (0 to 1; nil omits) | `temperature` |
+| `ReasoningEffort` | not sent; a request with one selects `defect` |
+
+`anthropicWorkspaceId` applies only to `anthropic`. Studio asks for the model
+manually, as for `openai-compatible`.
 
 ### OpenAI (`openai`)
 

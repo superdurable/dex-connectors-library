@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, retryCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
 import type { GetChannelInput, Channel, ListChannelMessagesInput, MessageAuthor, Message, MessagePage, CreateMessageInput, AddReactionInput, AddedReaction } from './models.js';
 import { GetChannelInputSchema, ChannelSchema, ListChannelMessagesInputSchema, MessageAuthorSchema, MessageSchema, MessagePageSchema, CreateMessageInputSchema, AddReactionInputSchema, AddedReactionSchema } from './models.js';
@@ -132,6 +132,8 @@ export function createMessageInvalidResponse(value: Message, failure?: Failure):
 export function createMessageDefect(value: Message, failure?: Failure): Case<Message> { return branchCase("defect", value, failure); }
 /** Script a safe retry of createMessage. */
 export function createMessageRetry(failure: Failure, retryAfterMs = 0): Case<Message> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain createMessage attempt. */
+export function createMessageUncertain(value: Message, failure: Failure): Case<Message> { return uncertainCase(value, failure); }
 /** Manifest scenario releaseAnnouncement for createMessage. */
 export function createMessageReleaseAnnouncement(): Case<Message> {
   const value = MessageSchema.parse({"author":{"id":"400000000000000001","isBot":true,"username":"releasebot"},"channelId":"100000000000000001","content":"Release today @everyone","id":"300000000000000001","timestamp":"2026-10-26T12:00:00Z","type":0});
@@ -148,6 +150,11 @@ export function createMessageUnknownChannel(): Case<Message> {
 export function createMessageMissingSendPermission(): Case<Message> {
   const value = emptyMessage;
   return branchCase("providerRejected", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "createMessage", message: "Discord denied message creation." });
+}
+/** Manifest scenario messageOutcomeUnknown for createMessage. */
+export function createMessageMessageOutcomeUnknown(): Case<Message> {
+  const value = emptyMessage;
+  return uncertainCase(value, { kind: "TRANSPORT", provider: ConnectorID, operation: "createMessage", message: "The connection closed before Discord confirmed the message." });
 }
 
 /** Script the added branch. */

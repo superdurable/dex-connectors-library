@@ -1,10 +1,10 @@
 {
   "connectorId": "webhook",
-  "releaseTag": "connectors/superdurable/webhook/go/v0.24.0",
+  "releaseTag": "connectors/superdurable/webhook/go/v0.24.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-superdurable-webhook",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -12,7 +12,7 @@
       "kind": "mutation",
       "operationId": "sendEvent",
       "inputType": "SendEventInput",
-      "description": "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already applied.",
+      "description": "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a redirect, a 408, 409, 410, 425, 429, 5xx, or other unknown answer, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already applied.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

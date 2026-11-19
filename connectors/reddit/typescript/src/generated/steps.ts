@@ -5,7 +5,7 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { GetPostInput, Post } from './models.js';
+import type { GetPostInput, Post, ListSubredditPostsInput, PostPage, SearchPostsInput } from './models.js';
 
 /** Configuration for the getPost connector Step. */
 export interface GetPostStepConfig<StepInput, OperationInput = GetPostInput, OperationOutput = Post> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -32,6 +32,68 @@ export function newGetPostStep<StepInput, OperationInput = GetPostInput, Operati
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getPost(), connection: connection.reference, branches: [
     goToBranch("found", found),
     ...(missing ? [goToBranch("missing", missing)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the listSubredditPosts connector Step. */
+export interface ListSubredditPostsStepConfig<StepInput, OperationInput = ListSubredditPostsInput, OperationOutput = PostPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ listSubredditPosts(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Reddit returned one bounded page of posts; the page may be empty. */
+  listed: StepTarget<QueryResult<OperationOutput>>;
+  /** Reddit reports the subreddit missing, banned, private, quarantined, or otherwise closed to the account. */
+  subredditUnavailable?: StepTarget<QueryResult<OperationOutput>>;
+  /** Reddit conclusively rejected the listing or app access. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Reddit returned a malformed or oversized listing. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** The subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the listSubredditPosts Step from a named connection. */
+export function newListSubredditPostsStep<StepInput, OperationInput = ListSubredditPostsInput, OperationOutput = PostPage>(configuration: ListSubredditPostsStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, listed, subredditUnavailable, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.listSubredditPosts(), connection: connection.reference, branches: [
+    goToBranch("listed", listed),
+    ...(subredditUnavailable ? [goToBranch("subredditUnavailable", subredditUnavailable)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the searchPosts connector Step. */
+export interface SearchPostsStepConfig<StepInput, OperationInput = SearchPostsInput, OperationOutput = PostPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ searchPosts(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Reddit returned one bounded page of matching posts; the page may be empty. */
+  searched: StepTarget<QueryResult<OperationOutput>>;
+  /** Reddit reports the subreddit that restricts the search missing, banned, private, quarantined, or otherwise closed to the account. */
+  subredditUnavailable?: StepTarget<QueryResult<OperationOutput>>;
+  /** Reddit conclusively rejected the search or app access. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Reddit returned malformed or oversized search results. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** The query, subreddit, sort, time window, limit, cursor, username, or OAuth credentials are invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the searchPosts Step from a named connection. */
+export function newSearchPostsStep<StepInput, OperationInput = SearchPostsInput, OperationOutput = PostPage>(configuration: SearchPostsStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, searched, subredditUnavailable, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchPosts(), connection: connection.reference, branches: [
+    goToBranch("searched", searched),
+    ...(subredditUnavailable ? [goToBranch("subredditUnavailable", subredditUnavailable)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),

@@ -165,7 +165,8 @@ def make_project(connector_id: str, provider: str) -> LoadedProject:
         "hacker-news-public",
         "github.com/superdurable/dex-connectors-library/connectors/hackernews/go",
         provider,
-        {"baseUrl": "http://localhost:8848/v0", "timeout": 5_000_000_000},
+        # searchBaseUrl belongs to the Go-only searchStories; this package accepts it without using it.
+        {"baseUrl": "http://localhost:8848/v0", "timeout": 5_000_000_000, "searchBaseUrl": "http://localhost:8849/api/v1"},
     )
     return LoadedProject(
         Configuration(scope, 1, (entry,)),

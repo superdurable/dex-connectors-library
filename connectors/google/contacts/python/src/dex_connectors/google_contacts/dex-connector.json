@@ -1,10 +1,10 @@
 {
   "connectorId": "google-contacts",
-  "releaseTag": "connectors/google/contacts/go/v0.2.0",
+  "releaseTag": "connectors/google/contacts/go/v0.2.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-contacts",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -116,7 +116,7 @@
       "kind": "mutation",
       "operationId": "createContact",
       "inputType": "CreateContactInput",
-      "description": "Create one contact. If Google does not confirm the outcome, inspect Contacts before creating another.",
+      "description": "Create one contact. An unconfirmed create is resent up to the send cap; if Google still does not confirm it, inspect Contacts before creating another.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

@@ -1,9 +1,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Call, CredentialProvider, Failure, ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { GetMemberOperation, ListMembersOperation, UpsertMemberOperation, UpdateMemberTagsOperation, SendCampaignOperation } from './operations.js';
 
 /** Injectable provider transport for deterministic tests. */
@@ -25,6 +27,8 @@ export interface MailchimpExchange {
   headers: ProviderResponse['headers'];
   failure?: Failure;
   retryAfterMs: number;
+  /** True when a non-2xx body exceeded maxResponseBytes, so it proves no refusal. */
+  isErrorBodyTooLarge?: boolean;
 }
 /** Build a secret-safe connector failure. */
 export function mailchimpFailure(operation: string, kind: Failure['kind'], message: string): Failure {
@@ -77,16 +81,29 @@ export class MailchimpClient {
 
   /** Resolve the current API key and its data center without exposing it in failures. */
   async resolveConnection(call: Call): Promise<{ key: string; baseURL: string } | undefined> {
-    let key: string;
-    try { key = (await this.credentials.resolve(call, call.context.cancellationSignal)).apiKey.reveal(); }
-    catch { return undefined; }
-    const match = /^([A-Za-z0-9]{8,128})-([a-z]{2,10}[0-9]{1,4})$/.exec(key);
-    if (!match || !isHeaderSafeCredential(key)) return undefined;
-    return { key, baseURL: this.apiBaseURL ?? `https://${match[2]}.api.mailchimp.com/3.0` };
+    const resolved = await this.resolveClassifiedConnection(call);
+    return 'connection' in resolved ? resolved.connection : undefined;
   }
 
-  /** Send one request and classify the outcome before an operation chooses its branch. */
-  async exchange(call: Call, connection: { key: string; baseURL: string }, operation: string, method: string, path: string, query?: URLSearchParams, payload?: unknown): Promise<MailchimpExchange> {
+  /**
+   * Resolve the API key and report whether a failure may succeed on a later attempt: only a lookup
+   * error outside the terminal SDK credential errors is transient.
+   */
+  async resolveClassifiedConnection(call: Call): Promise<{ connection: { key: string; baseURL: string } } | { isTransient: boolean }> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) { return { isTransient: !isTerminalCredentialError(error) }; }
+    const key = credentials?.apiKey instanceof SecretString ? credentials.apiKey.reveal() : '';
+    const match = /^([A-Za-z0-9]{8,128})-([a-z]{2,10}[0-9]{1,4})$/.exec(key);
+    if (!match || !isHeaderSafeCredential(key)) return { isTransient: false };
+    return { connection: { key, baseURL: this.apiBaseURL ?? `https://${match[2]}.api.mailchimp.com/3.0` } };
+  }
+
+  /**
+   * Send one request and classify the outcome before an operation chooses its branch. signal, when set,
+   * replaces the Step cancellation signal, such as a single-dispatch Fence's write-window signal.
+   */
+  async exchange(call: Call, connection: { key: string; baseURL: string }, operation: string, method: string, path: string, query?: URLSearchParams, payload?: unknown, signal?: AbortSignal): Promise<MailchimpExchange> {
     const url = `${connection.baseURL}${path}${query && [...query.keys()].length ? `?${sortedQuery(query)}` : ''}`;
     const headers: Record<string, string> = { Authorization: `Bearer ${connection.key}`, Accept: 'application/json' };
     if (payload !== undefined) headers['Content-Type'] = 'application/json';
@@ -94,18 +111,22 @@ export class MailchimpClient {
       url, method, headers, maxResponseBytes: this.maxResponseBytes,
       addressPolicy: this.apiBaseURL ? 'privateNetworkHTTP' : 'publicHTTPS',
       timeoutMs: Math.min(25_000, call.context.deadline ? Math.max(1, call.context.deadline.getTime() - Date.now()) : 25_000),
-      signal: call.context.cancellationSignal,
+      signal: signal ?? call.context.cancellationSignal,
       ...(payload !== undefined ? { body: Buffer.from(JSON.stringify(payload), 'utf8') } : {}),
     };
     let response: ProviderResponse;
+    let isErrorBodyTooLarge = false;
     try { response = await this.send(request); }
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) {
         response = { status: error.status, headers: error.headers, body: new Uint8Array() };
+        isErrorBodyTooLarge = true;
         if (response.status >= 200 && response.status < 300) return { outcome: 'invalid', status: response.status, headers: response.headers, body: response.body, failure: mailchimpFailure(operation, 'RESPONSE_TOO_LARGE', 'Mailchimp response exceeds the configured maxResponseBytes limit'), retryAfterMs: 0 };
       } else {
         const isNotSent = error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent;
-        return { outcome: isNotSent ? 'notSent' : 'unavailable', status: 0, headers: {}, body: new Uint8Array(), failure: mailchimpFailure(operation, 'TRANSPORT', isNotSent ? 'Mailchimp could not be reached; no request was sent' : 'Mailchimp request failed before a response arrived'), retryAfterMs: 0 };
+        // A status means headers arrived before the body broke, which a write must not resend after.
+        const headersStatus = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status ?? 0 : 0;
+        return { outcome: isNotSent ? 'notSent' : 'unavailable', status: headersStatus, headers: {}, body: new Uint8Array(), failure: mailchimpFailure(operation, 'TRANSPORT', isNotSent ? 'Mailchimp could not be reached; no request was sent' : 'Mailchimp request failed before a response arrived'), retryAfterMs: 0 };
       }
     }
     const status = response.status;
@@ -121,7 +142,7 @@ export class MailchimpClient {
     else if (status === 408 || status >= 500) { outcome = 'unavailable'; kind = 'AVAILABILITY'; }
     else if (status === 404) { outcome = 'notFound'; kind = 'NOT_FOUND'; }
     else { outcome = 'rejected'; kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 409 ? 'CONFLICT' : status === 400 ? 'VALIDATION' : status >= 300 && status < 400 ? 'PROTOCOL' : 'PROVIDER_REJECTION'; }
-    return { outcome, status, headers: response.headers, body: new Uint8Array(), failure: mailchimpFailure(operation, kind, `Mailchimp request failed (HTTP ${status})`), retryAfterMs };
+    return { outcome, status, headers: response.headers, body: new Uint8Array(), failure: mailchimpFailure(operation, kind, `Mailchimp request failed (HTTP ${status})`), retryAfterMs, ...(isErrorBodyTooLarge ? { isErrorBodyTooLarge } : {}) };
   }
 
   /** Create a secret-free provider receipt. */
@@ -132,6 +153,13 @@ export class MailchimpClient {
       ...(objectID ? { providerObjectId: objectID } : {}),
       ...(/^[A-Za-z0-9._:-]{1,128}$/.test(requestID) ? { providerRequestId: requestID } : {}) };
   }
+}
+
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || error instanceof z.ZodError || isCredentialMaterialError(error);
 }
 
 function header(headers: ProviderResponse['headers'], name: string): string {

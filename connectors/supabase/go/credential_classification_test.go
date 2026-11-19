@@ -1,0 +1,64 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package supabase
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+)
+
+// erroringCredentials fails every Resolve with one fixed error.
+type erroringCredentials struct{ err error }
+
+func (credentials erroringCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.err
+}
+
+func TestCredentialFailuresSelectDefectOnlyWhenTerminal(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		err        error
+		isTerminal bool
+	}{
+		{"reauthorization required", sdkgo.NewReauthorizationRequiredError(nil), true},
+		{"project reauthorization required", fmt.Errorf("refresh: %w", projectconfig.ErrReauthorizationRequired), true},
+		{"connection object not found", projectconfig.ErrObjectNotFound, true},
+		{"connection not selected", projectconfig.ErrConnectionNotSelected, true},
+		{"credential broker rejected", projectconfig.ErrCredentialBrokerRejected, true},
+		{"credential broker unavailable", projectconfig.ErrCredentialBrokerUnavailable, false},
+		{"static connection not configured", errors.New("connection is not configured"), false},
+		{"deadline exceeded", context.DeadlineExceeded, false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var requests atomic.Int64
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				requests.Add(1)
+				w.WriteHeader(http.StatusCreated)
+			}))
+			defer server.Close()
+			client, err := New(Config{BaseURL: server.URL + "/rest/v1"}, erroringCredentials{err: testCase.err})
+			require.NoError(t, err)
+			reference := sdkgo.ConnectionRef{Provider: "supabase", Name: "supabase"}
+			result, err := sdkgo.RunMutation(testContext{}, client.UpsertRows(), reference, UpsertRowsInput{Table: "projects", OnConflict: "id", Rows: []map[string]any{{"id": 1}}})
+			if testCase.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, UpsertRowsBranchDefect, result.Branch)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			}
+			require.Zero(t, requests.Load())
+		})
+	}
+}

@@ -1,0 +1,756 @@
+{
+  "connector": "enlvon",
+  "scenarios": [
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"count\":1,\"results\":[{\"标题\":\"政策 A\",\"日期\":\"2026-01-01\",\"来源\":\"ndrc\",\"原文链接\":\"https://www.ndrc.gov.cn/example\",\"核心要点\":[\"private analysis\"],\"电力实体\":{\"private\":\"omitted\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "分时电价"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "policies": [
+            {
+              "date": "2026-01-01",
+              "originalURL": "https://www.ndrc.gov.cn/example",
+              "source": "ndrc",
+              "title": "政策 A"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "分时电价",
+        "topK": 1
+      },
+      "name": "searchPolicies-success",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"count\":0,\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-empty",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"count\":0,\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 0
+      },
+      "name": "searchPolicies-default-top-k",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-invalid-key",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-bad-query",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-rate-limit",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-server-error",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"count\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-malformed",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-missing-count",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-missing-results",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"count\":2,\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-count-mismatch",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"count\":1,\"results\":[{\"标题\":\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-invalid-title",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "{\"count\":0,\"results\":[]} {}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-trailing-json",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-oversize",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/search",
+          "query": {
+            "q": [
+              "policy"
+            ],
+            "top_k": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "enl_test-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-transport-before-send",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 1
+      },
+      "name": "searchPolicies-missing-credentials",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "",
+        "topK": 1
+      },
+      "name": "searchPolicies-invalid-input",
+      "operation": "searchPolicies"
+    },
+    {
+      "callId": "291c17e6-86c3-5a08-b98c-53cae7b8d547",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "policies": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "policy",
+        "topK": 51
+      },
+      "name": "searchPolicies-invalid-top-k",
+      "operation": "searchPolicies"
+    }
+  ],
+  "schemaVersion": 1
+}

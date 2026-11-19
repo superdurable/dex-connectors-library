@@ -5,6 +5,7 @@ package jiraservicemanagement_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -78,6 +79,65 @@ func TestUpdateTicketRetriesAnUnconfirmedWriteAndRejectsConclusively(t *testing.
 	require.Equal(t, jiraservicemanagement.UpdateTicketBranchProviderRejected, result.Branch)
 	require.Equal(t, []string{"priority"}, result.Value.RejectedFieldIDs)
 	requireNoSentinel(t, result)
+}
+
+func TestUpdateTicketRetriesAnUnknownReadOrRefusal(t *testing.T) {
+	cutBody := func(statusLine string) func(*testing.T, http.ResponseWriter) {
+		return func(t *testing.T, response http.ResponseWriter) {
+			hijacker, isHijacker := response.(http.Hijacker)
+			require.True(t, isHijacker)
+			connection, buffered, err := hijacker.Hijack()
+			require.NoError(t, err)
+			_, err = buffered.WriteString("HTTP/1.1 " + statusLine + "\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{\"errors\":")
+			require.NoError(t, err)
+			require.NoError(t, buffered.Flush())
+			require.NoError(t, connection.Close())
+		}
+	}
+	cutRefusal := cutBody("400 Bad Request")
+	for _, test := range []struct {
+		name    string
+		isWrite bool
+		serve   func(*testing.T, http.ResponseWriter)
+	}{
+		{name: "read refusal with a cut body", serve: cutRefusal},
+		{name: "read refusal echoing the token", serve: func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusForbidden, `{"errorMessages":["`+testAccessToken+`"]}`)
+		}},
+		{name: "read refusal with an unlisted status", serve: func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusConflict, `{}`)
+		}},
+		{name: "unparseable read", serve: func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":"x"}`)
+		}},
+		{name: "oversized read", serve: func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":"10042","padding":"`+strings.Repeat("x", 2048)+`"}`)
+		}},
+		{name: "missing issue with a cut body", serve: cutBody("404 Not Found")},
+		{name: "write refusal with a cut body", isWrite: true, serve: cutRefusal},
+		{name: "write refusal echoing the token", isWrite: true, serve: func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusBadRequest, `{"errors":{"priority":"`+testAccessToken+`"}}`)
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodGet && test.isWrite {
+					writeJSON(t, response, http.StatusOK, labelsAndPriorityJSON)
+					return
+				}
+				test.serve(t, response)
+			})
+			client, err := jiraservicemanagement.New(jiraservicemanagement.Config{
+				CloudID: testCloudID, Endpoint: provider.URL, MaxResponseBytes: 1024,
+			}, staticTestCredentials())
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newTestDexContext("update-unknown"), client.UpdateTicket(), jsmConnection,
+				jiraservicemanagement.UpdateTicketInput{IssueIDOrKey: "ITH-42", AddLabels: []string{"vip"}})
+			require.Empty(t, result.Branch)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
 }
 
 func TestUpdateTicketRejectsAnEmptyOrContradictoryChange(t *testing.T) {

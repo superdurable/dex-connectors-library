@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { parseRetryAfter, readErrorTokens } from '@superdurable/connectors-sdk/providerhttp';
+import { parseRetryAfter } from '@superdurable/connectors-sdk/providerhttp';
 import { GetEmailDefinition, SendEmailDefinition } from './generated/definitions.js';
 import type { Email, GetEmailInput, SendEmailInput, SentEmail } from './generated/models.js';
 import type { ResendClient, ResendResponse } from './client.js';
@@ -21,26 +21,27 @@ export class SendEmailOperation implements Mutation<SendEmailInput, SentEmail> {
     if (!input || !input.from || !input.to?.length || !input.subject || !input.html) return newMutationBranch('defect', emptySent, {}, failure(operation, 'VALIDATION', 'from, to, subject, and html are required'));
     if (input.to.some(recipient => !recipient)) return newMutationBranch('defect', emptySent, {}, failure(operation, 'VALIDATION', 'recipient cannot be blank'));
     if (!call.idempotencyKey || Buffer.byteLength(call.idempotencyKey) > 256) return newMutationBranch('defect', emptySent, {}, failure(operation, 'VALIDATION', 'idempotency key is invalid'));
-    const apiKey = await this.client.resolveAPIKey(call);
+    const { apiKey, isTransient } = await this.client.resolveAPIKeyResolution(call);
+    if (isTransient) return newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable; nothing was sent'));
     if (!apiKey) return credentialDefect(operation, emptySent);
     let response: ResendResponse;
     try { response = await this.client.exchange(call, apiKey, 'POST', '/emails', Buffer.from(JSON.stringify({ from: input.from, to: input.to, subject: input.subject, html: input.html }))); }
     catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'provider request failed')); }
     const retry = retryResponse(operation, response);
     if (retry) return newMutationRetry(retry.failure, retry.delay);
-    if (response.status === 409) {
-      if (readErrorTokens(response.body, ['/name'])[0] === 'invalid_idempotent_request') return newMutationBranch('providerRejected', emptySent, {}, failure(operation, 'PROVIDER_REJECTION', 'idempotency key was used for a different request'));
-      return newMutationRetry(failure(operation, 'AVAILABILITY', 'provider is processing the same request'));
-    }
+    // The Idempotency-Key makes a resend replay the first send, so an unknown answer, including 409, retries.
+    if (![200, 201, 202].includes(response.status) && !definiteRefusalStatuses.has(response.status)) return newMutationRetry(failure(operation, 'AVAILABILITY', `provider answered HTTP ${response.status}, so the outcome is unknown`));
     if (![200, 201, 202].includes(response.status)) return newMutationBranch('providerRejected', emptySent, {}, failure(operation, 'PROVIDER_REJECTION', `provider rejected the request with HTTP ${response.status}`));
-    if (response.isTooLarge) return invalidMutation(operation, 'RESPONSE_TOO_LARGE');
+    if (response.isTooLarge) return newMutationRetry(failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit'));
     try {
       const document = decodeObject(response.body);
       if (typeof document.id !== 'string' || !document.id) throw new TypeError('email ID missing');
       return newMutationBranch('sent', { id: document.id }, {});
-    } catch { return invalidMutation(operation, 'PROTOCOL'); }
+    } catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'provider response is incomplete or malformed')); }
   }
 }
+
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 /** Retrieve one sent email by its provider ID. */
 export class GetEmailOperation implements Query<GetEmailInput, Email> {
@@ -50,7 +51,8 @@ export class GetEmailOperation implements Query<GetEmailInput, Email> {
   async invoke(call: Call, input: GetEmailInput): Promise<QueryAttempt<Email>> {
     const operation = 'getEmail';
     if (!input?.id) return newQueryBranch('defect', emptyEmail, {}, failure(operation, 'VALIDATION', 'email ID is required'));
-    const apiKey = await this.client.resolveAPIKey(call);
+    const { apiKey, isTransient } = await this.client.resolveAPIKeyResolution(call);
+    if (isTransient) return newQueryRetry(failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable'));
     if (!apiKey) return credentialDefect(operation, emptyEmail);
     let response: ResendResponse;
     try { response = await this.client.exchange(call, apiKey, 'GET', `/emails/${goPathEscape(input.id)}`); }
@@ -84,9 +86,6 @@ function retryResponse(operation: string, response: ResendResponse): { failure: 
 }
 function invalidQuery(operation: string, kind: 'PROTOCOL' | 'RESPONSE_TOO_LARGE'): QueryAttempt<Email> {
   return newQueryBranch('invalidResponse', emptyEmail, {}, failure(operation, kind, kind === 'PROTOCOL' ? 'provider response is incomplete or malformed' : 'provider response exceeded the configured limit'));
-}
-function invalidMutation(operation: string, kind: 'PROTOCOL' | 'RESPONSE_TOO_LARGE'): MutationAttempt<SentEmail> {
-  return newMutationBranch('invalidResponse', emptySent, {}, failure(operation, kind, kind === 'PROTOCOL' ? 'provider response is incomplete or malformed' : 'provider response exceeded the configured limit'));
 }
 function decodeObject(body: Uint8Array): Record<string, unknown> {
   const value: unknown = JSON.parse(Buffer.from(body).toString('utf8'));

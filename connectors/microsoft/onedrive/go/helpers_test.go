@@ -70,7 +70,8 @@ func anyPath(string) bool { return true }
 
 type dexContext struct {
 	context.Context
-	step string
+	step    string
+	attempt int32
 }
 
 func newDexContext(step string) *dexContext {
@@ -83,7 +84,7 @@ func (context *dexContext) StepExecutionID() string                 { return con
 func (*dexContext) FromStepExecutionID() string                     { return "" }
 func (*dexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (*dexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*dexContext) Attempt() int32                                  { return 1 }
+func (context *dexContext) Attempt() int32                          { return max(context.attempt, 1) }
 func (*dexContext) HasTimerFired() bool                             { return false }
 func (*dexContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*dexContext) WaitForMethodFailed() bool                       { return false }

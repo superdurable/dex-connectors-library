@@ -19,7 +19,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		outlookcalendar.WithLocalProviderURL(endpoint), outlookcalendar.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := newCalendarDexContext("conformance")
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) { context.heartbeat = raw })
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attemptNo = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
 		"listEvents":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListEvents(), calendarConnection),
 		"getEvent":      newConformanceQueryInvocation(t, scenario.Input, context, client.GetEvent(), calendarConnection),
 		"createEvent":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateEvent(), calendarConnection, scenario.CallID),

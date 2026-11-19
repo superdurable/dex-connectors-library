@@ -8,3 +8,7 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { RedditClient, type RedditClientOptions } from './client.js';
 export { GetPostOperation } from './operations.js';
+export {
+  DefaultPostPageLimit, ListSubredditPostsOperation, MaxPostPageLimit, MaxSearchQueryCharacters, MaxSelfTextBytes,
+  MaxSubredditsPerListing, SearchPostsOperation,
+} from './post_listings.js';

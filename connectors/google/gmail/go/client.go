@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -113,6 +114,9 @@ type gmailSendDispatch struct {
 	response             *http.Response
 	isPossiblyDispatched bool
 	err                  error
+	// content is read inside the write window, before Dispatch cancels the request context.
+	content []byte
+	readErr error
 }
 
 // New validates configuration and constructs an authenticated Gmail client.
@@ -218,18 +222,31 @@ var errInvalidResolvedCredentials = errors.New("Gmail credential material is inv
 
 // isPermanentCredentialFailure reports a failure that needs reconnection rather than a retry.
 func isPermanentCredentialFailure(err error) bool {
-	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, errInvalidResolvedCredentials)
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, errInvalidResolvedCredentials) || errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // unavailableCredentialsAttempt classifies a credential failure before any send in this attempt.
 // After an earlier possible send, a transient failure returns Retry without notSent, so later
-// attempts still read back; a permanent failure, like a clean first attempt, selects defect.
+// attempts still read back, and one that needs reconnection selects uncertain, because no
+// later attempt could read back or resend. On a clean first attempt a transient failure
+// records notSent and returns Retry; only a permanent one selects defect.
 func unavailableCredentialsAttempt(
-	decision singledispatch.Decision, defectBranch sdkgo.BranchID, operationID string, err error,
+	fence *singledispatch.Fence, decision singledispatch.Decision, defectBranch sdkgo.BranchID, operationID string, err error, receipt sdkgo.Receipt,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
-	if decision.MaximumPriorSends > 0 && !isPermanentCredentialFailure(err) {
+	if decision.MaximumPriorSends > 0 {
+		if isPermanentCredentialFailure(err) {
+			return sdkgo.NewMutationUncertain(emptySendMessageOutput(), gmailOperationFailure(operationID, sdkgo.FailureAuthentication,
+				"Gmail credentials need reconnection; an earlier send may have been delivered"), receipt)
+		}
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operationID, sdkgo.FailureAuthentication,
 			"Gmail credentials are temporarily unavailable; an earlier send may still be delivered"), 0)
+	}
+	if !isPermanentCredentialFailure(err) {
+		recordNotSentBeforeAnySend(fence, decision)
+		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operationID, sdkgo.FailureAvailability,
+			"Gmail credentials are temporarily unavailable; nothing was sent"), 0)
 	}
 	return sdkgo.NewMutationBranch(defectBranch, emptySendMessageOutput(),
 		gmailOperationFailurePointer(operationID, sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
@@ -335,28 +352,28 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	}
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureLocalDefect, "Gmail send checkpoint is invalid"), sdkgo.Receipt{})
+		return failClosedCheckpointAttempt("sendMessage")
 	}
 	budget := newSendAttemptBudget(call.Context, SendMessageDefinition.StepDefaults.ExecuteMethodTimeout)
 	defer budget.cancel()
 	credential, err := operation.client.resolveCredentials(budget.attemptContext, call)
 	if err != nil {
-		return unavailableCredentialsAttempt(decision, SendMessageBranchDefect, "sendMessage", err)
+		return unavailableCredentialsAttempt(fence, decision, SendMessageBranchDefect, "sendMessage", err, operation.client.receipt(call, "", ""))
 	}
 	recipients, validationFailure := validateSendInput(input, credential.PrimaryEmail)
 	if validationFailure != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), validationFailure, sdkgo.Receipt{})
+		return operation.client.defectBeforeAnySend(call, decision, SendMessageBranchDefect, validationFailure)
 	}
 	raw, err := buildMIMEMessage(call, credential.PrimaryEmail, recipients, input)
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureValidation, "message could not be encoded"), sdkgo.Receipt{})
+		return operation.client.defectBeforeAnySend(call, decision, SendMessageBranchDefect, gmailFailurePointer(sdkgo.FailureValidation, "message could not be encoded"))
 	}
 	if int64(len(raw)) > operation.client.maxMessageBytes {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureValidation, "message exceeds configured size limit"), sdkgo.Receipt{})
+		return operation.client.defectBeforeAnySend(call, decision, SendMessageBranchDefect, gmailFailurePointer(sdkgo.FailureValidation, "message exceeds configured size limit"))
 	}
 	payload, err := json.Marshal(map[string]string{"raw": base64.RawURLEncoding.EncodeToString(raw)})
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be encoded"), sdkgo.Receipt{})
+		return operation.client.defectBeforeAnySend(call, decision, SendMessageBranchDefect, gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be encoded"))
 	}
 	return operation.client.sendAndConfirm(call, fence, decision, budget, credential, sendMessageOutcomes, gmailOutgoingMessage{payload: payload, recipients: recipients})
 }
@@ -372,8 +389,8 @@ func (client *Client) sendAndConfirm(
 		}
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
-		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
-			"Gmail sent-mail search found no message; prior dispatch cannot be repeated"), 0)
+		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
+			"Gmail sent-mail search found no message, and the send cap forbids another "+operation.requestName), client.receipt(call, "", ""))
 	}
 	dispatch := gmailSendDispatch{client: client, call: call, credentials: credentials, message: message}
 	if err := fence.Dispatch(dispatch.send); err != nil {
@@ -391,18 +408,16 @@ func (client *Client) sendAndConfirm(
 			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureTransport,
 				"Gmail "+operation.requestName+" request was not dispatched"), 0)
 		}
-		return client.confirmPossiblySentMessage(call, budget, credentials, operation, message, sdkgo.FailureTransport,
+		return client.confirmPossiblySentMessage(call, decision, budget, credentials, operation, message, sdkgo.FailureTransport,
 			"Gmail "+operation.requestName+" outcome is unknown", client.receipt(call, "", ""), fence)
 	}
 	receipt := client.receipt(call, googleRequestID(response.Header), "")
 	switch {
 	case response.StatusCode == http.StatusTooManyRequests:
-		closeGmailResponse(response)
 		_ = fence.RecordCanResend() // A failed checkpoint leaves the claim in place.
 		return retryAfterGmailRefusal(response.Header, operation.operationID, sdkgo.FailureRateLimit,
 			"Gmail temporarily rejected the "+operation.requestName)
 	case response.StatusCode == http.StatusServiceUnavailable:
-		closeGmailResponse(response)
 		// Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
 		if sent, isFound, _ := client.pollSentMessageByRFCMessageID(budget.attemptContext, call, credentials); isFound {
 			return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
@@ -410,25 +425,26 @@ func (client *Client) sendAndConfirm(
 		return retryAfterGmailRefusal(response.Header, operation.operationID, sdkgo.FailureAvailability,
 			"Gmail "+operation.requestName+" is temporarily unavailable")
 	case response.StatusCode >= 500:
-		closeGmailResponse(response)
-		return client.confirmPossiblySentMessage(call, budget, credentials, operation, message, sdkgo.FailureAvailability,
+		return client.confirmPossiblySentMessage(call, decision, budget, credentials, operation, message, sdkgo.FailureAvailability,
 			"Gmail "+operation.requestName+" outcome is unknown", receipt, fence)
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		closeGmailResponse(response)
+		if named, isIdentified := acceptedMessageIdentity(dispatch.content); dispatch.readErr == nil && isIdentified {
+			return client.confirmRefusalNamingMessage(call, budget, credentials, operation, message, named.ID, receipt, fence)
+		}
+		isDefiniteRefusal := isRefusedBeforeProcessing(response.StatusCode) && dispatch.readErr == nil
 		if call.Context.Attempt() > 1 {
 			if sent, isFound, _ := client.findSentMessageByRFCMessageID(budget.attemptContext, call, credentials); isFound {
 				return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 			}
 		}
-		return rejectUnlessEarlierSendIsUnconfirmed(decision, operation.providerRejectedBranch,
+		return rejectRefusedSend(call, fence, decision, isDefiniteRefusal, operation.providerRejectedBranch,
 			gmailOperationFailure(operation.operationID, statusFailureKind(response.StatusCode), operation.rejectionMessage), receipt)
 	}
-	content, err := readAndCloseGmailResponse(response, client.maxResponseBytes)
-	if err != nil {
+	if dispatch.readErr != nil {
 		return client.confirmAcceptedMessage(call, budget, credentials, operation, message, receipt, fence)
 	}
-	var sent sendResponse
-	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" {
+	sent, isIdentified := acceptedMessageIdentity(dispatch.content)
+	if !isIdentified {
 		return client.confirmAcceptedMessage(call, budget, credentials, operation, message, receipt, fence)
 	}
 	return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
@@ -463,33 +479,135 @@ func (client *Client) reconcileEarlierSends(
 	if isFound {
 		return client.sentMessage(call, budget, credentials, operation, message, sent, client.receipt(call, "", "")), true
 	}
-	// Below the send cap, an inconclusive search still permits a resend.
-	canResendAfterInconclusiveSearch := mayDispatch && decision.Kind == singledispatch.ReadBackThenResendAllowed
-	switch {
-	case searchErr != nil && !canResendAfterInconclusiveSearch:
-		if decision.Kind == singledispatch.SendAllowed {
-			_ = fence.RecordNotSent() // A failed checkpoint cannot permit a later send.
+	if !mayDispatch {
+		// The send cap or a saved message ID forbids another send, so an unconfirmed read-back is final.
+		failureMessage := "Gmail sent-mail search found no message, and no further " + operation.requestName + " is permitted"
+		if searchErr != nil {
+			failureMessage = "Gmail sent-mail search did not answer, and no further " + operation.requestName + " is permitted"
 		}
+		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
+			failureMessage), client.receipt(call, "", decision.Marker.ProviderID)), true
+	}
+	// Below the send cap, an inconclusive search still permits a resend.
+	if searchErr != nil && decision.Kind != singledispatch.ReadBackThenResendAllowed {
+		recordNotSentBeforeAnySend(fence, decision)
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
 			"Gmail sent-mail search did not answer before the "+operation.requestName), 0), true
-	case !mayDispatch:
-		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
-			"Gmail sent-mail search found no message; prior dispatch cannot be repeated"), 0), true
 	}
 	return sdkgo.MutationAttempt[SendMessageOutput]{}, false
 }
 
-// rejectUnlessEarlierSendIsUnconfirmed selects a definite rejection branch only when no earlier
-// attempt may have sent. Otherwise that send may still be delivered, so the outcome stays unknown:
-// Retry keeps the claim, and later attempts read back until a match or the retry budget ends.
-func rejectUnlessEarlierSendIsUnconfirmed(
-	decision singledispatch.Decision, branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt,
+// canResendUnknownOutcome reports whether the send cap still permits a send after this attempt's.
+func canResendUnknownOutcome(call sdkgo.Call, decision singledispatch.Decision) bool {
+	return decision.MaximumPriorSends+1 < call.MaxSends()
+}
+
+// resendOrSelectUncertain retries a possibly sent message while the send cap permits another
+// send; the next attempt reads back Sent Mail first. At the cap it selects uncertain.
+func resendOrSelectUncertain(
+	call sdkgo.Call, decision singledispatch.Decision, failure sdkgo.Failure, retryDelay time.Duration, receipt sdkgo.Receipt,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
-	if decision.MaximumPriorSends > 0 {
-		failure.Message += "; an earlier send may still be delivered"
+	if canResendUnknownOutcome(call, decision) {
+		return sdkgo.NewMutationRetry[SendMessageOutput](failure, retryDelay)
+	}
+	return sdkgo.NewMutationUncertain(emptySendMessageOutput(), failure, receipt)
+}
+
+// rejectUnlessEarlierSendIsUnconfirmed selects a rejection branch only when no earlier attempt may
+// have sent. Otherwise that send may still be delivered: a definite refusal proves only that this
+// attempt failed, so it selects uncertain; an indefinite one, which only the source read before any
+// POST produces, Retries while earlier sends stay below the send cap and selects uncertain at it.
+func rejectUnlessEarlierSendIsUnconfirmed(
+	call sdkgo.Call, decision singledispatch.Decision, isDefinite bool, branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt,
+) sdkgo.MutationAttempt[SendMessageOutput] {
+	if decision.MaximumPriorSends == 0 {
+		return sdkgo.NewMutationBranch(branch, emptySendMessageOutput(), &failure, receipt)
+	}
+	failure.Message += "; an earlier send may still be delivered"
+	if isDefinite {
+		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), failure, receipt)
+	}
+	// Only a source read before this attempt's POST is indefinite here, so only earlier sends count.
+	if decision.MaximumPriorSends < call.MaxSends() {
 		return sdkgo.NewMutationRetry[SendMessageOutput](failure, 0)
 	}
-	return sdkgo.NewMutationBranch(branch, emptySendMessageOutput(), &failure, receipt)
+	return sdkgo.NewMutationUncertain(emptySendMessageOutput(), failure, receipt)
+}
+
+// rejectRefusedSend classifies a definite Gmail refusal of this attempt's POST. With no earlier
+// possible send, canResend proves nothing was sent, so agent hosts report failure, not unknown.
+// After an earlier possible send it selects uncertain. Any other refusal, such as 408, 409, or an
+// unreadable or accepting body, leaves the outcome unknown: below the send cap Retry keeps the
+// claim, so the next attempt reads back Sent Mail before any resend; at the cap it selects uncertain.
+func rejectRefusedSend(
+	call sdkgo.Call, fence *singledispatch.Fence, decision singledispatch.Decision, isDefiniteRefusal bool,
+	branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt,
+) sdkgo.MutationAttempt[SendMessageOutput] {
+	if !isDefiniteRefusal {
+		failure.Message += "; Gmail may still have processed the request"
+		return resendOrSelectUncertain(call, decision, failure, 0, receipt)
+	}
+	if decision.MaximumPriorSends == 0 {
+		_ = fence.RecordCanResend() // A failed checkpoint leaves the claim, so the outcome stays unknown.
+	}
+	return rejectUnlessEarlierSendIsUnconfirmed(call, decision, true, branch, failure, receipt)
+}
+
+// isRefusedBeforeProcessing reports a status that proves Gmail refused the POST before processing it.
+func isRefusedBeforeProcessing(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
+}
+
+// acceptedMessageIdentity returns the message a JSON object names when its exact "id" key is a
+// non-empty string, whatever its other fields are; a non-string "threadId" is dropped.
+func acceptedMessageIdentity(content []byte) (sendResponse, bool) {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(content, &fields) != nil {
+		return sendResponse{}, false
+	}
+	var identity sendResponse
+	if json.Unmarshal(fields["id"], &identity.ID) != nil || identity.ID == "" {
+		return sendResponse{}, false
+	}
+	var threadID string
+	if json.Unmarshal(fields["threadId"], &threadID) == nil {
+		identity.ThreadID = threadID
+	}
+	return identity, true
+}
+
+// recordNotSentBeforeAnySend records notSent only when no earlier attempt may have sent, because
+// notSent would otherwise hide that send from later attempts.
+func recordNotSentBeforeAnySend(fence *singledispatch.Fence, decision singledispatch.Decision) {
+	if decision.Kind == singledispatch.SendAllowed && decision.MaximumPriorSends == 0 {
+		_ = fence.RecordNotSent() // A failed checkpoint cannot permit a later send.
+	}
+}
+
+// defectBeforeAnySend selects defect only when no earlier attempt may have sent; otherwise that send
+// may still be delivered, and invalid input cannot resend it, so it selects uncertain.
+func (client *Client) defectBeforeAnySend(
+	call sdkgo.Call, decision singledispatch.Decision, branch sdkgo.BranchID, failure *sdkgo.Failure,
+) sdkgo.MutationAttempt[SendMessageOutput] {
+	if decision.MaximumPriorSends > 0 {
+		unknownFailure := *failure
+		unknownFailure.Message += "; an earlier send may still be delivered"
+		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), unknownFailure, client.receipt(call, "", ""))
+	}
+	return sdkgo.NewMutationBranch(branch, emptySendMessageOutput(), failure, sdkgo.Receipt{})
+}
+
+// failClosedCheckpointAttempt retries an unreadable or untrusted checkpoint, because an earlier send may have happened.
+func failClosedCheckpointAttempt(operationID string) sdkgo.MutationAttempt[SendMessageOutput] {
+	return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operationID, sdkgo.FailureLocalDefect,
+		"Gmail send checkpoint is unreadable or untrusted; an earlier send may still be delivered"), 0)
 }
 
 func (client *Client) sentAfterDispatch(
@@ -507,12 +625,16 @@ func (dispatch *gmailSendDispatch) send(ctx context.Context) error {
 	dispatch.response, dispatch.credentials, dispatch.isPossiblyDispatched, dispatch.err = dispatch.client.doAuthenticatedRequestWithDispatch(
 		ctx, dispatch.call, dispatch.credentials, http.MethodPost, target, dispatch.message.payload, "application/json",
 	)
+	if dispatch.err == nil {
+		dispatch.content, dispatch.readErr = readAndCloseGmailResponse(dispatch.response, dispatch.client.maxResponseBytes)
+	}
 	return nil
 }
 
-// confirmPossiblySentMessage retries when read-back cannot yet confirm delivery.
+// confirmPossiblySentMessage retries while read-back cannot yet confirm delivery and the send cap
+// permits another send; at the cap it selects uncertain.
 func (client *Client) confirmPossiblySentMessage(
-	call sdkgo.Call, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
+	call sdkgo.Call, decision singledispatch.Decision, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
 	kind sdkgo.FailureKind, failureMessage string, receipt sdkgo.Receipt, fence *singledispatch.Fence,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
 	sent, isFound, err := client.pollSentMessageByRFCMessageID(budget.attemptContext, call, credentials)
@@ -524,7 +646,7 @@ func (client *Client) confirmPossiblySentMessage(
 	} else {
 		failureMessage += "; the sent-mail search found no message"
 	}
-	return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, kind, failureMessage), 0)
+	return resendOrSelectUncertain(call, decision, gmailOperationFailure(operation.operationID, kind, failureMessage), 0, receipt)
 }
 
 func (client *Client) confirmAcceptedMessage(
@@ -536,6 +658,20 @@ func (client *Client) confirmAcceptedMessage(
 		return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 	}
 	return client.sentMessage(call, budget, credentials, operation, message, sendResponse{ThreadID: message.requestedThreadID}, receipt)
+}
+
+// confirmRefusalNamingMessage reads back a message that a refusal body names, because Gmail may have
+// sent it. The saved ID makes later attempts read back only, so the message is never resent.
+func (client *Client) confirmRefusalNamingMessage(
+	call sdkgo.Call, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
+	providerID string, receipt sdkgo.Receipt, fence *singledispatch.Fence,
+) sdkgo.MutationAttempt[SendMessageOutput] {
+	_ = fence.RecordProviderID(providerID) // A failed checkpoint leaves the claim, so the send cap still bounds resends.
+	if sent, isFound := client.readSavedSentMessage(budget.attemptContext, call, credentials, providerID); isFound {
+		return client.sentMessage(call, budget, credentials, operation, message, sent, receipt)
+	}
+	return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureProtocol,
+		"Gmail refused the "+operation.requestName+" but named a message that read-back has not confirmed"), 0)
 }
 
 func (client *Client) readSavedSentMessage(

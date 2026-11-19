@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type CallID, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type CallID, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { parseRetryAfter, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CreateFolderBranch, CreateFolderDefinition, GetFileBranch, GetFileDefinition, ReadFileTextBranch, ReadFileTextDefinition, SearchFilesBranch, SearchFilesDefinition, UploadFileBranch, UploadFileDefinition } from './generated/definitions.js';
 import type { CreateFolderInput, CreateFolderOutput, Credentials, DriveItem, FileSummary, GetFileInput, ReadFileTextInput, ReadFileTextOutput, SearchFilesInput, SearchFilesOutput, UploadFileInput, UploadFileOutput } from './generated/models.js';
@@ -21,9 +21,26 @@ function queryFailure<T>(client: OneDriveClient, operation: string, exchange: Ex
   const result = client.failedRead(operation, exchange, { notFound, providerRejected: 'providerRejected', invalidResponse: 'invalidResponse', defect: 'defect' });
   return !result ? undefined : result.branch ? newQueryBranch(result.branch, zero, result.receipt, result.failure) : newQueryRetry(result.failure, result.retryAfterMs);
 }
-function mutationReadFailure<T>(client: OneDriveClient, operation: string, exchange: Exchange, zero: T): MutationAttempt<T> | undefined {
+function mutationReadFailure<T>(client: OneDriveClient, call: Call, operation: string, exchange: Exchange, zero: T): MutationAttempt<T> | undefined {
   const result = client.failedRead(operation, exchange, { notFound: '', providerRejected: 'providerRejected', invalidResponse: 'invalidResponse', defect: 'defect' });
-  return !result ? undefined : result.branch ? newMutationBranch(result.branch, zero, result.receipt, result.failure) : newMutationRetry(result.failure, result.retryAfterMs);
+  if (!result) return undefined;
+  // A read-back follows a write, so only a definite refusal on a first attempt selects a branch.
+  if (result.branch && !isLaterAttempt(call) && isDefiniteWriteRefusal(exchange)) return newMutationBranch(result.branch, zero, result.receipt, result.failure);
+  return newMutationRetry(result.failure, result.retryAfterMs);
+}
+// Graph documents 507 as a full quota, a definite refusal that no repeat clears.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422, 507]);
+/** An allowlisted refusal status whose fully read body describes no item. */
+function isDefiniteWriteRefusal(exchange: Exchange): boolean {
+  if (exchange.error || exchange.isErrorBodyIncomplete || !definiteRefusalStatuses.has(exchange.status)) return false;
+  try { resultItem(exchange); return false; } catch { return true; }
+}
+/** An attempt that may follow an earlier attempt's applied write. */
+function isLaterAttempt(call: Call): boolean { return (call.context?.attempt ?? 1) > 1; }
+/** Retry a credential failure after a possible earlier write, where defect would misreport it. */
+function writeCredentialFailure<T>(call: Call, credentialFailure: Failure | undefined, zero: T): MutationAttempt<T> {
+  if (credentialFailure && isLaterAttempt(call) && credentialFailure.kind === 'AUTHENTICATION') return newMutationRetry(credentialFailure);
+  return newMutationBranch('defect', zero, zeroReceipt(), credentialFailure);
 }
 function resultItem(exchange: Exchange): DriveItem { return decodeItem(decodeJSON(exchange.body)); }
 function summary(item: DriveItem): FileSummary { return { id: item.id, name: item.name, isFolder: item.isFolder, sizeBytes: item.sizeBytes, ...(item.driveId ? { driveId: item.driveId } : {}), ...(item.parentFolderId ? { parentFolderId: item.parentFolderId } : {}), ...(item.isPackage ? { isPackage: true } : {}), ...(item.mimeType ? { mimeType: item.mimeType } : {}), ...(item.lastModifiedDateTime ? { lastModifiedDateTime: item.lastModifiedDateTime } : {}), ...(item.webUrl ? { webUrl: item.webUrl } : {}) }; }
@@ -59,6 +76,7 @@ export class SearchFilesOperation implements Query<SearchFilesInput, SearchFiles
       if (!parentID && !name) throw new TypeError('name is required when parentFolderId is blank, because drive search needs search text');
     } catch (error) { return newQueryBranch(SearchFilesBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
+    if (resolved.isRetryable) return newQueryRetry(resolved.failure!);
     if (!resolved.credentials) return newQueryBranch(SearchFilesBranch.Defect, zero, zeroReceipt(), resolved.failure);
     const credentials = resolved.credentials;
     const isPath = Boolean(parentID && name && input.nameMatch !== 'contains' && !input.pageToken);
@@ -112,6 +130,7 @@ export class GetFileOperation implements Query<GetFileInput, DriveItem> {
     try { validateIDs(driveID, input.itemId); if (!input.itemId) throw new TypeError('itemId'); }
     catch { return newQueryBranch(GetFileBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', 'itemId must be a Microsoft Graph item ID or root, and driveId a drive ID or blank')); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
+    if (resolved.isRetryable) return newQueryRetry(resolved.failure!);
     if (!resolved.credentials) return newQueryBranch(GetFileBranch.Defect, zero, zeroReceipt(), resolved.failure);
     const exchange = await this.client.send(call, resolved.credentials, 'GET', this.client.itemURL(driveID, input.itemId) + '?' + odataQuery(['$select', itemFields]));
     const failed = queryFailure(this.client, operation, exchange, zero, GetFileBranch.NotFound);
@@ -141,6 +160,7 @@ export class ReadFileTextOperation implements Query<ReadFileTextInput, ReadFileT
     try { validateIDs(driveID, input.itemId); if (!input.itemId || input.itemId === 'root') throw new TypeError('itemId'); }
     catch { return newQueryBranch(ReadFileTextBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', 'itemId must be a Microsoft Graph file item ID, and driveId a drive ID or blank')); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
+    if (resolved.isRetryable) return newQueryRetry(resolved.failure!);
     if (!resolved.credentials) return newQueryBranch(ReadFileTextBranch.Defect, zero, zeroReceipt(), resolved.failure);
     let credentials = resolved.credentials;
     const itemURL = this.client.itemURL(driveID, input.itemId);
@@ -207,7 +227,8 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
       if (content.length > this.client.maxUploadBytes) throw new TypeError(`content exceeds the configured upload limit of ${this.client.maxUploadBytes} bytes`);
     } catch (error) { return newMutationBranch(UploadFileBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
-    if (!resolved.credentials) return newMutationBranch(UploadFileBranch.Defect, zero, zeroReceipt(), resolved.failure);
+    if (resolved.isRetryable) return newMutationRetry(resolved.failure!);
+    if (!resolved.credentials) return writeCredentialFailure(call, resolved.failure, zero);
     let credentials = resolved.credentials;
     const target = this.client.childURL(driveID, parentID, input.name) + ':/content?' + odataQuery(['@microsoft.graph.conflictBehavior', input.conflictBehavior]);
     const exchange = await this.client.send(call, credentials, 'PUT', target, { body: content, contentType: input.mimeType });
@@ -222,18 +243,19 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
     }
     if (exchange.status === 409 || exchange.status === 423) return this.readBack(call, credentials, input, content, codes);
     if (retryableStatus(exchange.status, codes)) return newMutationRetry(failure(operation, statusFailureKind(exchange.status, codes), 'provider temporarily rejected the upload'), retryDelay(exchange.headers, this.client));
+    // An unlisted status, such as 501, or an unreadable body leaves the PUT unsettled.
+    if (!isDefiniteWriteRefusal(exchange)) return newMutationRetry(failure(operation, 'PROTOCOL', 'provider answer did not settle the upload, so the PUT repeats'));
     return newMutationBranch(UploadFileBranch.ProviderRejected, zero, received, failure(operation, statusFailureKind(exchange.status, codes), 'provider rejected the upload'));
   }
   private async readBack(call: Call, credentials: Credentials, input: UploadFileInput, content: Uint8Array, codes: readonly string[]): Promise<MutationAttempt<UploadFileOutput>> {
     const operation = 'uploadFile', zero = zeroUpload(), driveID = input.driveId ?? '';
     const target = this.client.childURL(driveID, input.parentFolderId ?? '', input.name) + '?' + odataQuery(['$select', itemFields]);
     const exchange = await this.client.send(call, credentials, 'GET', target);
-    const failed = mutationReadFailure(this.client, operation, exchange, zero);
+    const failed = mutationReadFailure(this.client, call, operation, exchange, zero);
     if (failed) return exchange.status === 404 && failed.kind === 'retry' ? newMutationRetry(failure(operation, 'CONFLICT', 'conflicting item is not readable yet')) : failed;
-    const received = this.client.receipt(exchange);
     let item: DriveItem;
     try { item = resultItem(exchange); }
-    catch { return newMutationBranch(UploadFileBranch.InvalidResponse, zero, received, failure(operation, 'PROTOCOL', 'provider returned an invalid item response')); }
+    catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'provider returned an invalid item response')); }
     const itemReceipt = this.client.receipt(exchange, item.id);
     if (!item.isFolder && !item.isPackage && !item.quickXorHash) return newMutationRetry(failure(operation, 'AVAILABILITY', "provider has not reported the existing file's content hash yet"));
     const identical = !item.isFolder && !item.isPackage && item.name.toLowerCase() === input.name.toLowerCase() && item.sizeBytes === content.length && item.quickXorHash === computeQuickXorHash(content);
@@ -254,7 +276,8 @@ export class CreateFolderOperation implements Mutation<CreateFolderInput, Create
     try { validateIDs(driveID, parentID); validateName(input.name, true); }
     catch (error) { return newMutationBranch(CreateFolderBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
-    if (!resolved.credentials) return newMutationBranch(CreateFolderBranch.Defect, zero, zeroReceipt(), resolved.failure);
+    if (resolved.isRetryable) return newMutationRetry(resolved.failure!);
+    if (!resolved.credentials) return writeCredentialFailure(call, resolved.failure, zero);
     let credentials = resolved.credentials;
     const body = Buffer.from(JSON.stringify({ '@microsoft.graph.conflictBehavior': 'fail', folder: {}, name: input.name }), 'utf8');
     const target = this.client.itemURL(driveID, parentID) + '/children?' + odataQuery(['@microsoft.graph.conflictBehavior', 'fail']);
@@ -270,18 +293,19 @@ export class CreateFolderOperation implements Mutation<CreateFolderInput, Create
     }
     if (exchange.status === 409 && codes.includes('nameAlreadyExists')) return this.readBack(call, credentials, input);
     if (retryableStatus(exchange.status, codes)) return newMutationRetry(failure(operation, statusFailureKind(exchange.status, codes), 'provider temporarily rejected the folder creation'), retryDelay(exchange.headers, this.client));
+    // Another 409, an unlisted status, or an unreadable body leaves the creation unsettled.
+    if (!isDefiniteWriteRefusal(exchange)) return newMutationRetry(failure(operation, 'PROTOCOL', 'provider answer did not settle the folder creation, so it repeats'));
     return newMutationBranch(CreateFolderBranch.ProviderRejected, zero, received, failure(operation, statusFailureKind(exchange.status, codes), 'provider rejected the folder creation'));
   }
   private async readBack(call: Call, credentials: Credentials, input: CreateFolderInput): Promise<MutationAttempt<CreateFolderOutput>> {
     const operation = 'createFolder', zero = zeroFolder(), driveID = input.driveId ?? '';
     const target = this.client.childURL(driveID, input.parentFolderId ?? '', input.name) + '?' + odataQuery(['$select', itemFields]);
     const exchange = await this.client.send(call, credentials, 'GET', target);
-    const failed = mutationReadFailure(this.client, operation, exchange, zero);
+    const failed = mutationReadFailure(this.client, call, operation, exchange, zero);
     if (failed) return exchange.status === 404 && failed.kind === 'retry' ? newMutationRetry(failure(operation, 'CONFLICT', 'conflicting item is not readable yet')) : failed;
-    const received = this.client.receipt(exchange);
     let item: DriveItem;
     try { item = resultItem(exchange); }
-    catch { return newMutationBranch(CreateFolderBranch.InvalidResponse, zero, received, failure(operation, 'PROTOCOL', 'provider returned an invalid item response')); }
+    catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'provider returned an invalid item response')); }
     const itemReceipt = this.client.receipt(exchange, item.id);
     return item.isFolder ? newMutationBranch(CreateFolderBranch.Created, { folder: item, isExistingFolder: true }, itemReceipt) : newMutationBranch(CreateFolderBranch.NameConflict, { folder: item }, itemReceipt, failure(operation, 'CONFLICT', 'a file already has this name'));
   }

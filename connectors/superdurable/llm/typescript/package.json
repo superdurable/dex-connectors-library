@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-superdurable-llm",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Provider-neutral text generation for Dex Flows",
   "repository": {
     "type": "git",

@@ -27,23 +27,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		if len(wrapped.Value) > 0 {
 			prior = wrapped.Value
 		} else {
-			var marker struct {
-				CallID     string `json:"callId"`
-				Attempt    int32  `json:"attempt"`
-				State      string `json:"state"`
-				ProviderID string `json:"providerId"`
-			}
-			require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
-			checkpoint := map[string]any{"callId": marker.CallID, "operation": scenario.Operation, "attempt": marker.Attempt}
-			if marker.ProviderID != "" {
-				checkpoint["objectId"] = marker.ProviderID
-			}
-			if marker.State == "canResend" || marker.State == "notSent" {
-				checkpoint["canResend"] = true
-			}
-			var err error
-			prior, err = json.Marshal(checkpoint)
-			require.NoError(t, err)
+			// An SDK fence marker is restored as Dex persisted it.
+			prior = scenario.PriorHeartbeat
 		}
 	}
 	context := newReplayAsanaDexContext("conformance", 1, prior)

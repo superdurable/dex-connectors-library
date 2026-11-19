@@ -411,7 +411,7 @@ var UpsertMemberDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertMemberBranchUpserted, Description: "Mailchimp holds the contact with the requested values, written now or by an earlier attempt, and returned it."},
 		{ID: UpsertMemberBranchProviderRejected, Description: "Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written.", Optional: true},
-		{ID: UpsertMemberBranchInvalidResponse, Description: "Mailchimp returned an invalid or oversized contact, so the change may have been applied.", Optional: true},
+		{ID: UpsertMemberBranchInvalidResponse, Description: "Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert.", Optional: true},
 		{ID: UpsertMemberBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -440,6 +440,8 @@ type UpsertMemberStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertMemberResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertMemberOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpsertMemberStep[IN any](config UpsertMemberStepConfig[IN]) sdkgo.MutationStep[IN, UpsertMemberInput, UpsertMemberOutput] {
@@ -487,7 +489,7 @@ var UpdateMemberTagsDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateMemberTagsBranchUpdated, Description: "Mailchimp accepted the tag changes, including tags the contact already had or already lacked."},
 		{ID: UpdateMemberTagsBranchNotFound, Description: "The audience has no contact with that address, or the audience does not exist; nothing was changed.", Optional: true},
 		{ID: UpdateMemberTagsBranchProviderRejected, Description: "Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access.", Optional: true},
-		{ID: UpdateMemberTagsBranchInvalidResponse, Description: "Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.", Optional: true},
+		{ID: UpdateMemberTagsBranchInvalidResponse, Description: "Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration.", Optional: true},
 		{ID: UpdateMemberTagsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -517,6 +519,8 @@ type UpdateMemberTagsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateMemberTagsResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateMemberTagsOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateMemberTagsStep[IN any](config UpdateMemberTagsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateMemberTagsInput, UpdateMemberTagsOutput] {
@@ -568,13 +572,13 @@ var SendCampaignDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendCampaign"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendCampaignBranchSent, Description: "Mailchimp accepted the send of the draft campaign this Step read."},
-		{ID: SendCampaignBranchAlreadySent, Description: "Mailchimp reports the campaign as sending or sent, so this attempt sent nothing.", Optional: true},
+		{ID: SendCampaignBranchAlreadySent, Description: "Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing.", Optional: true},
 		{ID: SendCampaignBranchNotSendable, Description: "The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent.", Optional: true},
 		{ID: SendCampaignBranchNotFound, Description: "The campaign does not exist; nothing was sent.", Optional: true},
 		{ID: SendCampaignBranchProviderRejected, Description: "Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent.", Optional: true},
-		{ID: SendCampaignBranchInvalidResponse, Description: "Mailchimp returned an invalid or oversized campaign before the send; nothing was sent.", Optional: true},
-		{ID: SendCampaignBranchUncertain, Description: "The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again.", Optional: true},
-		{ID: SendCampaignBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: SendCampaignBranchInvalidResponse, Description: "Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent.", Optional: true},
+		{ID: SendCampaignBranchUncertain, Description: "A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send.", Optional: true},
+		{ID: SendCampaignBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid, and no send was attempted.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(60000000000), HeartbeatTimeout: time.Duration(0),

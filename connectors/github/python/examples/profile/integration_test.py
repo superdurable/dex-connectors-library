@@ -60,7 +60,10 @@ async def test_profile_flow_through_real_dex() -> None:
     server_thread.start()
     reference = ConnectionRef("github", CONNECTION_NAME)
     credentials = Credentials(
-        "client-id", SecretString("client-secret"), SecretString("inert-token"), SecretString("")
+        oauth_client_id="client-id",
+        oauth_client_secret=SecretString("client-secret"),
+        access_token=SecretString("inert-token"),
+        refresh_token=SecretString(""),
     )
     client = Client(
         Config(base_url=f"http://127.0.0.1:{stand_in.server_port}"),

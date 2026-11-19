@@ -46,7 +46,7 @@ Last reviewed against `main` at `f5c9edf` (2026-10-01).
 | bamboohr | Dex-integrated | 3 Dex Web Start Flow runs and 18 real-Dex tests against a fake | change-history bounds, rate-limited adds, future-start hires | #165 |
 | calendly | Partial live | picker commands reached Calendly and failed cleanly with a placeholder token; Trigger run with locally signed deliveries | OAuth code exchange, webhook retries, pickers on a real account | #149 |
 | freshworks/freshdesk | Dex-integrated | Dex Web Start Flow run and 14 real-Dex scenarios against a fake | contact lookup, tag replacement, pagination, 429 | #145 |
-| github | Live (reads) | OAuth App authorized through Dex Web; the three read operations ran against github.com | OAuth refresh (#117, #129), rate-limit retries, GitHub Enterprise | #64 |
+| github | Live (reads) | OAuth App authorized through Dex Web; the three read operations ran against github.com | OAuth refresh (#117, #129), rate-limit retries, GitHub Enterprise; `listIssues`, `createIssue`, and the `github-oauth-repository` method ran only on real Dex against a local stand-in | #64 |
 | google/calendar | Dex-integrated | 6 real-Dex scenarios against a fake Google | OAuth consent and refresh, delegation, Meet creation, calendar picker | #151 |
 | google/docs | Dex-integrated | 10 real-Dex scenarios against a fake Google | OAuth scopes, Markdown import, stale-revision error, pickers | #166 |
 | google/drive | Dex-integrated | Dex run ended `copied` against a fake Drive | OAuth refresh, delegation, shared drives, uploads into folders the app did not create | #150 |
@@ -55,7 +55,7 @@ Last reviewed against `main` at `f5c9edf` (2026-10-01).
 | google/gmail | Partial live | a real Google OAuth client reproduced a scope error | any real send or read, Trigger polling, token refresh | #89 |
 | google/spreadsheet | Structural | unit tests against `httptest` fakes | real Google authorization (#116), every Sheets call, picker, refresh (#127) | #7 |
 | google/workspace-admin | Dex-integrated | 8 real-Dex scenarios against a fake Google; the Dex Web run stopped at the first Google call (no real tenant) | everything against a real tenant: delegation, group-membership statuses | #170 |
-| hackernews | Live | Dex Web connection Ready; a live digest ran through Start Flow | one manual run only; no automated live test | #88 |
+| hackernews | Live | Dex Web connection Ready; a live digest ran through Start Flow; the story-search example ran four live searches through Start Flow, covering date and relevance order, tag and points filters, and two pages | manual runs only; no automated live test | #88 |
 | helpscout | Dex-integrated | Dex Web run against a fake | client-credentials token errors, reply rendering, picker | #161 |
 | hubspot | Dex-integrated | two Dex runs against a fake | real response and error shapes, OAuth (expected to fail on `scope` versus `scopes`), pickers | #143 |
 | intercom | Partial live | placeholder-token requests to all three regional hosts returned 401 | every response to a valid token, real webhook signatures | #152 |

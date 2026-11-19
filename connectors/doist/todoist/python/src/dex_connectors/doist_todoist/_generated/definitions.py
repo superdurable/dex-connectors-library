@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -53,8 +54,8 @@ UPDATE_TASK_CONTENT_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, UPDATE_TASK_CONTENT_OPERATION_ID),
     (
         BranchDefinition(UPDATED, "Todoist confirmed every specified field and returned the task.", False),
-        BranchDefinition(NOT_FOUND, "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.", True),
+        BranchDefinition(NOT_FOUND, "Todoist reports that the task does not exist. An accepted update whose read-back finds no active task repeats instead.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Todoist conclusively rejected the update. An accepted update whose read-back is rejected repeats instead.", True),
         BranchDefinition(DEFECT, "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", True),
     ),
     StepDefaults(
@@ -62,6 +63,7 @@ UPDATE_TASK_CONTENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 LIST_TASKS_DEFINITION = QueryDefinition(
@@ -84,7 +86,7 @@ CREATE_TASK_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Todoist confirmed creation and returned the task ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Todoist conclusively rejected creation.", True),
-        BranchDefinition(UNCERTAIN, "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Todoist accepted the creation with an unreadable answer or a task ID that could not be read back, so the task may exist; the connector does not send it again.", True),
         BranchDefinition(DEFECT, "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", True),
     ),
     StepDefaults(
@@ -92,6 +94,8 @@ CREATE_TASK_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 DELETE_TASK_DEFINITION = MutationDefinition(
@@ -107,4 +111,5 @@ DELETE_TASK_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )

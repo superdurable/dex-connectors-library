@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package todoist lists, reads, creates, updates, and deletes tasks through typed Dex Steps.
-// See examples/task-crud for a runnable Flow using all five generated factories.
+// Package todoist lists, reads, creates, updates, closes, reopens, and deletes tasks through typed Dex Steps.
+// See examples/task-crud for a runnable Flow using the generated factories.
 package todoist
 
 import (
@@ -278,23 +278,25 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 		return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
 	case result.status == http.StatusNotFound:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchNotFound, Task{}, result.failure, sdkgo.Receipt{})
-	default:
+	case isDefiniteWriteRefusalStatus(result.status):
 		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})
+	default:
+		// Repeating an absolute replacement is safe, so an unknown outcome retries.
+		return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
 	}
 }
 
-// confirmUpdate reads back an unconfirmed 2xx. GET returns only active tasks, so 404 means completed or deleted.
+// confirmUpdate reads back an unconfirmed 2xx. An accepted update never selects a failure branch;
+// the repeated absolute replacement answers definitively instead.
 func (operation UpdateTaskOperation) confirmUpdate(budget attemptBudget, credentials Credentials, input UpdateTaskInput, answer exchangeResult) sdkgo.MutationAttempt[Task] {
 	readBack := operation.client.sendTaskRequest(budget.remainingWindow(), credentials, "updateTaskContent", http.MethodGet, input.TaskID, nil)
 	switch {
 	case readBack.failure == nil && taskMatchesUpdate(readBack.task, input):
 		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, readBack.task, nil, sdkgo.Receipt{})
-	case readBack.isLocalDefect:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, Task{}, readBack.failure, sdkgo.Receipt{})
 	case readBack.status == http.StatusNotFound:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchNotFound, Task{}, failure("updateTaskContent", sdkgo.FailureNotFound, "Todoist answered the update, but the task is no longer active; it may be completed or deleted, so the specified fields are unconfirmed"), sdkgo.Receipt{})
-	case readBack.status >= 300 && !readBack.isTransient && readBack.status != http.StatusTooManyRequests:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, Task{}, failure("updateTaskContent", readBack.failure.Kind, "Todoist rejected the read-back with HTTP "+strconv.Itoa(readBack.status)+", so the update could not be confirmed; repeating it is safe because it sets absolute field values"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Task](*failure("updateTaskContent", sdkgo.FailureNotFound, "Todoist answered the update, but the task is no longer active; the specified fields are unconfirmed, so the update repeats"), 0)
+	case isDefiniteWriteRefusalStatus(readBack.status):
+		return sdkgo.NewMutationRetry[Task](*failure("updateTaskContent", readBack.failure.Kind, "Todoist rejected the read-back with HTTP "+strconv.Itoa(readBack.status)+", so the update could not be confirmed; repeating it is safe because it sets absolute field values"), 0)
 	case readBack.failure != nil:
 		return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
 	case answer.failure != nil:
@@ -317,6 +319,12 @@ func (client *Client) CreateTask() CreateTaskOperation { return CreateTaskOperat
 
 // DeleteTask returns this client's delete Mutation.
 func (client *Client) DeleteTask() DeleteTaskOperation { return DeleteTaskOperation{client} }
+
+// ReopenTask returns this client's task restoration Mutation.
+func (client *Client) ReopenTask() ReopenTaskOperation { return ReopenTaskOperation{client} }
+
+// CloseTask returns the deduplicated task closing Mutation bound to this client.
+func (client *Client) CloseTask() CloseTaskOperation { return CloseTaskOperation{client} }
 
 // Definition returns the generated list contract.
 func (ListTasksOperation) Definition() sdkgo.QueryDefinition { return ListTasksDefinition }
@@ -383,8 +391,9 @@ func (operation ListTasksOperation) Invoke(call sdkgo.Call, input ListTasksInput
 	return sdkgo.NewQueryBranch(ListTasksBranchListed, page, nil, sdkgo.Receipt{})
 }
 
-// Invoke creates one task. A 2xx with a task ID but unusable fields is confirmed by reading that task, never by
-// resending the creation. A possibly dispatched write that no read confirms remains uncertain.
+// Invoke creates one task behind the single-dispatch Fence. An unknown outcome resends while fewer than
+// call.MaxSends() sends may have taken effect and selects uncertain at the cap. A returned task ID is saved
+// and confirmed by reading that task, never by resending the creation.
 func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInput) sdkgo.MutationAttempt[Task] {
 	if !utf8.ValidString(input.Content) || strings.TrimSpace(input.Content) == "" || !utf8.ValidString(input.Description) || input.ProjectID != "" && !taskIDPattern.MatchString(input.ProjectID) || !requestIDPattern.MatchString(string(call.IdempotencyKey)) {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, failure("createTask", sdkgo.FailureValidation, "valid content, description, projectId, and stable request identity are required"), sdkgo.Receipt{})
@@ -397,42 +406,69 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	if err != nil || len(payload) > 1<<20 {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, failure("createTask", sdkgo.FailureValidation, "encoded task exceeds Todoist's 1 MiB request limit"), sdkgo.Receipt{})
 	}
+	write, attempt, isTerminal := startFencedCreate(call)
+	if isTerminal {
+		return attempt
+	}
 	budget := newAttemptBudget(call.Context, CreateTaskDefinition.StepDefaults.ExecuteMethodTimeout)
 	credentials, result, hasCredentials := operation.client.resolveCredentials(call, "createTask")
-	if hasCredentials {
-		result = operation.client.sendRequest(budget.writeWindow(), credentials, "createTask", http.MethodPost, "/tasks", payload, string(call.IdempotencyKey))
+	if acceptedTaskID := write.acceptedTaskID(); acceptedTaskID != "" {
+		return operation.readAcceptedTask(budget, credentials, result, hasCredentials, acceptedTaskID)
+	}
+	if !hasCredentials {
+		return write.credentialFailureAttempt(result)
+	}
+	result, attempt, isTerminal = write.dispatch(func(requestContext context.Context) exchangeResult {
+		window := requestWindow{parent: requestContext, deadline: budget.writeDeadline, minimumTime: budget.minimumRequestTime}
+		return operation.client.sendRequest(window, credentials, "createTask", http.MethodPost, "/tasks", payload, string(call.IdempotencyKey))
+	})
+	if isTerminal {
+		return attempt
 	}
 	if result.failure != nil {
-		switch {
-		case result.isLocalDefect:
-			return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, result.failure, sdkgo.Receipt{})
-		case result.isUndispatched || result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable:
-			return sdkgo.NewMutationRetry[Task](*result.failure, result.retryAfter)
-		case result.status == http.StatusConflict || result.isTransient || result.failure.Kind == sdkgo.FailureProtocol || result.failure.Kind == sdkgo.FailureResponseTooLarge:
-			// Todoist does not document whether 409 means this request ID already created a task.
-			return sdkgo.NewMutationUncertain(Task{}, *result.failure, sdkgo.Receipt{})
-		default:
-			return sdkgo.NewMutationBranch(CreateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})
-		}
+		return write.attemptForUnacceptedCreate(result)
 	}
 	// A valid task is the created task as Todoist stored it; fields may differ from the request.
 	if task, err := decodeTask(result.body); err == nil {
+		write.recordAcceptedTask(task.ID)
 		return sdkgo.NewMutationBranch(CreateTaskBranchCreated, task, nil, sdkgo.Receipt{})
 	}
 	taskID, hasTaskID := decodeCreatedTaskID(result.body)
 	if !hasTaskID {
-		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist answered the creation without a usable task"), sdkgo.Receipt{})
+		// A 2xx means Todoist accepted the creation, so a resend could create a second task.
+		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation without a usable task, so the task is unconfirmed"), sdkgo.Receipt{})
 	}
-	return operation.readCreatedTask(budget, credentials, taskID)
+	return operation.readCreatedTask(budget, credentials, taskID, write.recordAcceptedTask(taskID))
 }
 
-// readCreatedTask confirms an accepted creation. Any unusable or skipped read stays uncertain; a retry would create again.
-func (operation CreateTaskOperation) readCreatedTask(budget attemptBudget, credentials Credentials, taskID string) sdkgo.MutationAttempt[Task] {
+// readCreatedTask confirms an accepted creation and never resends it. A transient read failure retries the
+// read-back only when the task ID is saved; any other unusable read stays uncertain.
+func (operation CreateTaskOperation) readCreatedTask(budget attemptBudget, credentials Credentials, taskID string, isTaskIDSaved bool) sdkgo.MutationAttempt[Task] {
 	readBack := operation.client.sendTaskRequest(budget.remainingWindow(), credentials, "createTask", http.MethodGet, taskID, nil)
 	if readBack.failure == nil {
 		return sdkgo.NewMutationBranch(CreateTaskBranchCreated, readBack.task, nil, sdkgo.Receipt{})
 	}
+	if isTaskIDSaved && !readBack.isLocalDefect && (readBack.isTransient || readBack.status == http.StatusTooManyRequests) {
+		// The next attempt reads the saved task ID back instead of resending.
+		return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
+	}
 	return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task "+taskID+" but it could not be read back in this attempt, so the task is unconfirmed"), sdkgo.Receipt{})
+}
+
+// readAcceptedTask reads back the task an earlier attempt saved and never resends it.
+func (operation CreateTaskOperation) readAcceptedTask(budget attemptBudget, credentials Credentials, credentialResult exchangeResult, hasCredentials bool, taskID string) sdkgo.MutationAttempt[Task] {
+	readBack := credentialResult
+	if hasCredentials {
+		readBack = operation.client.sendTaskRequest(budget.remainingWindow(), credentials, "createTask", http.MethodGet, taskID, nil)
+	}
+	switch {
+	case readBack.failure == nil:
+		return sdkgo.NewMutationBranch(CreateTaskBranchCreated, readBack.task, nil, sdkgo.Receipt{})
+	case !readBack.isLocalDefect && (readBack.isTransient || readBack.status == http.StatusTooManyRequests):
+		return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
+	default:
+		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task "+taskID+" in an earlier attempt but it could not be read back, so the task is unconfirmed"), sdkgo.Receipt{})
+	}
 }
 
 func decodeCreatedTaskID(body []byte) (string, bool) {
@@ -465,8 +501,11 @@ func (operation DeleteTaskOperation) Invoke(call sdkgo.Call, input DeleteTaskInp
 		return sdkgo.NewMutationRetry[DeleteTaskOutcome](*result.failure, result.retryAfter)
 	case result.status == 404:
 		return sdkgo.NewMutationBranch(DeleteTaskBranchAlreadyAbsent, value, result.failure, sdkgo.Receipt{})
-	default:
+	case isDefiniteWriteRefusalStatus(result.status):
 		return sdkgo.NewMutationBranch(DeleteTaskBranchProviderRejected, DeleteTaskOutcome{}, result.failure, sdkgo.Receipt{})
+	default:
+		// Repeating a delete by immutable ID is safe, so an unknown outcome retries.
+		return sdkgo.NewMutationRetry[DeleteTaskOutcome](*result.failure, result.retryAfter)
 	}
 }
 
@@ -500,6 +539,14 @@ func (client *Client) sendTaskRequest(window requestWindow, credentials Credenti
 }
 
 func (client *Client) sendRequest(window requestWindow, credentials Credentials, operation, method, endpoint string, payload []byte, requestID string) exchangeResult {
+	return client.sendRequestWithContentType(window, credentials, operation, method, endpoint, payload, requestID, "application/json")
+}
+
+func (client *Client) sendFormRequest(window requestWindow, credentials Credentials, operation, endpoint string, payload []byte) exchangeResult {
+	return client.sendRequestWithContentType(window, credentials, operation, http.MethodPost, endpoint, payload, "", "application/x-www-form-urlencoded")
+}
+
+func (client *Client) sendRequestWithContentType(window requestWindow, credentials Credentials, operation, method, endpoint string, payload []byte, requestID, contentType string) exchangeResult {
 	if !window.hasTimeToStart() {
 		return exchangeResult{isTransient: true, isUndispatched: true, failure: failure(operation, sdkgo.FailureAvailability, "too little attempt time remained, so the request was not sent")}
 	}
@@ -515,7 +562,7 @@ func (client *Client) sendRequest(window requestWindow, credentials Credentials,
 	request.Header.Set("Authorization", "Bearer "+credentials.APIToken.Reveal())
 	request.Header.Set("Accept", "application/json")
 	if method == http.MethodPost {
-		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Content-Type", contentType)
 	}
 	if requestID != "" {
 		request.Header.Set("X-Request-ID", requestID)
@@ -553,7 +600,8 @@ func (client *Client) sendRequest(window requestWindow, credentials Credentials,
 // isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as store reads, may pass.
 func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
-		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // newAttemptBudget uses the Execute timeout, shortened by the Step deadline; an async first attempt may get seven seconds.
@@ -596,6 +644,9 @@ func isSuccessStatus(status int) bool { return status >= 200 && status < 300 }
 
 func classifyHTTPFailure(operation string, response *http.Response) exchangeResult {
 	result := exchangeResult{status: response.StatusCode}
+	if body, bodyErr := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes); bodyErr == nil {
+		result.body = body
+	}
 	kind := sdkgo.FailureProviderRejection
 	switch response.StatusCode {
 	case http.StatusUnauthorized:

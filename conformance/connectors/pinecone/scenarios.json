@@ -194,13 +194,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "upsertedCount": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -220,7 +217,7 @@
           }
         ]
       },
-      "name": "upsertVectors-invalid-response",
+      "name": "upsertVectors-incomplete-response-retries",
       "operation": "upsertVectors"
     },
     {
@@ -553,13 +550,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "upsertedCount": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -579,7 +573,7 @@
           }
         ]
       },
-      "name": "upsertVectors-malformed-json",
+      "name": "upsertVectors-malformed-json-retries",
       "operation": "upsertVectors"
     },
     {

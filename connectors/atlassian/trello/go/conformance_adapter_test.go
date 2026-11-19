@@ -34,17 +34,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			initialAttempt = wrapped.Attempt + 1
 			context.previousHeartbeat = wrapped.Value
 		} else {
-			var marker struct {
-				CallID  string `json:"callId"`
-				Attempt int32  `json:"attempt"`
-				State   string `json:"state"`
-			}
-			require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
-			initialAttempt = marker.Attempt + 1
-			context.previousHeartbeat, err = json.Marshal(map[string]any{
-				"trelloDispatchedCallId": marker.CallID, "trelloAttempt": marker.Attempt, "trelloCanRetry": marker.State == "canResend" || marker.State == "notSent",
-			})
-			require.NoError(t, err)
+			// An SDK fence marker is restored as Dex persisted it.
+			initialAttempt = wrapped.Attempt + 1
+			context.previousHeartbeat = scenario.PriorHeartbeat
 		}
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {

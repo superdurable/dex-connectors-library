@@ -72,7 +72,7 @@ func UpsertVectorsProviderRejected(value pinecone.UpsertVectorsOutput, failure *
 	return connectormock.Branch(pinecone.UpsertVectorsBranchProviderRejected, value, failure)
 }
 
-// UpsertVectorsInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+// UpsertVectorsInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.
 func UpsertVectorsInvalidResponse(value pinecone.UpsertVectorsOutput, failure *sdkgo.Failure) connectormock.Case[pinecone.UpsertVectorsOutput] {
 	return connectormock.Branch(pinecone.UpsertVectorsBranchInvalidResponse, value, failure)
 }

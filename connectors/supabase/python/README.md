@@ -1,6 +1,6 @@
 # Supabase connector for Python
 
-Install with `pip install dex-connector-supabase==0.1.0`. The package requires
+Install with `pip install dex-connector-supabase==0.1.1`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `selectRows` (Query) and `upsertRows` (Mutation) with the
 same branches, defaults, and failure classification as the Go module.

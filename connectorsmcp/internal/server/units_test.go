@@ -14,7 +14,6 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/attemptcontext"
 	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/registry"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -161,23 +160,54 @@ func TestDerivedCallIDEqualsTheCallIDTheOperationSees(t *testing.T) {
 	require.Equal(t, sdkgo.CallID("b51bb3e0-17ad-5964-8914-6c372c13a695"), deriveCallID(localFlowID, "flow-1/turn-1/call-1", sdkgo.OperationRef{ConnectorID: "slack", OperationID: "postThreadReply"}))
 }
 
-func TestFenceCheckpointSurvivesTheRecordRoundTrip(t *testing.T) {
+func TestBranchOutcomesFollowDexAgents(t *testing.T) {
+	metadata := sdkgo.AgentToolMetadata{
+		Kind: sdkgo.AgentOperationKindMutation,
+		Branches: []sdkgo.BranchDefinition{
+			{ID: "sent"}, {ID: "refused", Optional: true}, {ID: "pending", Optional: true}, {ID: "unlisted", Optional: true},
+			{ID: sdkgo.UncertainBranchID, Optional: true}, {ID: sdkgo.DefectBranchID, Optional: true},
+		},
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{"refused": sdkgo.AgentBranchOutcomeRejected, "pending": sdkgo.AgentBranchOutcomeUnknown},
+	}
+	for branch, expected := range map[sdkgo.BranchID]sdkgo.AgentToolAttemptOutcome{
+		"sent":                  sdkgo.AgentToolAttemptSucceeded,
+		sdkgo.UncertainBranchID: sdkgo.AgentToolAttemptUnknown,
+		sdkgo.DefectBranchID:    sdkgo.AgentToolAttemptFailed,
+		"unlisted":              sdkgo.AgentToolAttemptFailed,
+		"refused":               sdkgo.AgentToolAttemptRejected,
+		"pending":               sdkgo.AgentToolAttemptUnknown,
+	} {
+		require.Equal(t, expected, classifyBranchOutcome(metadata, branch), branch)
+		// The SDK may report unknown from its Fence observation; the branch decides.
+		fenceTightened := sdkgo.AgentToolAttempt{Outcome: sdkgo.AgentToolAttemptUnknown, Branch: branch, HasInvokedOperation: true}
+		require.Equal(t, expected, classifyAttemptByBranch(metadata, fenceTightened, nil).Outcome, branch)
+	}
+	retry := sdkgo.AgentToolAttempt{Outcome: sdkgo.AgentToolAttemptRetry, HasInvokedOperation: true}
+	require.Equal(t, sdkgo.AgentToolAttemptRetry, classifyAttemptByBranch(metadata, retry, nil).Outcome)
+}
+
+// opaqueHeartbeat stands in for connector Fence state, which the server passes through unread.
+type opaqueHeartbeat struct {
+	Markers map[string]string `json:"markers"`
+}
+
+func TestHeartbeatCheckpointSurvivesTheRecordRoundTrip(t *testing.T) {
 	recorded := json.RawMessage(nil)
 	first, err := attemptcontext.New(t.Context(), attemptcontext.Options{
 		FlowID: localFlowID, StepExecutionID: "key", Attempt: 1,
 		OnRecordHeartbeat: func(checkpoint json.RawMessage) error { recorded = checkpoint; return nil },
 	})
 	require.NoError(t, err)
-	marker := singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateNotSent}
+	marker := opaqueHeartbeat{Markers: map[string]string{"call-1": "claimed"}}
 	require.NoError(t, first.RecordHeartbeat(marker))
-	var none singledispatch.Marker
+	var none opaqueHeartbeat
 	isFound, err := first.GetLastHeartbeatValue(&none)
 	require.NoError(t, err)
 	require.False(t, isFound, "a recorded heartbeat reaches only the next attempt")
 
 	second, err := attemptcontext.New(t.Context(), attemptcontext.Options{FlowID: localFlowID, StepExecutionID: "key", Attempt: 2, LastHeartbeat: recorded})
 	require.NoError(t, err)
-	var decoded singledispatch.Marker
+	var decoded opaqueHeartbeat
 	isFound, err = second.GetLastHeartbeatValue(&decoded)
 	require.NoError(t, err)
 	require.True(t, isFound)

@@ -14,7 +14,16 @@ from datetime import UTC, datetime
 from urllib.parse import quote, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Mutation, Query, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Mutation,
+    Query,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     is_header_safe_credential,
     new_provider_http_client,
@@ -39,6 +48,26 @@ _BUCKET = re.compile(r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9+/=._-]{1,128}$")
 _ENDPOINT_PATH = re.compile(r"^(/[A-Za-z0-9._~-]+)*$")
 _EMPTY_HASH = hashlib.sha256(b"").hexdigest()
+
+
+class _CredentialUnavailableError(Exception):
+    """A transient credential failure that a later attempt may resolve; nothing was sent."""
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,7 +186,19 @@ class Client:
     async def start_session(self, call: Call) -> Session | None:
         """Resolve credentials and reject invalid values without exposing them."""
         try:
+            return await self._resolve_session(call)
+        except _CredentialUnavailableError:
+            return None
+
+    async def _resolve_session(self, call: Call) -> Session | None:
+        """Return None for a terminal or invalid credential; raise _CredentialUnavailableError otherwise."""
+        try:
             credentials = await self.credentials.resolve(call)
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                raise _CredentialUnavailableError() from None
+            return None
+        try:
             access_key_id = credentials.access_key_id.reveal()
             secret_access_key = credentials.secret_access_key.reveal()
             session_token = credentials.session_token.reveal()

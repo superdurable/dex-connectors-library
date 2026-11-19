@@ -8,8 +8,10 @@ from typing import cast
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk import projectconfig
 
 from dex_connectors.helpscout import Client, Config, Credentials
+from dex_connectors.helpscout._generated.connection import CredentialMaterialError, decode_credentials
 from dex_connectors.helpscout.decode import canonical_timestamp, parse_timestamp
 from dex_connectors.helpscout.operations import _bare_email
 from dex_connectors.helpscout.query_values import encode_query_values
@@ -23,11 +25,29 @@ class _FailingCredentials:
         raise self.error
 
 
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
 @pytest.mark.parametrize(
     "error,expected",
     [
+        (_sdk_wrapped_material_error(), "terminal"),
         (sdk.ReauthorizationRequiredError(), "terminal"),
+        (projectconfig.ObjectNotFoundError("connection"), "terminal"),
+        (projectconfig.ConnectionNotSelectedError("connection"), "terminal"),
+        (projectconfig.CredentialBrokerRejectedError("broker"), "terminal"),
         (OSError("token endpoint unavailable"), "retry"),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
     ],
 )
 async def test_credential_failure_classification(error: Exception, expected: str) -> None:

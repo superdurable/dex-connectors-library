@@ -1,6 +1,6 @@
 # Klaviyo connector for Python
 
-Install with `pip install dex-connector-klaviyo==0.1.0`. The package requires
+Install with `pip install dex-connector-klaviyo==0.1.1`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `getProfile` (Query) and `createEvent` (Mutation) with the
 same branches, defaults, and failure classification as the Go module.

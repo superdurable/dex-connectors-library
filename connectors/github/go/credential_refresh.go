@@ -16,14 +16,34 @@ import (
 const (
 	githubOAuthTokenEndpoint = "https://github.com/login/oauth/access_token"
 	credentialRefreshSkew    = oauthtoken.RefreshSkew
+
+	// PublicAuthMethodID is the default, recommended authorization method. It requests read:user and
+	// user:email, so GitHub serves only public repository data, and createIssue selects insufficientScope.
+	PublicAuthMethodID = "github-oauth"
+	// RepositoryAuthMethodID requests the repo scope that createIssue requires. The profile, public
+	// repository, change, and release queries select insufficientScope on a connection that uses it.
+	RepositoryAuthMethodID = "github-oauth-repository"
 )
 
 var (
-	// githubRequiredOAuthScopes are the exact scopes a refreshed GitHub credential must carry.
-	githubRequiredOAuthScopes = []string{"read:user", "user:email"}
+	// githubPublicOAuthScopes are the exact scopes a PublicAuthMethodID credential carries.
+	githubPublicOAuthScopes = []string{"read:user", "user:email"}
+	// githubRepositoryOAuthScopes are the exact scopes a RepositoryAuthMethodID credential carries.
+	githubRepositoryOAuthScopes = []string{"repo"}
 	// githubTerminalRefreshErrorCodes are the GitHub token endpoint errors that no retry can recover.
 	githubTerminalRefreshErrorCodes = []string{"bad_refresh_token", "incorrect_client_credentials", "invalid_client", "invalid_grant"}
 )
+
+// requiredOAuthScopes returns the exact scopes GitHub grants the method; a blank method is the manifest default.
+func requiredOAuthScopes(authMethodID string) ([]string, bool) {
+	switch authMethodID {
+	case "", PublicAuthMethodID:
+		return githubPublicOAuthScopes, true
+	case RepositoryAuthMethodID:
+		return githubRepositoryOAuthScopes, true
+	}
+	return nil, false
+}
 
 // CredentialRefreshDriver refreshes expiring GitHub OAuth credentials.
 // It performs provider calls but leaves locking and atomic persistence to the credential provider.
@@ -58,6 +78,10 @@ func (driver *CredentialRefreshDriver) Refresh(
 		return sdkgo.CredentialRefreshResult[Credentials]{}, errors.New("GitHub credential refresh driver is not configured")
 	}
 	credentials := state.Credentials
+	requiredScopes, isKnownMethod := requiredOAuthScopes(credentials.AuthMethodID)
+	if !isKnownMethod {
+		return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.NewReauthorizationRequiredError(errors.New("GitHub authorization method is not supported"))
+	}
 	tokenEndpoint := oauthtoken.TokenEndpoint{
 		ProviderName:       "GitHub",
 		URL:                githubOAuthTokenEndpoint,
@@ -72,7 +96,7 @@ func (driver *CredentialRefreshDriver) Refresh(
 	if err != nil {
 		return sdkgo.CredentialRefreshResult[Credentials]{}, err
 	}
-	if !oauthtoken.HasExactScopes(token.Scope, githubRequiredOAuthScopes) {
+	if !oauthtoken.HasExactScopes(token.Scope, requiredScopes) {
 		return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.NewReauthorizationRequiredError(errors.New("GitHub credential lacks the required OAuth scopes"))
 	}
 	credentials.AccessToken = token.AccessToken

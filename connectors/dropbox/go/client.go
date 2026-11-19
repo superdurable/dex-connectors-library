@@ -6,6 +6,7 @@ package dropbox
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -77,11 +79,15 @@ var errRefresh = errors.New("Dropbox credential refresh failed")
 var errRequest = errors.New("Dropbox request failed")
 
 func (client *Client) post(call sdkgo.Call, path string, payload []byte) ([]byte, int, time.Duration, error) {
+	return client.postWithContext(call, call.Context, path, payload)
+}
+
+func (client *Client) postWithContext(call sdkgo.Call, requestContext context.Context, path string, payload []byte) ([]byte, int, time.Duration, error) {
 	accessToken, err := client.resolveAccessToken(call)
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
@@ -102,9 +108,16 @@ func (client *Client) post(call sdkgo.Call, path string, payload []byte) ([]byte
 	return body, response.StatusCode, retryAfter, err
 }
 
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func (client *Client) resolveAccessToken(call sdkgo.Call) (string, error) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
+	if isTerminalCredentialError(err) {
 		return "", errCredential
 	}
 	if err != nil {

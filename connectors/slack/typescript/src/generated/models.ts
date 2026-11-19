@@ -41,26 +41,45 @@ export interface Credentials {
   userToken: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["app_token", "bot_refresh_token", "bot_token", "oauth_client_id", "oauth_client_secret", "user_refresh_token", "user_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["app_token"] != null && !(typeof fields["app_token"] === 'string')) throw new TypeError("credential app_token has an invalid type");
-  if (fields["bot_refresh_token"] != null && !(typeof fields["bot_refresh_token"] === 'string')) throw new TypeError("credential bot_refresh_token has an invalid type");
-  if (fields["bot_token"] != null && !(typeof fields["bot_token"] === 'string')) throw new TypeError("credential bot_token has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["user_refresh_token"] != null && !(typeof fields["user_refresh_token"] === 'string')) throw new TypeError("credential user_refresh_token has an invalid type");
-  if (fields["user_token"] != null && !(typeof fields["user_token"] === 'string')) throw new TypeError("credential user_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["app_token"] != null && !(typeof fields["app_token"] === 'string')) throw new CredentialMaterialError("credential app_token has an invalid type");
+  if (fields["bot_refresh_token"] != null && !(typeof fields["bot_refresh_token"] === 'string')) throw new CredentialMaterialError("credential bot_refresh_token has an invalid type");
+  if (fields["bot_token"] != null && !(typeof fields["bot_token"] === 'string')) throw new CredentialMaterialError("credential bot_token has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["user_refresh_token"] != null && !(typeof fields["user_refresh_token"] === 'string')) throw new CredentialMaterialError("credential user_refresh_token has an invalid type");
+  if (fields["user_token"] != null && !(typeof fields["user_token"] === 'string')) throw new CredentialMaterialError("credential user_token has an invalid type");
   const credentials = {} as Credentials;
   credentials.oauthClientId = (fields["oauth_client_id"] ?? '') as string;
   credentials.oauthClientSecret = new SecretString((fields["oauth_client_secret"] ?? '') as string);
-  if (!fields["bot_token"]) throw new TypeError("credential bot_token is required");
+  if (!fields["bot_token"]) throw new CredentialMaterialError("credential bot_token is required");
   credentials.botToken = new SecretString((fields["bot_token"] ?? '') as string);
   credentials.botRefreshToken = new SecretString((fields["bot_refresh_token"] ?? '') as string);
-  if (!fields["user_token"]) throw new TypeError("credential user_token is required");
+  if (!fields["user_token"]) throw new CredentialMaterialError("credential user_token is required");
   credentials.userToken = new SecretString((fields["user_token"] ?? '') as string);
   credentials.userRefreshToken = new SecretString((fields["user_refresh_token"] ?? '') as string);
   credentials.appToken = new SecretString((fields["app_token"] ?? '') as string);
@@ -69,24 +88,24 @@ export function decodeCredentials(value: unknown): Credentials {
 
 /** Decode shared credential fields for the connector. */
 export function decodeSharedCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["app_token", "bot_refresh_token", "bot_token", "oauth_client_id", "oauth_client_secret", "user_refresh_token", "user_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["app_token"] != null && !(typeof fields["app_token"] === 'string')) throw new TypeError("credential app_token has an invalid type");
-  if (fields["bot_refresh_token"] != null && !(typeof fields["bot_refresh_token"] === 'string')) throw new TypeError("credential bot_refresh_token has an invalid type");
-  if (fields["bot_token"] != null && !(typeof fields["bot_token"] === 'string')) throw new TypeError("credential bot_token has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["user_refresh_token"] != null && !(typeof fields["user_refresh_token"] === 'string')) throw new TypeError("credential user_refresh_token has an invalid type");
-  if (fields["user_token"] != null && !(typeof fields["user_token"] === 'string')) throw new TypeError("credential user_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["app_token"] != null && !(typeof fields["app_token"] === 'string')) throw new CredentialMaterialError("credential app_token has an invalid type");
+  if (fields["bot_refresh_token"] != null && !(typeof fields["bot_refresh_token"] === 'string')) throw new CredentialMaterialError("credential bot_refresh_token has an invalid type");
+  if (fields["bot_token"] != null && !(typeof fields["bot_token"] === 'string')) throw new CredentialMaterialError("credential bot_token has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["user_refresh_token"] != null && !(typeof fields["user_refresh_token"] === 'string')) throw new CredentialMaterialError("credential user_refresh_token has an invalid type");
+  if (fields["user_token"] != null && !(typeof fields["user_token"] === 'string')) throw new CredentialMaterialError("credential user_token has an invalid type");
   const credentials = {} as Credentials;
   credentials.oauthClientId = (fields["oauth_client_id"] ?? '') as string;
   credentials.oauthClientSecret = new SecretString((fields["oauth_client_secret"] ?? '') as string);
-  if (!fields["bot_token"]) throw new TypeError("credential bot_token is required");
+  if (!fields["bot_token"]) throw new CredentialMaterialError("credential bot_token is required");
   credentials.botToken = new SecretString((fields["bot_token"] ?? '') as string);
   credentials.botRefreshToken = new SecretString((fields["bot_refresh_token"] ?? '') as string);
-  if (!fields["user_token"]) throw new TypeError("credential user_token is required");
+  if (!fields["user_token"]) throw new CredentialMaterialError("credential user_token is required");
   credentials.userToken = new SecretString((fields["user_token"] ?? '') as string);
   credentials.userRefreshToken = new SecretString((fields["user_refresh_token"] ?? '') as string);
   credentials.appToken = new SecretString((fields["app_token"] ?? '') as string);

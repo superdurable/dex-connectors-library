@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/bamboohr/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 type failingCredentialProvider struct{}
@@ -43,10 +44,10 @@ func TestNewValidatesTheCompanyDomainAndOptions(t *testing.T) {
 func TestUnusableCredentialsSelectDefectWithoutARequest(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	for name, credentials := range map[string]sdkgo.CredentialProvider[bamboohr.Credentials]{
-		"credential source failure": failingCredentialProvider{},
-		"colon in key":              sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {APIKey: sdkgo.NewSecretString("abc:def")}},
-		"space in key":              sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {APIKey: sdkgo.NewSecretString("abc def")}},
-		"empty key":                 sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {}},
+		"broker rejected": addEmployeeCredentialErrorProvider{projectconfig.ErrCredentialBrokerRejected},
+		"colon in key":    sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {APIKey: sdkgo.NewSecretString("abc:def")}},
+		"space in key":    sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {APIKey: sdkgo.NewSecretString("abc def")}},
+		"empty key":       sdkgo.StaticCredentialProvider[bamboohr.Credentials]{bambooHRConnection: {}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain}, credentials, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
@@ -57,6 +58,25 @@ func TestUnusableCredentialsSelectDefectWithoutARequest(t *testing.T) {
 			require.Equal(t, bamboohr.GetEmployeeBranchDefect, result.Branch)
 			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 			require.NotContains(t, result.Failure.Message, "SENTINEL")
+		})
+	}
+}
+
+func TestTransientCredentialFailuresRetryQueriesWithoutARequest(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	for name, credentials := range map[string]sdkgo.CredentialProvider[bamboohr.Credentials]{
+		"unlisted source failure": failingCredentialProvider{},
+		"broker unavailable":      addEmployeeCredentialErrorProvider{projectconfig.ErrCredentialBrokerUnavailable},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain}, credentials, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			_, err = sdkgo.RunQuery(newBambooHRDexContext("transient-credentials"), client.GetEmployee(), bambooHRConnection,
+				bamboohr.GetEmployeeInput{EmployeeID: "123", Fields: []string{"firstName"}})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			require.NotContains(t, retry.Failure.Message, "SENTINEL")
 		})
 	}
 }

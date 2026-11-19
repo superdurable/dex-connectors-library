@@ -72,7 +72,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/clickup/connector.ya
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/clickup/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/clickup/go \
-  --version v0.23.0 --tag connectors/clickup/go/v0.23.0 \
+  --version v0.23.1 --tag connectors/clickup/go/v0.23.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/clickup-release/connector-ui.tgz --ui-digest /tmp/clickup-release/connector-ui.tgz.sha256 \
   --output /tmp/clickup-release/connector-release.json \
@@ -200,11 +200,11 @@ Flow on a real Worker against a stateful fake ClickUp that requires the raw
 - a task that is no longer blocked is skipped after one read, and an unknown
   manager is skipped before any search;
 - a delayed create and comment each complete with one request;
-- a create whose response was lost is found in the List and never resent;
-- a create answered 503 without being applied fails the Flow and is never
-  resent;
+- a create whose response was lost is found in the List and not resent;
+- a create answered 503, which ClickUp did not apply, is sent again without a
+  read-back and the Flow completes;
 - a Worker lost while ClickUp holds the create leaves the next attempt to read
-  the List instead of resending;
+  the List, find nothing yet, and resend once within the send cap;
 - an update interrupted by Worker loss runs again and converges on one
   assignment;
 - a rate-limited search waits for `X-RateLimit-Reset`;

@@ -299,6 +299,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "customer": {
             "companyName": "City Agency LLC",
@@ -378,6 +384,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 60000,
@@ -445,6 +456,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -510,6 +526,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -577,6 +598,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "state": "canResend"
+        },
         "output": {
           "customer": {
             "customerId": "",
@@ -705,6 +731,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "docNumber": "ORDER-1042",
           "invoice": {
@@ -818,6 +850,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 60000,
@@ -918,6 +955,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1016,6 +1058,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1116,6 +1163,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "state": "canResend"
+        },
         "output": {
           "docNumber": "ORDER-1042",
           "invoice": {
@@ -1769,6 +1821,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "balance": "112.4",
           "billEmail": "accounts@cityagency.example.com",
@@ -1829,6 +1887,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 60000,
@@ -1879,6 +1942,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1927,6 +1995,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1977,6 +2050,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "state": "canResend"
+        },
         "output": {
           "balance": "",
           "customerId": "",
@@ -2086,6 +2164,12 @@
       "expected": {
         "branch": "recorded",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "appliedInvoices": [
             {
@@ -2180,6 +2264,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 60000,
@@ -2263,6 +2352,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2344,6 +2438,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2427,6 +2526,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "state": "canResend"
+        },
         "output": {
           "customerId": "58",
           "paymentId": "",
@@ -2679,6 +2783,12 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "sendCount": 3,
+          "state": "claimed"
+        },
         "output": {
           "customer": {
             "customerId": "",
@@ -2703,7 +2813,13 @@
         "phone": "555-0101"
       },
       "name": "createCustomer-uncertain",
-      "operation": "createCustomer"
+      "operation": "createCustomer",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
@@ -2775,6 +2891,12 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
         "output": {
           "docNumber": "ORDER-1042",
           "invoice": {
@@ -2813,7 +2935,13 @@
         "txnDate": "2026-10-01"
       },
       "name": "createInvoice-uncertain",
-      "operation": "createInvoice"
+      "operation": "createInvoice",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
@@ -2873,6 +3001,13 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "providerId": "130",
+          "sendCount": 3,
+          "state": "claimed"
+        },
         "output": {
           "balance": "",
           "customerId": "",
@@ -2891,7 +3026,13 @@
         "sendTo": "accounts@cityagency.example.com"
       },
       "name": "sendInvoice-uncertain",
-      "operation": "sendInvoice"
+      "operation": "sendInvoice",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
@@ -2956,6 +3097,12 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "sendCount": 3,
+          "state": "claimed"
+        },
         "output": {
           "customerId": "58",
           "paymentId": "",
@@ -2979,7 +3126,13 @@
         "txnDate": "2026-10-01"
       },
       "name": "recordPayment-uncertain",
-      "operation": "recordPayment"
+      "operation": "recordPayment",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
@@ -3242,6 +3395,11 @@
       "expected": {
         "branch": "nameConflict",
         "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "state": "canResend"
+        },
         "output": {
           "customer": {
             "customerId": "",
@@ -3338,6 +3496,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "state": "canResend"
+        },
         "output": {
           "docNumber": "ORDER-1042",
           "invoice": {
@@ -3415,6 +3578,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "state": "canResend"
+        },
         "output": {
           "balance": "",
           "customerId": "",
@@ -3498,6 +3666,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "state": "canResend"
+        },
         "output": {
           "customerId": "58",
           "paymentId": "",
@@ -3593,6 +3766,13 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "providerId": "58",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "customer": {
             "companyName": "City Agency LLC",
@@ -3670,6 +3850,12 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -3737,6 +3923,12 @@
       "expected": {
         "branch": "",
         "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -3846,6 +4038,13 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "providerId": "130",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "docNumber": "ORDER-1042",
           "invoice": {
@@ -3957,6 +4156,12 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4057,6 +4262,12 @@
       "expected": {
         "branch": "",
         "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4145,6 +4356,13 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "providerId": "130",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "balance": "112.4",
           "billEmail": "accounts@cityagency.example.com",
@@ -4203,6 +4421,12 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4253,6 +4477,12 @@
       "expected": {
         "branch": "",
         "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4350,6 +4580,13 @@
       "expected": {
         "branch": "recorded",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "providerId": "186",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "appliedInvoices": [
             {
@@ -4442,6 +4679,12 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4525,6 +4768,12 @@
       "expected": {
         "branch": "",
         "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,

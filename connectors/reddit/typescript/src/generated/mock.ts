@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetPostInput, Post } from './models.js';
-import { GetPostInputSchema, PostSchema } from './models.js';
-import { ProviderID, GetPostDefinition } from './definitions.js';
+import type { GetPostInput, Post, ListSubredditPostsInput, ListedPost, PostPage, SearchPostsInput } from './models.js';
+import { GetPostInputSchema, PostSchema, ListSubredditPostsInputSchema, ListedPostSchema, PostPageSchema, SearchPostsInputSchema } from './models.js';
+import { ProviderID, ConnectorID, GetPostDefinition, ListSubredditPostsDefinition, SearchPostsDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for GetPostInput in scripted cases. */
@@ -20,6 +20,33 @@ export const emptyPost: Post = PostSchema.parse({
   "subreddit": '',
   "permalink": '',
   "score": 0,
+});
+/** Go zero value for ListSubredditPostsInput in scripted cases. */
+export const emptyListSubredditPostsInput: ListSubredditPostsInput = ListSubredditPostsInputSchema.parse({
+  "subreddit": '',
+});
+/** Go zero value for ListedPost in scripted cases. */
+export const emptyListedPost: ListedPost = ListedPostSchema.parse({
+  "id": '',
+  "title": '',
+  "subreddit": '',
+  "author": '',
+  "permalink": '',
+  "isSelf": false,
+  "score": 0,
+  "commentCount": 0,
+  "createdAt": '0001-01-01T00:00:00Z',
+  "isOver18": false,
+  "isSpoiler": false,
+  "isStickied": false,
+});
+/** Go zero value for PostPage in scripted cases. */
+export const emptyPostPage: PostPage = PostPageSchema.parse({
+  "posts": [],
+});
+/** Go zero value for SearchPostsInput in scripted cases. */
+export const emptySearchPostsInput: SearchPostsInput = SearchPostsInputSchema.parse({
+  "query": '',
 });
 
 /** Script the found branch. */
@@ -42,19 +69,87 @@ export function getPostFoundDefault(): Case<Post> {
 /** Default getPost scenario. */
 export function getPostDefault(): Case<Post> { return getPostFoundDefault(); }
 
+/** Script the listed branch. */
+export function listSubredditPostsListed(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("listed", value, failure); }
+/** Script the subredditUnavailable branch. */
+export function listSubredditPostsSubredditUnavailable(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("subredditUnavailable", value, failure); }
+/** Script the providerRejected branch. */
+export function listSubredditPostsProviderRejected(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listSubredditPostsInvalidResponse(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listSubredditPostsDefect(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listSubredditPosts. */
+export function listSubredditPostsRetry(failure: Failure, retryAfterMs = 0): Case<PostPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario newestThreePages for listSubredditPosts. */
+export function listSubredditPostsNewestThreePages(): Case<PostPage> {
+  const value = emptyPostPage;
+  return branchCase("listed", value);
+}
+/** Default listSubredditPosts scenario. */
+export function listSubredditPostsDefault(): Case<PostPage> { return listSubredditPostsNewestThreePages(); }
+/** Manifest scenario subredditMissing for listSubredditPosts. */
+export function listSubredditPostsSubredditMissing(): Case<PostPage> {
+  const value = emptyPostPage;
+  return branchCase("subredditUnavailable", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "listSubredditPosts", message: "Reddit reports the subreddit missing, banned, private, or restricted." });
+}
+/** Manifest scenario listingRejected for listSubredditPosts. */
+export function listSubredditPostsListingRejected(): Case<PostPage> {
+  const value = emptyPostPage;
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "listSubredditPosts", message: "Reddit rejected HTTP 403" });
+}
+
+/** Script the searched branch. */
+export function searchPostsSearched(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("searched", value, failure); }
+/** Script the subredditUnavailable branch. */
+export function searchPostsSubredditUnavailable(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("subredditUnavailable", value, failure); }
+/** Script the providerRejected branch. */
+export function searchPostsProviderRejected(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function searchPostsInvalidResponse(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function searchPostsDefect(value: PostPage, failure?: Failure): Case<PostPage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of searchPosts. */
+export function searchPostsRetry(failure: Failure, retryAfterMs = 0): Case<PostPage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario newestMatchesThreePages for searchPosts. */
+export function searchPostsNewestMatchesThreePages(): Case<PostPage> {
+  const value = emptyPostPage;
+  return branchCase("searched", value);
+}
+/** Default searchPosts scenario. */
+export function searchPostsDefault(): Case<PostPage> { return searchPostsNewestMatchesThreePages(); }
+/** Manifest scenario searchSubredditMissing for searchPosts. */
+export function searchPostsSearchSubredditMissing(): Case<PostPage> {
+  const value = emptyPostPage;
+  return branchCase("subredditUnavailable", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "searchPosts", message: "Reddit reports the subreddit missing, banned, private, or restricted." });
+}
+/** Manifest scenario searchRejected for searchPosts. */
+export function searchPostsSearchRejected(): Case<PostPage> {
+  const value = emptyPostPage;
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "searchPosts", message: "Reddit rejected HTTP 403" });
+}
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getPost: MockQuery<GetPostInput, Post>;
+  readonly #listSubredditPosts: MockQuery<ListSubredditPostsInput, PostPage>;
+  readonly #searchPosts: MockQuery<SearchPostsInput, PostPage>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#getPost = newQuery<GetPostInput, Post>(GetPostDefinition).default(getPostDefault());
+    this.#listSubredditPosts = newQuery<ListSubredditPostsInput, PostPage>(ListSubredditPostsDefinition).default(listSubredditPostsDefault());
+    this.#searchPosts = newQuery<SearchPostsInput, PostPage>(SearchPostsDefinition).default(searchPostsDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   getPost(): MockQuery<GetPostInput, Post> { return this.#getPost; }
+  listSubredditPosts(): MockQuery<ListSubredditPostsInput, PostPage> { return this.#listSubredditPosts; }
+  searchPosts(): MockQuery<SearchPostsInput, PostPage> { return this.#searchPosts; }
   assertNoFailures(): void {
     this.#getPost.assertNoFailures();
+    this.#listSubredditPosts.assertNoFailures();
+    this.#searchPosts.assertNoFailures();
   }
 }

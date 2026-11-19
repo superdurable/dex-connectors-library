@@ -4,7 +4,7 @@
 import type { ImapFlow, FetchMessageObject, MessageStructureObject, SearchObject } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { Parser } from 'htmlparser2';
-import { newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, type Call, type Failure, type MutationAttempt, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, type Call, type Failure, type MutationAttempt, type MutationDefinition, type QueryAttempt } from '@superdurable/connectors-sdk';
 import type { SearchMessagesInput, SearchMessagesOutput, GetMessageInput, Message, MessageReference, MessageSummary, EmailAddress, SendMessageInput, SentMessage, ReplyToMessageInput, MoveMessageInput, MovedMessage, SetFlagsInput, MessageFlags, Attachment, Credentials } from './generated/models.js';
 import { SearchMessagesDefinition, GetMessageDefinition, SendMessageDefinition, ReplyToMessageDefinition, MoveMessageDefinition, SetFlagsDefinition } from './generated/definitions.js';
 import { classifyMailError, CredentialFailure, hasControls, isBareAddress, MailFailure, type EmailClient } from './client.js';
@@ -19,14 +19,15 @@ const zeroSent: SentMessage = { messageId: '', from: '', recipients: [], subject
 const zeroMove: MovedMessage = { destination: { mailbox: '', uidValidity: 0, uid: 0 } };
 const zeroFlags: MessageFlags = { message: { mailbox: '', uidValidity: 0, uid: 0 }, isSeen: false, isFlagged: false, isAnswered: false };
 function queryFailure<T>(operation: string, error: unknown, zero: T, supportsNotFound: boolean): QueryAttempt<T> {
-  if (error instanceof CredentialFailure) return newQueryBranch('defect', zero, {}, failure(operation, error));
+  if (error instanceof CredentialFailure) return error.isTransient ? newQueryRetry(failure(operation, error)) : newQueryBranch('defect', zero, {}, failure(operation, error));
   const classified = classifyMailError(error, 'IMAP');
   if (classified.outcome === 'retry') return newQueryRetry(failure(operation, classified));
   const branch = classified.outcome === 'notFound' && supportsNotFound ? 'notFound' : classified.outcome === 'invalidResponse' ? 'invalidResponse' : 'providerRejected';
   return newQueryBranch(branch, zero, {}, failure(operation, classified));
 }
-function mutationFailure<T>(operation: string, error: unknown, zero: T, supportsNotFound: boolean, supportsInvalidResponse = false): MutationAttempt<T> {
-  if (error instanceof CredentialFailure) return newMutationBranch('defect', zero, {}, failure(operation, error));
+function mutationFailure<T>(call: Call, operation: string, error: unknown, zero: T, supportsNotFound: boolean, supportsInvalidResponse = false): MutationAttempt<T> {
+  // A later attempt may follow an applied change, so a credential failure there returns Retry, never defect.
+  if (error instanceof CredentialFailure) return error.isTransient || call.context.attempt > 1 ? newMutationRetry(failure(operation, error)) : newMutationBranch('defect', zero, {}, failure(operation, error));
   const classified = classifyMailError(error, 'IMAP');
   if (classified.outcome === 'retry' || classified.outcome === 'invalidResponse' && (operation === 'moveMessage' || operation === 'setFlags')) return newMutationRetry(failure(operation, classified));
   return newMutationBranch(classified.outcome === 'notFound' && supportsNotFound ? 'notFound' : classified.outcome === 'invalidResponse' && supportsInvalidResponse ? 'invalidResponse' : 'providerRejected', zero, {}, failure(operation, classified));
@@ -139,22 +140,122 @@ function messageID(call: Call, sender: string): string { const key = call.idempo
 function sender(client: EmailClient, credentials: Credentials): string { const address = client.config.fromAddress || credentials.username; if (!isBareAddress(address)) throw invalid('fromAddress is blank and username is not a complete address'); return address; }
 function uniqueAddresses(values: string[]): string[] { const seen = new Set<string>(); return values.filter(value => { const key = value.toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true; }); }
 function sentValue(message: OutgoingMail): SentMessage { return { messageId: message.messageId, from: message.from, recipients: uniqueAddresses([...message.to, ...message.cc, ...message.bcc]), subject: message.subject, ...(message.inReplyTo ? { inReplyTo: message.inReplyTo } : {}), ...(message.references?.length ? { references: message.references } : {}), sentAt: goTime(message.date) }; }
-async function claimSubmission(call: Call, value: SentMessage, operation: string): Promise<MutationAttempt<SentMessage> | undefined> {
-  try { if (call.context.hasLastHeartbeatValue()) { const earlier = { ...value }; delete earlier.sentAt; return newMutationUncertain(earlier, failure(operation, new MailFailure('rejected', 'TRANSPORT', 'an earlier attempt may have submitted the message, so it is not submitted again')), { providerObjectId: value.messageId }); } }
-  catch { return newMutationUncertain(value, failure(operation, new MailFailure('rejected', 'TRANSPORT', 'the submission checkpoint is unreadable')), { providerObjectId: value.messageId }); }
-  try { await call.context.recordHeartbeat({ emailSubmittedCallId: call.id }); }
-  catch { return newMutationRetry(failure(operation, new MailFailure('retry', 'AVAILABILITY', 'Dex did not record the submission checkpoint; nothing was submitted'))); }
+/** Dex heartbeat checkpoint counting the possible submissions of one Call ID, wire-compatible with Go. */
+export interface SubmissionMarker {
+  /** Call ID that wrote the marker. */ emailSubmittedCallId: string;
+  /** Attempt that wrote it; absent in markers written before bounded resend. */ emailAttempt?: number;
+  /** Possibly accepted submissions up to and including the attempt; absent when zero. */ emailSubmissionCount?: number;
+  /** Whether the server accepted a submission; absent when false. */ emailAccepted?: boolean;
+}
+
+/** What this attempt may do before it submits, with an upper bound of earlier submissions. */
+export interface SubmissionDecision {
+  /** Allowed action. */ kind: 'allowed' | 'capReached' | 'untrusted' | 'accepted';
+  /** Upper bound of earlier submissions that may have been accepted. */ maximumPriorSubmissions: number;
+  /** Send cap of this Step. */ maxSends: number;
+}
+
+/** Apply the Go checkpoint rules to the last marker, which is undefined when none was found. */
+export function decideSubmissionFromMarker(callId: string, attempt: number, maxSends: number, marker: unknown): SubmissionDecision {
+  const untrusted: SubmissionDecision = { kind: 'untrusted', maximumPriorSubmissions: 0, maxSends };
+  let prior: number;
+  if (marker === undefined) prior = Math.max(attempt - 1, 0);
+  else {
+    if (!isSubmissionMarker(marker) || marker.emailSubmittedCallId !== callId) return untrusted;
+    const markerAttempt = marker.emailAttempt ?? 0;
+    const count = marker.emailSubmissionCount ?? 0;
+    if (markerAttempt === 0) prior = Math.max(attempt - 1, 0);
+    else if (markerAttempt >= attempt || count < 0 || count > markerAttempt) return untrusted;
+    else if (marker.emailAccepted) return { kind: 'accepted', maximumPriorSubmissions: 0, maxSends };
+    else prior = count + (attempt - 1 - markerAttempt);
+  }
+  return { kind: prior >= maxSends ? 'capReached' : 'allowed', maximumPriorSubmissions: prior, maxSends };
+}
+
+function isSubmissionMarker(value: unknown): value is SubmissionMarker {
+  if (typeof value !== 'object' || value === null) return false;
+  const marker = value as Record<string, unknown>;
+  const isOptionalInteger = (field: unknown) => field === undefined || Number.isSafeInteger(field);
+  return typeof marker.emailSubmittedCallId === 'string' && isOptionalInteger(marker.emailAttempt) && isOptionalInteger(marker.emailSubmissionCount)
+    && (marker.emailAccepted === undefined || typeof marker.emailAccepted === 'boolean');
+}
+
+/** Read the last checkpoint before credentials or any server is contacted. */
+function decideSubmission(call: Call, definition: MutationDefinition): SubmissionDecision {
+  const operationMaxSends = definitionMaxSends(definition);
+  // A cap of 1 never resends; otherwise an application override wins, as in the single-dispatch Fence.
+  const maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+  try {
+    // A cleared heartbeat, as earlier releases wrote after a refusal, counts like no marker.
+    const marker = call.context.hasLastHeartbeatValue() ? call.context.getLastHeartbeatValue() ?? undefined : undefined;
+    return decideSubmissionFromMarker(call.id, call.context.attempt, maxSends, marker);
+  } catch { return { kind: 'untrusted', maximumPriorSubmissions: 0, maxSends }; }
+}
+
+async function recordMarker(call: Call, submissionCount: number, isAccepted = false): Promise<boolean> {
+  const marker: SubmissionMarker = { emailSubmittedCallId: call.id, emailAttempt: call.context.attempt, ...(submissionCount ? { emailSubmissionCount: submissionCount } : {}), ...(isAccepted ? { emailAccepted: true } : {}) };
+  try { await call.context.recordHeartbeat(marker); return true; }
+  catch { return false; /* A lost record leaves an earlier marker or none, so the next attempt can only overcount. */ }
+}
+
+function uncertainWithoutSubmitting(operation: string, value: SentMessage, reason: string): MutationAttempt<SentMessage> {
+  // This attempt did not submit, so the earlier attempt's Date header is unknown.
+  const earlier = { ...value }; delete earlier.sentAt;
+  return newMutationUncertain(earlier, failure(operation, new MailFailure('rejected', 'TRANSPORT', reason)), { providerObjectId: value.messageId });
+}
+
+/** Return the attempt for a decision that does not permit submitting, or undefined. */
+function attemptBeforeSubmitting(decision: SubmissionDecision, operation: string, value: SentMessage): MutationAttempt<SentMessage> | undefined {
+  if (decision.kind === 'untrusted') return newMutationRetry(failure(operation, new MailFailure('retry', 'AVAILABILITY', 'the submission checkpoint could not be read; nothing was submitted in this attempt')));
+  if (decision.kind === 'accepted') return uncertainWithoutSubmitting(operation, value, 'an earlier attempt of this Step submitted the message and the server accepted it, but its result was lost; it is not submitted again');
+  if (decision.kind === 'capReached') return uncertainWithoutSubmitting(operation, value, 'earlier attempts of this Step may have submitted the message as often as its send cap allows, so it is not submitted again');
   return undefined;
 }
-async function finishSubmission(client: EmailClient, credentials: Credentials, call: Call, operation: string, message: OutgoingMail): Promise<MutationAttempt<SentMessage>> {
+
+/** Select sent with the rebuilt output when the server accepted an earlier submission, or undefined. */
+function acceptedAttempt(decision: SubmissionDecision, value: SentMessage): MutationAttempt<SentMessage> | undefined {
+  if (decision.kind !== 'accepted') return undefined;
+  // This attempt did not submit, so the accepted submission's Date header is unknown.
+  const accepted = { ...value }; delete accepted.sentAt;
+  return newMutationBranch('sent', accepted, { providerObjectId: value.messageId });
+}
+
+/** Select branch for a failure before submitting, or uncertain after an earlier possible submission. */
+function refuseBeforeSubmitting(decision: SubmissionDecision, branch: string, mailFailure: MailFailure, operation: string, value: SentMessage): MutationAttempt<SentMessage> {
+  const blocked = attemptBeforeSubmitting(decision, operation, value);
+  if (blocked) return blocked;
+  if (decision.maximumPriorSubmissions > 0) return uncertainWithoutSubmitting(operation, value, `an earlier attempt of this Step may have submitted the message, and this attempt could not submit it: ${mailFailure.message}`);
+  return newMutationBranch(branch, zeroSent, {}, failure(operation, mailFailure));
+}
+
+/** Return Retry for a temporary failure before submitting; an accepted submission keeps its marker as the last checkpoint. */
+async function retryWithoutSubmitting(call: Call, decision: SubmissionDecision, operation: string, value: SentMessage, attemptFailure: Failure): Promise<MutationAttempt<SentMessage>> {
+  if (decision.kind === 'allowed') {
+    // Record the earlier count, so this attempt is not counted.
+    await recordMarker(call, decision.maximumPriorSubmissions);
+    return newMutationRetry(attemptFailure);
+  }
+  if (decision.kind === 'capReached') return attemptBeforeSubmitting(decision, operation, value)!;
+  return newMutationRetry(attemptFailure);
+}
+
+/** Claim, submit, and map the outcome like Go's submitOnce. */
+async function finishSubmission(client: EmailClient, credentials: Credentials, call: Call, decision: SubmissionDecision, operation: string, message: OutgoingMail): Promise<MutationAttempt<SentMessage>> {
   const value = sentValue(message);
-  const claim = await claimSubmission(call, value, operation);
-  if (claim) return claim;
+  if (!await recordMarker(call, decision.maximumPriorSubmissions + 1)) return newMutationRetry(failure(operation, new MailFailure('retry', 'AVAILABILITY', 'Dex did not record the submission checkpoint; nothing was submitted')));
   const result = await submitMail(client, credentials, message);
-  if (result.outcome === 'accepted') return newMutationBranch('sent', value, { providerObjectId: value.messageId });
-  if (result.outcome === 'uncertain') return newMutationUncertain(value, failure(operation, result.failure), { providerObjectId: value.messageId });
-  try { await call.context.recordHeartbeat(undefined); } catch { /* A retained marker prevents a duplicate submission. */ }
+  if (result.outcome === 'accepted') {
+    await recordMarker(call, decision.maximumPriorSubmissions + 1, true);
+    return newMutationBranch('sent', value, { providerObjectId: value.messageId });
+  }
+  if (result.outcome === 'uncertain') {
+    // The claim stays the last marker, so the next attempt counts this submission.
+    if (decision.maximumPriorSubmissions + 1 < decision.maxSends) return newMutationRetry(failure(operation, result.failure));
+    return newMutationUncertain(value, failure(operation, result.failure), { providerObjectId: value.messageId });
+  }
+  await recordMarker(call, decision.maximumPriorSubmissions);
   if (result.failure.outcome === 'retry') return newMutationRetry(failure(operation, result.failure));
+  if (decision.maximumPriorSubmissions > 0) return uncertainWithoutSubmitting(operation, value, `an earlier attempt of this Step may have submitted the message, and the server refused this one: ${result.failure.message}`);
   return newMutationBranch('providerRejected', zeroSent, {}, failure(operation, result.failure));
 }
 
@@ -255,11 +356,24 @@ export class SendMessageOperation {
       if ((input.to?.length || 0) + (input.cc?.length || 0) + (input.bcc?.length || 0) > 50) throw invalid('at most 50 recipients are allowed');
       if (input.replyTo && !isBareAddress(input.replyTo)) throw invalid('replyTo must be a bare ASCII address');
       validateSubject(input.subject); validateText(input.text);
-      const credentials = await this.client.resolveCredentials(call);
-      const from = sender(this.client, credentials);
-      const message: OutgoingMail = { from, fromName: this.client.config.fromName, to: input.to || [], cc: input.cc || [], bcc: input.bcc || [], replyTo: input.replyTo, subject: input.subject, text: input.text, messageId: messageID(call, from), date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
-      return finishSubmission(this.client, credentials, call, 'sendMessage', message);
     } catch (error) { return newMutationBranch('defect', zeroSent, {}, failure('sendMessage', error as MailFailure)); }
+    const decision = decideSubmission(call, SendMessageDefinition);
+    let identity = zeroSent;
+    let credentials: Credentials;
+    let message: OutgoingMail;
+    try {
+      credentials = await this.client.resolveCredentials(call);
+      const from = sender(this.client, credentials);
+      const id = messageID(call, from);
+      identity = { ...zeroSent, messageId: id, from };
+      message = { from, fromName: this.client.config.fromName, to: input.to || [], cc: input.cc || [], bcc: input.bcc || [], replyTo: input.replyTo, subject: input.subject, text: input.text, messageId: id, date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
+    } catch (error) {
+      if (error instanceof CredentialFailure && error.isTransient) return retryWithoutSubmitting(call, decision, 'sendMessage', identity, failure('sendMessage', error));
+      return refuseBeforeSubmitting(decision, 'defect', error as MailFailure, 'sendMessage', identity);
+    }
+    const blocked = acceptedAttempt(decision, sentValue(message)) ?? attemptBeforeSubmitting(decision, 'sendMessage', sentValue(message));
+    if (blocked) return blocked;
+    return finishSubmission(this.client, credentials, call, decision, 'sendMessage', message);
   }
 }
 
@@ -274,28 +388,48 @@ export class ReplyToMessageOperation {
   /** Invoke replyToMessage with current credentials and classified protocol outcomes. */
   async invoke(call: Call, input: ReplyToMessageInput): Promise<MutationAttempt<SentMessage>> {
     try { validateReference(input.message); validateText(input.text); validateAddressList(input.cc); if ((input.cc?.length || 0) > 50) throw invalid('at most 50 cc recipients are allowed'); } catch (error) { return newMutationBranch('defect', zeroSent, {}, failure('replyToMessage', error as MailFailure)); }
-    let session: ImapFlow | undefined;
+    const operation = 'replyToMessage';
+    const decision = decideSubmission(call, ReplyToMessageDefinition);
+    let identity = zeroSent;
+    let credentials: Credentials, from: string, id: string;
     try {
-      const credentials = await this.client.resolveCredentials(call);
-      let from: string, id: string;
-      try { from = sender(this.client, credentials); id = messageID(call, from); }
-      catch (error) { return newMutationBranch('defect', zeroSent, {}, failure('replyToMessage', error as MailFailure)); }
-      try { if (call.context.hasLastHeartbeatValue()) return newMutationUncertain({ messageId: id, from, recipients: [], subject: '' }, failure('replyToMessage', new MailFailure('rejected', 'TRANSPORT', 'an earlier attempt may have submitted the reply')), { providerObjectId: id }); }
-      catch { return newMutationUncertain({ messageId: id, from, recipients: [], subject: '' }, failure('replyToMessage', new MailFailure('rejected', 'TRANSPORT', 'the submission checkpoint is unreadable')), { providerObjectId: id }); }
+      credentials = await this.client.resolveCredentials(call);
+      from = sender(this.client, credentials); id = messageID(call, from);
+      identity = { ...zeroSent, messageId: id, from };
+    } catch (error) {
+      if (error instanceof CredentialFailure && error.isTransient) return retryWithoutSubmitting(call, decision, operation, identity, failure(operation, error));
+      return refuseBeforeSubmitting(decision, 'defect', error as MailFailure, operation, identity);
+    }
+    // The source may have moved since an earlier submission, so the checkpoint decides before reading it.
+    // An accepted reply reads the source only to rebuild its output, and never submits again.
+    const blocked = attemptBeforeSubmitting(decision, operation, identity);
+    if (blocked && decision.kind !== 'accepted') return blocked;
+    let session: ImapFlow | undefined;
+    let message: OutgoingMail;
+    try {
       session = await this.client.openIMAP(credentials);
       const source = await readMessage(session, input.message, false);
       const primary = source.replyTo?.length ? source.replyTo : [source.from];
       const to = uniqueAddresses(primary.map(value => value.address).filter(value => isBareAddress(value) && value.toLowerCase() !== from.toLowerCase()));
-      if (!to.length) return newMutationBranch('invalidResponse', zeroSent, {}, failure('replyToMessage', new MailFailure('rejected', 'PROTOCOL', 'the source message has no usable reply address')));
+      if (!to.length) return refuseBeforeSubmitting(decision, 'invalidResponse', new MailFailure('rejected', 'PROTOCOL', 'the source message has no usable reply address'), operation, identity);
       const cc = uniqueAddresses([...(input.isReplyAll ? [...(source.to || []), ...(source.cc || [])].map(value => value.address) : []), ...(input.cc || [])].filter(value => isBareAddress(value) && value.toLowerCase() !== from.toLowerCase() && !to.some(primaryAddress => primaryAddress.toLowerCase() === value.toLowerCase())));
-      if (to.length + cc.length > 50) return newMutationBranch('invalidResponse', zeroSent, {}, failure('replyToMessage', new MailFailure('rejected', 'PROTOCOL', 'the reply would have too many recipients')));
+      if (to.length + cc.length > 50) return refuseBeforeSubmitting(decision, 'invalidResponse', new MailFailure('rejected', 'PROTOCOL', 'the reply would have too many recipients'), operation, identity);
       const subject = source.subject.trim();
       const sourceID = isMessageIdentifier(source.messageId || '') ? source.messageId : undefined;
-      const message: OutgoingMail = { from, fromName: this.client.config.fromName, to, cc, bcc: [], subject: truncateBytes(/^re:/i.test(subject) ? subject : `Re: ${subject}`.trim(), 998), text: input.text, messageId: id, inReplyTo: sourceID, references: sourceID ? [...(source.references || []), sourceID].slice(-20) : [], date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
+      message = { from, fromName: this.client.config.fromName, to, cc, bcc: [], subject: truncateBytes(/^re:/i.test(subject) ? subject : `Re: ${subject}`.trim(), 998), text: input.text, messageId: id, inReplyTo: sourceID, references: sourceID ? [...(source.references || []), sourceID].slice(-20) : [], date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
       await close(session); session = undefined;
-      return finishSubmission(this.client, credentials, call, 'replyToMessage', message);
-    } catch (error) { return mutationFailure('replyToMessage', error, zeroSent, true, true); }
-    finally { if (session) await close(session); }
+    } catch (error) {
+      const fresh = mutationFailure(call, operation, error, zeroSent, true, true);
+      // An accepted reply keeps its marker, so a later attempt rebuilds the output and never resubmits.
+      if (fresh.kind === 'retry') return retryWithoutSubmitting(call, decision, operation, identity, fresh.failure);
+      // The reply was accepted earlier, and its source can no longer be read.
+      if (blocked) return blocked;
+      if (fresh.kind !== 'branch') return fresh;
+      return refuseBeforeSubmitting(decision, fresh.branch, error instanceof MailFailure ? error : classifyMailError(error, 'IMAP'), operation, identity);
+    } finally { if (session) await close(session); }
+    const accepted = acceptedAttempt(decision, sentValue(message));
+    if (accepted) return accepted;
+    return finishSubmission(this.client, credentials, call, decision, operation, message);
   }
 }
 
@@ -331,7 +465,7 @@ export class MoveMessageOperation {
       const moved = await session.messageMove(String(input.message.uid), input.destinationMailbox, { uid: true });
       if (!moved) throw this.client.consumeIMAPCommandFailure(session) || (session.usable === false ? new MailFailure('retry', 'TRANSPORT', 'the IMAP connection was lost during MOVE') : new MailFailure('rejected', 'PROVIDER_REJECTION', 'the IMAP server did not move the message'));
       return newMutationBranch('moved', { destination: { mailbox: input.destinationMailbox, uidValidity: Number(moved.uidValidity || 0), uid: moved.uidMap?.get(input.message.uid) || 0 } }, { providerObjectId: input.messageId || '' });
-    } catch (error) { return mutationFailure('moveMessage', error, zeroMove, true); }
+    } catch (error) { return mutationFailure(call, 'moveMessage', error, zeroMove, true); }
     finally { if (session) await close(session); }
   }
 }
@@ -367,7 +501,7 @@ export class SetFlagsOperation {
       const updated = await read();
       if (Object.entries({ isSeen: input.isSeen, isFlagged: input.isFlagged, isAnswered: input.isAnswered }).some(([key, wanted]) => wanted !== undefined && updated[key as keyof MessageFlags] !== wanted)) return newMutationBranch('providerRejected', updated, {}, failure('setFlags', new MailFailure('rejected', 'PROVIDER_REJECTION', 'the IMAP server did not keep the requested flags')));
       return newMutationBranch('updated', updated);
-    } catch (error) { return mutationFailure('setFlags', error, zeroFlags, true); }
+    } catch (error) { return mutationFailure(call, 'setFlags', error, zeroFlags, true); }
     finally { if (session) await close(session); }
   }
 }

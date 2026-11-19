@@ -110,6 +110,15 @@ type bambooHRResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isBodyIncomplete marks an error body cut at maxResponseBytes; it proves no refusal.
+	isBodyIncomplete bool
+	// isCredentialEchoed marks an error body that contains the API key; it proves no refusal.
+	isCredentialEchoed bool
+}
+
+// isReadableRefusal reports an error answer whose body was read in full without echoing the credential.
+func (response bambooHRResponse) isReadableRefusal() bool {
+	return !response.isBodyIncomplete && !response.isCredentialEchoed
 }
 
 // exchangeOutcome is the provider-neutral meaning of one BambooHR request that each operation maps to a branch.
@@ -206,13 +215,16 @@ func (client *Client) UpdateEmployee() UpdateEmployeeOperation {
 // AddEmployee returns the addEmployee Mutation bound to this client.
 func (client *Client) AddEmployee() AddEmployeeOperation { return AddEmployeeOperation{client: client} }
 
-// resolveCredentials returns a header-safe API key, or a safe defect Failure.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+// resolveCredentials returns a header-safe API key, or a safe Failure and whether a later attempt may resolve it.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, bambooHRFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, bambooHRFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials are temporarily unavailable"), true
 	}
-	return credentials, nil
+	if err != nil || validateResolvedCredentials(credentials) != nil {
+		return Credentials{}, bambooHRFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), false
+	}
+	return credentials, nil, false
 }
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.
@@ -246,8 +258,12 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 		return bambooHRExchange{outcome: exchangeInvalid, response: response, failure: bambooHRFailure(sdkgo.FailureResponseTooLarge, operation, "BambooHR response exceeds the configured maxResponseBytes limit")}
 	case readErr != nil && !errors.Is(readErr, providerhttp.ErrBodyTooLarge), closeErr != nil:
 		return bambooHRExchange{outcome: exchangeUnavailable, response: response, failure: bambooHRFailure(sdkgo.FailureTransport, operation, "BambooHR response could not be read")}
+	case readErr != nil && request.method != http.MethodGet && httpResponse.StatusCode != http.StatusTooManyRequests && httpResponse.StatusCode != http.StatusServiceUnavailable:
+		// An oversized write refusal proves nothing about the write; 429 and 503 still prove no processing.
+		return bambooHRExchange{outcome: exchangeUnavailable, response: response, failure: bambooHRFailure(sdkgo.FailureResponseTooLarge, operation, fmt.Sprintf("BambooHR write response exceeds the configured maxResponseBytes limit (HTTP %d)", httpResponse.StatusCode))}
 	}
 	response.body = body
+	response.isBodyIncomplete = readErr != nil
 	if isSuccess {
 		if bytes.Contains(body, []byte(credentials.APIKey.Reveal())) {
 			response.body = nil
@@ -290,6 +306,8 @@ func (client *Client) buildRequest(ctx context.Context, credentials Credentials,
 // free text, so it is never read.
 func (client *Client) classifyFailureStatus(response bambooHRResponse, credentials Credentials, operation string) bambooHRExchange {
 	errorCode := describeBambooHRError(response.body, credentials)
+	secret := credentials.APIKey.Reveal()
+	response.isCredentialEchoed = secret != "" && bytes.Contains(response.body, []byte(secret))
 	response.body = nil
 	retryAfterHeader := response.header.Get("Retry-After")
 	retryAfter := providerhttp.ParseRetryAfter(retryAfterHeader, client.now())
@@ -311,6 +329,22 @@ func (client *Client) classifyFailureStatus(response bambooHRResponse, credentia
 			failure: bambooHRFailure(rejectionFailureKind(status), operation, withErrorCode(fmt.Sprintf("BambooHR rejected the request (HTTP %d)", status), errorCode))}
 	}
 }
+
+// isDefiniteRefusalStatus reports a status that proves BambooHR refused a write; any other
+// failure status leaves the write's outcome unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// isDocumentedConflictStatus reports BambooHR's documented business conflict: it answers 409
+// only for an email another employee already holds.
+func isDocumentedConflictStatus(status int) bool { return status == http.StatusConflict }
 
 func rejectionFailureKind(status int) sdkgo.FailureKind {
 	switch status {

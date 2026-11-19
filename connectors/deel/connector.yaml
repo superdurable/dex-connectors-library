@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: deel
   displayName: Deel
-  description: Read selected Deel contract status through the stable API.
+  description: List Deel contracts, tasks, amendments, and termination reasons through the stable API.
   company: Deel
   categories: [hr-recruiting]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: deel
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow contract reads.
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow contract pages.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete contract response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large contract metadata.
+        description: Maximum complete API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large contract pages.
         default: 1048576
   auth:
     type: apiKey
@@ -55,6 +55,88 @@ spec:
         - Sign in to the Deel organization, open More > Developer > Access Tokens > Generate new token, select Organization token and contracts:read scope, review sensitive data access, then Generate. Copy the complete opaque token once into Dex Web secret api_token; blank is invalid. Delete or rotate the token on the Access Tokens page when retired.
         - Leave baseUrl blank for a Sandbox token. For a Production token set baseUrl to https://api.letsdeel.com/rest. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret contract ID in Deel Contracts or an API response and pass it as contractId; blank is invalid.
   operations:
+    - name: listContracts
+      goName: ListContracts
+      inputType: ListContractsInput
+      outputType: ContractPage
+      kind: query
+      description: List one page of contract IDs, types, and statuses without worker or compensation details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Deel returned a contract page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Deel rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Deel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example contract is returned.
+          output: {contracts: [{id: 123e4567-e89b-12d3-a456-426614174000, type: ongoing_time_based, status: in_progress}], nextCursor: ""}
+    - name: listContractTasks
+      goName: ListContractTasks
+      inputType: ListContractTasksInput
+      outputType: ContractTaskList
+      kind: query
+      description: List task IDs and statuses for one contract, omitting amounts and attachments.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Deel returned contract tasks.}
+        - {id: notFound, goName: NotFound, description: Deel did not expose the contract., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Deel rejected the task request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Deel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example task is returned.
+          output: {tasks: [{id: task-123, status: approved}]}
+    - name: listContractAmendments
+      goName: ListContractAmendments
+      inputType: ListContractAmendmentsInput
+      outputType: ContractAmendmentPage
+      kind: query
+      description: List one page of amendment IDs and workflow statuses without rates.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Deel returned an amendment page.}
+        - {id: notFound, goName: NotFound, description: Deel did not expose the contract., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Deel rejected the amendment request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Deel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example amendment is returned.
+          output: {amendments: [{id: amendment-123, status: ACTIVE, signStatus: APPROVED}], nextCursor: ""}
+    - name: listTerminationReasons
+      goName: ListTerminationReasons
+      inputType: ListTerminationReasonsInput
+      outputType: TerminationReasonPage
+      kind: query
+      description: List one page of standard termination reason IDs and labels.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Deel returned termination reasons.}
+        - {id: providerRejected, goName: ProviderRejected, description: Deel rejected the reason request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Deel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One standard reason is returned.
+          output: {reasons: [{id: reason-123, name: Project has ended, frequency: MOST_COMMON}], nextCursor: ""}
     - name: getContract
       goName: GetContract
       inputType: GetContractInput
@@ -63,7 +145,7 @@ spec:
       description: Read one contract's ID, type, and status without worker, client, or compensation details.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Deel returned the contract.}
         - {id: notFound, goName: NotFound, description: Deel did not expose the contract., optional: true}

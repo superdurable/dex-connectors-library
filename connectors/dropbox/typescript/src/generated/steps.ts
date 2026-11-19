@@ -144,7 +144,7 @@ export interface UploadFileStepConfig<StepInput, OperationInput = UploadFileInpu
   uploaded: StepTarget<MutationResult<OperationOutput>>;
   /** Dropbox conclusively rejected the upload. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Dropbox returned malformed or oversized upload metadata. */
+  /** Retained for compatibility and no longer selected: malformed or oversized upload metadata now retries the overwrite. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input or connection credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

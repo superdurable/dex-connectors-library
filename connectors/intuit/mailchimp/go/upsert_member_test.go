@@ -4,6 +4,7 @@
 package mailchimp_test
 
 import (
+	"errors"
 	"math"
 	"net/http"
 	"strings"
@@ -97,7 +98,7 @@ func TestUpsertMemberRetriesEveryUnconfirmedOutcomeBecauseThePutRepeats(t *testi
 	}
 }
 
-func TestUpsertMemberSelectsProviderRejectedAndInvalidResponseWithoutMailchimpText(t *testing.T) {
+func TestUpsertMemberSelectsProviderRejectedWithoutMailchimpText(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		status  int
@@ -112,8 +113,8 @@ func TestUpsertMemberSelectsProviderRejectedAndInvalidResponseWithoutMailchimpTe
 			message: "Mailchimp rejected the request (HTTP 400) [Forgotten Email Not Subscribed]"},
 		{name: "missing audience", status: http.StatusNotFound, title: "Resource Not Found", branch: mailchimp.UpsertMemberBranchProviderRejected,
 			message: "Mailchimp found no such resource (HTTP 404) [Resource Not Found]"},
-		{name: "invalid contact", status: http.StatusOK, body: `{"status":"subscribed"}`, branch: mailchimp.UpsertMemberBranchInvalidResponse,
-			message: "Mailchimp accepted the contact but returned an invalid contact: the contact has no subscriber hash"},
+		{name: "unprocessable", status: http.StatusUnprocessableEntity, title: "Invalid Resource", branch: mailchimp.UpsertMemberBranchProviderRejected,
+			message: "Mailchimp rejected the request (HTTP 422) [Invalid Resource]"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -130,6 +131,40 @@ func TestUpsertMemberSelectsProviderRejectedAndInvalidResponseWithoutMailchimpTe
 			requireNoSecretOrProviderText(t, result)
 		})
 	}
+}
+
+func TestUpsertMemberRetriesUnknownOutcomes(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "conflict", status: http.StatusConflict, body: `{"title":"Conflict"}`},
+		{name: "too early", status: http.StatusTooEarly, body: `{"title":"Too Early"}`},
+		{name: "redirect", status: http.StatusTemporaryRedirect, body: `{"title":"Moved"}`},
+		{name: "invalid contact", status: http.StatusOK, body: `{"status":"subscribed"}`},
+		{name: "oversized refusal body", status: http.StatusBadRequest, body: `{"title":"Invalid Resource","padding":"` + strings.Repeat("x", 4194304) + `"}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, test.status, test.body)
+			})
+			_, err := sdkgo.RunMutation(newMailchimpDexContext("upsert-unknown-"+test.name), newMailchimpClient(t, provider.URL).UpsertMember(), mailchimpConnection, validUpsertMemberInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the PUT may have been applied, and repeating it writes the same values")
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
+func TestUpsertMemberRetriesATransientCredentialFailureWithoutARequest(t *testing.T) {
+	provider := newRecordingMailchimp(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client, err := mailchimp.New(mailchimp.Config{}, failingMailchimpCredentials{err: errors.New("credential store unavailable")},
+		mailchimp.WithAPIBaseURL(provider.URL+"/3.0"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newMailchimpDexContext("upsert-transient-credentials"), client.UpsertMember(), mailchimpConnection, validUpsertMemberInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a transient credential failure is never a defect")
 }
 
 func TestUpsertMemberRejectsInvalidInputBeforeAnyRequest(t *testing.T) {

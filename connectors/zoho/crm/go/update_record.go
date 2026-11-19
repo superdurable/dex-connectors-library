@@ -86,8 +86,8 @@ func (operation UpdateRecordOperation) Invoke(call sdkgo.Call, input UpdateRecor
 		return attempt
 	}
 	if written.recordID != input.RecordID {
-		return sdkgo.NewMutationBranch(UpdateRecordBranchInvalidResponse, UpdateRecordOutput{Module: input.Module},
-			crmFailurePointer(sdkgo.FailureProtocol, updateRecordOperation, "Zoho CRM reported a write to a record other than the one requested"), receipt)
+		return sdkgo.NewMutationRetry[UpdateRecordOutput](crmFailure(sdkgo.FailureProtocol, updateRecordOperation,
+			"Zoho CRM reported a write to a record other than the one requested"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateRecordBranchUpdated, UpdateRecordOutput{Module: input.Module, ID: written.recordID, ModifiedAt: written.modifiedAt}, nil, receipt)
 }

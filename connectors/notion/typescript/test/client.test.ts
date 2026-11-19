@@ -3,9 +3,17 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext, scenarioCall } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { NotionClient } from '../src/client.js';
+import { decodeCredentials } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const connection = { provider: 'notion', name: 'notion-test' };
 function call(operation: string): Call {
@@ -20,10 +28,18 @@ it('keeps terminal credential errors distinct from transient broker errors', asy
   const rejected = await terminal.search().invoke(call('search'), {});
   expect(rejected.kind).toBe('branch');
   if (rejected.kind === 'branch') { expect(rejected.branch).toBe('defect'); expect(rejected.failure?.kind).toBe('AUTHENTICATION'); }
-  const transient = new NotionClient({}, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } }, { send: sender });
-  const retry = await transient.search().invoke(call('search'), {});
-  expect(retry.kind).toBe('retry');
-  if (retry.kind === 'retry') expect(retry.failure.kind).toBe('AUTHENTICATION');
+  const update = { pageId: '1f3c9a2e-5b7d-4e8a-9c01-23456789abcd', properties: { Email: { type: 'email' as const, email: 'ada@example.com' } } };
+  for (const error of [new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), sdkWrappedMaterialError()]) {
+    const unusable = new NotionClient({}, { resolve: async () => { throw error; } }, { send: sender });
+    expect(await unusable.updatePageProperties().invoke(call('updatePageProperties'), update)).toMatchObject({ kind: 'branch', branch: 'defect' });
+  }
+  for (const error of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new RangeError('credential store hiccup')]) {
+    const transient = new NotionClient({}, { resolve: async () => { throw error; } }, { send: sender });
+    const retry = await transient.search().invoke(call('search'), {});
+    expect(retry.kind).toBe('retry');
+    if (retry.kind === 'retry') expect(retry.failure.kind).toBe('AUTHENTICATION');
+    expect((await transient.updatePageProperties().invoke(call('updatePageProperties'), update)).kind).toBe('retry');
+  }
   expect(requests).toBe(0);
 });
 
@@ -109,7 +125,9 @@ it('records the selected provider object on terminal read and write receipts', a
     const lookup = await client.queryDatabase().invoke(call('queryDatabase'), { databaseId });
     const update = await client.updatePageProperties().invoke(call('updatePageProperties'), { pageId, properties: { Name: { type: 'title', text: 'Ada' } } });
     const create = await client.createPage().invoke(call('createPage'), { databaseId, properties: { Name: { type: 'title', text: 'Ada' } } });
-    for (const [attempt, expectedId] of [[get, pageId], [query, dataSourceId], [lookup, databaseId], [update, pageId], [create, databaseId]] as const) {
+    // An unusable 2xx update retries, because repeating the absolute write is safe.
+    if (status === 200) expect(update.kind).toBe('retry');
+    for (const [attempt, expectedId] of [[get, pageId], [query, dataSourceId], [lookup, databaseId], ...(status === 200 ? [] : [[update, pageId]] as const), [create, databaseId]] as const) {
       expect(attempt.kind).toBe('branch');
       if (attempt.kind === 'branch') expect(attempt.receipt.providerObjectId).toBe(expectedId);
     }

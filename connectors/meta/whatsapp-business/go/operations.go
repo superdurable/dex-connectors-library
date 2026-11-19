@@ -71,6 +71,9 @@ func (operation ListPhoneNumbersOperation) Invoke(call sdkgo.Call, input ListPho
 	if errors.Is(response.err, errCredential) {
 		return queryBranch(ListPhoneNumbersBranchDefect, PhoneNumbersPage{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
+	if errors.Is(response.err, errCredentialUnavailable) {
+		return sdkgo.NewQueryRetry[PhoneNumbersPage](queryFailure(sdkgo.FailureAvailability, "connection credentials are temporarily unavailable"), 0)
+	}
 	if errors.Is(response.err, errRequest) {
 		return sdkgo.NewQueryRetry[PhoneNumbersPage](queryFailure(sdkgo.FailureTransport, "Meta request failed"), 0)
 	}

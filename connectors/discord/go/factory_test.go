@@ -79,7 +79,11 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 }
 
 func TestOperationDefinitionsMatchTheManifest(t *testing.T) {
-	require.Equal(t, dex.StepDurabilityAsync, discord.CreateMessageDefinition.StepDefaults.ExecuteDurability)
+	require.Equal(t, dex.StepDurabilityAsync, discord.AddReactionDefinition.StepDefaults.ExecuteDurability)
+	// The single-dispatch fence reads its checkpoint from the heartbeat, which only sync Execute retains.
+	require.Equal(t, dex.StepDurabilitySync, discord.CreateMessageDefinition.StepDefaults.ExecuteDurability)
+	require.Equal(t, sdkgo.RepeatOnUnknownLimited, discord.CreateMessageDefinition.RepeatOnUnknown)
+	require.Equal(t, int32(3), discord.CreateMessageDefinition.MaxSends)
 	require.LessOrEqual(t, discord.CreateMessageDefinition.StepDefaults.ExecuteRetry.TotalDuration.Minutes(), 2.0,
 		"every createMessage retry must fit Discord's few-minute nonce window")
 }

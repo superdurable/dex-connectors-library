@@ -367,6 +367,1068 @@
       },
       "name": "getPost-transportFailure",
       "operation": "getPost"
+    },
+    {
+      "callId": "4ded2484-b4d6-5144-a101-0c1954028ed2",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"after\":\"t3_1a0002\",\"dist\":2,\"modhash\":\"\",\"geo_filter\":\"\",\"children\":[{\"kind\":\"t3\",\"data\":{\"name\":\"t3_1a0003\",\"id\":\"1a0003\",\"title\":\"How do generics interact with interfaces?\",\"subreddit\":\"golang\",\"subreddit_name_prefixed\":\"r/golang\",\"author\":\"example_author_one\",\"author_fullname\":\"t2_example\",\"permalink\":\"/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/\",\"url\":\"https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/\",\"domain\":\"self.golang\",\"is_self\":true,\"selftext\":\"I want a generic **Map** function that also accepts an interface type \u0026 a constraint.\",\"selftext_html\":null,\"score\":25,\"ups\":25,\"num_comments\":9,\"created\":1794501000.0,\"created_utc\":1794501000.0,\"over_18\":false,\"spoiler\":false,\"stickied\":false}},{\"kind\":\"t3\",\"data\":{\"name\":\"t3_1a0002\",\"id\":\"1a0002\",\"title\":\"A walkthrough of the new release notes\",\"subreddit\":\"programming\",\"subreddit_name_prefixed\":\"r/programming\",\"author\":\"example_author_two\",\"author_fullname\":\"t2_example\",\"permalink\":\"/r/programming/comments/1a0002/a_walkthrough_of_the_new_release_notes/\",\"url\":\"https://example.com/blog/release-notes\",\"domain\":\"example.com\",\"is_self\":false,\"selftext\":\"\",\"selftext_html\":null,\"score\":31,\"ups\":31,\"num_comments\":4,\"created\":1794475700.0,\"created_utc\":1794475700.0,\"over_18\":false,\"spoiler\":true,\"stickied\":false}}],\"before\":null}}",
+          "headers": {
+            "X-Ratelimit-Remaining": "98.0",
+            "X-Ratelimit-Reset": "300",
+            "X-Ratelimit-Used": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang+programming/top",
+          "query": {
+            "after": [
+              "t3_1a0009"
+            ],
+            "limit": [
+              "2"
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "t": [
+              "week"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "after": "t3_1a0002",
+          "posts": [
+            {
+              "author": "example_author_one",
+              "commentCount": 9,
+              "createdAt": "2026-11-12T16:30:00Z",
+              "id": "t3_1a0003",
+              "isOver18": false,
+              "isSelf": true,
+              "isSpoiler": false,
+              "isStickied": false,
+              "permalink": "https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/",
+              "score": 25,
+              "selfText": "I want a generic **Map** function that also accepts an interface type \u0026 a constraint.",
+              "subreddit": "golang",
+              "title": "How do generics interact with interfaces?"
+            },
+            {
+              "author": "example_author_two",
+              "commentCount": 4,
+              "createdAt": "2026-11-12T09:28:20Z",
+              "id": "t3_1a0002",
+              "isOver18": false,
+              "isSelf": false,
+              "isSpoiler": true,
+              "isStickied": false,
+              "linkUrl": "https://example.com/blog/release-notes",
+              "permalink": "https://www.reddit.com/r/programming/comments/1a0002/a_walkthrough_of_the_new_release_notes/",
+              "score": 31,
+              "subreddit": "programming",
+              "title": "A walkthrough of the new release notes"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "t3_1a0009",
+        "limit": 2,
+        "sort": "top",
+        "subreddit": "golang+programming",
+        "timeWindow": "week"
+      },
+      "name": "listSubredditPosts-listed",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "97262637-c616-5146-acf7-c2a3e9b9cdd2",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"after\":null,\"dist\":1,\"modhash\":\"\",\"geo_filter\":\"\",\"children\":[{\"kind\":\"t3\",\"data\":{\"name\":\"t3_1a0001\",\"id\":\"1a0001\",\"title\":\"Weekly questions thread\",\"subreddit\":\"golang\",\"subreddit_name_prefixed\":\"r/golang\",\"author\":\"example_moderator\",\"author_fullname\":\"t2_example\",\"permalink\":\"/r/golang/comments/1a0001/weekly_questions_thread/\",\"url\":\"https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/\",\"domain\":\"self.golang\",\"is_self\":true,\"selftext\":\"Ask small questions here, including generics questions.\",\"selftext_html\":null,\"score\":12,\"ups\":12,\"num_comments\":40,\"created\":1794211200.0,\"created_utc\":1794211200.0,\"over_18\":false,\"spoiler\":false,\"stickied\":true}}],\"before\":null}}",
+          "headers": {
+            "X-Ratelimit-Remaining": "98.0",
+            "X-Ratelimit-Reset": "300",
+            "X-Ratelimit-Used": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/new",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "posts": [
+            {
+              "author": "example_moderator",
+              "commentCount": 40,
+              "createdAt": "2026-11-09T08:00:00Z",
+              "id": "t3_1a0001",
+              "isOver18": false,
+              "isSelf": true,
+              "isSpoiler": false,
+              "isStickied": true,
+              "permalink": "https://www.reddit.com/r/golang/comments/1a0001/weekly_questions_thread/",
+              "score": 12,
+              "selfText": "Ask small questions here, including generics questions.",
+              "subreddit": "golang",
+              "title": "Weekly questions thread"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "listSubredditPosts-listed-defaults",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "4431cfb6-51e9-5133-8797-ee6d715c5b0a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "https://oauth.reddit.com/subreddits/search.json?q=nosuchcommunity"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/nosuchcommunity/new",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "subredditUnavailable",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "nosuchcommunity"
+      },
+      "name": "listSubredditPosts-subredditUnavailable-redirect",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "480584ef-9dff-51ab-9ace-a8899d0aa00a",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"private\",\"message\":\"Forbidden\",\"error\":403}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/privatecommunity/hot",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "subredditUnavailable",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sort": "hot",
+        "subreddit": "privatecommunity"
+      },
+      "name": "listSubredditPosts-subredditUnavailable-private",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "8c4ee3a2-d967-5bba-986e-e020abc8d463",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\",\"error\":403}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/new",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "listSubredditPosts-providerRejected",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "50c01db2-cd73-595f-a4af-425457acdcf8",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"after\":null,\"children\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/new",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "listSubredditPosts-invalidResponse",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "b7f534c1-99d2-5012-87bc-219163c6c431",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "r/golang"
+      },
+      "name": "listSubredditPosts-defect",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "6fc6c9fd-2ef1-56bd-8b64-ce4ef08b15ea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "X-Ratelimit-Remaining": "0.0",
+            "X-Ratelimit-Reset": "7",
+            "X-Ratelimit-Used": "100"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/new",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "listSubredditPosts-rateLimit429",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "63fea236-bc8e-58af-938a-48e62c0c5f44",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/new",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "listSubredditPosts-unavailable503",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "ed6c9726-31dd-56a9-87d9-0d654dd48576",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/new",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "listSubredditPosts-transportFailure",
+      "operation": "listSubredditPosts"
+    },
+    {
+      "callId": "046ba792-cf62-5468-bebe-4bb98fe36b34",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"after\":\"t3_1a0003\",\"dist\":2,\"modhash\":\"\",\"geo_filter\":\"\",\"children\":[{\"kind\":\"t3\",\"data\":{\"name\":\"t3_1a0004\",\"id\":\"1a0004\",\"title\":\"Generics performance compared with interfaces\",\"subreddit\":\"golang\",\"subreddit_name_prefixed\":\"r/golang\",\"author\":\"example_author_five\",\"author_fullname\":\"t2_example\",\"permalink\":\"/r/golang/comments/1a0004/generics_performance_compared_with_interfaces/\",\"url\":\"/r/programming/comments/1a0000/generics_performance_compared_with_interfaces/\",\"domain\":\"example.com\",\"is_self\":false,\"selftext\":\"\",\"selftext_html\":null,\"score\":44,\"ups\":44,\"num_comments\":15,\"created\":1794564000.0,\"created_utc\":1794564000.0,\"over_18\":true,\"spoiler\":false,\"stickied\":false}},{\"kind\":\"t3\",\"data\":{\"name\":\"t3_1a0003\",\"id\":\"1a0003\",\"title\":\"How do generics interact with interfaces?\",\"subreddit\":\"golang\",\"subreddit_name_prefixed\":\"r/golang\",\"author\":\"example_author_one\",\"author_fullname\":\"t2_example\",\"permalink\":\"/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/\",\"url\":\"https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/\",\"domain\":\"self.golang\",\"is_self\":true,\"selftext\":\"I want a generic **Map** function that also accepts an interface type \u0026 a constraint.\",\"selftext_html\":null,\"score\":25,\"ups\":25,\"num_comments\":9,\"created\":1794501000.0,\"created_utc\":1794501000.0,\"over_18\":false,\"spoiler\":false,\"stickied\":false}}],\"before\":null}}",
+          "headers": {
+            "X-Ratelimit-Remaining": "98.0",
+            "X-Ratelimit-Reset": "300",
+            "X-Ratelimit-Used": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/search",
+          "query": {
+            "after": [
+              "t3_1a0009"
+            ],
+            "limit": [
+              "2"
+            ],
+            "q": [
+              "generics"
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "restrict_sr": [
+              "true"
+            ],
+            "sort": [
+              "relevance"
+            ],
+            "t": [
+              "month"
+            ],
+            "type": [
+              "link"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "after": "t3_1a0003",
+          "posts": [
+            {
+              "author": "example_author_five",
+              "commentCount": 15,
+              "createdAt": "2026-11-13T10:00:00Z",
+              "id": "t3_1a0004",
+              "isOver18": true,
+              "isSelf": false,
+              "isSpoiler": false,
+              "isStickied": false,
+              "linkUrl": "https://www.reddit.com/r/programming/comments/1a0000/generics_performance_compared_with_interfaces/",
+              "permalink": "https://www.reddit.com/r/golang/comments/1a0004/generics_performance_compared_with_interfaces/",
+              "score": 44,
+              "subreddit": "golang",
+              "title": "Generics performance compared with interfaces"
+            },
+            {
+              "author": "example_author_one",
+              "commentCount": 9,
+              "createdAt": "2026-11-12T16:30:00Z",
+              "id": "t3_1a0003",
+              "isOver18": false,
+              "isSelf": true,
+              "isSpoiler": false,
+              "isStickied": false,
+              "permalink": "https://www.reddit.com/r/golang/comments/1a0003/how_do_generics_interact_with_interfaces/",
+              "score": 25,
+              "selfText": "I want a generic **Map** function that also accepts an interface type \u0026 a constraint.",
+              "subreddit": "golang",
+              "title": "How do generics interact with interfaces?"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "t3_1a0009",
+        "limit": 2,
+        "query": "generics",
+        "sort": "relevance",
+        "subreddit": "golang",
+        "timeWindow": "month"
+      },
+      "name": "searchPosts-searched",
+      "operation": "searchPosts"
+    },
+    {
+      "callId": "7ff60158-4cbf-5465-8c92-c66aa0549c96",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"after\":null,\"dist\":0,\"modhash\":\"\",\"geo_filter\":\"\",\"children\":[],\"before\":null}}",
+          "headers": {
+            "X-Ratelimit-Remaining": "98.0",
+            "X-Ratelimit-Reset": "300",
+            "X-Ratelimit-Used": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "generics \"type sets\""
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "sort": [
+              "new"
+            ],
+            "t": [
+              "all"
+            ],
+            "type": [
+              "link"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "generics \"type sets\""
+      },
+      "name": "searchPosts-searched-siteWide",
+      "operation": "searchPosts"
+    },
+    {
+      "callId": "3193ad1e-6bcc-5f13-94de-a45640dd6014",
+      "exchanges": [
+        {
+          "body": "{\"reason\":\"banned\",\"message\":\"Not Found\",\"error\":404}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/bannedcommunity/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "generics"
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "restrict_sr": [
+              "true"
+            ],
+            "sort": [
+              "new"
+            ],
+            "t": [
+              "all"
+            ],
+            "type": [
+              "link"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "subredditUnavailable",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "generics",
+        "subreddit": "bannedcommunity"
+      },
+      "name": "searchPosts-subredditUnavailable",
+      "operation": "searchPosts"
+    },
+    {
+      "callId": "821e9f7a-7864-54fb-934a-daa87ff334c3",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unauthorized\",\"error\":401}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "generics"
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "sort": [
+              "new"
+            ],
+            "t": [
+              "all"
+            ],
+            "type": [
+              "link"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "generics"
+      },
+      "name": "searchPosts-providerRejected",
+      "operation": "searchPosts"
+    },
+    {
+      "callId": "c79f2366-0e08-5869-85a3-218e01f810a2",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"after\":null,\"children\":[{\"kind\":\"t5\",\"data\":{\"name\":\"t5_2rc7j\",\"display_name\":\"golang\"}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "generics"
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "sort": [
+              "new"
+            ],
+            "t": [
+              "all"
+            ],
+            "type": [
+              "link"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "generics"
+      },
+      "name": "searchPosts-invalidResponse",
+      "operation": "searchPosts"
+    },
+    {
+      "callId": "1f0f58de-e0c4-5932-b133-b3f8c1420121",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "posts": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "   "
+      },
+      "name": "searchPosts-defect",
+      "operation": "searchPosts"
+    },
+    {
+      "callId": "4d43034f-cca6-5758-9dda-6bebfdc7f9d8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2",
+            "X-Ratelimit-Remaining": "0.0",
+            "X-Ratelimit-Reset": "30"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "generics"
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "sort": [
+              "new"
+            ],
+            "t": [
+              "all"
+            ],
+            "type": [
+              "link"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "query": "generics"
+      },
+      "name": "searchPosts-rateLimit429",
+      "operation": "searchPosts"
+    },
+    {
+      "callId": "60183dc2-68dd-532f-bea2-acede67bf949",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "generics"
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "sort": [
+              "new"
+            ],
+            "t": [
+              "all"
+            ],
+            "type": [
+              "link"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "generics"
+      },
+      "name": "searchPosts-unavailable502",
+      "operation": "searchPosts"
+    },
+    {
+      "callId": "c5e9df46-5513-5eb0-95a6-60cd516a9fd8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "generics"
+            ],
+            "raw_json": [
+              "1"
+            ],
+            "sort": [
+              "new"
+            ],
+            "t": [
+              "all"
+            ],
+            "type": [
+              "link"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "generics"
+      },
+      "name": "searchPosts-transportFailure",
+      "operation": "searchPosts"
     }
   ],
   "schemaVersion": 1

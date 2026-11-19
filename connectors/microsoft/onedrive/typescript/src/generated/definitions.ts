@@ -130,7 +130,7 @@ export const UploadFileBranchUploaded = UploadFileBranch.Uploaded;
 export const UploadFileBranchAlreadyExists = UploadFileBranch.AlreadyExists;
 /** Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota. */
 export const UploadFileBranchProviderRejected = UploadFileBranch.ProviderRejected;
-/** Microsoft Graph returned an invalid or oversized response while reading back a conflicting item. */
+/** Retained for compatibility and no longer selected: an invalid or oversized read-back of a conflicting item now retries. */
 export const UploadFileBranchInvalidResponse = UploadFileBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UploadFileBranchDefect = UploadFileBranch.Defect;
@@ -141,7 +141,7 @@ export const UploadFileDefinition: MutationDefinition = {
     { id: "uploaded", description: "Microsoft Graph stored the file, or the file at that path already has exactly this content, such as from an earlier attempt of the Step." },
     { id: "alreadyExists", description: "With the fail conflict behavior, a different file or a folder already has the name, so nothing was written.", optional: true },
     { id: "providerRejected", description: "Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota.", optional: true },
-    { id: "invalidResponse", description: "Microsoft Graph returned an invalid or oversized response while reading back a conflicting item.", optional: true },
+    { id: "invalidResponse", description: "Retained for compatibility and no longer selected: an invalid or oversized read-back of a conflicting item now retries.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -161,9 +161,9 @@ export const CreateFolderBranch = {
 export const CreateFolderBranchCreated = CreateFolderBranch.Created;
 /** A file, not a folder, already has the name in the parent folder, so nothing was created. */
 export const CreateFolderBranchNameConflict = CreateFolderBranch.NameConflict;
-/** Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder. */
+/** Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota. */
 export const CreateFolderBranchProviderRejected = CreateFolderBranch.ProviderRejected;
-/** Microsoft Graph returned an invalid or oversized response to the creation or its read-back. */
+/** Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries. */
 export const CreateFolderBranchInvalidResponse = CreateFolderBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateFolderBranchDefect = CreateFolderBranch.Defect;
@@ -173,8 +173,8 @@ export const CreateFolderDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Microsoft Graph created the folder or a folder with that name already existed." },
     { id: "nameConflict", description: "A file, not a folder, already has the name in the parent folder, so nothing was created.", optional: true },
-    { id: "providerRejected", description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", optional: true },
-    { id: "invalidResponse", description: "Microsoft Graph returned an invalid or oversized response to the creation or its read-back.", optional: true },
+    { id: "providerRejected", description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota.", optional: true },
+    { id: "invalidResponse", description: "Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

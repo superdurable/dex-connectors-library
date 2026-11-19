@@ -127,12 +127,10 @@ func TestCreateItemMapsRejectionsAndUnusableAnswers(t *testing.T) {
 			branch: monday.CreateItemBranchProviderRejected, kind: sdkgo.FailureValidation},
 		{name: "permission", status: 403, body: `{"errors":[{"message":"SENTINEL","extensions":{"code":"UserUnauthorizedException","status_code":403}}]}`,
 			branch: monday.CreateItemBranchProviderRejected, kind: sdkgo.FailureAuthorization},
-		{name: "malformed item", status: 200, body: `{"data":{"create_item":{"id":"SENTINEL"}}}`,
+		{name: "identified but unusable item", status: 200, body: `{"data":{"create_item":{"id":"5550001","state":"SENTINEL"}}}`,
 			branch: monday.CreateItemBranchUncertain, kind: sdkgo.FailureProtocol},
-		{name: "null item without errors", status: 200, body: `{"data":{"create_item":null}}`,
-			branch: monday.CreateItemBranchUncertain, kind: sdkgo.FailureProtocol},
-		{name: "reflected token", status: 200, body: `{"data":{"create_item":{"id":"1","name":"` + testAPIToken + `"}}}`,
-			branch: monday.CreateItemBranchUncertain, kind: sdkgo.FailureProtocol},
+		{name: "payload too large", status: 413, body: `{"errors":[{"message":"SENTINEL"}]}`,
+			branch: monday.CreateItemBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {

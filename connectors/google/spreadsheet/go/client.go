@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -233,7 +235,10 @@ func (operation GetValuesOperation) Invoke(call sdkgo.Call, input GetValuesInput
 	if strings.TrimSpace(input.SpreadsheetID) == "" || strings.TrimSpace(input.Range) == "" {
 		return sdkgo.NewQueryBranch(GetValuesBranchDefect, GetValuesOutput{}, failurePointer(sdkgo.FailureValidation, "getValues", "spreadsheet ID and range are required"), sdkgo.Receipt{})
 	}
-	credential, failure, _ := operation.client.resolveCredential(call.Context, call, "getValues")
+	credential, failure, needsReauthorization := operation.client.resolveCredential(call.Context, call, "getValues")
+	if failure != nil && !needsReauthorization {
+		return sdkgo.NewQueryRetry[GetValuesOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetValuesBranchDefect, GetValuesOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -278,7 +283,10 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 	if err := validateFindInput(input); err != nil {
 		return sdkgo.NewQueryBranch(FindRowBranchDefect, FindRowOutput{}, failurePointer(sdkgo.FailureValidation, "findRow", err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure, _ := operation.client.resolveCredential(call.Context, call, "findRow")
+	credential, failure, needsReauthorization := operation.client.resolveCredential(call.Context, call, "findRow")
+	if failure != nil && !needsReauthorization {
+		return sdkgo.NewQueryRetry[FindRowOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(FindRowBranchDefect, FindRowOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -319,7 +327,7 @@ func (operation FindRowOperation) Invoke(call sdkgo.Call, input FindRowInput) sd
 func (client *Client) resolveCredential(ctx context.Context, call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credential, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	if err != nil {
-		if sdkgo.IsReauthorizationRequired(err) {
+		if isTerminalCredentialError(err) {
 			return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable; reconnect the connection"), true
 		}
 		return Credentials{}, failurePointer(sdkgo.FailureAvailability, operation, "credential resolution is temporarily unavailable"), false
@@ -336,12 +344,19 @@ func (client *Client) refreshRejectedWriteCredential(ctx context.Context, call s
 	}
 	credential, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 	if err != nil {
-		return Credentials{}, false, sdkgo.IsReauthorizationRequired(err)
+		return Credentials{}, false, isTerminalCredentialError(err)
 	}
 	if validateResolvedCredentials(credential) != nil || credential.AccessToken.Reveal() == rejected.AccessToken.Reveal() {
 		return Credentials{}, false, true
 	}
 	return credential, true, false
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs; any other one is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) getValues(ctx context.Context, call sdkgo.Call, credential Credentials, spreadsheetID string, valueRange string) (requestResult, Credentials, error) {

@@ -6,16 +6,16 @@ metadata:
   description: Supabase REST connector with two bounded operations.
   company: Supabase
   categories: [databases-storage]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: supabase
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [upsertRows, selectRows]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-supabase"
       operations: [upsertRows, selectRows]
       triggers: []
@@ -118,7 +118,7 @@ spec:
       optional: true
     - id: invalidResponse
       goName: InvalidResponse
-      description: The provider returned malformed or oversized JSON.
+      description: Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.
       optional: true
     - id: defect
       goName: Defect
@@ -127,6 +127,8 @@ spec:
     execution:
       executeMethodTimeout: 30s
       durability: async
+      # A repeated upsert merges the same rows by their declared unique conflict key.
+      repeatOnUnknown: safe
     mocks:
     - name: defaultUpsertRows
       branch: upserted

@@ -7,7 +7,9 @@ import io
 import json
 import os
 import subprocess
+import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -102,6 +104,29 @@ class MutationSelfTestSelectionTest(unittest.TestCase):
         base, head, connectors = compare.call_args.args
         self.assertEqual(("base-sha", "HEAD"), (base, head))
         self.assertEqual(["alpha", "beta", "gamma"], [connector.name for connector in connectors])
+
+
+class MutationPortScopeTest(unittest.TestCase):
+    """Mutate scenarios that every port replays, and skip a port only for an operation it does not implement."""
+
+    implemented = {"python": {"getItem"}, "typescript": {"getItem", "listItems"}}
+
+    def test_scenarios_every_port_replays_come_first_in_fixture_order(self) -> None:
+        scenarios = [{"name": "search", "operation": "searchItems"}, {"name": "list", "operation": "listItems"},
+                     {"name": "get-1", "operation": "getItem"}, {"name": "get-2", "operation": "getItem"}]
+        ordered = connector_conformance.scenarios_every_port_replays_first(scenarios, self.implemented)
+        self.assertEqual(["get-1", "get-2", "search", "list"], [item["name"] for item in ordered])
+
+    def test_go_only_connector_keeps_fixture_order(self) -> None:
+        scenarios = [{"name": "search", "operation": "searchItems"}, {"name": "get", "operation": "getItem"}]
+        self.assertEqual(scenarios, connector_conformance.scenarios_every_port_replays_first(scenarios, {}))
+
+    def test_ports_replay_only_implemented_operations(self) -> None:
+        self.assertTrue(connector_conformance.does_language_replay("go", "searchItems", self.implemented))
+        self.assertTrue(connector_conformance.does_language_replay("python", "getItem", self.implemented))
+        self.assertFalse(connector_conformance.does_language_replay("python", "listItems", self.implemented))
+        self.assertTrue(connector_conformance.does_language_replay("typescript", "listItems", self.implemented))
+        self.assertFalse(connector_conformance.does_language_replay("typescript", "searchItems", self.implemented))
 
 
 class OperationDiscoveryComparisonTest(unittest.TestCase):
@@ -366,6 +391,77 @@ class CoverageValidationTest(unittest.TestCase):
         scenario["pending"] = True
         self.validate_fixture([scenario], "unsupported pending")
 
+    def run_mutation_fixture(self, branches: list[str], is_safe_to_repeat: bool,
+                             retired_branches: list[str] | None = None, final_branch: str = "written") -> None:
+        """Run run_connector on a Python-ported writeItem Mutation whose replays cover only final_branch and Retry."""
+        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), \
+                patch.object(connector_conformance, "conformance_exemptions", return_value={}), \
+                patch.object(connector_conformance, "run_logged_command"):
+            root = Path(directory)
+            connector = root / "connectors/example"
+            (connector / "go").mkdir(parents=True)
+            (connector / "go/zz_generated_conformance_test.go").write_text("package example\n")
+            (connector / "python/tests").mkdir(parents=True)
+            (connector / "python/pyproject.toml").write_text("[project]\n")
+            (connector / "python/tests/test_conformance.py").write_text("")
+            (connector / "connector.yaml").write_text("metadata: example\n")
+            scenarios = []
+            for scenario in (self.scenario("rate", [429], True), self.scenario("server", [503], True),
+                             self.scenario("transport", [None], True), self.scenario("written", [200], False)):
+                scenario["operation"] = "writeItem"
+                scenario["idempotencyKey"] = "key-" + str(scenario["name"])
+                if scenario["expected"]["branch"]:
+                    scenario["expected"]["branch"] = final_branch
+                scenarios.append(scenario)
+            fixture = root / "conformance/connectors/example/scenarios.json"
+            fixture.parent.mkdir(parents=True)
+            fixture.write_text(json.dumps({"schemaVersion": 1, "connector": "example", "scenarios": scenarios}))
+            declaration: dict[str, object] = {"kind": "mutation", "branches": branches, "optionalInputFields": []}
+            if is_safe_to_repeat:
+                declaration["isSafeToRepeat"] = True
+            if retired_branches:
+                declaration["retiredBranches"] = retired_branches
+
+            def connectorctl_output(command: list[str], **_: object) -> str:
+                if command[3] == "language-capabilities":
+                    return json.dumps({"operations": ["writeItem"]})
+                return json.dumps({"writeItem": declaration})
+
+            with patch.object(connector_conformance.subprocess, "check_output", side_effect=connectorctl_output):
+                connector_conformance.run_connector(connector, [])
+
+    def test_safe_mutation_needs_no_uncertain_or_invalid_response_replay(self) -> None:
+        self.run_mutation_fixture(["written", "uncertain", "invalidResponse"], is_safe_to_repeat=True)
+
+    def test_limited_mutation_still_needs_uncertainty_replay(self) -> None:
+        with self.assertRaisesRegex(ValueError, "writeItem uncertainty coverage"):
+            self.run_mutation_fixture(["written", "uncertain"], is_safe_to_repeat=False)
+
+    def test_limited_mutation_still_needs_invalid_response_replay(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"writeItem branches: \['invalidResponse'\]"):
+            self.run_mutation_fixture(["written", "invalidResponse"], is_safe_to_repeat=False)
+
+    def test_safe_mutation_still_needs_every_other_branch_replay(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"writeItem branches: \['providerRejected'\]"):
+            self.run_mutation_fixture(["written", "providerRejected", "uncertain"], is_safe_to_repeat=True)
+
+    def test_limited_mutation_needs_no_retired_branch_replay(self) -> None:
+        self.run_mutation_fixture(["written", "invalidResponse"], is_safe_to_repeat=False,
+                                  retired_branches=["invalidResponse"])
+
+    def test_limited_mutation_needs_no_uncertainty_replay_when_uncertain_is_retired(self) -> None:
+        self.run_mutation_fixture(["written", "uncertain"], is_safe_to_repeat=False, retired_branches=["uncertain"])
+
+    def test_retired_branch_does_not_excuse_other_missing_branches(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"writeItem branches: \['providerRejected'\]"):
+            self.run_mutation_fixture(["written", "providerRejected", "invalidResponse"], is_safe_to_repeat=False,
+                                      retired_branches=["invalidResponse"])
+
+    def test_scenario_selecting_a_retired_branch_fails(self) -> None:
+        with self.assertRaisesRegex(ValueError, "selects retired branch invalidResponse"):
+            self.run_mutation_fixture(["written", "invalidResponse"], is_safe_to_repeat=False,
+                                      retired_branches=["invalidResponse"], final_branch="invalidResponse")
+
 
 class ReplaySelectionTest(unittest.TestCase):
     """CI replays every connector its plan selected plus what the changed paths select."""
@@ -378,7 +474,7 @@ class ReplaySelectionTest(unittest.TestCase):
                 patch.object(connector_conformance, "changed_paths", return_value=changed), \
                 patch("sys.argv", ["connector_conformance.py", *arguments]), contextlib.redirect_stdout(io.StringIO()):
             connector_conformance.main()
-        return replayed
+        return sorted(replayed)
 
     def test_plan_selected_connectors_replay_even_when_no_path_selects_them(self) -> None:
         replayed = self.run_main(["sdkgo/step.go"], "--base", "base-sha", "--head", "HEAD",
@@ -461,6 +557,139 @@ class PackagesWithoutScenariosTest(unittest.TestCase):
                 missing.append(str(manifest.relative_to(root)))
         self.assertEqual([], sorted(missing))
 
+
+class ConcurrentConformanceTest(unittest.TestCase):
+    """Run connectors concurrently while keeping each log whole and every failure fatal."""
+
+    def test_worker_count_prefers_flag_then_environment_then_cpu_count(self) -> None:
+        with patch.dict(os.environ, {"CONFORMANCE_WORKERS": "3"}), \
+                patch.object(connector_conformance.os, "cpu_count", return_value=8):
+            self.assertEqual(2, connector_conformance.conformance_worker_count(2, 10))
+            self.assertEqual(3, connector_conformance.conformance_worker_count(None, 10))
+        with patch.dict(os.environ, {"CONFORMANCE_WORKERS": ""}), \
+                patch.object(connector_conformance.os, "cpu_count", return_value=8):
+            self.assertEqual(8, connector_conformance.conformance_worker_count(None, 10))
+            self.assertEqual(5, connector_conformance.conformance_worker_count(None, 5))
+
+    def test_worker_count_rejects_zero(self) -> None:
+        with self.assertRaises(ValueError):
+            connector_conformance.conformance_worker_count(0, 4)
+
+    def run_self_test(self, names: list[str], connector_test, workers: int) -> tuple[str, list[str]]:
+        root = connector_conformance.ROOT
+        started: list[str] = []
+
+        def record_and_test(connector: Path, connectorctl: Path, log) -> None:
+            started.append(connector.name)
+            connector_test(connector, connectorctl, log)
+
+        stdout = io.StringIO()
+        with patch.object(connector_conformance.subprocess, "run") as run, \
+                patch.object(connector_conformance, "mutation_self_test_connector", side_effect=record_and_test), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                connector_conformance.mutation_self_test([root / "connectors" / name for name in names], workers)
+            finally:
+                self.assertEqual(["go", "build"], run.call_args_list[0].args[0][:2])
+                self.assertEqual(1, run.call_count)
+        return stdout.getvalue(), started
+
+    def test_connectors_run_concurrently_with_whole_logs(self) -> None:
+        barrier = threading.Barrier(2, timeout=10)
+
+        def connector_test(connector: Path, connectorctl: Path, log) -> None:
+            self.assertEqual("connectorctl", connectorctl.name)
+            print(f"{connector.name} first", file=log)
+            barrier.wait()
+            print(f"{connector.name} second", file=log)
+
+        output, started = self.run_self_test(["alpha", "beta"], connector_test, 2)
+        self.assertEqual({"alpha", "beta"}, set(started))
+        for name in ("alpha", "beta"):
+            self.assertIn(f"{name} first\n{name} second\n", output)
+            self.assertIn(f"Mutation self-test: connectors/{name} passed", output)
+
+    def test_failure_names_connector_and_is_raised(self) -> None:
+        def connector_test(connector: Path, connectorctl: Path, log) -> None:
+            if connector.name == "beta":
+                raise AssertionError(f"{connector.name} python runner accepted exchange mutation")
+
+        with self.assertRaisesRegex(AssertionError, "beta python runner accepted exchange mutation"):
+            self.run_self_test(["alpha", "beta", "gamma"], connector_test, 1)
+
+    def test_build_failure_output_reaches_the_log(self) -> None:
+        def connector_test(connector: Path, connectorctl: Path, log) -> None:
+            connector_conformance.run_logged_command(
+                [sys.executable, "-c", "print('npm ci broke'); raise SystemExit(3)"], connector, log)
+
+        stdout = io.StringIO()
+        real_run = subprocess.run
+
+        def skip_connectorctl_build(command: list[str], **kwargs) -> subprocess.CompletedProcess:
+            if command[:2] == ["go", "build"]:
+                return subprocess.CompletedProcess(command, 0)
+            return real_run(command, **kwargs)
+
+        with patch.object(connector_conformance.subprocess, "run", side_effect=skip_connectorctl_build), \
+                patch.object(connector_conformance, "mutation_self_test_connector", side_effect=connector_test), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(subprocess.CalledProcessError):
+                connector_conformance.mutation_self_test([connector_conformance.ROOT / "script"], 1)
+        self.assertIn("npm ci broke", stdout.getvalue())
+        self.assertIn("Mutation self-test: script FAILED", stdout.getvalue())
+
+
+    def test_replay_buffers_each_connectors_output(self) -> None:
+        replayed = []
+
+        def replay(connector: Path, paths: list[str], exemptions: dict[str, str], log) -> None:
+            replayed.append(connector.name)
+            print(f"replayed {connector.name}", file=log)
+
+        stdout = io.StringIO()
+        with patch.object(connector_conformance, "run_connector", side_effect=replay), \
+                patch("sys.argv", ["connector_conformance.py", "--include-connector", "connectors/stripe",
+                                   "--include-connector", "connectors/newsapi", "--workers", "2"]), \
+                contextlib.redirect_stdout(stdout):
+            connector_conformance.main()
+        self.assertEqual(["newsapi", "stripe"], sorted(replayed))
+        self.assertIn("Conformance: connectors/stripe\nreplayed stripe\nConformance: connectors/stripe passed", stdout.getvalue())
+
+    def test_shards_partition_connectors(self) -> None:
+        connectors = [Path(f"/repository/connectors/{name}") for name in "edcba"]
+        shards = [connector_conformance.select_conformance_shard(connectors, index, 3) for index in range(3)]
+        self.assertEqual(sorted(connectors), sorted(connector for shard in shards for connector in shard))
+        self.assertEqual([Path("/repository/connectors/a"), Path("/repository/connectors/d")], shards[0])
+        for index, count in ((3, 3), (-1, 3), (0, 0)):
+            with self.subTest(index=index, count=count), self.assertRaises(ValueError):
+                connector_conformance.select_conformance_shard(connectors, index, count)
+
+    def test_mutation_self_test_checks_only_its_shard(self) -> None:
+        tested = []
+        with patch.object(connector_conformance, "mutation_self_test",
+                          side_effect=lambda connectors, workers: tested.extend(connectors)), \
+                patch.dict(os.environ, {"CONFORMANCE_SHARD_INDEX": "1", "CONFORMANCE_SHARD_COUNT": "2"}), \
+                patch("sys.argv", ["connector_conformance.py", "--mutation-self-test", "--connector", "connectors/a",
+                                   "--connector", "connectors/b", "--connector", "connectors/c"]):
+            connector_conformance.main()
+        self.assertEqual([connector_conformance.ROOT / "connectors/b"], tested)
+
+    def test_ci_matrix_shards_full_runs_and_keeps_small_runs_in_one_job(self) -> None:
+        def shard_count(paths: list[str], has_base: bool, planned: int) -> int:
+            matrix = connector_conformance.conformance_ci_matrix(paths, has_base, planned)
+            self.assertEqual(list(range(len(matrix))), [shard["shard_index"] for shard in matrix])
+            self.assertEqual({len(matrix)}, {shard["shard_count"] for shard in matrix})
+            return len(matrix)
+
+        maximum = connector_conformance.CONFORMANCE_MAX_SHARD_COUNT
+        self.assertEqual(1, shard_count(["connectors/stripe/go/client.go"], True, 1))
+        self.assertEqual(1, shard_count(["connectors/stripe/go/client.go"], True, 20))
+        self.assertEqual(2, shard_count(["sdkgo/step.go"], True, 21))
+        self.assertEqual(maximum, shard_count(["sdkgo/step.go"], True, 500))
+        self.assertEqual(maximum, shard_count([], False, 1))
+        self.assertEqual(maximum, shard_count(["conformance/runners/python/connector_scenarios.py"], True, 1))
+        self.assertEqual(maximum, shard_count(["script/connector_conformance.py"], True, 0))
+        self.assertEqual(maximum, shard_count(["cmd/connectorctl/conformance_operations.go"], True, 0))
 
 if __name__ == "__main__":
     unittest.main()

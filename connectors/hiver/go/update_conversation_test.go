@@ -130,6 +130,24 @@ func TestUpdateConversationRejectsUnknownNamesBeforeAnyChange(t *testing.T) {
 	}
 }
 
+func TestUpdateConversationCredentialFailureSelectsDefectOnlyWhenTerminalOnTheFirstAttempt(t *testing.T) {
+	provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
+	input := hiver.UpdateConversationInput{InboxID: "105902", ConversationID: "1", Status: hiver.ConversationStatusOpen}
+	terminalClient, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, reauthorizationRequiredCredentials{}, hiver.WithAPIBaseURL(provider.URL+"/v1"))
+	require.NoError(t, err)
+	transientClient, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, sdkgo.StaticCredentialProvider[hiver.Credentials]{}, hiver.WithAPIBaseURL(provider.URL+"/v1"))
+	require.NoError(t, err)
+
+	first := newHiverDexContext("update")
+	result, err := sdkgo.RunMutation(first, terminalClient.UpdateConversation(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.UpdateConversationBranchDefect, result.Branch)
+	_, err = sdkgo.RunMutation(first.nextAttempt(), terminalClient.UpdateConversation(), hiverConnection, input)
+	require.Error(t, err, "an earlier attempt may have applied the change, so defect would hide it")
+	_, err = sdkgo.RunMutation(newHiverDexContext("update"), transientClient.UpdateConversation(), hiverConnection, input)
+	require.Error(t, err, "a transient credential failure retries")
+}
+
 func TestUpdateConversationValidatesInputBeforeAnyRequest(t *testing.T) {
 	provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
 	client := newHiverClient(t, provider.URL)
@@ -174,7 +192,19 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 			reply:   func(t *testing.T, response http.ResponseWriter, _ *http.Request) { dropConnection(t, response) },
 			isRetry: true,
 		},
-		"invalid read-back": {
+		"not found with a cut-off body repeats the absolute change": {
+			reply: func(t *testing.T, response http.ResponseWriter, _ *http.Request) {
+				cutOffBody(t, response, http.StatusNotFound)
+			},
+			isRetry: true,
+		},
+		"refusal with an oversized body repeats the absolute change": {
+			reply: func(_ *testing.T, response http.ResponseWriter, _ *http.Request) {
+				writeOversizedBody(response, http.StatusBadRequest)
+			},
+			isRetry: true,
+		},
+		"invalid read-back repeats the absolute change": {
 			reply: func(t *testing.T, response http.ResponseWriter, request *http.Request) {
 				if request.Method == http.MethodPatch {
 					response.WriteHeader(http.StatusNoContent)
@@ -182,7 +212,19 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 				}
 				writeJSON(t, response, http.StatusOK, `{"data":"SENTINEL"}`)
 			},
-			wantBranch: hiver.UpdateConversationBranchInvalidResponse,
+			isRetry: true,
+		},
+		"conflict repeats the absolute change": {
+			reply: func(t *testing.T, response http.ResponseWriter, _ *http.Request) {
+				writeJSON(t, response, http.StatusConflict, `{"Message":"x"}`)
+			},
+			isRetry: true,
+		},
+		"oversized write answer repeats the absolute change": {
+			reply: func(t *testing.T, response http.ResponseWriter, _ *http.Request) {
+				writeJSON(t, response, http.StatusOK, `{"data":"`+strings.Repeat("x", 2<<20)+`"}`)
+			},
+			isRetry: true,
 		},
 	} {
 		provider := newRecordingHiver(t, func(response http.ResponseWriter, request *http.Request, _ int) { test.reply(t, response, request) })
@@ -198,7 +240,7 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 	}
 }
 
-func TestRejectedReadBackKeepsTheStatusKind(t *testing.T) {
+func TestRejectedReadBackRepeatsTheAbsoluteChange(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPatch {
 			response.WriteHeader(http.StatusNoContent)
@@ -206,13 +248,48 @@ func TestRejectedReadBackKeepsTheStatusKind(t *testing.T) {
 		}
 		writeJSON(t, response, http.StatusUnauthorized, `{"Message":"SENTINEL"}`)
 	})
-	result, err := sdkgo.RunMutation(newHiverDexContext("update"), newHiverClient(t, provider.URL).UpdateConversation(), hiverConnection,
+	_, err := sdkgo.RunMutation(newHiverDexContext("update"), newHiverClient(t, provider.URL).UpdateConversation(), hiverConnection,
 		hiver.UpdateConversationInput{InboxID: "105902", ConversationID: "573741352", Status: hiver.ConversationStatusOpen})
-	require.NoError(t, err)
-	require.Equal(t, hiver.UpdateConversationBranchInvalidResponse, result.Branch, "the change was applied, so it is not providerRejected")
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
-	require.Equal(t, "Hiver accepted the change but rejected the read-back: Hiver rejected the request (HTTP 401)", result.Failure.Message)
+	require.Error(t, err, "the change was applied, so a refused read-back is not a provider refusal")
+	require.Contains(t, err.Error(), "Hiver accepted the change but the read-back failed: Hiver rejected the request (HTTP 401)")
+	require.NotContains(t, err.Error(), "SENTINEL")
 	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestPreWriteLookupSelectsABranchOnlyForADefiniteAnswer(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		body   string
+		branch sdkgo.BranchID
+	}{
+		{name: "missing inbox", status: http.StatusNotFound, body: `{}`, branch: hiver.UpdateConversationBranchNotFound},
+		{name: "forbidden", status: http.StatusForbidden, body: `{}`, branch: hiver.UpdateConversationBranchProviderRejected},
+		{name: "malformed page", status: http.StatusOK, body: `{"data":"SENTINEL"}`},
+		{name: "conflict", status: http.StatusConflict, body: `{}`},
+		{name: "outage", status: http.StatusInternalServerError, body: `{}`},
+		{name: "redirect", status: http.StatusMovedPermanently, body: `{}`},
+		{name: "credential-reflecting refusal", status: http.StatusBadRequest, body: `{"message":"` + testAPIKey + `"}`},
+	} {
+		for _, input := range []hiver.UpdateConversationInput{
+			{InboxID: "105902", ConversationID: "573741352", AssigneeEmail: "phoebe@acme.example.com"},
+			{InboxID: "105902", ConversationID: "573741352", ApplyTagNames: []string{"billing"}},
+		} {
+			provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, test.status, test.body)
+			})
+			result, err := sdkgo.RunMutation(newHiverDexContext("update"), newHiverClient(t, provider.URL).UpdateConversation(), hiverConnection, input)
+			require.Equal(t, 1, provider.requestCount(), test.name)
+			require.Equal(t, http.MethodGet, provider.request(0).method, "%s: nothing was written", test.name)
+			if test.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "%s: an earlier attempt's PATCH may have applied", test.name)
+				continue
+			}
+			require.NoError(t, err, test.name)
+			require.Equal(t, test.branch, result.Branch, test.name)
+		}
+	}
 }
 
 func TestTagLookupBeyondTheLastPageReadSaysSo(t *testing.T) {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  ReauthorizationRequiredError,
   resolveCredential,
   resolveCredentialAfterRejection,
   type Call,
@@ -11,6 +12,8 @@ import {
 } from "@superdurable/connectors-sdk";
 import {
   BodyTooLargeError,
+  ProviderStalledError,
+  ProviderTransportError,
   isHeaderSafeCredential,
   parseRetryAfter,
   readErrorTokens,
@@ -18,11 +21,28 @@ import {
   type ProviderRequest,
   type ProviderResponse,
 } from "@superdurable/connectors-sdk/providerhttp";
-import type {
-  Config,
-  CredentialSource,
-  Credentials,
+import {
+  ConnectionNotSelectedError,
+  CredentialBrokerRejectedError,
+  ObjectNotFoundError,
+} from "@superdurable/connectors-sdk/projectconfig";
+import {
+  isCredentialMaterialError,
+  type Config,
+  type CredentialSource,
+  type Credentials,
 } from "./generated/models.js";
+
+/** Report a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return (
+    error instanceof ReauthorizationRequiredError ||
+    error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError ||
+    error instanceof CredentialBrokerRejectedError ||
+    isCredentialMaterialError(error)
+  );
+}
 
 export const graphBase = "https://graph.microsoft.com/v1.0";
 export const marker =
@@ -255,6 +275,19 @@ export class GraphHTTP {
         this.driver,
         call.context.cancellationSignal,
       );
+    } catch (error) {
+      // A non-terminal credential failure is AVAILABILITY, which callers retry.
+      if (isTerminalCredentialError(error))
+        throw new RequestFailure(
+          "AUTHENTICATION",
+          "connection credentials are unavailable",
+        );
+      throw new RequestFailure(
+        "AVAILABILITY",
+        "connection credentials are temporarily unavailable; nothing was sent",
+      );
+    }
+    try {
       const token = material.accessToken?.reveal() ?? "";
       if (
         !isHeaderSafeCredential(token) ||
@@ -288,6 +321,7 @@ export class GraphHTTP {
     payload?: unknown,
     ifMatch = "",
     nextLink = "",
+    signal?: AbortSignal,
   ): Promise<GraphResponse> {
     const target = nextLink
       ? this.baseURL === graphBase
@@ -324,7 +358,8 @@ export class GraphHTTP {
           ? "privateNetworkHTTP"
           : "publicHTTPS",
         timeoutMs: 20_000,
-        signal: call.context.cancellationSignal,
+        // A fenced write passes its write-window signal.
+        signal: signal ?? call.context.cancellationSignal,
         ...(body ? { body } : {}),
       };
       let response: GraphResponse;
@@ -347,9 +382,19 @@ export class GraphHTTP {
               body: new Uint8Array(),
             },
           );
+        // A body failure after headers carries the status even before any chunk arrived.
+        const isHeaderFailure =
+          error instanceof ProviderTransportError ||
+          error instanceof ProviderStalledError;
         throw new RequestFailure("TRANSPORT", "provider request failed", {
-          status: observed?.status ?? 0,
-          headers: observed?.headers ?? {},
+          status:
+            (isHeaderFailure ? error.status : undefined) ||
+            observed?.status ||
+            0,
+          headers:
+            (isHeaderFailure && error.status ? error.headers : undefined) ??
+            observed?.headers ??
+            {},
           body: new Uint8Array(),
         });
       }
@@ -366,8 +411,14 @@ export class GraphHTTP {
           this.driver,
           call.context.cancellationSignal,
         );
-      } catch {
-        return response;
+      } catch (error) {
+        if (isTerminalCredentialError(error)) return response;
+        // Graph did not process the rejected request; a later attempt refreshes again.
+        throw new RequestFailure(
+          "AVAILABILITY",
+          "credential refresh after a rejection is temporarily unavailable",
+          response,
+        );
       }
       if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? "") || !["microsoft-oauth", "app-only"].includes(credentials.authMethodId ?? ""))
         return response;

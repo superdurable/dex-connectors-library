@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted hacker-news-daily connection. Script each operation through its accessor.
 type Mock struct {
-	connection   hackernews.Connection
-	listStoryIDs *connectormock.Query[hackernews.ListStoryIDsInput, hackernews.StoryIDs]
-	getItem      *connectormock.Query[hackernews.GetItemInput, hackernews.Item]
+	connection    hackernews.Connection
+	listStoryIDs  *connectormock.Query[hackernews.ListStoryIDsInput, hackernews.StoryIDs]
+	getItem       *connectormock.Query[hackernews.GetItemInput, hackernews.Item]
+	searchStories *connectormock.Query[hackernews.SearchStoriesInput, hackernews.StorySearchPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listStoryIDs: connectormock.NewQuery[hackernews.ListStoryIDsInput, hackernews.StoryIDs](t, hackernews.ListStoryIDsDefinition),
-		getItem:      connectormock.NewQuery[hackernews.GetItemInput, hackernews.Item](t, hackernews.GetItemDefinition),
+		listStoryIDs:  connectormock.NewQuery[hackernews.ListStoryIDsInput, hackernews.StoryIDs](t, hackernews.ListStoryIDsDefinition),
+		getItem:       connectormock.NewQuery[hackernews.GetItemInput, hackernews.Item](t, hackernews.GetItemDefinition),
+		searchStories: connectormock.NewQuery[hackernews.SearchStoriesInput, hackernews.StorySearchPage](t, hackernews.SearchStoriesDefinition),
 	}
 	mock.listStoryIDs.Default(ListStoryIDsDefault())
 	mock.getItem.Default(GetItemDefault())
+	mock.searchStories.Default(SearchStoriesDefault())
 	connection, err := hackernews.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "hacker-news", Name: connectionName})
 	if err != nil {
 		t.Fatalf("hacker-news-daily mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) GetItem() *connectormock.Query[hackernews.GetItemInput, hacker
 	return mock.getItem
 }
 
+// SearchStories returns the searchStories script.
+func (mock *Mock) SearchStories() *connectormock.Query[hackernews.SearchStoriesInput, hackernews.StorySearchPage] {
+	return mock.searchStories
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListStoryIDs() sdkgo.Query[hackernews.ListStoryIDsInput, hackernews.StoryIDs] {
@@ -60,6 +68,9 @@ func (operations mockOperations) ListStoryIDs() sdkgo.Query[hackernews.ListStory
 }
 func (operations mockOperations) GetItem() sdkgo.Query[hackernews.GetItemInput, hackernews.Item] {
 	return operations.mock.getItem
+}
+func (operations mockOperations) SearchStories() sdkgo.Query[hackernews.SearchStoriesInput, hackernews.StorySearchPage] {
+	return operations.mock.searchStories
 }
 
 // ListStoryIDsListed selects the listed branch: The feed snapshot was read.
@@ -154,3 +165,50 @@ func GetItemItemRejected() connectormock.Case[hackernews.Item] {
 
 // GetItemDefault is the manifest default, compilerStory, which New installs.
 func GetItemDefault() connectormock.Case[hackernews.Item] { return GetItemCompilerStory() }
+
+// SearchStoriesSearched selects the searched branch: One page of matching stories was read; it can be empty.
+func SearchStoriesSearched(value hackernews.StorySearchPage, failure *sdkgo.Failure) connectormock.Case[hackernews.StorySearchPage] {
+	return connectormock.Branch(hackernews.SearchStoriesBranchSearched, value, failure)
+}
+
+// SearchStoriesProviderRejected selects the providerRejected branch: Hacker News Search rejected the request.
+func SearchStoriesProviderRejected(value hackernews.StorySearchPage, failure *sdkgo.Failure) connectormock.Case[hackernews.StorySearchPage] {
+	return connectormock.Branch(hackernews.SearchStoriesBranchProviderRejected, value, failure)
+}
+
+// SearchStoriesInvalidResponse selects the invalidResponse branch: Hacker News Search returned malformed or oversized data.
+func SearchStoriesInvalidResponse(value hackernews.StorySearchPage, failure *sdkgo.Failure) connectormock.Case[hackernews.StorySearchPage] {
+	return connectormock.Branch(hackernews.SearchStoriesBranchInvalidResponse, value, failure)
+}
+
+// SearchStoriesDefect selects the defect branch: Local input or connection configuration is invalid.
+func SearchStoriesDefect(value hackernews.StorySearchPage, failure *sdkgo.Failure) connectormock.Case[hackernews.StorySearchPage] {
+	return connectormock.Branch(hackernews.SearchStoriesBranchDefect, value, failure)
+}
+
+// SearchStoriesRetry asks Dex to retry the searchStories Step, after the delay when it is positive.
+func SearchStoriesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hackernews.StorySearchPage] {
+	return connectormock.Retry[hackernews.StorySearchPage](failure, after)
+}
+
+// SearchStoriesCompilerStories is the manifest mock compilerStories: A newest-first search for compiler stories spans three zero-based pages; a story repeats across a page boundary as a newer story arrives, an Ask HN text post has no URL, and a one-point story is a candidate for a minimum-points filter.
+func SearchStoriesCompilerStories() connectormock.Case[hackernews.StorySearchPage] {
+	pages := []hackernews.StorySearchPage{
+		connectormock.MustDecodeOutput[hackernews.StorySearchPage](`{"stories":[{"id":42003,"title":"Show HN: A compiler explorer for small languages","url":"https://example.com/explorer","discussionUrl":"https://news.ycombinator.com/item?id=42003","author":"langtools","points":12,"commentCount":3,"createdAt":"2026-10-26T11:50:00Z","tags":["story","show_hn"]},{"id":42001,"title":"A compiler release","url":"https://example.com/compiler","discussionUrl":"https://news.ycombinator.com/item?id=42001","author":"compilerdev","points":100,"commentCount":40,"createdAt":"2026-10-26T11:00:00Z","tags":["story","front_page"]}],"page":0,"pages":3,"totalHits":5,"hitsPerPage":2,"nextPage":1}`),
+		connectormock.MustDecodeOutput[hackernews.StorySearchPage](`{"stories":[{"id":42001,"title":"A compiler release","url":"https://example.com/compiler","discussionUrl":"https://news.ycombinator.com/item?id=42001","author":"compilerdev","points":100,"commentCount":40,"createdAt":"2026-10-26T11:00:00Z","tags":["story","front_page"]},{"id":41990,"title":"Ask HN: How do you test a compiler?","discussionUrl":"https://news.ycombinator.com/item?id=41990","author":"testwriter","points":8,"commentCount":5,"createdAt":"2026-10-26T09:30:00Z","tags":["story","ask_hn"],"storyText":"We fuzz the parser.\n\nWhat else catches miscompilations early?"}],"page":1,"pages":3,"totalHits":5,"hitsPerPage":2,"nextPage":2}`),
+		connectormock.MustDecodeOutput[hackernews.StorySearchPage](`{"stories":[{"id":41980,"title":"Notes on compiler passes","url":"https://example.com/passes","discussionUrl":"https://news.ycombinator.com/item?id=41980","author":"notetaker","points":1,"commentCount":0,"createdAt":"2026-10-26T08:15:00Z","tags":["story"]}],"page":2,"pages":3,"totalHits":5,"hitsPerPage":2,"nextPage":0}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[hackernews.SearchStoriesInput]("page", "nextPage", pages)
+	return connectormock.Paged(hackernews.SearchStoriesBranchSearched, pageNumber, pages...)
+}
+
+// SearchStoriesSearchRejected is the manifest mock searchRejected: Hacker News Search rejects the requested story search.
+func SearchStoriesSearchRejected() connectormock.Case[hackernews.StorySearchPage] {
+	var value hackernews.StorySearchPage
+	return connectormock.Branch(hackernews.SearchStoriesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Hacker News Search rejected the story search."})
+}
+
+// SearchStoriesDefault is the manifest default, compilerStories, which New installs.
+func SearchStoriesDefault() connectormock.Case[hackernews.StorySearchPage] {
+	return SearchStoriesCompilerStories()
+}

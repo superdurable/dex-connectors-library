@@ -31,6 +31,7 @@ jobs:
       # Connector jobs read the resolved scope and base, which fall back to all when the base is unknown.
       connector_scope: ${{ steps.plan.outputs.connector_scope }}
       connector_base: ${{ steps.plan.outputs.connector_base }}
+      conformance_matrix: ${{ steps.conformance.outputs.matrix }}
     env:
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
@@ -77,6 +78,20 @@ jobs:
           fi
           GOWORK=off go run ./cmd/connectorctl test-matrix "${arguments[@]}"
           printf 'connector_scope=%s\nconnector_base=%s\n' "${scope}" "${base}" >> "${GITHUB_OUTPUT}"
+      # Replay and the mutation self-test of every fixture take hours in one job; shard large selections.
+      - name: Plan connector conformance shards
+        id: conformance
+        env:
+          PLANNED_CONNECTOR_COUNT: ${{ steps.plan.outputs.count }}
+          PLANNED_SCOPE: ${{ steps.plan.outputs.connector_scope }}
+          PLANNED_BASE: ${{ steps.plan.outputs.connector_base }}
+        run: |
+          arguments=(--conformance-ci-matrix --head "${CONNECTOR_HEAD}" --planned-connector-count "${PLANNED_CONNECTOR_COUNT:-0}")
+          if [ "${PLANNED_SCOPE}" = changed ]; then
+            arguments+=(--base "${PLANNED_BASE}")
+          fi
+          matrix="$(python3 script/connector_conformance.py "${arguments[@]}")"
+          echo "matrix=${matrix}" >> "${GITHUB_OUTPUT}"
       - name: Resolve release inventory once for connector validation
         if: steps.plan.outputs.count != '0' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         env:
@@ -110,6 +125,33 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 script/dex_compatibility.py plan --github-output "${GITHUB_OUTPUT}"
+
+  # A Mac Studio verified pull request skips the heavy jobs; see docs/architecture.md. Errors yield trusted=false.
+  local-verification:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
+    outputs:
+      trusted: ${{ steps.decide.outputs.trusted }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: script/ci_local_verification.py
+          sparse-checkout-cone-mode: false
+      - name: Decide whether a Mac Studio verification lets heavy jobs skip
+        id: decide
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          PUSH_REF: ${{ github.event_name == 'push' && github.ref || '' }}
+          PUSH_SHA: ${{ github.event_name == 'push' && github.sha || '' }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: python3 script/ci_local_verification.py
 
   # Repository-wide checks read every source file and manifest, so they run on every event and change.
   common-repository-checks:
@@ -377,8 +419,8 @@ jobs:
           exit 1
 
   language-connectors:
-    needs: connector-plan
-    if: needs.connector-plan.outputs.count != '0'
+    needs: [connector-plan, local-verification]
+    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.connector-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -410,13 +452,19 @@ jobs:
   # Package tests (up to about 61 minutes) and replay (up to about 39) run in parallel so the
   # 120-minute merge queue waits for the longer one. The hours-long mutation self-test never runs there.
   connector-conformance:
-    needs: connector-plan
-    if: needs.connector-plan.outputs.count != '0'
+    needs: [connector-plan, local-verification]
+    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.connector-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.connector-plan.outputs.conformance_matrix) }}
     env:
       CONNECTOR_SCOPE: ${{ needs.connector-plan.outputs.connector_scope }}
       CONNECTOR_BASE: ${{ needs.connector-plan.outputs.connector_base }}
       CONNECTOR_HEAD: ${{ github.sha }}
+      # Each shard replays and self-tests every shard_count-th selected connector, several at a time.
+      CONFORMANCE_SHARD_INDEX: ${{ matrix.shard_index }}
+      CONFORMANCE_SHARD_COUNT: ${{ matrix.shard_count }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -438,8 +486,8 @@ jobs:
 
   python-connectors-latest-sdk:
     # Floor-range Python packages also pass against the newest sdkpython source; their uv.lock tests the floor.
-    needs: connector-plan
-    if: needs.connector-plan.outputs.count != '0' || needs.connector-plan.outputs.sdkpython == 'true'
+    needs: [connector-plan, local-verification]
+    if: "!cancelled() && needs.connector-plan.result == 'success' && (needs.connector-plan.outputs.count != '0' || needs.connector-plan.outputs.sdkpython == 'true') && needs.local-verification.outputs.trusted != 'true'"
     runs-on: ubuntu-latest
     env:
       # A Python SDK change, schedule, or manual run checks every package; other runs check affected connectors.
@@ -729,8 +777,8 @@ jobs:
           fi
 
   connectors:
-    needs: connector-plan
-    if: needs.connector-plan.outputs.count != '0'
+    needs: [connector-plan, local-verification]
+    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.connector-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -772,6 +820,26 @@ jobs:
             connectors/**/ui/package-lock.json
       - name: Test affected standalone Connector modules
         run: make test-connectors studio-bundle-theme react-connectors
+
+  # When a Mac Studio verification skips the connector shards, one job still checks their manifests and generated code.
+  connector-generation:
+    needs: [connector-plan, local-verification]
+    if: needs.local-verification.outputs.trusted == 'true' && needs.connector-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    env:
+      CONNECTOR_SCOPE: ${{ needs.connector-plan.outputs.connector_scope }}
+      CONNECTOR_BASE: ${{ needs.connector-plan.outputs.connector_base }}
+      CONNECTOR_HEAD: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+          check-latest: false
+          token: ''
+      - run: make check-connector-generation
 
   workspace-connector-dependents:
     # Advisory: a dependency PR cannot also update its dependents under the one-released-module rule.
@@ -862,8 +930,8 @@ jobs:
           exit 1
 
   dex-integration-connectors:
-    needs: [connector-plan, dex-version-plan]
-    if: github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.count != '0'
+    needs: [connector-plan, dex-version-plan, local-verification]
+    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.dex-version-plan.result == 'success' && github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -913,8 +981,8 @@ jobs:
           exit 1
 
   dex-compat-current:
-    needs: [connector-plan, dex-version-plan]
-    if: github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.count != '0'
+    needs: [connector-plan, dex-version-plan, local-verification]
+    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.dex-version-plan.result == 'success' && github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -978,8 +1046,8 @@ jobs:
       - run: make test-dex-compat-released
 
   dex-compat-latest-go-sdk:
-    needs: [connector-plan, dex-version-plan]
-    if: github.event_name != 'pull_request' && needs.connector-plan.outputs.count != '0'
+    needs: [connector-plan, dex-version-plan, local-verification]
+    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.dex-version-plan.result == 'success' && github.event_name != 'pull_request' && needs.connector-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -1154,6 +1222,7 @@ jobs:
     needs:
       - connector-plan
       - dex-version-plan
+      - local-verification
       - common-repository-checks
       - common-sdkgo
       - common-root-go
@@ -1171,6 +1240,7 @@ jobs:
       - email-language-plan
       - email-language-integration
       - connectors
+      - connector-generation
       - workspace-connector-dependents
       - dex-integration-sdk
       - dex-integration-connectors
@@ -1185,6 +1255,7 @@ jobs:
     env:
       JOB_RESULTS: ${{ toJSON(needs) }}
       EVENT_NAME: ${{ github.event_name }}
+      LOCAL_VERIFICATION_TRUSTED: ${{ needs.local-verification.outputs.trusted }}
       PLAN_COUNT: ${{ needs.connector-plan.outputs.count }}
       PLAN_COMMON_SDKGO: ${{ needs.connector-plan.outputs.common_sdkgo }}
       PLAN_COMMON_ROOT_GO: ${{ needs.connector-plan.outputs.common_root_go }}

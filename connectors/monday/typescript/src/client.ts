@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError, RetryError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { AddUpdateOperation, CreateItemOperation, GetItemOperation, ListItemsOperation, UpdateItemColumnValuesOperation } from './operations.js';
 
 const defaultAPIURL = 'https://api.monday.com/v2';
@@ -34,12 +35,45 @@ export interface MondayClientOptions {
 }
 
 /** One GraphQL document and the variables sent with it. */
-export interface MondayRequest { document: string; variables: Record<string, unknown>; isMutation?: boolean; requiresCheckpoint?: boolean; }
-/** Classified provider exchange, including safe response metadata. */
-export interface MondayExchange {
-  outcome: 'succeeded' | 'notFound' | 'retry' | 'uncertain' | 'rejected' | 'invalid' | 'defect';
-  status: number; data?: unknown; requestID: string; isReplayed: boolean; failure?: Failure; retryAfterMs: number; confirmedNotProcessed: boolean;
+export interface MondayRequest { document: string; variables: Record<string, unknown>; isMutation?: boolean; }
+/** Credentials resolved for one call, with the token the selected method sends. */
+export interface ResolvedMondayCredentials { credentials: Credentials; accessToken: string; }
+/** Facts an exchange proves about whether monday.com processed a write. */
+export interface MondayExchangeEvidence {
+  /** A rate limit, 503, or unsent request that monday.com never processed. */ provenNotProcessed?: boolean;
+  /** A listed refusal status or error code, or a request never sent. */ definiteRefusal?: boolean;
+  /** The response echoed the connection credential. */ credentialReflected?: boolean;
+  /** A 2xx whose body broke after its headers, so a write may have been accepted. */ successBodyUnreadable?: boolean;
 }
+/** Classified provider exchange, including safe response metadata. */
+export interface MondayExchange extends MondayExchangeEvidence {
+  outcome: 'succeeded' | 'notFound' | 'retry' | 'uncertain' | 'rejected' | 'invalid' | 'defect';
+  status: number; data?: unknown; requestID: string; isReplayed: boolean; failure?: Failure; retryAfterMs: number;
+}
+/** What a write exchange proves: accepted, proven unprocessed, definitely refused, or unknown. */
+export type WriteDisposition = 'accepted' | 'notProcessed' | 'refused' | 'unknown';
+
+/**
+ * Separate definite write outcomes from unknown ones, as Go's classifyWrite does. Any refusal beside
+ * a value in the mutation field is unknown, because the value suggests monday.com accepted the write.
+ */
+export function classifyWrite(exchange: MondayExchange, mutationField: string): WriteDisposition {
+  if (exchange.outcome === 'succeeded') return 'accepted';
+  if (hasMutationFieldValue(exchange.data, mutationField)) return 'unknown';
+  if (exchange.outcome === 'retry' && exchange.provenNotProcessed) return 'notProcessed';
+  if (exchange.definiteRefusal && ['notFound', 'rejected', 'defect'].includes(exchange.outcome)) return 'refused';
+  return 'unknown';
+}
+
+/** Report a non-null value in the named mutation field. */
+export function hasMutationFieldValue(data: unknown, mutationField: string): boolean {
+  return !!data && typeof data === 'object' && !Array.isArray(data) && (data as Record<string, unknown>)[mutationField] != null;
+}
+
+/** Statuses proving monday.com refused a write; any other status leaves it unknown. */
+const definiteWriteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** The request deadline margin plus the least request window in which a fenced write may resend. */
+const minimumFencedRequestWindowMs = 6_000;
 
 /** Authenticated monday.com GraphQL client with manifest driven credential refresh. */
 export class MondayClient {
@@ -75,68 +109,51 @@ export class MondayClient {
   /** The client clock, used for receipts, Retry-After, and the daily-limit pause. */
   currentTime(): Date { return this.now(); }
 
-  /** Make one authenticated exchange, recording the same resend checkpoint as Go for irreversible writes. */
+  /** Resolve credentials and classify one unfenced exchange, refreshing once after an OAuth 401. */
   async exchange(call: Call, operation: string, request: MondayRequest): Promise<MondayExchange> {
-    const attempt = call.context.attempt;
-    const checkpoint = { callId: call.id, attempt };
-    if (request.requiresCheckpoint) {
-      try {
-        const hasPrevious = call.context.hasLastHeartbeatValue();
-        const previous = hasPrevious ? call.context.getLastHeartbeatValue() as Record<string, unknown> : undefined;
-        if (previous && previous.callId !== call.id) return failureExchange(operation, attempt > 1 ? 'uncertain' : 'defect', attempt > 1 ? 'TRANSPORT' : 'LOCAL_DEFECT', 'mutation checkpoint is invalid');
-        if (!(attempt === 1 && !hasPrevious || previous?.canResend === true && previous.attempt === attempt - 1)) return failureExchange(operation, 'uncertain', 'TRANSPORT', 'an earlier attempt may have applied the mutation');
-      } catch { return failureExchange(operation, attempt > 1 ? 'uncertain' : 'defect', attempt > 1 ? 'TRANSPORT' : 'LOCAL_DEFECT', 'mutation checkpoint is invalid'); }
-    }
+    const resolved = await this.resolveCredentials(call, operation);
+    if ('outcome' in resolved) return resolved;
+    return this.sendWithRejectionRefresh(call, operation, request, resolved, call.context.cancellationSignal);
+  }
+
+  /** Resolve the call's credentials, or return the exchange that ends the attempt before any send. */
+  async resolveCredentials(call: Call, operation: string): Promise<ResolvedMondayCredentials | MondayExchange> {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
-      const result = error instanceof ReauthorizationRequiredError
-        ? failureExchange(operation, 'rejected', 'AUTHENTICATION', 'monday.com authorization must be renewed')
-        : error instanceof RetryError ? failureExchange(operation, 'retry', 'AVAILABILITY', 'monday.com OAuth token refresh is temporarily unavailable')
-          : failureExchange(operation, 'defect', 'AUTHENTICATION', 'monday.com connection credentials are unavailable');
-      if (request.requiresCheckpoint && result.outcome === 'retry') await this.recordCanResend(call);
-      return result;
+      if (error instanceof ReauthorizationRequiredError) return failureExchange(operation, 'rejected', 'AUTHENTICATION', 'monday.com authorization must be renewed', 0, '', false, { definiteRefusal: true });
+      if (error instanceof RetryError) return failureExchange(operation, 'retry', 'AVAILABILITY', 'monday.com OAuth token refresh is temporarily unavailable', 0, '', false, { provenNotProcessed: true });
+      if (error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error)) {
+        return failureExchange(operation, 'defect', 'AUTHENTICATION', 'monday.com connection credentials are unavailable', 0, '', false, { definiteRefusal: true });
+      }
+      // A broker or store outage is transient; only a missing or refused connection is terminal.
+      return failureExchange(operation, 'retry', 'AVAILABILITY', 'monday.com connection credentials could not be read, so nothing was sent', 0, '', false, { provenNotProcessed: true });
     }
     const accessToken = credentials.authMethodId === 'monday-oauth' ? credentials.accessToken?.reveal() : credentials.apiToken?.reveal();
     if (!['personal-api-token', 'monday-oauth'].includes(credentials.authMethodId ?? '') || !accessToken || !isHeaderSafeCredential(accessToken)) {
-      return failureExchange(operation, 'defect', 'AUTHENTICATION', 'monday.com connection credentials are unavailable');
+      return failureExchange(operation, 'defect', 'AUTHENTICATION', 'monday.com connection credentials are unavailable', 0, '', false, { definiteRefusal: true });
     }
-    if (request.requiresCheckpoint) {
-      if (call.context.deadline && call.context.deadline.getTime() - Date.now() < 6_000) {
-        await this.recordCanResend(call);
-        return failureExchange(operation, 'retry', 'AVAILABILITY', 'not enough time remains to send the mutation');
-      }
-      try { await call.context.recordHeartbeat(checkpoint); }
-      catch { await this.recordCanResend(call); return failureExchange(operation, 'retry', 'AVAILABILITY', 'dispatch checkpoint could not be recorded'); }
-    }
-    let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
-    let pendingHeartbeat = Promise.resolve();
-    if (request.requiresCheckpoint) {
-      heartbeatTimer = setInterval(() => {
-        pendingHeartbeat = pendingHeartbeat.then(() => call.context.recordHeartbeat(checkpoint)).catch(() => { /* Best effort keepalive. */ });
-      }, 5_000);
-    }
-    let result: MondayExchange;
-    try {
-      result = await this.sendOnce(call, operation, request, accessToken);
-      if (result.status === 401 && credentials.authMethodId === 'monday-oauth' && 'resolveAfterRejection' in this.credentials) {
-        try {
-          const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-          const replacementToken = replacement.accessToken?.reveal();
-          if (replacementToken && isHeaderSafeCredential(replacementToken)) {
-            if (request.requiresCheckpoint && call.context.deadline && call.context.deadline.getTime() - Date.now() < 6_000) {
-              result = failureExchange(operation, 'retry', 'AVAILABILITY', 'not enough time remains to resend the mutation');
-            } else result = await this.sendOnce(call, operation, request, replacementToken);
+    return { credentials, accessToken };
+  }
+
+  /**
+   * Send once under signal and resend once after monday.com rejects an OAuth token. A fenced write
+   * passes its write deadline and resends only when that window still fits a request.
+   */
+  async sendWithRejectionRefresh(call: Call, operation: string, request: MondayRequest, resolved: ResolvedMondayCredentials, signal: AbortSignal | undefined, writeDeadlineMs?: number): Promise<MondayExchange> {
+    let result = await this.sendOnce(call, operation, request, resolved.accessToken, signal);
+    if (result.status === 401 && resolved.credentials.authMethodId === 'monday-oauth' && 'resolveAfterRejection' in this.credentials) {
+      try {
+        const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+        const replacementToken = replacement.accessToken?.reveal();
+        if (replacementToken && isHeaderSafeCredential(replacementToken)) {
+          // HTTP 401 proves the first send was refused, and the refreshed one is not sent.
+          if (writeDeadlineMs !== undefined && writeDeadlineMs - Date.now() < minimumFencedRequestWindowMs) {
+            return failureExchange(operation, 'retry', 'AVAILABILITY', 'not enough time remains to resend the mutation', 0, '', false, { provenNotProcessed: true });
           }
-        } catch { /* Go retains the original HTTP 401 when coordinated refresh fails. */ }
-      }
-    } finally {
-      if (heartbeatTimer) clearInterval(heartbeatTimer);
-      await pendingHeartbeat;
-    }
-    if (request.requiresCheckpoint && result.outcome === 'retry') {
-      if (result.status >= 200 && result.status < 300 && (!result.confirmedNotProcessed || result.data !== undefined)) result = { ...result, outcome: 'uncertain' };
-      else if (result.data === undefined) await this.recordCanResend(call);
+          result = await this.sendOnce(call, operation, request, replacementToken, signal);
+        }
+      } catch { /* Go retains the original HTTP 401 when coordinated refresh fails. */ }
     }
     return result;
   }
@@ -150,36 +167,38 @@ export class MondayClient {
     };
   }
 
-  private async recordCanResend(call: Call): Promise<void> {
-    try { await call.context.recordHeartbeat({ callId: call.id, attempt: call.context.attempt, canResend: true }); }
-    catch { /* Go also ignores a best effort resend checkpoint error. */ }
-  }
-
-  private async sendOnce(call: Call, operation: string, request: MondayRequest, accessToken: string): Promise<MondayExchange> {
-    if (request.isMutation && !call.idempotencyKey) return failureExchange(operation, 'defect', 'LOCAL_DEFECT', 'monday.com mutation has no idempotency key');
+  private async sendOnce(call: Call, operation: string, request: MondayRequest, accessToken: string, signal: AbortSignal | undefined): Promise<MondayExchange> {
+    if (request.isMutation && !call.idempotencyKey) return failureExchange(operation, 'defect', 'LOCAL_DEFECT', 'monday.com mutation has no idempotency key', 0, '', false, { definiteRefusal: true });
     const timeoutMs = Math.min(defaultTimeoutMs, call.context.deadline ? call.context.deadline.getTime() - Date.now() - 3_000 : defaultTimeoutMs);
-    if (timeoutMs <= 0) return failureExchange(operation, 'retry', 'TRANSPORT', 'monday.com request context expired before dispatch');
+    if (timeoutMs <= 0) return failureExchange(operation, 'retry', 'TRANSPORT', 'monday.com request context expired before dispatch', 0, '', false, { provenNotProcessed: true });
     const providerRequest: ProviderRequest = {
       url: this.apiURL, method: 'POST', headers: {
         Accept: 'application/json', 'Content-Type': 'application/json', Authorization: accessToken, 'API-Version': '2026-10',
         ...(request.isMutation ? { 'Idempotency-Key': call.idempotencyKey! } : {}),
       }, body: Buffer.from(JSON.stringify({ query: request.document, variables: request.variables })),
-      maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: this.maxResponseBytes, ignoreErrorBodyReadFailure: true,
-      addressPolicy: this.apiURL === defaultAPIURL ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, signal: call.context.cancellationSignal,
+      // A broken or oversized error body throws, so a refusal status is never read from a partial body.
+      maxResponseBytes: this.maxResponseBytes,
+      addressPolicy: this.apiURL === defaultAPIURL ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, ...(signal ? { signal } : {}),
     };
     let response: ProviderResponse;
+    let isErrorBodyOversized = false;
     try { response = await this.send(providerRequest); }
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) {
         response = { status: error.status, headers: error.headers, body: new Uint8Array() };
+        isErrorBodyOversized = true;
         if (response.status >= 200 && response.status < 300) return failureExchange(operation, 'invalid', 'RESPONSE_TOO_LARGE', 'monday.com response exceeds the configured maxResponseBytes limit', response.status, '', headerValue(response.headers['idempotency-replayed']).trim().toLowerCase() === 'true');
-      } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return failureExchange(operation, 'retry', 'TRANSPORT', 'monday.com could not be reached; no request was sent');
-      else return failureExchange(operation, request.isMutation && operation !== 'updateItemColumnValues' ? 'uncertain' : 'retry', 'TRANSPORT', 'monday.com request failed before a response arrived');
+      } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return failureExchange(operation, 'retry', 'TRANSPORT', 'monday.com could not be reached; no request was sent', 0, '', false, { provenNotProcessed: true });
+      else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 200 && error.status < 300) {
+        // Keep the status: monday.com may have accepted the write, so it is never resent.
+        const isReplayed = headerValue(error.headers?.['idempotency-replayed']).trim().toLowerCase() === 'true';
+        return failureExchange(operation, request.isMutation ? 'invalid' : 'retry', 'TRANSPORT', 'monday.com response could not be read', error.status, '', isReplayed, { successBodyUnreadable: true });
+      } else return failureExchange(operation, request.isMutation ? 'uncertain' : 'retry', 'TRANSPORT', 'monday.com request failed before a response arrived');
     }
     const body = response.body;
     const status = response.status;
     const isReplayed = headerValue(response.headers['idempotency-replayed']).trim().toLowerCase() === 'true';
-    if (Buffer.from(body).includes(Buffer.from(accessToken))) return failureExchange(operation, 'invalid', 'PROTOCOL', 'monday.com response reflected the connection credential', status, '', isReplayed);
+    if (Buffer.from(body).includes(Buffer.from(accessToken))) return failureExchange(operation, 'invalid', 'PROTOCOL', 'monday.com response reflected the connection credential', status, '', isReplayed, { credentialReflected: true });
     const requestID = readErrorTokens(body, ['/extensions/request_id'])[0] ?? '';
     const safeRequestID = /^[A-Za-z0-9._:-]{1,128}$/.test(requestID) ? requestID : '';
     const base = { status, requestID: safeRequestID, isReplayed };
@@ -188,17 +207,22 @@ export class MondayClient {
     try { const parsed: unknown = JSON.parse(Buffer.from(body).toString()); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) envelope = parsed as Record<string, unknown>; }
     catch { /* Status alone classifies non-success replies. */ }
     const data = envelope?.data === null ? undefined : envelope?.data;
-    if (status < 200 || status >= 300) return classifyFailure(operation, body, status, accessToken, retryAfterMs, base, data);
+    if (status < 200 || status >= 300) {
+      const classified = classifyFailure(operation, body, status, accessToken, retryAfterMs, base, data);
+      // An oversized error body may hide an accepted write, so its refusal status proves nothing.
+      if (request.isMutation && isErrorBodyOversized && classified.definiteRefusal) return { ...classified, outcome: 'retry', definiteRefusal: false };
+      return classified;
+    }
     if (!envelope) return { ...failureExchange(operation, 'invalid', 'PROTOCOL', 'monday.com returned a response that is not a GraphQL JSON object', status, safeRequestID, isReplayed), retryAfterMs };
     if (envelope.errors !== undefined && envelope.errors !== null && !Array.isArray(envelope.errors)) return failureExchange(operation, 'invalid', 'PROTOCOL', 'monday.com returned a response that is not a GraphQL JSON object', status, safeRequestID, isReplayed);
     if (Array.isArray(envelope.errors) && envelope.errors.length) return classifyFailure(operation, body, status, accessToken, retryAfterMs, base, data);
     if (data === undefined) return failureExchange(operation, 'invalid', 'PROTOCOL', 'monday.com returned neither data nor errors', status, safeRequestID, isReplayed);
-    return { outcome: 'succeeded', ...base, data, retryAfterMs: 0, confirmedNotProcessed: false };
+    return { outcome: 'succeeded', ...base, data, retryAfterMs: 0 };
   }
 }
 
-function failureExchange(operation: string, outcome: MondayExchange['outcome'], kind: Failure['kind'], message: string, status = 0, requestID = '', isReplayed = false): MondayExchange {
-  return { outcome, status, requestID, isReplayed, failure: { kind, provider: 'monday', operation, message }, retryAfterMs: 0, confirmedNotProcessed: false };
+function failureExchange(operation: string, outcome: MondayExchange['outcome'], kind: Failure['kind'], message: string, status = 0, requestID = '', isReplayed = false, evidence: MondayExchangeEvidence = {}): MondayExchange {
+  return { outcome, status, requestID, isReplayed, failure: { kind, provider: 'monday', operation, message }, retryAfterMs: 0, ...evidence };
 }
 
 function classifyFailure(operation: string, body: Uint8Array, status: number, secret: string, retryAfterMs: number, base: { status: number; requestID: string; isReplayed: boolean }, data: unknown): MondayExchange {
@@ -211,26 +235,28 @@ function classifyFailure(operation: string, body: Uint8Array, status: number, se
   const columnIDValue = readErrorTokens(body, ['/errors/0/extensions/error_data/column_id'])[0] ?? '';
   const columnID = !columnIDValue.includes(secret) ? columnIDValue : '';
   const describe = (verb: string) => `monday.com ${verb} (HTTP ${status})${code || columnID ? ` [${[code, columnID ? `column ${columnID}` : ''].filter(Boolean).join('; ')}]` : ''}`;
-  const confirmedNotProcessed = data === undefined && (rateCodes.has(code) || code === 'IDEMPOTENCY_CONFLICT' || unavailableCodes.has(code) || [429, 409, 423, 503].includes(classifiedStatus));
-  const outcome = (disposition: MondayExchange['outcome'], kind: Failure['kind'], message: string): MondayExchange => ({ outcome: disposition, ...base, ...(data === undefined ? {} : { data }), failure: { kind, provider: 'monday', operation, message }, retryAfterMs, confirmedNotProcessed });
-  if (code === 'DAILY_LIMIT_EXCEEDED') return outcome('rejected', 'QUOTA_EXHAUSTED', describe('daily call limit is exhausted until midnight UTC'));
-  if (rateCodes.has(code)) return outcome('retry', 'RATE_LIMIT', describe('rate limited the request'));
+  const outcome = (disposition: MondayExchange['outcome'], kind: Failure['kind'], message: string, evidence: MondayExchangeEvidence = {}): MondayExchange => ({ outcome: disposition, ...base, ...(data === undefined ? {} : { data }), failure: { kind, provider: 'monday', operation, message }, retryAfterMs, ...evidence });
+  // Rate limits and 503 prove nothing was processed; a listed code or status proves a refusal.
+  const notProcessed = { provenNotProcessed: true }, refused = { definiteRefusal: true };
+  if (code === 'DAILY_LIMIT_EXCEEDED') return outcome('rejected', 'QUOTA_EXHAUSTED', describe('daily call limit is exhausted until midnight UTC'), refused);
+  if (rateCodes.has(code)) return outcome('retry', 'RATE_LIMIT', describe('rate limited the request'), notProcessed);
   if (code === 'IDEMPOTENCY_CONFLICT') { retryAfterMs = Math.max(retryAfterMs, 2000); return outcome('retry', 'CONFLICT', describe('is still processing an earlier attempt with this idempotency key')); }
-  if (unavailableCodes.has(code)) return outcome('retry', 'AVAILABILITY', describe('temporarily refused the request'));
-  if (authCodes.has(code)) return outcome('rejected', 'AUTHENTICATION', describe('rejected the credential'));
-  if (permissionCodes.has(code)) return outcome('rejected', 'AUTHORIZATION', describe('denied permission'));
-  if (missingCodes.has(code)) return outcome('notFound', 'NOT_FOUND', describe('found no such board, group, or item'));
-  if (validationCodes.has(code)) return outcome('rejected', 'VALIDATION', describe('rejected the input'));
-  if (documentCodes.has(code)) return outcome('defect', 'PROTOCOL', describe("rejected the connector's GraphQL request"));
-  if (classifiedStatus === 429) return outcome('retry', 'RATE_LIMIT', describe('rate limited the request'));
+  if (unavailableCodes.has(code)) return outcome('retry', 'AVAILABILITY', describe('temporarily refused the request'), notProcessed);
+  if (authCodes.has(code)) return outcome('rejected', 'AUTHENTICATION', describe('rejected the credential'), refused);
+  if (permissionCodes.has(code)) return outcome('rejected', 'AUTHORIZATION', describe('denied permission'), refused);
+  if (missingCodes.has(code)) return outcome('notFound', 'NOT_FOUND', describe('found no such board, group, or item'), refused);
+  if (validationCodes.has(code)) return outcome('rejected', 'VALIDATION', describe('rejected the input'), refused);
+  if (documentCodes.has(code)) return outcome('defect', 'PROTOCOL', describe("rejected the connector's GraphQL request"), refused);
+  if (classifiedStatus === 429) return outcome('retry', 'RATE_LIMIT', describe('rate limited the request'), notProcessed);
   if (classifiedStatus === 409) { retryAfterMs = Math.max(retryAfterMs, 2000); return outcome('retry', 'CONFLICT', describe('is still processing an earlier attempt with this idempotency key')); }
   if (classifiedStatus === 423) return outcome('retry', 'AVAILABILITY', describe('locked the board for a concurrent change'));
+  if (classifiedStatus === 503) return outcome('retry', 'AVAILABILITY', describe('could not complete the request'), notProcessed);
   if (classifiedStatus === 408 || classifiedStatus >= 500) return outcome('retry', 'AVAILABILITY', describe('could not complete the request'));
-  if (classifiedStatus === 401) return outcome('rejected', 'AUTHENTICATION', describe('rejected the credential'));
-  if (classifiedStatus === 403) return outcome('rejected', 'AUTHORIZATION', describe('denied permission'));
-  if (classifiedStatus === 404) return outcome('notFound', 'NOT_FOUND', describe('found no such board, group, or item'));
-  if (classifiedStatus === 400) return outcome('defect', 'PROTOCOL', describe("rejected the connector's GraphQL request"));
-  if (classifiedStatus === 422) return outcome('rejected', 'VALIDATION', describe('rejected the input'));
+  if (classifiedStatus === 401) return outcome('rejected', 'AUTHENTICATION', describe('rejected the credential'), refused);
+  if (classifiedStatus === 403) return outcome('rejected', 'AUTHORIZATION', describe('denied permission'), refused);
+  if (classifiedStatus === 404) return outcome('notFound', 'NOT_FOUND', describe('found no such board, group, or item'), refused);
+  if (classifiedStatus === 400) return outcome('defect', 'PROTOCOL', describe("rejected the connector's GraphQL request"), refused);
+  if (classifiedStatus === 422) return outcome('rejected', 'VALIDATION', describe('rejected the input'), refused);
   if (classifiedStatus >= 300 && classifiedStatus < 400) return outcome('rejected', 'PROTOCOL', describe('redirected the request'));
-  return outcome('rejected', 'PROVIDER_REJECTION', describe('rejected the request'));
+  return outcome('rejected', 'PROVIDER_REJECTION', describe('rejected the request'), definiteWriteRefusalStatuses.has(classifiedStatus) ? refused : {});
 }

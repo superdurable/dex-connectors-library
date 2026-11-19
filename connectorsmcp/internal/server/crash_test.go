@@ -232,10 +232,10 @@ func TestIdempotentWriteCrashPointsApplyAtMostOnce(t *testing.T) {
 	}
 }
 
-// TestAnUnobservedEffectSurvivesACrashBeforeItIsRecorded kills the server
-// after an attempt that applied but asked to retry; the resumed call must not
-// end rejected.
-func TestAnUnobservedEffectSurvivesACrashBeforeItIsRecorded(t *testing.T) {
+// TestACrashAfterAnAppliedRetryResumesWithoutASecondEffect kills the server
+// after an attempt that applied but asked to retry; the resumed call takes
+// its own branch's outcome, as Dex Agents do.
+func TestACrashAfterAnAppliedRetryResumesWithoutASecondEffect(t *testing.T) {
 	fixture := newCrashFixture(t)
 	fixture.provider.Script("saveRecord",
 		testconnectors.ScriptedResponse{IsEffectAppliedFirst: true, Status: http.StatusServiceUnavailable},
@@ -246,7 +246,8 @@ func TestAnUnobservedEffectSurvivesACrashBeforeItIsRecorded(t *testing.T) {
 	fixture.crashDuringCall(crashScenario{crashPoint: ProtocolPointAfterAttempt}, "saveRecord", "example-notes_save_record", arguments, "flow/turn/unobserved")
 	survivor := fixture.startHelper("", "")
 	result := decodeCallResult(t, mustCall(t, survivor, "example-notes_save_record", arguments, "flow/turn/unobserved"))
-	require.Equal(t, outcomeUnknown, result.outcome(), "the crashed attempt's effect was never observed, so the later rejection proves nothing")
+	require.Equal(t, outcomeRejected, result.outcome(), "a listed rejected branch stays rejected")
+	require.NotContains(t, result.text(), "nothing was sent")
 	require.Equal(t, 1, fixture.provider.AppliedRecordWrites(saveRecordIdempotencyKey("flow/turn/unobserved")))
 }
 

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -117,6 +118,9 @@ func (operation GetProfileOperation) Invoke(call sdkgo.Call, input GetProfileInp
 		return sdkgo.NewQueryBranch(GetProfileBranchDefect, Profile{}, klaviyoFailure(name, sdkgo.FailureValidation, "profile ID is invalid"), sdkgo.Receipt{})
 	}
 	request, failure := operation.client.newRequest(call, http.MethodGet, "/profiles/"+url.PathEscape(input.ID), nil, name)
+	if failure != nil && failure.Kind == sdkgo.FailureAvailability {
+		return sdkgo.NewQueryRetry[Profile](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetProfileBranchDefect, Profile{}, failure, sdkgo.Receipt{})
 	}
@@ -167,6 +171,9 @@ func (operation CreateEventOperation) Invoke(call sdkgo.Call, input CreateEventI
 		return sdkgo.NewMutationBranch(CreateEventBranchDefect, EventAcceptance{}, klaviyoFailure(name, sdkgo.FailureValidation, "event payload is invalid or too large"), sdkgo.Receipt{})
 	}
 	request, failure := operation.client.newRequest(call, http.MethodPost, "/events", payload, name)
+	if failure != nil && failure.Kind == sdkgo.FailureAvailability {
+		return sdkgo.NewMutationRetry[EventAcceptance](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateEventBranchDefect, EventAcceptance{}, failure, sdkgo.Receipt{})
 	}
@@ -178,14 +185,32 @@ func (operation CreateEventOperation) Invoke(call sdkgo.Call, input CreateEventI
 	if retryStatus(response.StatusCode) {
 		return sdkgo.NewMutationRetry[EventAcceptance](*klaviyoFailure(name, sdkgo.FailureAvailability, "Klaviyo event submission is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
-	if response.StatusCode != http.StatusAccepted {
-		return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, EventAcceptance{}, klaviyoFailure(name, rejectionKind(response.StatusCode), "Klaviyo rejected event submission with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+	if response.StatusCode == http.StatusAccepted {
+		return sdkgo.NewMutationBranch(CreateEventBranchAccepted, EventAcceptance{Accepted: true}, nil, sdkgo.Receipt{})
 	}
-	return sdkgo.NewMutationBranch(CreateEventBranchAccepted, EventAcceptance{Accepted: true}, nil, sdkgo.Receipt{})
+	if !isDefiniteRefusalStatus(response.StatusCode) {
+		// The unique_id deduplicates a resend, so an unknown answer retries.
+		return sdkgo.NewMutationRetry[EventAcceptance](*klaviyoFailure(name, sdkgo.FailureAvailability, "Klaviyo answered event submission with HTTP "+strconv.Itoa(response.StatusCode)+", so its outcome is unknown"), 0)
+	}
+	return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, EventAcceptance{}, klaviyoFailure(name, rejectionKind(response.StatusCode), "Klaviyo rejected event submission with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+}
+
+// isDefiniteRefusalStatus reports a status that proves Klaviyo refused the request.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func (client *Client) newRequest(call sdkgo.Call, method, path string, payload []byte, operation string) (*http.Request, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		// FailureAvailability tells callers to Retry; nothing was sent.
+		return nil, klaviyoFailure(operation, sdkgo.FailureAvailability, "Klaviyo credentials are temporarily unavailable")
+	}
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.PrivateAPIKey.Reveal()) {
 		return nil, klaviyoFailure(operation, sdkgo.FailureAuthentication, "Klaviyo credentials are unavailable or invalid")
 	}
@@ -198,6 +223,13 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, payload [
 	request.Header.Set("Content-Type", "application/vnd.api+json")
 	request.Header.Set("revision", apiRevision)
 	return request, nil
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func validEventEmail(value string) bool {

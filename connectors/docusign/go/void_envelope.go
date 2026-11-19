@@ -92,6 +92,9 @@ func (client *Client) classifyVoidRefusal(
 	switch {
 	case outcome.isRetry:
 		return sdkgo.NewMutationRetry[VoidedEnvelope](outcome.failure, outcome.retryAfter)
+	case !isDefiniteDocuSignRefusal(response.statusCode) || response.isErrorBodyIncomplete:
+		// A 3xx, 409, other unlisted status, or an incomplete error body leaves the void unknown; voiding again is safe.
+		return sdkgo.NewMutationRetry[VoidedEnvelope](outcome.failure, outcome.retryAfter)
 	case outcome.isNotFound:
 		return sdkgo.NewMutationBranch(VoidEnvelopeBranchNotFound, VoidedEnvelope{}, &outcome.failure, receipt)
 	case !isDocuSignCodeIn(outcome.errorCode, voidRefusalCodes):
@@ -100,7 +103,8 @@ func (client *Client) classifyVoidRefusal(
 	envelope, readOutcome, err := client.readEnvelope(call, session, voidEnvelopeOperationID, envelopeID)
 	switch {
 	case err != nil:
-		return sdkgo.NewMutationBranch(VoidEnvelopeBranchInvalidResponse, VoidedEnvelope{}, docusignFailurePointer(voidEnvelopeOperationID, responseFailureKind(err), responseFailureMessage(err)), receipt)
+		// The status read-back is inconclusive, and voiding again is safe.
+		return sdkgo.NewMutationRetry[VoidedEnvelope](docusignFailure(voidEnvelopeOperationID, responseFailureKind(err), responseFailureMessage(err)), 0)
 	case readOutcome != nil && readOutcome.isRetry:
 		return sdkgo.NewMutationRetry[VoidedEnvelope](readOutcome.failure, readOutcome.retryAfter)
 	case readOutcome != nil && readOutcome.isNotFound:

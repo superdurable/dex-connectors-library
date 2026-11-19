@@ -211,7 +211,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Create the meeting once; an unknown outcome is reconciled, never created again automatically.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateMeetingInput,
-			Created: sdkgo.GoTo(recordScheduledMeeting{}),
+			// Reconciliation adopts the meeting from Zoom's list, so a resend would only risk a duplicate.
+			MaxSends: 1,
+			Created:  sdkgo.GoTo(recordScheduledMeeting{}),
 			// An uncertain create continues through meeting read-back and adoption.
 			Uncertain: sdkgo.GoTo(recordUncertainMeeting{}),
 		})),

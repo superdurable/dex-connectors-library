@@ -97,9 +97,9 @@ func (operation ListChannelMessagesOperation) Invoke(call sdkgo.Call, input List
 	if !isValidChannelHistoryInput(input) {
 		return sdkgo.NewQueryBranch(ListChannelMessagesBranchDefect, ListChannelMessagesOutput{}, slackFailurePointer(operationName, sdkgo.FailureValidation, "channel, valid Slack message timestamps, and page size 1 through 15 (blank or 0 reads 15) are required"), sdkgo.Receipt{})
 	}
-	credentials, failure, _ := operation.client.resolveCredentials(call, operationName, botCredentialToken)
+	credentials, failure, isTerminalCredentialFailure := operation.client.resolveCredentials(call, operationName, botCredentialToken)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(ListChannelMessagesBranchDefect, ListChannelMessagesOutput{}, failure, sdkgo.Receipt{})
+		return queryCredentialFailure[ListChannelMessagesOutput](ListChannelMessagesBranchDefect, failure, isTerminalCredentialFailure)
 	}
 	pageSize := input.PageSize
 	if pageSize == 0 {

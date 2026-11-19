@@ -49,7 +49,7 @@ func TestREADMEDescribesEveryServedProviderAndRegion(t *testing.T) {
 	for _, provider := range providerOrder {
 		api := providerAPIs[provider]
 		row := readmeProviderTableRow(t, readme, provider)
-		if provider == ProviderOpenaiCompatible {
+		if isCustomEndpointProvider(provider) {
 			require.Contains(t, row, "required", "custom endpoints require a model")
 		} else {
 			require.Contains(t, row, "`"+api.defaultModel+"`", "the provider table names %s's default model", provider)

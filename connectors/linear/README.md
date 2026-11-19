@@ -1,6 +1,6 @@
 # Linear Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/linear/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/linear/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/linear`.
 
@@ -222,9 +222,13 @@ input]`. The code and type decide before the HTTP status.
 | type `usage limit exceeded` | `providerRejected`, `QUOTA_EXHAUSTED`; a write is read back first |
 | `INPUT_ERROR`, `BAD_USER_INPUT`, types `invalid input`, `user error` | `providerRejected`, `VALIDATION`; a write is read back first |
 | `GRAPHQL_PARSE_FAILED`, `GRAPHQL_VALIDATION_FAILED`, `BAD_REQUEST`, type `graphql error`, bare 400 | `defect`, `PROTOCOL` |
-| any other code, 3xx | `providerRejected`; a write is read back first after another code |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads and `updateIssue`; a create or comment is read back and otherwise retried |
-| invalid input or connection credentials | `defect`, with no request |
+| any other code with HTTP 400, 404, 411, 413, 414, 415, or 422 | `providerRejected`; a write is read back first |
+| 3xx or any other unlisted status | Retry; a create or comment is read back first |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads; every write retries, and a create or comment is read back first |
+| invalid input, connection credentials, or malformed stored credential material | `defect`, with no request |
+
+`createIssue`, `updateIssue`, and `addComment` are declared `repeatOnUnknown: safe`: the creates resend the same
+client-supplied UUID and read it back, and the update sets absolute values, so an unknown outcome retries.
 
 A mutation whose payload returned a usable record beside a nested field error selects its happy branch. The
 Receipt carries the Call ID, the record ID, and Linear's `X-Request-Id`.

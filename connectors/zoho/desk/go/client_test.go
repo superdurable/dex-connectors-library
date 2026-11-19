@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -98,15 +99,17 @@ func TestUnauthorizedRequestRefreshesOnceAndResendsWithTheReplacement(t *testing
 			return
 		}
 		require.Equal(t, "Zoho-oauthtoken 1000.replacement-token", request.Header.Get("Authorization"))
-		writeValue(t, response, http.StatusOK, ticketJSON("1892000000099001", "Open", "Open"))
+		writeValue(t, response, http.StatusOK, ticketJSON(testTicketID, "Open", "Open"))
 	})
 	credentials := &rejectionRefreshingCredentialProvider{}
 	client, err := desk.New(desk.Config{OrgID: testOrganizationID}, credentials, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
 	require.NoError(t, err)
 
-	result, err := sdkgo.RunMutation(newDeskDexContext("refresh-once"), client.CreateTicket(), deskConnection, validCreateTicketInput())
+	result, err := sdkgo.RunMutation(newDeskDexContext("refresh-once"), client.UpdateTicket(), deskConnection,
+		desk.UpdateTicketInput{TicketID: testTicketID, Status: desk.TicketStatusOpen})
 	require.NoError(t, err)
-	require.Equal(t, desk.CreateTicketBranchCreated, result.Branch, "a 401 proves Zoho Desk created nothing, so one resend is safe")
+	require.Equal(t, desk.UpdateTicketBranchUpdated, result.Branch, "a 401 proves Zoho Desk read nothing, so one resend is safe")
+	require.True(t, result.Value.WasAlreadyApplied)
 	require.Equal(t, 2, provider.requestCount())
 	require.Equal(t, 1, credentials.forcedRefreshes)
 }
@@ -241,8 +244,14 @@ func TestCredentialFailuresSendNothing(t *testing.T) {
 		branch      sdkgo.BranchID
 		isRetry     bool
 	}{
-		"reauthorization required": {credentials: failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_code"))}, branch: desk.GetTicketBranchProviderRejected},
-		"refresh outage":           {credentials: failingCredentialProvider{err: errors.New("Zoho token endpoint returned HTTP 503")}, isRetry: true},
+		"reauthorization required":  {credentials: failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_code"))}, branch: desk.GetTicketBranchProviderRejected},
+		"refresh outage":            {credentials: failingCredentialProvider{err: errors.New("Zoho token endpoint returned HTTP 503")}, isRetry: true},
+		"broker unavailable":        {credentials: failingCredentialProvider{err: projectconfig.ErrCredentialBrokerUnavailable}, isRetry: true},
+		"connection not configured": {credentials: sdkgo.StaticCredentialProvider[desk.Credentials]{}, isRetry: true},
+		"project reauthorization":   {credentials: failingCredentialProvider{err: projectconfig.ErrReauthorizationRequired}, branch: desk.GetTicketBranchProviderRejected},
+		"connection object missing": {credentials: failingCredentialProvider{err: projectconfig.ErrObjectNotFound}, branch: desk.GetTicketBranchProviderRejected},
+		"connection not selected":   {credentials: failingCredentialProvider{err: projectconfig.ErrConnectionNotSelected}, branch: desk.GetTicketBranchProviderRejected},
+		"broker rejected":           {credentials: failingCredentialProvider{err: projectconfig.ErrCredentialBrokerRejected}, branch: desk.GetTicketBranchProviderRejected},
 		"unknown data center": {credentials: sdkgo.StaticCredentialProvider[desk.Credentials]{deskConnection: testCredentials("zoho-cn-oauth")},
 			branch: desk.GetTicketBranchDefect},
 		"token with a space": {credentials: sdkgo.StaticCredentialProvider[desk.Credentials]{deskConnection: {AuthMethodID: desk.USDataCenterAuthMethodID, AccessToken: sdkgo.NewSecretString("two words")}},

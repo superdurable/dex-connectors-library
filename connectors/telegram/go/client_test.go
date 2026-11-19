@@ -5,6 +5,7 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -34,6 +36,26 @@ func newTestClient(t *testing.T, baseURL string) *Client {
 	client, err := New(Config{BaseURL: baseURL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{BotToken: sdkgo.NewSecretString(testBotToken)}})
 	require.NoError(t, err)
 	return client
+}
+
+func TestGetChatRetriesATransientCredentialFailure(t *testing.T) {
+	input := GetChatInput{ChatID: "@meridian_team"}
+	for _, credentialErr := range []error{errors.New("connection is not configured"), projectconfig.ErrCredentialBrokerUnavailable} {
+		client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, failingCredentialProvider{credentialErr})
+		require.NoError(t, err)
+		_, err = sdkgo.RunQuery(queryContext{}, client.GetChat(), testConnection, input)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "a transient credential failure retries")
+	}
+	terminalErrors := []error{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), projectconfig.ErrReauthorizationRequired,
+		projectconfig.ErrObjectNotFound, projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected}
+	for _, credentialErr := range terminalErrors {
+		client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, failingCredentialProvider{credentialErr})
+		require.NoError(t, err)
+		result, err := sdkgo.RunQuery(queryContext{}, client.GetChat(), testConnection, input)
+		require.NoError(t, err)
+		require.Equal(t, GetChatBranchDefect, result.Branch)
+	}
 }
 
 func TestGetChatProviderOutcomesAndSecretSafety(t *testing.T) {

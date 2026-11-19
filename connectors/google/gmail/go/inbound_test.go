@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestGetMessageDecodesHeadersAndBodies(t *testing.T) {
@@ -55,6 +57,36 @@ func TestGetMessageClassifiesProviderAndResponseFailures(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, test.wantBranch, result.Branch)
 			require.Equal(t, test.wantKind, result.Failure.Kind)
+		})
+	}
+}
+
+// TestGetMessageCredentialFailuresRetryUnlessTerminal keeps defect for reconnection-only failures.
+func TestGetMessageCredentialFailuresRetryUnlessTerminal(t *testing.T) {
+	for _, test := range []struct {
+		err        error
+		isTerminal bool
+	}{
+		{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), isTerminal: true},
+		{err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		{err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerUnavailable},
+		{err: errors.New("connection is not configured")},
+		{err: errors.New("unlisted resolve failure")},
+	} {
+		t.Run(test.err.Error(), func(t *testing.T) {
+			client, err := gmail.New(gmail.Config{Endpoint: "http://127.0.0.1:1"}, &sequencedGmailCredentials{resolutions: []error{test.err}})
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(newGmailDexContext("read-message-credentials"), client.GetMessage(), gmailConnection, gmail.GetMessageInput{MessageID: "message-1"})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, gmail.GetMessageBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
 		})
 	}
 }

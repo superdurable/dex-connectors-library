@@ -1,0 +1,529 @@
+{
+  "connector": "dataeyes",
+  "scenarios": [
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"metadata\":{\"title\":\"Example Domain\",\"url\":\"private-provider-metadata\"},\"markdown\":\"# Example Domain\",\"html\":\"private-provider-html\"},\"message\":\"private-provider-message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "markdown": "# Example Domain",
+          "title": "Example Domain"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-found",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"metadata\":{\"title\":\"Empty Page\"},\"markdown\":\"\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "markdown": "",
+          "title": "Empty Page"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-empty-markdown",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":32000,\"message\":\"private-provider-message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "markdown": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-page-rejected",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"quota exhausted; private-provider-message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "markdown": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-quota-rejected",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "markdown": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-invalid-json",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"metadata\":{\"title\":\"No markdown\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "markdown": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-missing-markdown",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"metadata\":{\"title\":\"Example\"},\"markdown\":\"# long\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "markdown": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-oversize",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"busy\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-rate-limit",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporary\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-server-error",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "body": "{\"code\":32002,\"message\":\"private-provider-message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-page-timeout",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/reader",
+          "requestBody": {
+            "format": "markdown",
+            "url": "https://example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-transport-before-send",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "markdown": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "http://example.com"
+      },
+      "name": "readWebPage-invalid-url",
+      "operation": "readWebPage"
+    },
+    {
+      "callId": "8da7fb0b-4714-577d-80d5-4d1a6b6ac557",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "markdown": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "url": "https://example.com"
+      },
+      "name": "readWebPage-missing-key",
+      "operation": "readWebPage"
+    }
+  ],
+  "schemaVersion": 1
+}

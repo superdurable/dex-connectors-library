@@ -11,7 +11,20 @@ from typing import Any
 from urllib.parse import quote, quote_plus, urlencode, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, QueryAttempt, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    QueryAttempt,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -28,6 +41,22 @@ from ._generated.config import Credentials as Credentials
 _LOGIN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\Z")
 _REPOSITORY = re.compile(r"[A-Za-z0-9._-]{1,100}\Z")
 _API_VERSION = re.compile(r"\d{4}-\d{2}-\d{2}\Z")
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure no later attempt resolves without a person."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _is_loopback(host: str | None) -> bool:
@@ -80,6 +109,11 @@ def _scopes_match(response: _Response) -> bool:
     return {
         scope.strip() for scope in response.headers.get("X-OAuth-Scopes", "").split(",") if scope.strip()
     } == {"read:user", "user:email"}
+
+
+def _access_token(credential: Credentials) -> str:
+    """Return the revealed access token, or empty when the credential has none."""
+    return credential.access_token.reveal() if credential.access_token is not None else ""
 
 
 @dataclass(slots=True, repr=False)
@@ -162,17 +196,24 @@ class Client:
     ) -> tuple[_CredentialState | None, QueryAttempt[Any] | None]:
         try:
             credential = await self._credentials.resolve(call)
-            if not isinstance(credential, Credentials) or not credential.access_token.reveal():
-                raise ValueError("GitHub access token is required")
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                # Nothing reached GitHub, so a transient credential failure retries.
+                return None, QueryAttempt.retry(
+                    _failure(
+                        operation, FailureKind.AVAILABILITY, "GitHub credentials are temporarily unavailable"
+                    )
+                )
+            credential = None
+        if isinstance(credential, Credentials) and _access_token(credential):
             return _CredentialState(credential), None
-        except Exception:
-            return None, self._branch(
-                operation,
-                "defect",
-                empty,
-                FailureKind.AUTHENTICATION,
-                "GitHub authorization is unavailable or revoked",
-            )
+        return None, self._branch(
+            operation,
+            "defect",
+            empty,
+            FailureKind.AUTHENTICATION,
+            "GitHub authorization is unavailable or revoked",
+        )
 
     async def _get(
         self, call: Call, credential: _CredentialState, path: str, query: dict[str, str] | None = None
@@ -184,7 +225,7 @@ class Client:
                 target,
                 headers={
                     "Accept": "application/vnd.github+json",
-                    "Authorization": "Bearer " + credential.value.access_token.reveal(),
+                    "Authorization": "Bearer " + _access_token(credential.value),
                     "User-Agent": "superdurable-dex-github-connector/0.1",
                     "X-GitHub-Api-Version": self.config.api_version,
                 },
@@ -206,7 +247,7 @@ class Client:
                 replacement = await self._credentials.resolve_after_rejection(call)
             except Exception:
                 return result
-            if not isinstance(replacement, Credentials) or not replacement.access_token.reveal():
+            if not isinstance(replacement, Credentials) or not _access_token(replacement):
                 return result
             credential.value = replacement
         raise AssertionError("request attempt exhausted")

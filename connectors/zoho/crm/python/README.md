@@ -1,6 +1,6 @@
 # Zoho CRM connector for Python
 
-Install `dex-connector-zoho-crm==0.1.0`. It requires
+Install `dex-connector-zoho-crm==0.1.1`. It requires
 `dex-connectors-sdk==0.7.0` and `dex-python-sdk>=1.28.0`.
 The package implements all six operations in `connector.yaml` and has no Triggers.
 

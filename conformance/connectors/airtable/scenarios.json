@@ -1140,15 +1140,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "createdRecordIds": [],
-          "records": [],
-          "updatedRecordIds": []
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1169,7 +1164,7 @@
         "tableIdOrName": "tblPolicies000001",
         "typecast": true
       },
-      "name": "upsertRecords-invalid-response",
+      "name": "upsertRecords-unusable-answer-retry",
       "operation": "upsertRecords"
     },
     {
@@ -1638,13 +1633,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "records": []
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1662,7 +1654,7 @@
         "tableIdOrName": "tblPolicies000001",
         "typecast": true
       },
-      "name": "updateRecords-invalid-response",
+      "name": "updateRecords-unusable-answer-retry",
       "operation": "updateRecords"
     },
     {

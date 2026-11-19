@@ -26,6 +26,15 @@ describe('HackerNewsClient', () => {
     expect(() => newProjectConnection(project, 'public')).toThrow('timeout');
   });
 
+  it('accepts the searchBaseUrl setting and rejects unknown settings', () => {
+    const projectWith = (configuration: Record<string, unknown>) => ({ configuration: { connections: [{
+      connectorId: 'hacker-news-daily', connectionName: 'public', provider: 'hacker-news', configuration,
+    }] } } as unknown as LoadedProject);
+    expect(() => newProjectConnection(projectWith({ searchBaseUrl: 'http://127.0.0.1:8849/api/v1' }), 'public')).not.toThrow();
+    expect(() => newProjectConnection(projectWith({ searchBaseUrl: 42 }), 'public')).toThrow();
+    expect(() => newProjectConnection(projectWith({ unknownSetting: 'x' }), 'public')).toThrow();
+  });
+
   it('accepts input that omits the defaulted feed and limit', () => {
     expect(ListStoryIDsInputSchema.parse({})).toEqual({});
     expect(ListStoryIDsInputSchema.parse({ limit: 2 })).toEqual({ limit: 2 });

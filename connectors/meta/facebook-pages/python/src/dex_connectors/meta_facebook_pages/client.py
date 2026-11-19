@@ -35,7 +35,7 @@ from ._generated.config import Credentials as Credentials
 from ._generated.definitions import GET_POST_DEFINITION, LIST_POSTS_DEFINITION
 from ._graph_error import decode_graph_error
 from .models import GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage
-from .publish import PublishTextPostOperation
+from .publish import PublishTextPostOperation, _is_terminal_credential_error
 
 Output = TypeVar("Output")
 _NUMERIC_ID = re.compile(r"[0-9]{1,40}\Z")
@@ -114,10 +114,29 @@ class Client:
         """Fetch JSON or classify a provider failure without exposing its body."""
         try:
             credential = await self.credentials.resolve(call)
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return _Outcome(
+                    "",
+                    Failure(
+                        FailureKind.AVAILABILITY,
+                        "facebook-pages",
+                        operation,
+                        "connection credentials are temporarily unavailable",
+                    ),
+                    True,
+                )
+            return _decision(
+                operation,
+                "defect",
+                FailureKind.AUTHENTICATION,
+                "connection credentials are unavailable or invalid",
+            )
+        try:
             access_token = credential.page_access_token.reveal()
             if not is_header_safe_credential(access_token):
                 raise ValueError("invalid Page token")
-        except (ValueError, LookupError, OSError, AttributeError):
+        except (ValueError, AttributeError):
             return _decision(
                 operation,
                 "defect",

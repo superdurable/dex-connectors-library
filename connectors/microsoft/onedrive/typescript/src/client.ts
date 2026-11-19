@@ -1,12 +1,20 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, ProviderTransportError, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderHTTPClient, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import { DriveItemSchema, type Config, type Credentials, type DriveItem, type ItemIdentity } from './generated/models.js';
+import { DriveItemSchema, isCredentialMaterialError, type Config, type Credentials, type DriveItem, type ItemIdentity } from './generated/models.js';
 import { CreateFolderOperation, GetFileOperation, ReadFileTextOperation, SearchFilesOperation, UploadFileOperation } from './operations.js';
+
+/** Report a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError ||
+    isCredentialMaterialError(error);
+}
 
 /** Graph item metadata projection; download URLs never enter the result. */
 export const itemFields = 'id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy';
@@ -25,6 +33,7 @@ export interface Exchange {
   /** Bounded provider body. */ body: Uint8Array;
   /** Sanitized transport or local failure. */ error?: 'defect' | 'transport' | 'read' | 'tooLarge';
   /** Current credential after an optional 401 refresh. */ credentials?: Credentials;
+  /** An error body was dropped for exceeding its bound, so its status alone is not definite. */ isErrorBodyIncomplete?: boolean;
 }
 
 /** Injectable transport and clock; application code uses the generated refresh driver. */
@@ -76,10 +85,18 @@ export class OneDriveClient {
   /** Return the bound uploadFile Mutation. */ uploadFile(): UploadFileOperation { return new UploadFileOperation(this); }
   /** Return the bound createFolder Mutation. */ createFolder(): CreateFolderOperation { return new CreateFolderOperation(this); }
 
-  /** Resolve generated token grants and enforce app-only drive IDs. */
-  async resolveCredentials(call: Call, operation: string, driveID: string): Promise<{ credentials?: Credentials; failure?: Failure }> {
+  /**
+   * Resolve generated token grants and enforce app-only drive IDs. `isRetryable` marks a credential failure
+   * other than reauthorization, a missing or unselected connection, a broker refusal, or invalid material.
+   */
+  async resolveCredentials(call: Call, operation: string, driveID: string): Promise<{ credentials?: Credentials; failure?: Failure; isRetryable?: boolean }> {
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
+    catch (error) {
+      if (isTerminalCredentialError(error)) return { failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable') };
+      return { failure: failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable; nothing was sent'), isRetryable: true };
+    }
     try {
-      const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? '') || !['', 'microsoft-oauth', 'microsoft-app-only'].includes(credentials.authMethodId ?? '')) throw new TypeError('invalid token');
       if (!driveID && credentials.authMethodId === 'microsoft-app-only') return { failure: failure(operation, 'VALIDATION', 'driveId is required with app-only authorization, which has no signed-in user') };
       return { credentials };
@@ -113,23 +130,26 @@ export class OneDriveClient {
         ...(options.body !== undefined ? { body: options.body } : {}),
       };
       let response: ProviderResponse;
+      let isErrorBodyIncomplete = false;
       try { response = await this.transport.send(request); }
       catch (error) {
         if (error instanceof BodyTooLargeError) {
           status = error.status ?? status; headers = error.headers ?? headers;
           if (status >= 200 && status < 300) return { status, headers, body: new Uint8Array(), error: 'tooLarge' };
           response = { status, headers, body: new Uint8Array() };
+          isErrorBodyIncomplete = true;
         } else if (error instanceof ProviderTransportError || error instanceof Error) {
           return { status, headers, body: new Uint8Array(), error: status ? 'read' : 'transport' };
         } else return { status: 0, headers: {}, body: new Uint8Array(), error: 'transport' };
       }
       status = response.status; headers = response.headers;
       if (status >= 200 && status < 300 && response.body.length > (options.limit ?? this.maxResponseBytes)) return { status, headers, body: new Uint8Array(), error: 'tooLarge' };
-      if (status !== 401 || attempt || options.preauthenticated || !('resolveAfterRejection' in this.credentials)) return { status, headers, body: response.body, credentials };
+      const answered: Exchange = { status, headers, body: response.body, credentials, ...(isErrorBodyIncomplete ? { isErrorBodyIncomplete } : {}) };
+      if (status !== 401 || attempt || options.preauthenticated || !('resolveAfterRejection' in this.credentials)) return answered;
       try { const refreshed = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-        if (!isHeaderSafeCredential(refreshed.accessToken?.reveal() ?? '') || !['', 'microsoft-oauth', 'microsoft-app-only'].includes(refreshed.authMethodId ?? '')) return { status, headers, body: response.body, credentials };
+        if (!isHeaderSafeCredential(refreshed.accessToken?.reveal() ?? '') || !['', 'microsoft-oauth', 'microsoft-app-only'].includes(refreshed.authMethodId ?? '')) return answered;
         credentials = refreshed;
-      } catch { return { status, headers, body: response.body, credentials }; }
+      } catch { return answered; }
     }
     return { status: 0, headers: {}, body: new Uint8Array(), error: 'defect' };
   }
