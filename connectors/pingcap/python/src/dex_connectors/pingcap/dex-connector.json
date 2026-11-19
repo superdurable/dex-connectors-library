@@ -1,0 +1,61 @@
+{
+  "connectorId": "pingcap",
+  "releaseTag": "connectors/pingcap/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-pingcap",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_projects_step",
+      "kind": "query",
+      "operationId": "listProjects",
+      "inputType": "ListProjectsInput",
+      "description": "List one page of projects accessible to the TiDB Cloud organization API key.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListProjectsInput selects a one-based page and number of projects per page.",
+        "properties": {
+          "page": {
+            "description": "Page defaults to 1 when omitted; valid values are positive.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize defaults to 10 when omitted; valid values are 1 through 100.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}
