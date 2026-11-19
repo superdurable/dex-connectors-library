@@ -1,0 +1,323 @@
+{
+  "connector": "kunlun",
+  "scenarios": [
+    {
+      "callId": "dfcee414-ec78-529d-883c-4a851597efc8",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\",\"status\":\"succeeded\",\"model\":\"mureka-6\",\"choices\":[{\"song_url\":\"https://example.invalid/private?token=media-secret\",\"lyrics\":\"private-lyrics\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/song/query/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "model": "mureka-6",
+          "status": "succeeded",
+          "taskId": "task-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-found",
+      "operation": "getTaskStatus"
+    },
+    {
+      "callId": "63623009-965b-5635-8259-fb09ac7050fb",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\",\"status\":\"running\",\"model\":\"mureka-6\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/song/query/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "model": "mureka-6",
+          "status": "running",
+          "taskId": "task-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-pending",
+      "operation": "getTaskStatus"
+    },
+    {
+      "callId": "e54ffb51-796e-5935-b2a6-9afec7e392b9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/song/query/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "model": "",
+          "status": "",
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-notFound",
+      "operation": "getTaskStatus"
+    },
+    {
+      "callId": "fe92f322-8a6d-57fa-8fa8-416665e3d15a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"secret-api-key\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/song/query/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "model": "",
+          "status": "",
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-providerRejected",
+      "operation": "getTaskStatus"
+    },
+    {
+      "callId": "38308e65-2365-57a0-a995-6b8cc09fc03d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"other\",\"status\":\"succeeded\",\"model\":\"mureka-6\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/song/query/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "model": "",
+          "status": "",
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-invalidResponse",
+      "operation": "getTaskStatus"
+    },
+    {
+      "callId": "a1f217bf-3cc5-5bff-a766-5d5897259a11",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/song/query/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-rateLimit",
+      "operation": "getTaskStatus"
+    },
+    {
+      "callId": "563b7ea6-a793-5387-a2c7-068ecce47e4e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/song/query/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-serverError",
+      "operation": "getTaskStatus"
+    },
+    {
+      "callId": "9b5f019a-fdb8-53c6-aea6-63268f3558bb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "model": "",
+          "status": "",
+          "taskId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "bad/id"
+      },
+      "name": "getTaskStatus-defect",
+      "operation": "getTaskStatus"
+    },
+    {
+      "callId": "c917f96b-c090-598a-a32d-c65504500260",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/song/query/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secret-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-transport",
+      "operation": "getTaskStatus"
+    }
+  ],
+  "schemaVersion": 1
+}
