@@ -2,9 +2,13 @@
 
 `@superdurable/connector-superdurable-llm` runs the manifest's `generateText`
 Query through the provider selected by the static Dex Web connection. The
-package supports OpenAI Responses, Claude Messages, Gemini generateContent, and
+package supports OpenAI Responses, Claude Messages, Gemini generateContent,
 the seven Chat Completions providers listed in the
-[connector README](../README.md). Model IDs belong to the selected provider.
+[connector README](../README.md), an OpenAI-compatible gateway on Chat
+Completions or the Responses API (`openaiCompatibleApi`), and an
+Anthropic-compatible Messages gateway. It validates `models` and
+`modelContextWindowTokens` as the Go connector does. Model IDs belong to the
+selected provider.
 
 The runnable [summarize-text example](examples/summarize-text/README.md)
 contains the application code for `newProjectConnection`,

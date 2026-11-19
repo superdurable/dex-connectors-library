@@ -84,8 +84,19 @@ Open the Dex Web URL that dexcli prints and select **Connectors**. Select
 For an OpenAI-compatible gateway, choose `openai-compatible`, enter its
 `baseUrl` ending in `/v1` (for example `https://example.com/v1`), its
 gateway-issued secret `api_key`, and a model ID supplied by that gateway.
-The same Flow then calls `/v1/chat/completions`; Studio offers manual model
+The same Flow then calls `/v1/chat/completions`, or `/v1/responses` when you
+set **API** (`openaiCompatibleApi`) to Responses; Studio offers manual model
 entry because its setup commands cannot list models at a configured URL.
+
+For a gateway that serves the Anthropic Messages API, choose
+`anthropic-compatible` and enter the Anthropic base URL the gateway documents
+for `ANTHROPIC_BASE_URL`, without `/v1` (for example
+`https://example.com/anthropic`), with its bearer `api_key` and a model ID.
+The same Flow then calls `<baseUrl>/v1/messages`. For either gateway,
+**Offered models** (`models`) and **Context windows**
+(`modelContextWindowTokens`) optionally list the model IDs the connection
+offers and their context windows as `<model ID>=<tokens>`; the Flow still runs
+the connection's model.
 
 After the save, the connection's `model` field shows the model picker with
 the provider's live models. Pick the connection's default model and select

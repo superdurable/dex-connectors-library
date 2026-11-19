@@ -22,7 +22,13 @@ import { loadQwenModels, qwenHongKongModelLists, qwenSingaporeModelLists } from 
 import { loadXAIModels } from "./xai-model-list.js";
 
 /** LLMProvider is one value of the connection's provider field. */
-export type LLMProvider = "openai" | "openai-compatible" | "anthropic" | "gemini" | "qwen" | "deepseek" | "meta" | "mistral" | "kimi" | "xai";
+export type LLMProvider =
+  "openai" | "openai-compatible" | "anthropic" | "anthropic-compatible" | "gemini" | "qwen" | "deepseek" | "meta" | "mistral" | "kimi" | "xai";
+
+/** isCustomEndpointProvider reports whether provider calls the API root in the connection's baseUrl. */
+export function isCustomEndpointProvider(provider: LLMProvider | ""): provider is "openai-compatible" | "anthropic-compatible" {
+  return provider === "openai-compatible" || provider === "anthropic-compatible";
+}
 
 /** LLMRegion is one value of the connection's region field; a blank region is global. */
 export type LLMRegion = "global" | "us" | "eu" | "china" | "hong-kong";
@@ -41,7 +47,9 @@ export interface LLMModelSource {
   load(client: ConnectorStudioClient, region: LLMRegion): Promise<ModelListing>;
 }
 
-const llmProviders: readonly LLMProvider[] = ["openai", "openai-compatible", "anthropic", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai"];
+const llmProviders: readonly LLMProvider[] = [
+  "openai", "openai-compatible", "anthropic", "anthropic-compatible", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai",
+];
 const llmRegions: readonly LLMRegion[] = ["global", "us", "eu", "china", "hong-kong"];
 
 const unsavedProviderMessage =
@@ -75,6 +83,10 @@ export const llmModelSources: Record<LLMProvider, LLMModelSource> = {
   anthropic: {
     label: "Claude",
     load: (client) => loadClaudeModelListing(client, {capability: llmModelsListCapability, commandId: "listAnthropicModels"}),
+  },
+  "anthropic-compatible": {
+    label: "Anthropic-compatible gateway",
+    load: async () => ({models: [], notices: [{tone: "info", message: compatibleModelMessage}]}),
   },
   gemini: {
     label: "Gemini",
