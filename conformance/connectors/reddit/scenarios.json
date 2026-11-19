@@ -1429,6 +1429,2148 @@
       },
       "name": "searchPosts-transportFailure",
       "operation": "searchPosts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"t2\",\"data\":{\"name\":\"example_user\",\"id\":\"abc123\",\"comment_karma\":12,\"link_karma\":34}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/example_user/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "commentKarma": 12,
+          "id": "t2_abc123",
+          "linkKarma": 34,
+          "name": "example_user",
+          "profileUrl": "https://www.reddit.com/user/example_user"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "example_user"
+      },
+      "name": "getUser-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/missing_user/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "commentKarma": 0,
+          "id": "",
+          "linkKarma": 0,
+          "name": "",
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "missing_user"
+      },
+      "name": "getUser-notFound",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000103",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/example_user/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "commentKarma": 0,
+          "id": "",
+          "linkKarma": 0,
+          "name": "",
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "example_user"
+      },
+      "name": "getUser-rejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000104",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"t2\",\"data\":{\"name\":\"other_user\",\"id\":\"t2_abc123\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/example_user/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "commentKarma": 0,
+          "id": "",
+          "linkKarma": 0,
+          "name": "",
+          "profileUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "example_user"
+      },
+      "name": "getUser-invalid",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000105",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "commentKarma": 0,
+          "id": "",
+          "linkKarma": 0,
+          "name": "",
+          "profileUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "bad/name"
+      },
+      "name": "getUser-defect",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/example_user/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "example_user"
+      },
+      "name": "getUser-rateLimit429",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/example_user/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "example_user"
+      },
+      "name": "getUser-unavailable503",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000108",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/example_user/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "username": "example_user"
+      },
+      "name": "getUser-transport",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000201",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"t5\",\"data\":{\"name\":\"t5_abc123\",\"display_name\":\"example\",\"title\":\"Example\",\"public_description\":\"Example posts\",\"subscribers\":100,\"url\":\"/r/example/\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/example/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "description": "Example posts",
+          "id": "t5_abc123",
+          "name": "example",
+          "subscribers": 100,
+          "title": "Example",
+          "url": "https://www.reddit.com/r/example/"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "example"
+      },
+      "name": "getSubreddit-found",
+      "operation": "getSubreddit"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000202",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/example/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "unavailable",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "subscribers": 0,
+          "title": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "example"
+      },
+      "name": "getSubreddit-unavailable",
+      "operation": "getSubreddit"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000203",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/example/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "subscribers": 0,
+          "title": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "example"
+      },
+      "name": "getSubreddit-rejected",
+      "operation": "getSubreddit"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000204",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"t5\",\"data\":{\"name\":\"t5_abc123\",\"display_name\":\"other\",\"url\":\"/r/other/\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/example/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "subscribers": 0,
+          "title": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "example"
+      },
+      "name": "getSubreddit-invalid",
+      "operation": "getSubreddit"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000205",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "subscribers": 0,
+          "title": "",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "bad/name"
+      },
+      "name": "getSubreddit-defect",
+      "operation": "getSubreddit"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000206",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/example/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "example"
+      },
+      "name": "getSubreddit-rateLimit429",
+      "operation": "getSubreddit"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000207",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/example/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "example"
+      },
+      "name": "getSubreddit-unavailable503",
+      "operation": "getSubreddit"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000208",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/example/about",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "example"
+      },
+      "name": "getSubreddit-transport",
+      "operation": "getSubreddit"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"after\":\"t5_def456\",\"children\":[{\"kind\":\"t5\",\"data\":{\"name\":\"t5_abc123\",\"display_name\":\"example\",\"title\":\"Example\",\"public_description\":\"Example posts\",\"subscribers\":100,\"url\":\"/r/example/\"}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/search",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "q": [
+              "example"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "after": "t5_def456",
+          "subreddits": [
+            {
+              "description": "Example posts",
+              "id": "t5_abc123",
+              "name": "example",
+              "subscribers": 100,
+              "title": "Example",
+              "url": "https://www.reddit.com/r/example/"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "query": "example"
+      },
+      "name": "searchSubreddits-searched",
+      "operation": "searchSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000309",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"children\":[{\"kind\":\"t5\",\"data\":{\"name\":\"t5_def456\",\"display_name\":\"examples\",\"title\":\"Examples\",\"subscribers\":50,\"url\":\"/r/examples/\"}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/search",
+          "query": {
+            "after": [
+              "t5_abc123"
+            ],
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "example"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "subreddits": [
+            {
+              "id": "t5_def456",
+              "name": "examples",
+              "subscribers": 50,
+              "title": "Examples",
+              "url": "https://www.reddit.com/r/examples/"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "t5_abc123",
+        "query": "example"
+      },
+      "name": "searchSubreddits-cursor",
+      "operation": "searchSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "example"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "subreddits": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "example"
+      },
+      "name": "searchSubreddits-rejected",
+      "operation": "searchSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000303",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"children\":[{\"kind\":\"t3\",\"data\":{}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "example"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "subreddits": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "example"
+      },
+      "name": "searchSubreddits-invalid",
+      "operation": "searchSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000304",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "subreddits": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": " "
+      },
+      "name": "searchSubreddits-defect",
+      "operation": "searchSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000305",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "example"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "example"
+      },
+      "name": "searchSubreddits-rateLimit429",
+      "operation": "searchSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000306",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "example"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "example"
+      },
+      "name": "searchSubreddits-unavailable503",
+      "operation": "searchSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000307",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/search",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "q": [
+              "example"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "example"
+      },
+      "name": "searchSubreddits-transport",
+      "operation": "searchSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000401",
+      "exchanges": [
+        {
+          "body": "[{\"kind\":\"Listing\",\"data\":{\"children\":[]}},{\"kind\":\"Listing\",\"data\":{\"children\":[{\"kind\":\"t1\",\"data\":{\"name\":\"t1_def456\",\"parent_id\":\"t3_abc123\",\"author\":\"example_user\",\"body\":\"Example comment\",\"permalink\":\"/r/example/comments/abc123/_/def456/\",\"score\":3}}]}}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/abc123",
+          "query": {
+            "depth": [
+              "1"
+            ],
+            "limit": [
+              "10"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "comments": [
+            {
+              "author": "example_user",
+              "body": "Example comment",
+              "id": "t1_def456",
+              "parentId": "t3_abc123",
+              "permalink": "https://www.reddit.com/r/example/comments/abc123/_/def456/",
+              "score": 3
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "postId": "t3_abc123"
+      },
+      "name": "listPostComments-listed",
+      "operation": "listPostComments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000402",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/abc123",
+          "query": {
+            "depth": [
+              "1"
+            ],
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "postUnavailable",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "comments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "listPostComments-unavailable",
+      "operation": "listPostComments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000403",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/abc123",
+          "query": {
+            "depth": [
+              "1"
+            ],
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "comments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "listPostComments-rejected",
+      "operation": "listPostComments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000404",
+      "exchanges": [
+        {
+          "body": "{\"not\":\"a comment listing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/abc123",
+          "query": {
+            "depth": [
+              "1"
+            ],
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "comments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "listPostComments-invalid",
+      "operation": "listPostComments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "comments": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "bad"
+      },
+      "name": "listPostComments-defect",
+      "operation": "listPostComments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000406",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/abc123",
+          "query": {
+            "depth": [
+              "1"
+            ],
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "listPostComments-rateLimit429",
+      "operation": "listPostComments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000407",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/abc123",
+          "query": {
+            "depth": [
+              "1"
+            ],
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "listPostComments-unavailable503",
+      "operation": "listPostComments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000408",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/abc123",
+          "query": {
+            "depth": [
+              "1"
+            ],
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "listPostComments-transport",
+      "operation": "listPostComments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000501",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"after\":\"t5_def456\",\"children\":[{\"kind\":\"t5\",\"data\":{\"name\":\"t5_def456\",\"display_name\":\"programming\",\"title\":\"Programming\",\"subscribers\":80,\"url\":\"/r/programming/\"}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/new",
+          "query": {
+            "after": [
+              "t5_abc123"
+            ],
+            "limit": [
+              "10"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "after": "t5_def456",
+          "subreddits": [
+            {
+              "id": "t5_def456",
+              "name": "programming",
+              "subscribers": 80,
+              "title": "Programming",
+              "url": "https://www.reddit.com/r/programming/"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "t5_abc123",
+        "directory": "new",
+        "limit": 10
+      },
+      "name": "listSubreddits-listed",
+      "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000502",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"children\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/popular",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "subreddits": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSubreddits-defaults",
+      "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/popular",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "subreddits": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "directory": "popular"
+      },
+      "name": "listSubreddits-rejected",
+      "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000504",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"children\":[{\"kind\":\"t3\",\"data\":{}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/popular",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "subreddits": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "directory": "popular"
+      },
+      "name": "listSubreddits-invalid",
+      "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000505",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "subreddits": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "directory": "bad"
+      },
+      "name": "listSubreddits-defect",
+      "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000506",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/popular",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "directory": "popular"
+      },
+      "name": "listSubreddits-rateLimit429",
+      "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000507",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/popular",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "directory": "popular"
+      },
+      "name": "listSubreddits-unavailable503",
+      "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000508",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subreddits/popular",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "directory": "popular"
+      },
+      "name": "listSubreddits-transport",
+      "operation": "listSubreddits"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000901",
+      "exchanges": [
+        {
+          "body": "{\"rules\":[{\"short_name\":\"Be respectful\",\"description\":\"Keep discussion civil.\",\"kind\":\"all\",\"violation_reason\":\"Uncivil behavior\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "rules": [
+            {
+              "description": "Keep discussion civil.",
+              "kind": "all",
+              "shortName": "Be respectful",
+              "violationReason": "Uncivil behavior"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-found",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000902",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "unavailable",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "rules": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-unavailable",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000903",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "rules": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-rejected",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000904",
+      "exchanges": [
+        {
+          "body": "{\"rules\":[{\"short_name\":\"Broken rule\",\"kind\":\"unknown\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rules": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-invalid",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000905",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rules": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "bad/name"
+      },
+      "name": "getSubredditRules-defect",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000906",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-rateLimit429",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000907",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-unavailable503",
+      "operation": "getSubredditRules"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000908",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/r/golang/about/rules",
+          "query": {
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subreddit": "golang"
+      },
+      "name": "getSubredditRules-transport",
+      "operation": "getSubredditRules"
     }
   ],
   "schemaVersion": 1

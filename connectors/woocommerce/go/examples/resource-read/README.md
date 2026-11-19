@@ -1,6 +1,6 @@
 # WooCommerce resource-read example
 
-This Flow uses the static `woocommerce` connection and `woocommerce.NewListOrdersStep` to read one provider resource. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
+The worker registers a resource-read Flow and an order-update Flow on the static `woocommerce` connection. The read Flow uses `woocommerce.NewListOrdersStep`; the update Flow uses `woocommerce.NewUpdateOrderStep` with `OrderUpdateRequest{OrderID, Status}`. The mock-backed real Dex test starts both Flows and checks the provider inputs and happy branches. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
@@ -19,7 +19,7 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/woocommerce-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/woocommerce/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/woocommerce/go --version v0.2.0 --tag connectors/woocommerce/go/v0.2.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/woocommerce-release/connector-release.json --digest-output /tmp/woocommerce-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/woocommerce/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/woocommerce/go --version v0.3.0 --tag connectors/woocommerce/go/v0.3.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/woocommerce-release/connector-release.json --digest-output /tmp/woocommerce-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/woocommerce/go/build" --connector-release-override woocommerce=/tmp/woocommerce-release
 ```
 

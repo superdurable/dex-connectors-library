@@ -18,7 +18,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {SiteToken: sdkgo.NewSecretString("test-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listCollectionItems": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListCollectionItems(), reference),
-		"getCollectionItem":   newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetCollectionItem(), reference),
+		"listCollections":         newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListCollections(), reference),
+		"getCollection":           newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetCollection(), reference),
+		"listLiveCollectionItems": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListLiveCollectionItems(), reference),
+		"getLiveCollectionItem":   newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetLiveCollectionItem(), reference),
+		"listCollectionItems":     newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListCollectionItems(), reference),
+		"getCollectionItem":       newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetCollectionItem(), reference),
 	}}
 }

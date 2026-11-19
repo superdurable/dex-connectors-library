@@ -20,6 +20,31 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[redis.KeyLookup](`{"key":"sample:key","value":"example","exists":true}`)
 			return err
 		}},
+		{name: "setKey/setDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[redis.KeyWrite](`{"key":"sample:key"}`); return err }},
+		{name: "deleteKey/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redis.KeyDeletion](`{"key":"sample:key","existed":true}`)
+			return err
+		}},
+		{name: "listKeys/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redis.KeyList](`{"keys":["sample:key"]}`)
+			return err
+		}},
+		{name: "getListLength/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redis.ListLength](`{"key":"sample:list","length":3}`)
+			return err
+		}},
+		{name: "getInfo/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redis.DatabaseInfo](`{"report":"# Server\nredis_version:7.2"}`)
+			return err
+		}},
+		{name: "pushListItem/pushedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redis.ListPush](`{"key":"sample:list","length":3}`)
+			return err
+		}},
+		{name: "publishMessage/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redis.MessagePublication](`{"channel":"sample:channel","subscribers":1}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +57,26 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetKey().Definition().Operation.OperationID != "getKey" {
 		t.Errorf("getKey mock has another definition")
+	}
+	if mock.SetKey().Definition().Operation.OperationID != "setKey" {
+		t.Errorf("setKey mock has another definition")
+	}
+	if mock.DeleteKey().Definition().Operation.OperationID != "deleteKey" {
+		t.Errorf("deleteKey mock has another definition")
+	}
+	if mock.ListKeys().Definition().Operation.OperationID != "listKeys" {
+		t.Errorf("listKeys mock has another definition")
+	}
+	if mock.GetListLength().Definition().Operation.OperationID != "getListLength" {
+		t.Errorf("getListLength mock has another definition")
+	}
+	if mock.GetInfo().Definition().Operation.OperationID != "getInfo" {
+		t.Errorf("getInfo mock has another definition")
+	}
+	if mock.PushListItem().Definition().Operation.OperationID != "pushListItem" {
+		t.Errorf("pushListItem mock has another definition")
+	}
+	if mock.PublishMessage().Definition().Operation.OperationID != "publishMessage" {
+		t.Errorf("publishMessage mock has another definition")
 	}
 }

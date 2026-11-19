@@ -16,6 +16,58 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listProfiles/defaultListProfiles/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.ProfilesOutput](`{"profiles":[{"id":"101","type":"business"}]}`)
+			return err
+		}},
+		{name: "getProfile/defaultGetProfile/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.ProfileSummary](`{"id":"101","type":"business"}`)
+			return err
+		}},
+		{name: "getBalance/defaultGetBalance/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.BalanceSummary](`{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":12.5}`)
+			return err
+		}},
+		{name: "createBalance/defaultCreateBalance/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.BalanceSummary](`{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":0}`)
+			return err
+		}},
+		{name: "listBalances/defaultListBalances/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.BalancesOutput](`{"balances":[{"id":"301","currency":"EUR","type":"STANDARD","availableAmount":12.5}]}`)
+			return err
+		}},
+		{name: "listAvailableBalanceCurrencies/defaultListAvailableBalanceCurrencies/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.PayinCurrenciesOutput](`{"currencies":["EUR","GBP","USD"]}`)
+			return err
+		}},
+		{name: "listPayinCurrencies/defaultListPayinCurrencies/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.PayinCurrenciesOutput](`{"currencies":["EUR","GBP","USD"]}`)
+			return err
+		}},
+		{name: "listRecipients/defaultListRecipients/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.RecipientsOutput](`{"recipients":[{"id":"201","currency":"EUR","active":true}]}`)
+			return err
+		}},
+		{name: "getExchangeRates/defaultGetExchangeRates/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.ExchangeRatesOutput](`{"rates":[{"source":"EUR","target":"USD","rate":1.1,"time":"2026-11-17T00:00:00Z"}]}`)
+			return err
+		}},
+		{name: "createQuote/defaultCreateQuote/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.QuoteSummary](`{"id":"11144c35-9fe8-4c32-b7fd-d05c2a7734bf","sourceCurrency":"GBP","targetCurrency":"USD"}`)
+			return err
+		}},
+		{name: "getQuote/defaultGetQuote/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.QuoteSummary](`{"id":"11144c35-9fe8-4c32-b7fd-d05c2a7734bf","sourceCurrency":"GBP","targetCurrency":"USD"}`)
+			return err
+		}},
+		{name: "createTransfer/defaultCreateTransfer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.TransferStatus](`{"id":"16521632","status":"incoming_payment_waiting","sourceCurrency":"EUR"}`)
+			return err
+		}},
+		{name: "cancelTransfer/defaultCancelTransfer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wise.TransferStatus](`{"id":"16521632","status":"cancelled","sourceCurrency":"EUR"}`)
+			return err
+		}},
 		{name: "getTransfer/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[wise.TransferStatus](`{"id":"16521632","status":"incoming_payment_waiting","sourceCurrency":"EUR"}`)
 			return err
@@ -30,6 +82,45 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListProfiles().Definition().Operation.OperationID != "listProfiles" {
+		t.Errorf("listProfiles mock has another definition")
+	}
+	if mock.GetProfile().Definition().Operation.OperationID != "getProfile" {
+		t.Errorf("getProfile mock has another definition")
+	}
+	if mock.GetBalance().Definition().Operation.OperationID != "getBalance" {
+		t.Errorf("getBalance mock has another definition")
+	}
+	if mock.CreateBalance().Definition().Operation.OperationID != "createBalance" {
+		t.Errorf("createBalance mock has another definition")
+	}
+	if mock.ListBalances().Definition().Operation.OperationID != "listBalances" {
+		t.Errorf("listBalances mock has another definition")
+	}
+	if mock.ListAvailableBalanceCurrencies().Definition().Operation.OperationID != "listAvailableBalanceCurrencies" {
+		t.Errorf("listAvailableBalanceCurrencies mock has another definition")
+	}
+	if mock.ListPayinCurrencies().Definition().Operation.OperationID != "listPayinCurrencies" {
+		t.Errorf("listPayinCurrencies mock has another definition")
+	}
+	if mock.ListRecipients().Definition().Operation.OperationID != "listRecipients" {
+		t.Errorf("listRecipients mock has another definition")
+	}
+	if mock.GetExchangeRates().Definition().Operation.OperationID != "getExchangeRates" {
+		t.Errorf("getExchangeRates mock has another definition")
+	}
+	if mock.CreateQuote().Definition().Operation.OperationID != "createQuote" {
+		t.Errorf("createQuote mock has another definition")
+	}
+	if mock.GetQuote().Definition().Operation.OperationID != "getQuote" {
+		t.Errorf("getQuote mock has another definition")
+	}
+	if mock.CreateTransfer().Definition().Operation.OperationID != "createTransfer" {
+		t.Errorf("createTransfer mock has another definition")
+	}
+	if mock.CancelTransfer().Definition().Operation.OperationID != "cancelTransfer" {
+		t.Errorf("cancelTransfer mock has another definition")
+	}
 	if mock.GetTransfer().Definition().Operation.OperationID != "getTransfer" {
 		t.Errorf("getTransfer mock has another definition")
 	}

@@ -1,6 +1,8 @@
-# Go key lookup Flow
+# Go key lookup and write Flows
 
 This runnable Flow calls `getKey` through the static `upstash-redis` connection. It stores the selected `KeyLookup` in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+
+`NewWriteFlow` uses the same connection to run `setKey` with a complete string replacement. Its default mock writes `sample:key` and the real Dex integration test confirms the new Step and output.
 
 ## Strict FDG 2.0 generation
 

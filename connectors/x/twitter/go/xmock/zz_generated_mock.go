@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted x-twitter connection. Script each operation through its accessor.
 type Mock struct {
-	connection x.Connection
-	getPost    *connectormock.Query[x.GetPostInput, x.PostMetadata]
+	connection        x.Connection
+	searchRecentPosts *connectormock.Query[x.SearchRecentPostsInput, x.PostPage]
+	getUser           *connectormock.Query[x.GetUserInput, x.UserMetadata]
+	getPost           *connectormock.Query[x.GetPostInput, x.PostMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +28,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getPost: connectormock.NewQuery[x.GetPostInput, x.PostMetadata](t, x.GetPostDefinition),
+		searchRecentPosts: connectormock.NewQuery[x.SearchRecentPostsInput, x.PostPage](t, x.SearchRecentPostsDefinition),
+		getUser:           connectormock.NewQuery[x.GetUserInput, x.UserMetadata](t, x.GetUserDefinition),
+		getPost:           connectormock.NewQuery[x.GetPostInput, x.PostMetadata](t, x.GetPostDefinition),
 	}
+	mock.searchRecentPosts.Default(SearchRecentPostsDefault())
+	mock.getUser.Default(GetUserDefault())
 	mock.getPost.Default(GetPostDefault())
 	connection, err := x.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "x-twitter", Name: connectionName})
 	if err != nil {
@@ -40,14 +46,103 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() x.Connection { return mock.connection }
 
+// SearchRecentPosts returns the searchRecentPosts script.
+func (mock *Mock) SearchRecentPosts() *connectormock.Query[x.SearchRecentPostsInput, x.PostPage] {
+	return mock.searchRecentPosts
+}
+
+// GetUser returns the getUser script.
+func (mock *Mock) GetUser() *connectormock.Query[x.GetUserInput, x.UserMetadata] { return mock.getUser }
+
 // GetPost returns the getPost script.
 func (mock *Mock) GetPost() *connectormock.Query[x.GetPostInput, x.PostMetadata] { return mock.getPost }
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) SearchRecentPosts() sdkgo.Query[x.SearchRecentPostsInput, x.PostPage] {
+	return operations.mock.searchRecentPosts
+}
+func (operations mockOperations) GetUser() sdkgo.Query[x.GetUserInput, x.UserMetadata] {
+	return operations.mock.getUser
+}
 func (operations mockOperations) GetPost() sdkgo.Query[x.GetPostInput, x.PostMetadata] {
 	return operations.mock.getPost
 }
+
+// SearchRecentPostsFound selects the found branch: X returned a search page.
+func SearchRecentPostsFound(value x.PostPage, failure *sdkgo.Failure) connectormock.Case[x.PostPage] {
+	return connectormock.Branch(x.SearchRecentPostsBranchFound, value, failure)
+}
+
+// SearchRecentPostsProviderRejected selects the providerRejected branch: X conclusively rejected the search.
+func SearchRecentPostsProviderRejected(value x.PostPage, failure *sdkgo.Failure) connectormock.Case[x.PostPage] {
+	return connectormock.Branch(x.SearchRecentPostsBranchProviderRejected, value, failure)
+}
+
+// SearchRecentPostsInvalidResponse selects the invalidResponse branch: X returned malformed or oversized JSON.
+func SearchRecentPostsInvalidResponse(value x.PostPage, failure *sdkgo.Failure) connectormock.Case[x.PostPage] {
+	return connectormock.Branch(x.SearchRecentPostsBranchInvalidResponse, value, failure)
+}
+
+// SearchRecentPostsDefect selects the defect branch: Search input or credentials are invalid.
+func SearchRecentPostsDefect(value x.PostPage, failure *sdkgo.Failure) connectormock.Case[x.PostPage] {
+	return connectormock.Branch(x.SearchRecentPostsBranchDefect, value, failure)
+}
+
+// SearchRecentPostsRetry asks Dex to retry the searchRecentPosts Step, after the delay when it is positive.
+func SearchRecentPostsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[x.PostPage] {
+	return connectormock.Retry[x.PostPage](failure, after)
+}
+
+// SearchRecentPostsFoundDefault is the manifest mock foundDefault: One sample public Post is returned.
+func SearchRecentPostsFoundDefault() connectormock.Case[x.PostPage] {
+	value := connectormock.MustDecodeOutput[x.PostPage](`{"data":[{"id":"1845123456789012345","text":"Example public Post"}],"nextToken":""}`)
+	return connectormock.Branch(x.SearchRecentPostsBranchFound, value, nil)
+}
+
+// SearchRecentPostsDefault is the manifest default, foundDefault, which New installs.
+func SearchRecentPostsDefault() connectormock.Case[x.PostPage] {
+	return SearchRecentPostsFoundDefault()
+}
+
+// GetUserFound selects the found branch: X returned the user profile.
+func GetUserFound(value x.UserMetadata, failure *sdkgo.Failure) connectormock.Case[x.UserMetadata] {
+	return connectormock.Branch(x.GetUserBranchFound, value, failure)
+}
+
+// GetUserNotFound selects the notFound branch: X did not expose the user.
+func GetUserNotFound(value x.UserMetadata, failure *sdkgo.Failure) connectormock.Case[x.UserMetadata] {
+	return connectormock.Branch(x.GetUserBranchNotFound, value, failure)
+}
+
+// GetUserProviderRejected selects the providerRejected branch: X conclusively rejected the lookup.
+func GetUserProviderRejected(value x.UserMetadata, failure *sdkgo.Failure) connectormock.Case[x.UserMetadata] {
+	return connectormock.Branch(x.GetUserBranchProviderRejected, value, failure)
+}
+
+// GetUserInvalidResponse selects the invalidResponse branch: X returned malformed or oversized JSON.
+func GetUserInvalidResponse(value x.UserMetadata, failure *sdkgo.Failure) connectormock.Case[x.UserMetadata] {
+	return connectormock.Branch(x.GetUserBranchInvalidResponse, value, failure)
+}
+
+// GetUserDefect selects the defect branch: Username or credentials are invalid.
+func GetUserDefect(value x.UserMetadata, failure *sdkgo.Failure) connectormock.Case[x.UserMetadata] {
+	return connectormock.Branch(x.GetUserBranchDefect, value, failure)
+}
+
+// GetUserRetry asks Dex to retry the getUser Step, after the delay when it is positive.
+func GetUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[x.UserMetadata] {
+	return connectormock.Retry[x.UserMetadata](failure, after)
+}
+
+// GetUserFoundDefault is the manifest mock foundDefault: One sample user is returned.
+func GetUserFoundDefault() connectormock.Case[x.UserMetadata] {
+	value := connectormock.MustDecodeOutput[x.UserMetadata](`{"id":"123456789","name":"Ada Lovelace","username":"ada"}`)
+	return connectormock.Branch(x.GetUserBranchFound, value, nil)
+}
+
+// GetUserDefault is the manifest default, foundDefault, which New installs.
+func GetUserDefault() connectormock.Case[x.UserMetadata] { return GetUserFoundDefault() }
 
 // GetPostFound selects the found branch: X returned the requested Post.
 func GetPostFound(value x.PostMetadata, failure *sdkgo.Failure) connectormock.Case[x.PostMetadata] {

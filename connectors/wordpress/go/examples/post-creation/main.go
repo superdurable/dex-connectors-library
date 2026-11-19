@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{postcreation.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{postcreation.NewFlow(connection), postcreation.NewPostUpdateFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register WordPress post creation Flow: %w", err)
 	}
