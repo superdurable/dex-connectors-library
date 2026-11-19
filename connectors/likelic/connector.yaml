@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: likelic
+  languages:
+    typescript: {version: v0.1.0, operations: [listRooms], triggers: []}
   codegen:
     go:
       package: likelic

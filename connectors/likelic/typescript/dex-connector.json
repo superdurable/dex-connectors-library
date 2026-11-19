@@ -1,0 +1,60 @@
+{
+  "connectorId": "likelic",
+  "releaseTag": "connectors/likelic/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-likelic",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListRoomsStep",
+      "kind": "query",
+      "operationId": "listRooms",
+      "inputType": "ListRoomsInput",
+      "description": "Read one page of group notification targets without group names or members.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListRoomsInput selects a one-based page of at most twenty rooms.",
+        "properties": {
+          "page": {
+            "description": "Page is a positive page number, starting at one.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

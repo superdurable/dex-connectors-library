@@ -5,3 +5,5 @@
 Sign in at [Likelic Agent](https://agent.likelic.com), obtain your Customer Code from the enterprise administrator, create a secret `sk-` API Key at 外部拓展 > API 设置, then enable 推送通知 and authorize the Key under 系统设置 > 开放 API 权限. Add the code and Key to a Dex Web `likelic` connection. Pass a one-based page number; each request reads 20 rooms. Blank timeout and maxResponseBytes use the displayed defaults.
 
 The [runnable Dex example](go/examples/list-rooms/) uses a synthetic mock. Live tenant authorization, room visibility, and pagination remain unverified without user-controlled provider credentials.
+
+The [TypeScript package](typescript/README.md) implements the same `listRooms` Query, including Go-recorded conformance replay and a real Dex Worker and Client integration test.
