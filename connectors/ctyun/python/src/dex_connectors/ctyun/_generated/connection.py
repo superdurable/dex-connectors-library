@@ -63,6 +63,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.ctyun.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored CTYun credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,24 +88,24 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("CTYun stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("CTYun stored credential does not match the connector credential fields")
         if set(material) - set(('access_key', 'security_key', 'tenant_id')):
-            raise ValueError("CTYun stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("CTYun stored credential does not match the connector credential fields")
         access_key = material.get("access_key")
         if access_key is not None and not (isinstance(access_key, str)):
-            raise ValueError("CTYun credential access_key has an invalid type")
+            raise CredentialMaterialError("CTYun credential access_key has an invalid type")
         security_key = material.get("security_key")
         if security_key is not None and not (isinstance(security_key, str)):
-            raise ValueError("CTYun credential security_key has an invalid type")
+            raise CredentialMaterialError("CTYun credential security_key has an invalid type")
         tenant_id = material.get("tenant_id")
         if tenant_id is not None and not (isinstance(tenant_id, str)):
-            raise ValueError("CTYun credential tenant_id has an invalid type")
+            raise CredentialMaterialError("CTYun credential tenant_id has an invalid type")
         if not access_key:
-            raise ValueError("CTYun credential access_key is required")
+            raise CredentialMaterialError("CTYun credential access_key is required")
         if not security_key:
-            raise ValueError("CTYun credential security_key is required")
+            raise CredentialMaterialError("CTYun credential security_key is required")
         if not tenant_id:
-            raise ValueError("CTYun credential tenant_id is required")
+            raise CredentialMaterialError("CTYun credential tenant_id is required")
         return Credentials(SecretString(access_key), SecretString(security_key), SecretString(tenant_id))
 
 
