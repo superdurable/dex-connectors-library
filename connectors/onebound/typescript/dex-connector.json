@@ -1,0 +1,65 @@
+{
+  "connectorId": "onebound",
+  "releaseTag": "connectors/onebound/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-onebound",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newSearchProductsStep",
+      "kind": "query",
+      "operationId": "searchProducts",
+      "inputType": "SearchProductsInput",
+      "description": "Search a bounded page of public 1688 listings; results contain only product metadata.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchProductsInput selects public 1688 listings by a keyword and one-based page.",
+        "properties": {
+          "keyword": {
+            "description": "Keyword is a nonempty public product search term, at most 100 runes.",
+            "type": "string"
+          },
+          "pageNumber": {
+            "description": "PageNumber is one-based; zero selects the first page.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "keyword",
+          "pageNumber"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
