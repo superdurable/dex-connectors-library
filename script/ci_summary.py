@@ -81,21 +81,16 @@ PLAN_OUTPUT_JOBS = {
     "connectors_mcp": "connectors-mcp",
 }
 
-# Heavy jobs a trusted Mac Studio verification skips; the CI workflow tests keep this list and ci.yml equal.
+# Heavy jobs the Mac Studio connector-ci recipe reproduces, so a trusted verification skips them;
+# the CI workflow tests keep this list and ci.yml equal.
 LOCALLY_VERIFIED_SKIPPED_JOBS = frozenset({
     "connector-conformance",
     "connectors",
-    "database-language-integration",
     "dex-compat-current",
     "dex-compat-latest-go-sdk",
     "dex-integration-connectors",
-    "dex-integration-sdk",
-    "email-language-integration",
     "language-connectors",
     "python-connectors-latest-sdk",
-    "sdkpython-integration",
-    "sdkts-integration",
-    "workspace-connector-dependents",
 })
 
 # Only these events can carry a Mac Studio verification; others ignore a trusted output.

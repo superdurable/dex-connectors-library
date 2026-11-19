@@ -584,6 +584,14 @@ class LocalVerificationJobsTest(unittest.TestCase):
                 self.assertTrue(self.job_condition(name).endswith(self.trusted_skip), name)
                 self.assertEqual("local-verification", self.job_needs(name)[-1])
 
+    def test_jobs_connector_ci_does_not_reproduce_never_wait_for_local_verification(self) -> None:
+        for name in ("workspace-connector-dependents", "dex-integration-sdk", "database-language-integration",
+                     "email-language-integration", "sdkpython-integration", "sdkts-integration"):
+            with self.subTest(job=name):
+                self.assertNotIn("local-verification", self.job_needs(name))
+                self.assertNotIn("local-verification", self.job_condition(name))
+                self.assertNotIn("cancelled()", self.job_condition(name))
+
     def test_heavy_jobs_require_their_original_needs_explicitly_but_not_local_verification(self) -> None:
         # An implicit success() would also skip heavy jobs when local-verification fails or is cancelled.
         from script import ci_summary

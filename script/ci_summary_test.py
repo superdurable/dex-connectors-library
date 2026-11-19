@@ -152,6 +152,8 @@ class CISummaryTest(unittest.TestCase):
         for event_name in ("pull_request", "merge_group"):
             with self.subTest(event=event_name):
                 expected = ci_summary.select_expected_jobs(event_name, plan) - ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS
+                if event_name == "pull_request":
+                    expected -= ci_summary.QUEUE_ONLY_JOBS
                 trusted_results = results_with(expected | {"connector-generation"})
                 self.assertEqual({}, ci_summary.find_failed_jobs(trusted_results, event_name, plan, True))
                 self.assertEqual({"connector-generation": "skipped"},
@@ -160,6 +162,19 @@ class CISummaryTest(unittest.TestCase):
                     failed = ci_summary.find_failed_jobs(results_with(expected | {"connector-generation"}, connectors=result),
                                                          event_name, plan, True)
                     self.assertEqual({"connectors": result}, failed)
+
+    def test_trusted_merge_group_still_requires_jobs_connector_ci_does_not_reproduce(self) -> None:
+        not_reproduced = {"dex-integration-sdk", "database-language-integration", "email-language-integration",
+                          "sdkpython-integration", "sdkts-integration"}
+        self.assertFalse((not_reproduced | {"workspace-connector-dependents"}) & ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS)
+        plan = NOTHING_SELECTED | {"count": "1", "sdkpython": "true", "sdkts": "true", "sdkgo_integration": "true",
+                                   "database_language_count": "1", "email_language_count": "1"}
+        expected = ci_summary.select_expected_jobs("merge_group", plan) - ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS
+        self.assertLessEqual(not_reproduced, expected)
+        for job in sorted(not_reproduced):
+            with self.subTest(job=job):
+                results = results_with((expected - {job}) | {"connector-generation"})
+                self.assertEqual({job: "skipped"}, ci_summary.find_failed_jobs(results, "merge_group", plan, True))
 
     def test_untrusted_runs_still_require_every_heavy_job(self) -> None:
         for event_name, is_locally_verified in (("merge_group", False), ("push", True), ("workflow_dispatch", True), ("schedule", True)):
