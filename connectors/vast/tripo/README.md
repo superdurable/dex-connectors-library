@@ -7,3 +7,7 @@ The connector outputs those numbers as exact decimal strings, preserving the pro
 See the [runnable Dex Flow](go/examples/account-balance/README.md). Mock tests do not verify a live key, account balance, or provider responses.
 
 Python v0.1.0: [package and runnable example](python/README.md).
+
+## TypeScript
+
+`@superdurable/connector-vast-tripo` provides `getAccountBalance` and a runnable Dex Flow in `typescript/examples/basic/`. Its conformance suite replays the Go-recorded provider scenarios.
