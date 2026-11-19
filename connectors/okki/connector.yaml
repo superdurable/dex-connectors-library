@@ -11,6 +11,11 @@ spec:
   provider: okki
   languages:
     python: {version: v0.1.0, operations: [listCustomerFields], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-okki"
+      operations: [listCustomerFields]
+      triggers: []
   codegen:
     go:
       package: okki
