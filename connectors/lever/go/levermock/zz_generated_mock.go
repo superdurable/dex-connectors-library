@@ -17,8 +17,32 @@ import (
 
 // Mock is a scripted lever connection. Script each operation through its accessor.
 type Mock struct {
-	connection     lever.Connection
-	getOpportunity *connectormock.Query[lever.GetOpportunityInput, lever.OpportunityStage]
+	connection                 lever.Connection
+	listOpportunities          *connectormock.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage]
+	getOpportunity             *connectormock.Query[lever.GetOpportunityInput, lever.OpportunityStage]
+	updateOpportunityStage     *connectormock.Mutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage]
+	setOpportunityArchiveState *connectormock.Mutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState]
+	createOpportunity          *connectormock.Mutation[lever.CreateOpportunityInput, lever.CreatedOpportunity]
+	getPosting                 *connectormock.Query[lever.GetPostingInput, lever.Posting]
+	listPostings               *connectormock.Query[lever.ListPostingsInput, lever.PostingsPage]
+	createPosting              *connectormock.Mutation[lever.CreatePostingInput, lever.Posting]
+	updatePosting              *connectormock.Mutation[lever.UpdatePostingInput, lever.Posting]
+	getNote                    *connectormock.Query[lever.GetNoteInput, lever.NoteSummary]
+	listNotes                  *connectormock.Query[lever.ListNotesInput, lever.NotesPage]
+	createNote                 *connectormock.Mutation[lever.CreateNoteInput, lever.NoteIdentity]
+	updateNote                 *connectormock.Mutation[lever.UpdateNoteInput, lever.NoteIdentity]
+	deleteNote                 *connectormock.Mutation[lever.DeleteNoteInput, lever.NoteIdentity]
+	getInterview               *connectormock.Query[lever.GetInterviewInput, lever.InterviewSummary]
+	listInterviews             *connectormock.Query[lever.ListInterviewsInput, lever.InterviewsPage]
+	createInterview            *connectormock.Mutation[lever.CreateInterviewInput, lever.InterviewSummary]
+	updateInterview            *connectormock.Mutation[lever.UpdateInterviewInput, lever.InterviewSummary]
+	deleteInterview            *connectormock.Mutation[lever.DeleteInterviewInput, lever.InterviewIdentity]
+	getUser                    *connectormock.Query[lever.GetUserInput, lever.UserSummary]
+	listUsers                  *connectormock.Query[lever.ListUsersInput, lever.UsersPage]
+	createUser                 *connectormock.Mutation[lever.CreateUserInput, lever.UserSummary]
+	updateUser                 *connectormock.Mutation[lever.UpdateUserInput, lever.UserSummary]
+	deactivateUser             *connectormock.Mutation[lever.SetUserActivationInput, lever.UserSummary]
+	reactivateUser             *connectormock.Mutation[lever.SetUserActivationInput, lever.UserSummary]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +50,57 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getOpportunity: connectormock.NewQuery[lever.GetOpportunityInput, lever.OpportunityStage](t, lever.GetOpportunityDefinition),
+		listOpportunities:          connectormock.NewQuery[lever.ListOpportunitiesInput, lever.OpportunitiesPage](t, lever.ListOpportunitiesDefinition),
+		getOpportunity:             connectormock.NewQuery[lever.GetOpportunityInput, lever.OpportunityStage](t, lever.GetOpportunityDefinition),
+		updateOpportunityStage:     connectormock.NewMutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage](t, lever.UpdateOpportunityStageDefinition),
+		setOpportunityArchiveState: connectormock.NewMutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState](t, lever.SetOpportunityArchiveStateDefinition),
+		createOpportunity:          connectormock.NewMutation[lever.CreateOpportunityInput, lever.CreatedOpportunity](t, lever.CreateOpportunityDefinition),
+		getPosting:                 connectormock.NewQuery[lever.GetPostingInput, lever.Posting](t, lever.GetPostingDefinition),
+		listPostings:               connectormock.NewQuery[lever.ListPostingsInput, lever.PostingsPage](t, lever.ListPostingsDefinition),
+		createPosting:              connectormock.NewMutation[lever.CreatePostingInput, lever.Posting](t, lever.CreatePostingDefinition),
+		updatePosting:              connectormock.NewMutation[lever.UpdatePostingInput, lever.Posting](t, lever.UpdatePostingDefinition),
+		getNote:                    connectormock.NewQuery[lever.GetNoteInput, lever.NoteSummary](t, lever.GetNoteDefinition),
+		listNotes:                  connectormock.NewQuery[lever.ListNotesInput, lever.NotesPage](t, lever.ListNotesDefinition),
+		createNote:                 connectormock.NewMutation[lever.CreateNoteInput, lever.NoteIdentity](t, lever.CreateNoteDefinition),
+		updateNote:                 connectormock.NewMutation[lever.UpdateNoteInput, lever.NoteIdentity](t, lever.UpdateNoteDefinition),
+		deleteNote:                 connectormock.NewMutation[lever.DeleteNoteInput, lever.NoteIdentity](t, lever.DeleteNoteDefinition),
+		getInterview:               connectormock.NewQuery[lever.GetInterviewInput, lever.InterviewSummary](t, lever.GetInterviewDefinition),
+		listInterviews:             connectormock.NewQuery[lever.ListInterviewsInput, lever.InterviewsPage](t, lever.ListInterviewsDefinition),
+		createInterview:            connectormock.NewMutation[lever.CreateInterviewInput, lever.InterviewSummary](t, lever.CreateInterviewDefinition),
+		updateInterview:            connectormock.NewMutation[lever.UpdateInterviewInput, lever.InterviewSummary](t, lever.UpdateInterviewDefinition),
+		deleteInterview:            connectormock.NewMutation[lever.DeleteInterviewInput, lever.InterviewIdentity](t, lever.DeleteInterviewDefinition),
+		getUser:                    connectormock.NewQuery[lever.GetUserInput, lever.UserSummary](t, lever.GetUserDefinition),
+		listUsers:                  connectormock.NewQuery[lever.ListUsersInput, lever.UsersPage](t, lever.ListUsersDefinition),
+		createUser:                 connectormock.NewMutation[lever.CreateUserInput, lever.UserSummary](t, lever.CreateUserDefinition),
+		updateUser:                 connectormock.NewMutation[lever.UpdateUserInput, lever.UserSummary](t, lever.UpdateUserDefinition),
+		deactivateUser:             connectormock.NewMutation[lever.SetUserActivationInput, lever.UserSummary](t, lever.DeactivateUserDefinition),
+		reactivateUser:             connectormock.NewMutation[lever.SetUserActivationInput, lever.UserSummary](t, lever.ReactivateUserDefinition),
 	}
+	mock.listOpportunities.Default(ListOpportunitiesDefault())
 	mock.getOpportunity.Default(GetOpportunityDefault())
+	mock.updateOpportunityStage.Default(UpdateOpportunityStageDefault())
+	mock.setOpportunityArchiveState.Default(SetOpportunityArchiveStateDefault())
+	mock.createOpportunity.Default(CreateOpportunityDefault())
+	mock.getPosting.Default(GetPostingDefault())
+	mock.listPostings.Default(ListPostingsDefault())
+	mock.createPosting.Default(CreatePostingDefault())
+	mock.updatePosting.Default(UpdatePostingDefault())
+	mock.getNote.Default(GetNoteDefault())
+	mock.listNotes.Default(ListNotesDefault())
+	mock.createNote.Default(CreateNoteDefault())
+	mock.updateNote.Default(UpdateNoteDefault())
+	mock.deleteNote.Default(DeleteNoteDefault())
+	mock.getInterview.Default(GetInterviewDefault())
+	mock.listInterviews.Default(ListInterviewsDefault())
+	mock.createInterview.Default(CreateInterviewDefault())
+	mock.updateInterview.Default(UpdateInterviewDefault())
+	mock.deleteInterview.Default(DeleteInterviewDefault())
+	mock.getUser.Default(GetUserDefault())
+	mock.listUsers.Default(ListUsersDefault())
+	mock.createUser.Default(CreateUserDefault())
+	mock.updateUser.Default(UpdateUserDefault())
+	mock.deactivateUser.Default(DeactivateUserDefault())
+	mock.reactivateUser.Default(ReactivateUserDefault())
 	connection, err := lever.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "lever", Name: connectionName})
 	if err != nil {
 		t.Fatalf("lever mock connection: %v", err)
@@ -40,15 +112,243 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() lever.Connection { return mock.connection }
 
+// ListOpportunities returns the listOpportunities script.
+func (mock *Mock) ListOpportunities() *connectormock.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage] {
+	return mock.listOpportunities
+}
+
 // GetOpportunity returns the getOpportunity script.
 func (mock *Mock) GetOpportunity() *connectormock.Query[lever.GetOpportunityInput, lever.OpportunityStage] {
 	return mock.getOpportunity
 }
 
+// UpdateOpportunityStage returns the updateOpportunityStage script.
+func (mock *Mock) UpdateOpportunityStage() *connectormock.Mutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage] {
+	return mock.updateOpportunityStage
+}
+
+// SetOpportunityArchiveState returns the setOpportunityArchiveState script.
+func (mock *Mock) SetOpportunityArchiveState() *connectormock.Mutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState] {
+	return mock.setOpportunityArchiveState
+}
+
+// CreateOpportunity returns the createOpportunity script.
+func (mock *Mock) CreateOpportunity() *connectormock.Mutation[lever.CreateOpportunityInput, lever.CreatedOpportunity] {
+	return mock.createOpportunity
+}
+
+// GetPosting returns the getPosting script.
+func (mock *Mock) GetPosting() *connectormock.Query[lever.GetPostingInput, lever.Posting] {
+	return mock.getPosting
+}
+
+// ListPostings returns the listPostings script.
+func (mock *Mock) ListPostings() *connectormock.Query[lever.ListPostingsInput, lever.PostingsPage] {
+	return mock.listPostings
+}
+
+// CreatePosting returns the createPosting script.
+func (mock *Mock) CreatePosting() *connectormock.Mutation[lever.CreatePostingInput, lever.Posting] {
+	return mock.createPosting
+}
+
+// UpdatePosting returns the updatePosting script.
+func (mock *Mock) UpdatePosting() *connectormock.Mutation[lever.UpdatePostingInput, lever.Posting] {
+	return mock.updatePosting
+}
+
+// GetNote returns the getNote script.
+func (mock *Mock) GetNote() *connectormock.Query[lever.GetNoteInput, lever.NoteSummary] {
+	return mock.getNote
+}
+
+// ListNotes returns the listNotes script.
+func (mock *Mock) ListNotes() *connectormock.Query[lever.ListNotesInput, lever.NotesPage] {
+	return mock.listNotes
+}
+
+// CreateNote returns the createNote script.
+func (mock *Mock) CreateNote() *connectormock.Mutation[lever.CreateNoteInput, lever.NoteIdentity] {
+	return mock.createNote
+}
+
+// UpdateNote returns the updateNote script.
+func (mock *Mock) UpdateNote() *connectormock.Mutation[lever.UpdateNoteInput, lever.NoteIdentity] {
+	return mock.updateNote
+}
+
+// DeleteNote returns the deleteNote script.
+func (mock *Mock) DeleteNote() *connectormock.Mutation[lever.DeleteNoteInput, lever.NoteIdentity] {
+	return mock.deleteNote
+}
+
+// GetInterview returns the getInterview script.
+func (mock *Mock) GetInterview() *connectormock.Query[lever.GetInterviewInput, lever.InterviewSummary] {
+	return mock.getInterview
+}
+
+// ListInterviews returns the listInterviews script.
+func (mock *Mock) ListInterviews() *connectormock.Query[lever.ListInterviewsInput, lever.InterviewsPage] {
+	return mock.listInterviews
+}
+
+// CreateInterview returns the createInterview script.
+func (mock *Mock) CreateInterview() *connectormock.Mutation[lever.CreateInterviewInput, lever.InterviewSummary] {
+	return mock.createInterview
+}
+
+// UpdateInterview returns the updateInterview script.
+func (mock *Mock) UpdateInterview() *connectormock.Mutation[lever.UpdateInterviewInput, lever.InterviewSummary] {
+	return mock.updateInterview
+}
+
+// DeleteInterview returns the deleteInterview script.
+func (mock *Mock) DeleteInterview() *connectormock.Mutation[lever.DeleteInterviewInput, lever.InterviewIdentity] {
+	return mock.deleteInterview
+}
+
+// GetUser returns the getUser script.
+func (mock *Mock) GetUser() *connectormock.Query[lever.GetUserInput, lever.UserSummary] {
+	return mock.getUser
+}
+
+// ListUsers returns the listUsers script.
+func (mock *Mock) ListUsers() *connectormock.Query[lever.ListUsersInput, lever.UsersPage] {
+	return mock.listUsers
+}
+
+// CreateUser returns the createUser script.
+func (mock *Mock) CreateUser() *connectormock.Mutation[lever.CreateUserInput, lever.UserSummary] {
+	return mock.createUser
+}
+
+// UpdateUser returns the updateUser script.
+func (mock *Mock) UpdateUser() *connectormock.Mutation[lever.UpdateUserInput, lever.UserSummary] {
+	return mock.updateUser
+}
+
+// DeactivateUser returns the deactivateUser script.
+func (mock *Mock) DeactivateUser() *connectormock.Mutation[lever.SetUserActivationInput, lever.UserSummary] {
+	return mock.deactivateUser
+}
+
+// ReactivateUser returns the reactivateUser script.
+func (mock *Mock) ReactivateUser() *connectormock.Mutation[lever.SetUserActivationInput, lever.UserSummary] {
+	return mock.reactivateUser
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListOpportunities() sdkgo.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage] {
+	return operations.mock.listOpportunities
+}
 func (operations mockOperations) GetOpportunity() sdkgo.Query[lever.GetOpportunityInput, lever.OpportunityStage] {
 	return operations.mock.getOpportunity
+}
+func (operations mockOperations) UpdateOpportunityStage() sdkgo.Mutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage] {
+	return operations.mock.updateOpportunityStage
+}
+func (operations mockOperations) SetOpportunityArchiveState() sdkgo.Mutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState] {
+	return operations.mock.setOpportunityArchiveState
+}
+func (operations mockOperations) CreateOpportunity() sdkgo.Mutation[lever.CreateOpportunityInput, lever.CreatedOpportunity] {
+	return operations.mock.createOpportunity
+}
+func (operations mockOperations) GetPosting() sdkgo.Query[lever.GetPostingInput, lever.Posting] {
+	return operations.mock.getPosting
+}
+func (operations mockOperations) ListPostings() sdkgo.Query[lever.ListPostingsInput, lever.PostingsPage] {
+	return operations.mock.listPostings
+}
+func (operations mockOperations) CreatePosting() sdkgo.Mutation[lever.CreatePostingInput, lever.Posting] {
+	return operations.mock.createPosting
+}
+func (operations mockOperations) UpdatePosting() sdkgo.Mutation[lever.UpdatePostingInput, lever.Posting] {
+	return operations.mock.updatePosting
+}
+func (operations mockOperations) GetNote() sdkgo.Query[lever.GetNoteInput, lever.NoteSummary] {
+	return operations.mock.getNote
+}
+func (operations mockOperations) ListNotes() sdkgo.Query[lever.ListNotesInput, lever.NotesPage] {
+	return operations.mock.listNotes
+}
+func (operations mockOperations) CreateNote() sdkgo.Mutation[lever.CreateNoteInput, lever.NoteIdentity] {
+	return operations.mock.createNote
+}
+func (operations mockOperations) UpdateNote() sdkgo.Mutation[lever.UpdateNoteInput, lever.NoteIdentity] {
+	return operations.mock.updateNote
+}
+func (operations mockOperations) DeleteNote() sdkgo.Mutation[lever.DeleteNoteInput, lever.NoteIdentity] {
+	return operations.mock.deleteNote
+}
+func (operations mockOperations) GetInterview() sdkgo.Query[lever.GetInterviewInput, lever.InterviewSummary] {
+	return operations.mock.getInterview
+}
+func (operations mockOperations) ListInterviews() sdkgo.Query[lever.ListInterviewsInput, lever.InterviewsPage] {
+	return operations.mock.listInterviews
+}
+func (operations mockOperations) CreateInterview() sdkgo.Mutation[lever.CreateInterviewInput, lever.InterviewSummary] {
+	return operations.mock.createInterview
+}
+func (operations mockOperations) UpdateInterview() sdkgo.Mutation[lever.UpdateInterviewInput, lever.InterviewSummary] {
+	return operations.mock.updateInterview
+}
+func (operations mockOperations) DeleteInterview() sdkgo.Mutation[lever.DeleteInterviewInput, lever.InterviewIdentity] {
+	return operations.mock.deleteInterview
+}
+func (operations mockOperations) GetUser() sdkgo.Query[lever.GetUserInput, lever.UserSummary] {
+	return operations.mock.getUser
+}
+func (operations mockOperations) ListUsers() sdkgo.Query[lever.ListUsersInput, lever.UsersPage] {
+	return operations.mock.listUsers
+}
+func (operations mockOperations) CreateUser() sdkgo.Mutation[lever.CreateUserInput, lever.UserSummary] {
+	return operations.mock.createUser
+}
+func (operations mockOperations) UpdateUser() sdkgo.Mutation[lever.UpdateUserInput, lever.UserSummary] {
+	return operations.mock.updateUser
+}
+func (operations mockOperations) DeactivateUser() sdkgo.Mutation[lever.SetUserActivationInput, lever.UserSummary] {
+	return operations.mock.deactivateUser
+}
+func (operations mockOperations) ReactivateUser() sdkgo.Mutation[lever.SetUserActivationInput, lever.UserSummary] {
+	return operations.mock.reactivateUser
+}
+
+// ListOpportunitiesListed selects the listed branch: Lever returned the opportunity page.
+func ListOpportunitiesListed(value lever.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Branch(lever.ListOpportunitiesBranchListed, value, failure)
+}
+
+// ListOpportunitiesProviderRejected selects the providerRejected branch: Lever conclusively rejected the lookup.
+func ListOpportunitiesProviderRejected(value lever.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Branch(lever.ListOpportunitiesBranchProviderRejected, value, failure)
+}
+
+// ListOpportunitiesInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized JSON.
+func ListOpportunitiesInvalidResponse(value lever.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Branch(lever.ListOpportunitiesBranchInvalidResponse, value, failure)
+}
+
+// ListOpportunitiesDefect selects the defect branch: Local input or credentials are invalid.
+func ListOpportunitiesDefect(value lever.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Branch(lever.ListOpportunitiesBranchDefect, value, failure)
+}
+
+// ListOpportunitiesRetry asks Dex to retry the listOpportunities Step, after the delay when it is positive.
+func ListOpportunitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Retry[lever.OpportunitiesPage](failure, after)
+}
+
+// ListOpportunitiesListedDefault is the manifest mock listedDefault: One opportunity is returned.
+func ListOpportunitiesListedDefault() connectormock.Case[lever.OpportunitiesPage] {
+	value := connectormock.MustDecodeOutput[lever.OpportunitiesPage](`{"opportunities":[{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}],"nextOffset":""}`)
+	return connectormock.Branch(lever.ListOpportunitiesBranchListed, value, nil)
+}
+
+// ListOpportunitiesDefault is the manifest default, listedDefault, which New installs.
+func ListOpportunitiesDefault() connectormock.Case[lever.OpportunitiesPage] {
+	return ListOpportunitiesListedDefault()
 }
 
 // GetOpportunityFound selects the found branch: Lever returned the opportunity.
@@ -90,4 +390,826 @@ func GetOpportunityFoundDefault() connectormock.Case[lever.OpportunityStage] {
 // GetOpportunityDefault is the manifest default, foundDefault, which New installs.
 func GetOpportunityDefault() connectormock.Case[lever.OpportunityStage] {
 	return GetOpportunityFoundDefault()
+}
+
+// UpdateOpportunityStageUpdated selects the updated branch: The opportunity now holds the requested stage.
+func UpdateOpportunityStageUpdated(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchUpdated, value, failure)
+}
+
+// UpdateOpportunityStageNotFound selects the notFound branch: Lever did not expose the opportunity.
+func UpdateOpportunityStageNotFound(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchNotFound, value, failure)
+}
+
+// UpdateOpportunityStageProviderRejected selects the providerRejected branch: Lever conclusively rejected the stage update.
+func UpdateOpportunityStageProviderRejected(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchProviderRejected, value, failure)
+}
+
+// UpdateOpportunityStageInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized read-back JSON.
+func UpdateOpportunityStageInvalidResponse(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchInvalidResponse, value, failure)
+}
+
+// UpdateOpportunityStageDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateOpportunityStageDefect(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchDefect, value, failure)
+}
+
+// UpdateOpportunityStageRetry asks Dex to retry the updateOpportunityStage Step, after the delay when it is positive.
+func UpdateOpportunityStageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Retry[lever.OpportunityStage](failure, after)
+}
+
+// UpdateOpportunityStageUpdatedDefault is the manifest mock updatedDefault: The opportunity was advanced to the requested stage.
+func UpdateOpportunityStageUpdatedDefault() connectormock.Case[lever.OpportunityStage] {
+	value := connectormock.MustDecodeOutput[lever.OpportunityStage](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}`)
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchUpdated, value, nil)
+}
+
+// UpdateOpportunityStageDefault is the manifest default, updatedDefault, which New installs.
+func UpdateOpportunityStageDefault() connectormock.Case[lever.OpportunityStage] {
+	return UpdateOpportunityStageUpdatedDefault()
+}
+
+// SetOpportunityArchiveStateUpdated selects the updated branch: The opportunity now holds the requested archive state.
+func SetOpportunityArchiveStateUpdated(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchUpdated, value, failure)
+}
+
+// SetOpportunityArchiveStateNotFound selects the notFound branch: Lever did not expose the opportunity.
+func SetOpportunityArchiveStateNotFound(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchNotFound, value, failure)
+}
+
+// SetOpportunityArchiveStateProviderRejected selects the providerRejected branch: Lever conclusively rejected the archive change.
+func SetOpportunityArchiveStateProviderRejected(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchProviderRejected, value, failure)
+}
+
+// SetOpportunityArchiveStateInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized read-back JSON.
+func SetOpportunityArchiveStateInvalidResponse(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchInvalidResponse, value, failure)
+}
+
+// SetOpportunityArchiveStateDefect selects the defect branch: Local input or credentials are invalid.
+func SetOpportunityArchiveStateDefect(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchDefect, value, failure)
+}
+
+// SetOpportunityArchiveStateRetry asks Dex to retry the setOpportunityArchiveState Step, after the delay when it is positive.
+func SetOpportunityArchiveStateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Retry[lever.OpportunityArchiveState](failure, after)
+}
+
+// SetOpportunityArchiveStateArchivedDefault is the manifest mock archivedDefault: The opportunity is archived for the supplied reason.
+func SetOpportunityArchiveStateArchivedDefault() connectormock.Case[lever.OpportunityArchiveState] {
+	value := connectormock.MustDecodeOutput[lever.OpportunityArchiveState](`{"opportunityId":"250d8f03-738a-4bba-a671-8a3d73477145","archived":true,"reasonId":"63dd55b2-a99f-4e7b-985f-22c7bf80ab42"}`)
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchUpdated, value, nil)
+}
+
+// SetOpportunityArchiveStateDefault is the manifest default, archivedDefault, which New installs.
+func SetOpportunityArchiveStateDefault() connectormock.Case[lever.OpportunityArchiveState] {
+	return SetOpportunityArchiveStateArchivedDefault()
+}
+
+// CreateOpportunityCreated selects the created branch: Lever confirmed the new opportunity ID.
+func CreateOpportunityCreated(value lever.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Branch(lever.CreateOpportunityBranchCreated, value, failure)
+}
+
+// CreateOpportunityProviderRejected selects the providerRejected branch: Lever conclusively rejected the create request.
+func CreateOpportunityProviderRejected(value lever.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Branch(lever.CreateOpportunityBranchProviderRejected, value, failure)
+}
+
+// CreateOpportunityUncertain returns an uncertain createOpportunity outcome.
+func CreateOpportunityUncertain(value lever.CreatedOpportunity, failure sdkgo.Failure) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOpportunityDefect selects the defect branch: Local input, credentials, or dispatch checkpoint are invalid.
+func CreateOpportunityDefect(value lever.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Branch(lever.CreateOpportunityBranchDefect, value, failure)
+}
+
+// CreateOpportunityRetry asks Dex to retry the createOpportunity Step, after the delay when it is positive.
+func CreateOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Retry[lever.CreatedOpportunity](failure, after)
+}
+
+// CreateOpportunityCreatedDefault is the manifest mock createdDefault: Lever created a candidate opportunity.
+func CreateOpportunityCreatedDefault() connectormock.Case[lever.CreatedOpportunity] {
+	value := connectormock.MustDecodeOutput[lever.CreatedOpportunity](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145"}`)
+	return connectormock.Branch(lever.CreateOpportunityBranchCreated, value, nil)
+}
+
+// CreateOpportunityDefault is the manifest default, createdDefault, which New installs.
+func CreateOpportunityDefault() connectormock.Case[lever.CreatedOpportunity] {
+	return CreateOpportunityCreatedDefault()
+}
+
+// GetPostingFound selects the found branch: Lever returned the posting.
+func GetPostingFound(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchFound, value, failure)
+}
+
+// GetPostingNotFound selects the notFound branch: Lever did not expose the posting.
+func GetPostingNotFound(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchNotFound, value, failure)
+}
+
+// GetPostingProviderRejected selects the providerRejected branch: Lever conclusively rejected the read.
+func GetPostingProviderRejected(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchProviderRejected, value, failure)
+}
+
+// GetPostingInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized posting JSON.
+func GetPostingInvalidResponse(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchInvalidResponse, value, failure)
+}
+
+// GetPostingDefect selects the defect branch: Posting ID or credentials are invalid.
+func GetPostingDefect(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.GetPostingBranchDefect, value, failure)
+}
+
+// GetPostingRetry asks Dex to retry the getPosting Step, after the delay when it is positive.
+func GetPostingRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.Posting] {
+	return connectormock.Retry[lever.Posting](failure, after)
+}
+
+// GetPostingFoundDefault is the manifest mock foundDefault: One draft posting is visible.
+func GetPostingFoundDefault() connectormock.Case[lever.Posting] {
+	value := connectormock.MustDecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+	return connectormock.Branch(lever.GetPostingBranchFound, value, nil)
+}
+
+// GetPostingDefault is the manifest default, foundDefault, which New installs.
+func GetPostingDefault() connectormock.Case[lever.Posting] { return GetPostingFoundDefault() }
+
+// ListPostingsListed selects the listed branch: Lever returned the postings.
+func ListPostingsListed(value lever.PostingsPage, failure *sdkgo.Failure) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Branch(lever.ListPostingsBranchListed, value, failure)
+}
+
+// ListPostingsProviderRejected selects the providerRejected branch: Lever conclusively rejected the read.
+func ListPostingsProviderRejected(value lever.PostingsPage, failure *sdkgo.Failure) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Branch(lever.ListPostingsBranchProviderRejected, value, failure)
+}
+
+// ListPostingsInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized posting JSON.
+func ListPostingsInvalidResponse(value lever.PostingsPage, failure *sdkgo.Failure) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Branch(lever.ListPostingsBranchInvalidResponse, value, failure)
+}
+
+// ListPostingsDefect selects the defect branch: Posting filter or credentials are invalid.
+func ListPostingsDefect(value lever.PostingsPage, failure *sdkgo.Failure) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Branch(lever.ListPostingsBranchDefect, value, failure)
+}
+
+// ListPostingsRetry asks Dex to retry the listPostings Step, after the delay when it is positive.
+func ListPostingsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.PostingsPage] {
+	return connectormock.Retry[lever.PostingsPage](failure, after)
+}
+
+// ListPostingsListedDefault is the manifest mock listedDefault: One draft posting is visible.
+func ListPostingsListedDefault() connectormock.Case[lever.PostingsPage] {
+	value := connectormock.MustDecodeOutput[lever.PostingsPage](`{"postings":[{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}]}`)
+	return connectormock.Branch(lever.ListPostingsBranchListed, value, nil)
+}
+
+// ListPostingsDefault is the manifest default, listedDefault, which New installs.
+func ListPostingsDefault() connectormock.Case[lever.PostingsPage] { return ListPostingsListedDefault() }
+
+// CreatePostingCreated selects the created branch: Lever confirmed the new posting.
+func CreatePostingCreated(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.CreatePostingBranchCreated, value, failure)
+}
+
+// CreatePostingProviderRejected selects the providerRejected branch: Lever conclusively rejected the create.
+func CreatePostingProviderRejected(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.CreatePostingBranchProviderRejected, value, failure)
+}
+
+// CreatePostingUncertain returns an uncertain createPosting outcome.
+func CreatePostingUncertain(value lever.Posting, failure sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreatePostingDefect selects the defect branch: Posting input or dispatch checkpoint is invalid.
+func CreatePostingDefect(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.CreatePostingBranchDefect, value, failure)
+}
+
+// CreatePostingRetry asks Dex to retry the createPosting Step, after the delay when it is positive.
+func CreatePostingRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.Posting] {
+	return connectormock.Retry[lever.Posting](failure, after)
+}
+
+// CreatePostingCreatedDefault is the manifest mock createdDefault: Lever created a draft posting.
+func CreatePostingCreatedDefault() connectormock.Case[lever.Posting] {
+	value := connectormock.MustDecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+	return connectormock.Branch(lever.CreatePostingBranchCreated, value, nil)
+}
+
+// CreatePostingDefault is the manifest default, createdDefault, which New installs.
+func CreatePostingDefault() connectormock.Case[lever.Posting] { return CreatePostingCreatedDefault() }
+
+// UpdatePostingUpdated selects the updated branch: Lever confirmed the requested title and state.
+func UpdatePostingUpdated(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.UpdatePostingBranchUpdated, value, failure)
+}
+
+// UpdatePostingNotFound selects the notFound branch: Lever did not expose the posting.
+func UpdatePostingNotFound(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.UpdatePostingBranchNotFound, value, failure)
+}
+
+// UpdatePostingProviderRejected selects the providerRejected branch: Lever conclusively rejected the update.
+func UpdatePostingProviderRejected(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.UpdatePostingBranchProviderRejected, value, failure)
+}
+
+// UpdatePostingDefect selects the defect branch: Posting input or credentials are invalid.
+func UpdatePostingDefect(value lever.Posting, failure *sdkgo.Failure) connectormock.Case[lever.Posting] {
+	return connectormock.Branch(lever.UpdatePostingBranchDefect, value, failure)
+}
+
+// UpdatePostingRetry asks Dex to retry the updatePosting Step, after the delay when it is positive.
+func UpdatePostingRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.Posting] {
+	return connectormock.Retry[lever.Posting](failure, after)
+}
+
+// UpdatePostingUpdatedDefault is the manifest mock updatedDefault: Lever confirmed the changed posting.
+func UpdatePostingUpdatedDefault() connectormock.Case[lever.Posting] {
+	value := connectormock.MustDecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+	return connectormock.Branch(lever.UpdatePostingBranchUpdated, value, nil)
+}
+
+// UpdatePostingDefault is the manifest default, updatedDefault, which New installs.
+func UpdatePostingDefault() connectormock.Case[lever.Posting] { return UpdatePostingUpdatedDefault() }
+
+// GetNoteFound selects the found branch: Lever returned the note.
+func GetNoteFound(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchFound, value, failure)
+}
+
+// GetNoteNotFound selects the notFound branch: Lever did not expose the note.
+func GetNoteNotFound(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchNotFound, value, failure)
+}
+
+// GetNoteProviderRejected selects the providerRejected branch: Lever rejected the read.
+func GetNoteProviderRejected(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchProviderRejected, value, failure)
+}
+
+// GetNoteInvalidResponse selects the invalidResponse branch: Lever returned invalid note metadata.
+func GetNoteInvalidResponse(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchInvalidResponse, value, failure)
+}
+
+// GetNoteDefect selects the defect branch: Note or opportunity ID is invalid.
+func GetNoteDefect(value lever.NoteSummary, failure *sdkgo.Failure) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Branch(lever.GetNoteBranchDefect, value, failure)
+}
+
+// GetNoteRetry asks Dex to retry the getNote Step, after the delay when it is positive.
+func GetNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NoteSummary] {
+	return connectormock.Retry[lever.NoteSummary](failure, after)
+}
+
+// GetNoteFoundDefault is the manifest mock foundDefault: One note's metadata is visible.
+func GetNoteFoundDefault() connectormock.Case[lever.NoteSummary] {
+	value := connectormock.MustDecodeOutput[lever.NoteSummary](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3","createdAt":1420312438111,"commentCount":1}`)
+	return connectormock.Branch(lever.GetNoteBranchFound, value, nil)
+}
+
+// GetNoteDefault is the manifest default, foundDefault, which New installs.
+func GetNoteDefault() connectormock.Case[lever.NoteSummary] { return GetNoteFoundDefault() }
+
+// ListNotesListed selects the listed branch: Lever returned the notes.
+func ListNotesListed(value lever.NotesPage, failure *sdkgo.Failure) connectormock.Case[lever.NotesPage] {
+	return connectormock.Branch(lever.ListNotesBranchListed, value, failure)
+}
+
+// ListNotesProviderRejected selects the providerRejected branch: Lever rejected the read.
+func ListNotesProviderRejected(value lever.NotesPage, failure *sdkgo.Failure) connectormock.Case[lever.NotesPage] {
+	return connectormock.Branch(lever.ListNotesBranchProviderRejected, value, failure)
+}
+
+// ListNotesInvalidResponse selects the invalidResponse branch: Lever returned invalid notes JSON.
+func ListNotesInvalidResponse(value lever.NotesPage, failure *sdkgo.Failure) connectormock.Case[lever.NotesPage] {
+	return connectormock.Branch(lever.ListNotesBranchInvalidResponse, value, failure)
+}
+
+// ListNotesDefect selects the defect branch: Opportunity ID is invalid.
+func ListNotesDefect(value lever.NotesPage, failure *sdkgo.Failure) connectormock.Case[lever.NotesPage] {
+	return connectormock.Branch(lever.ListNotesBranchDefect, value, failure)
+}
+
+// ListNotesRetry asks Dex to retry the listNotes Step, after the delay when it is positive.
+func ListNotesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NotesPage] {
+	return connectormock.Retry[lever.NotesPage](failure, after)
+}
+
+// ListNotesListedDefault is the manifest mock listedDefault: One note's metadata is visible.
+func ListNotesListedDefault() connectormock.Case[lever.NotesPage] {
+	value := connectormock.MustDecodeOutput[lever.NotesPage](`{"notes":[{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3","createdAt":1420312438111,"commentCount":1}]}`)
+	return connectormock.Branch(lever.ListNotesBranchListed, value, nil)
+}
+
+// ListNotesDefault is the manifest default, listedDefault, which New installs.
+func ListNotesDefault() connectormock.Case[lever.NotesPage] { return ListNotesListedDefault() }
+
+// CreateNoteCreated selects the created branch: Lever confirmed the note ID.
+func CreateNoteCreated(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.CreateNoteBranchCreated, value, failure)
+}
+
+// CreateNoteProviderRejected selects the providerRejected branch: Lever rejected note creation.
+func CreateNoteProviderRejected(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.CreateNoteBranchProviderRejected, value, failure)
+}
+
+// CreateNoteUncertain returns an uncertain createNote outcome.
+func CreateNoteUncertain(value lever.NoteIdentity, failure sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateNoteDefect selects the defect branch: Input or dispatch checkpoint is invalid.
+func CreateNoteDefect(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.CreateNoteBranchDefect, value, failure)
+}
+
+// CreateNoteRetry asks Dex to retry the createNote Step, after the delay when it is positive.
+func CreateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Retry[lever.NoteIdentity](failure, after)
+}
+
+// CreateNoteCreatedDefault is the manifest mock createdDefault: Lever created one note.
+func CreateNoteCreatedDefault() connectormock.Case[lever.NoteIdentity] {
+	value := connectormock.MustDecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+	return connectormock.Branch(lever.CreateNoteBranchCreated, value, nil)
+}
+
+// CreateNoteDefault is the manifest default, createdDefault, which New installs.
+func CreateNoteDefault() connectormock.Case[lever.NoteIdentity] { return CreateNoteCreatedDefault() }
+
+// UpdateNoteUpdated selects the updated branch: Lever confirmed the note ID.
+func UpdateNoteUpdated(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.UpdateNoteBranchUpdated, value, failure)
+}
+
+// UpdateNoteNotFound selects the notFound branch: Lever did not expose the note.
+func UpdateNoteNotFound(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.UpdateNoteBranchNotFound, value, failure)
+}
+
+// UpdateNoteProviderRejected selects the providerRejected branch: Lever rejected note replacement.
+func UpdateNoteProviderRejected(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.UpdateNoteBranchProviderRejected, value, failure)
+}
+
+// UpdateNoteDefect selects the defect branch: Input or credentials are invalid.
+func UpdateNoteDefect(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.UpdateNoteBranchDefect, value, failure)
+}
+
+// UpdateNoteRetry asks Dex to retry the updateNote Step, after the delay when it is positive.
+func UpdateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Retry[lever.NoteIdentity](failure, after)
+}
+
+// UpdateNoteUpdatedDefault is the manifest mock updatedDefault: Lever replaced one note.
+func UpdateNoteUpdatedDefault() connectormock.Case[lever.NoteIdentity] {
+	value := connectormock.MustDecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+	return connectormock.Branch(lever.UpdateNoteBranchUpdated, value, nil)
+}
+
+// UpdateNoteDefault is the manifest default, updatedDefault, which New installs.
+func UpdateNoteDefault() connectormock.Case[lever.NoteIdentity] { return UpdateNoteUpdatedDefault() }
+
+// DeleteNoteDeleted selects the deleted branch: Lever deleted the note or it was already absent.
+func DeleteNoteDeleted(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.DeleteNoteBranchDeleted, value, failure)
+}
+
+// DeleteNoteProviderRejected selects the providerRejected branch: Lever rejected deletion.
+func DeleteNoteProviderRejected(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.DeleteNoteBranchProviderRejected, value, failure)
+}
+
+// DeleteNoteDefect selects the defect branch: Input or credentials are invalid.
+func DeleteNoteDefect(value lever.NoteIdentity, failure *sdkgo.Failure) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Branch(lever.DeleteNoteBranchDefect, value, failure)
+}
+
+// DeleteNoteRetry asks Dex to retry the deleteNote Step, after the delay when it is positive.
+func DeleteNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.NoteIdentity] {
+	return connectormock.Retry[lever.NoteIdentity](failure, after)
+}
+
+// DeleteNoteDeletedDefault is the manifest mock deletedDefault: The note is absent.
+func DeleteNoteDeletedDefault() connectormock.Case[lever.NoteIdentity] {
+	value := connectormock.MustDecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+	return connectormock.Branch(lever.DeleteNoteBranchDeleted, value, nil)
+}
+
+// DeleteNoteDefault is the manifest default, deletedDefault, which New installs.
+func DeleteNoteDefault() connectormock.Case[lever.NoteIdentity] { return DeleteNoteDeletedDefault() }
+
+// GetInterviewFound selects the found branch: Lever returned the interview.
+func GetInterviewFound(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchFound, value, failure)
+}
+
+// GetInterviewNotFound selects the notFound branch: Lever did not expose the interview.
+func GetInterviewNotFound(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchNotFound, value, failure)
+}
+
+// GetInterviewProviderRejected selects the providerRejected branch: Lever rejected the read.
+func GetInterviewProviderRejected(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchProviderRejected, value, failure)
+}
+
+// GetInterviewInvalidResponse selects the invalidResponse branch: Lever returned invalid interview JSON.
+func GetInterviewInvalidResponse(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchInvalidResponse, value, failure)
+}
+
+// GetInterviewDefect selects the defect branch: Interview or opportunity ID is invalid.
+func GetInterviewDefect(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.GetInterviewBranchDefect, value, failure)
+}
+
+// GetInterviewRetry asks Dex to retry the getInterview Step, after the delay when it is positive.
+func GetInterviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Retry[lever.InterviewSummary](failure, after)
+}
+
+// GetInterviewFoundDefault is the manifest mock foundDefault: One interview is visible.
+func GetInterviewFoundDefault() connectormock.Case[lever.InterviewSummary] {
+	value := connectormock.MustDecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+	return connectormock.Branch(lever.GetInterviewBranchFound, value, nil)
+}
+
+// GetInterviewDefault is the manifest default, foundDefault, which New installs.
+func GetInterviewDefault() connectormock.Case[lever.InterviewSummary] {
+	return GetInterviewFoundDefault()
+}
+
+// ListInterviewsListed selects the listed branch: Lever returned the interviews.
+func ListInterviewsListed(value lever.InterviewsPage, failure *sdkgo.Failure) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Branch(lever.ListInterviewsBranchListed, value, failure)
+}
+
+// ListInterviewsProviderRejected selects the providerRejected branch: Lever rejected the read.
+func ListInterviewsProviderRejected(value lever.InterviewsPage, failure *sdkgo.Failure) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Branch(lever.ListInterviewsBranchProviderRejected, value, failure)
+}
+
+// ListInterviewsInvalidResponse selects the invalidResponse branch: Lever returned invalid interviews JSON.
+func ListInterviewsInvalidResponse(value lever.InterviewsPage, failure *sdkgo.Failure) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Branch(lever.ListInterviewsBranchInvalidResponse, value, failure)
+}
+
+// ListInterviewsDefect selects the defect branch: Opportunity ID is invalid.
+func ListInterviewsDefect(value lever.InterviewsPage, failure *sdkgo.Failure) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Branch(lever.ListInterviewsBranchDefect, value, failure)
+}
+
+// ListInterviewsRetry asks Dex to retry the listInterviews Step, after the delay when it is positive.
+func ListInterviewsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewsPage] {
+	return connectormock.Retry[lever.InterviewsPage](failure, after)
+}
+
+// ListInterviewsListedDefault is the manifest mock listedDefault: One interview is visible.
+func ListInterviewsListedDefault() connectormock.Case[lever.InterviewsPage] {
+	value := connectormock.MustDecodeOutput[lever.InterviewsPage](`{"interviews":[{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}]}`)
+	return connectormock.Branch(lever.ListInterviewsBranchListed, value, nil)
+}
+
+// ListInterviewsDefault is the manifest default, listedDefault, which New installs.
+func ListInterviewsDefault() connectormock.Case[lever.InterviewsPage] {
+	return ListInterviewsListedDefault()
+}
+
+// CreateInterviewCreated selects the created branch: Lever confirmed the interview ID.
+func CreateInterviewCreated(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.CreateInterviewBranchCreated, value, failure)
+}
+
+// CreateInterviewProviderRejected selects the providerRejected branch: Lever rejected scheduling.
+func CreateInterviewProviderRejected(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.CreateInterviewBranchProviderRejected, value, failure)
+}
+
+// CreateInterviewUncertain returns an uncertain createInterview outcome.
+func CreateInterviewUncertain(value lever.InterviewSummary, failure sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateInterviewDefect selects the defect branch: Input or dispatch checkpoint is invalid.
+func CreateInterviewDefect(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.CreateInterviewBranchDefect, value, failure)
+}
+
+// CreateInterviewRetry asks Dex to retry the createInterview Step, after the delay when it is positive.
+func CreateInterviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Retry[lever.InterviewSummary](failure, after)
+}
+
+// CreateInterviewCreatedDefault is the manifest mock createdDefault: Lever scheduled one interview.
+func CreateInterviewCreatedDefault() connectormock.Case[lever.InterviewSummary] {
+	value := connectormock.MustDecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+	return connectormock.Branch(lever.CreateInterviewBranchCreated, value, nil)
+}
+
+// CreateInterviewDefault is the manifest default, createdDefault, which New installs.
+func CreateInterviewDefault() connectormock.Case[lever.InterviewSummary] {
+	return CreateInterviewCreatedDefault()
+}
+
+// UpdateInterviewUpdated selects the updated branch: Lever confirmed the replacement.
+func UpdateInterviewUpdated(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.UpdateInterviewBranchUpdated, value, failure)
+}
+
+// UpdateInterviewNotFound selects the notFound branch: Lever did not expose the interview.
+func UpdateInterviewNotFound(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.UpdateInterviewBranchNotFound, value, failure)
+}
+
+// UpdateInterviewProviderRejected selects the providerRejected branch: Lever rejected the replacement.
+func UpdateInterviewProviderRejected(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.UpdateInterviewBranchProviderRejected, value, failure)
+}
+
+// UpdateInterviewDefect selects the defect branch: Input or credentials are invalid.
+func UpdateInterviewDefect(value lever.InterviewSummary, failure *sdkgo.Failure) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Branch(lever.UpdateInterviewBranchDefect, value, failure)
+}
+
+// UpdateInterviewRetry asks Dex to retry the updateInterview Step, after the delay when it is positive.
+func UpdateInterviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewSummary] {
+	return connectormock.Retry[lever.InterviewSummary](failure, after)
+}
+
+// UpdateInterviewUpdatedDefault is the manifest mock updatedDefault: Lever replaced one interview.
+func UpdateInterviewUpdatedDefault() connectormock.Case[lever.InterviewSummary] {
+	value := connectormock.MustDecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+	return connectormock.Branch(lever.UpdateInterviewBranchUpdated, value, nil)
+}
+
+// UpdateInterviewDefault is the manifest default, updatedDefault, which New installs.
+func UpdateInterviewDefault() connectormock.Case[lever.InterviewSummary] {
+	return UpdateInterviewUpdatedDefault()
+}
+
+// DeleteInterviewDeleted selects the deleted branch: The interview is absent.
+func DeleteInterviewDeleted(value lever.InterviewIdentity, failure *sdkgo.Failure) connectormock.Case[lever.InterviewIdentity] {
+	return connectormock.Branch(lever.DeleteInterviewBranchDeleted, value, failure)
+}
+
+// DeleteInterviewProviderRejected selects the providerRejected branch: Lever rejected deletion.
+func DeleteInterviewProviderRejected(value lever.InterviewIdentity, failure *sdkgo.Failure) connectormock.Case[lever.InterviewIdentity] {
+	return connectormock.Branch(lever.DeleteInterviewBranchProviderRejected, value, failure)
+}
+
+// DeleteInterviewDefect selects the defect branch: Input or credentials are invalid.
+func DeleteInterviewDefect(value lever.InterviewIdentity, failure *sdkgo.Failure) connectormock.Case[lever.InterviewIdentity] {
+	return connectormock.Branch(lever.DeleteInterviewBranchDefect, value, failure)
+}
+
+// DeleteInterviewRetry asks Dex to retry the deleteInterview Step, after the delay when it is positive.
+func DeleteInterviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.InterviewIdentity] {
+	return connectormock.Retry[lever.InterviewIdentity](failure, after)
+}
+
+// DeleteInterviewDeletedDefault is the manifest mock deletedDefault: The interview is absent.
+func DeleteInterviewDeletedDefault() connectormock.Case[lever.InterviewIdentity] {
+	value := connectormock.MustDecodeOutput[lever.InterviewIdentity](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421"}`)
+	return connectormock.Branch(lever.DeleteInterviewBranchDeleted, value, nil)
+}
+
+// DeleteInterviewDefault is the manifest default, deletedDefault, which New installs.
+func DeleteInterviewDefault() connectormock.Case[lever.InterviewIdentity] {
+	return DeleteInterviewDeletedDefault()
+}
+
+// GetUserFound selects the found branch: Lever returned the user.
+func GetUserFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchFound, value, failure)
+}
+
+// GetUserNotFound selects the notFound branch: Lever did not expose the user.
+func GetUserNotFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchNotFound, value, failure)
+}
+
+// GetUserProviderRejected selects the providerRejected branch: Lever rejected the read.
+func GetUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchProviderRejected, value, failure)
+}
+
+// GetUserInvalidResponse selects the invalidResponse branch: Lever returned invalid user JSON.
+func GetUserInvalidResponse(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchInvalidResponse, value, failure)
+}
+
+// GetUserDefect selects the defect branch: User ID or credentials are invalid.
+func GetUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchDefect, value, failure)
+}
+
+// GetUserRetry asks Dex to retry the getUser Step, after the delay when it is positive.
+func GetUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// GetUserFoundDefault is the manifest mock foundDefault: One active user is visible.
+func GetUserFoundDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+	return connectormock.Branch(lever.GetUserBranchFound, value, nil)
+}
+
+// GetUserDefault is the manifest default, foundDefault, which New installs.
+func GetUserDefault() connectormock.Case[lever.UserSummary] { return GetUserFoundDefault() }
+
+// ListUsersListed selects the listed branch: Lever returned the users.
+func ListUsersListed(value lever.UsersPage, failure *sdkgo.Failure) connectormock.Case[lever.UsersPage] {
+	return connectormock.Branch(lever.ListUsersBranchListed, value, failure)
+}
+
+// ListUsersProviderRejected selects the providerRejected branch: Lever rejected the read.
+func ListUsersProviderRejected(value lever.UsersPage, failure *sdkgo.Failure) connectormock.Case[lever.UsersPage] {
+	return connectormock.Branch(lever.ListUsersBranchProviderRejected, value, failure)
+}
+
+// ListUsersInvalidResponse selects the invalidResponse branch: Lever returned invalid users JSON.
+func ListUsersInvalidResponse(value lever.UsersPage, failure *sdkgo.Failure) connectormock.Case[lever.UsersPage] {
+	return connectormock.Branch(lever.ListUsersBranchInvalidResponse, value, failure)
+}
+
+// ListUsersDefect selects the defect branch: Email filter or credentials are invalid.
+func ListUsersDefect(value lever.UsersPage, failure *sdkgo.Failure) connectormock.Case[lever.UsersPage] {
+	return connectormock.Branch(lever.ListUsersBranchDefect, value, failure)
+}
+
+// ListUsersRetry asks Dex to retry the listUsers Step, after the delay when it is positive.
+func ListUsersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UsersPage] {
+	return connectormock.Retry[lever.UsersPage](failure, after)
+}
+
+// ListUsersListedDefault is the manifest mock listedDefault: One active user is visible.
+func ListUsersListedDefault() connectormock.Case[lever.UsersPage] {
+	value := connectormock.MustDecodeOutput[lever.UsersPage](`{"users":[{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}]}`)
+	return connectormock.Branch(lever.ListUsersBranchListed, value, nil)
+}
+
+// ListUsersDefault is the manifest default, listedDefault, which New installs.
+func ListUsersDefault() connectormock.Case[lever.UsersPage] { return ListUsersListedDefault() }
+
+// CreateUserCreated selects the created branch: Lever confirmed the user ID.
+func CreateUserCreated(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.CreateUserBranchCreated, value, failure)
+}
+
+// CreateUserProviderRejected selects the providerRejected branch: Lever rejected user creation.
+func CreateUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.CreateUserBranchProviderRejected, value, failure)
+}
+
+// CreateUserUncertain returns an uncertain createUser outcome.
+func CreateUserUncertain(value lever.UserSummary, failure sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateUserDefect selects the defect branch: Input or dispatch checkpoint is invalid.
+func CreateUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.CreateUserBranchDefect, value, failure)
+}
+
+// CreateUserRetry asks Dex to retry the createUser Step, after the delay when it is positive.
+func CreateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// CreateUserCreatedDefault is the manifest mock createdDefault: Lever created one user.
+func CreateUserCreatedDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+	return connectormock.Branch(lever.CreateUserBranchCreated, value, nil)
+}
+
+// CreateUserDefault is the manifest default, createdDefault, which New installs.
+func CreateUserDefault() connectormock.Case[lever.UserSummary] { return CreateUserCreatedDefault() }
+
+// UpdateUserUpdated selects the updated branch: Lever confirmed the user replacement.
+func UpdateUserUpdated(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.UpdateUserBranchUpdated, value, failure)
+}
+
+// UpdateUserNotFound selects the notFound branch: Lever did not expose the user.
+func UpdateUserNotFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.UpdateUserBranchNotFound, value, failure)
+}
+
+// UpdateUserProviderRejected selects the providerRejected branch: Lever rejected the replacement.
+func UpdateUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.UpdateUserBranchProviderRejected, value, failure)
+}
+
+// UpdateUserDefect selects the defect branch: Input or credentials are invalid.
+func UpdateUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.UpdateUserBranchDefect, value, failure)
+}
+
+// UpdateUserRetry asks Dex to retry the updateUser Step, after the delay when it is positive.
+func UpdateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// UpdateUserUpdatedDefault is the manifest mock updatedDefault: Lever confirmed the replacement.
+func UpdateUserUpdatedDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+	return connectormock.Branch(lever.UpdateUserBranchUpdated, value, nil)
+}
+
+// UpdateUserDefault is the manifest default, updatedDefault, which New installs.
+func UpdateUserDefault() connectormock.Case[lever.UserSummary] { return UpdateUserUpdatedDefault() }
+
+// DeactivateUserUpdated selects the updated branch: The user is inactive.
+func DeactivateUserUpdated(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.DeactivateUserBranchUpdated, value, failure)
+}
+
+// DeactivateUserNotFound selects the notFound branch: Lever did not expose the user.
+func DeactivateUserNotFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.DeactivateUserBranchNotFound, value, failure)
+}
+
+// DeactivateUserProviderRejected selects the providerRejected branch: Lever rejected deactivation.
+func DeactivateUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.DeactivateUserBranchProviderRejected, value, failure)
+}
+
+// DeactivateUserDefect selects the defect branch: User ID or credentials are invalid.
+func DeactivateUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.DeactivateUserBranchDefect, value, failure)
+}
+
+// DeactivateUserRetry asks Dex to retry the deactivateUser Step, after the delay when it is positive.
+func DeactivateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// DeactivateUserUpdatedDefault is the manifest mock updatedDefault: The user is inactive.
+func DeactivateUserUpdatedDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":false}`)
+	return connectormock.Branch(lever.DeactivateUserBranchUpdated, value, nil)
+}
+
+// DeactivateUserDefault is the manifest default, updatedDefault, which New installs.
+func DeactivateUserDefault() connectormock.Case[lever.UserSummary] {
+	return DeactivateUserUpdatedDefault()
+}
+
+// ReactivateUserUpdated selects the updated branch: The user is active.
+func ReactivateUserUpdated(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.ReactivateUserBranchUpdated, value, failure)
+}
+
+// ReactivateUserNotFound selects the notFound branch: Lever did not expose the user.
+func ReactivateUserNotFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.ReactivateUserBranchNotFound, value, failure)
+}
+
+// ReactivateUserProviderRejected selects the providerRejected branch: Lever rejected reactivation.
+func ReactivateUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.ReactivateUserBranchProviderRejected, value, failure)
+}
+
+// ReactivateUserDefect selects the defect branch: User ID or credentials are invalid.
+func ReactivateUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.ReactivateUserBranchDefect, value, failure)
+}
+
+// ReactivateUserRetry asks Dex to retry the reactivateUser Step, after the delay when it is positive.
+func ReactivateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// ReactivateUserUpdatedDefault is the manifest mock updatedDefault: The user is active.
+func ReactivateUserUpdatedDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+	return connectormock.Branch(lever.ReactivateUserBranchUpdated, value, nil)
+}
+
+// ReactivateUserDefault is the manifest default, updatedDefault, which New installs.
+func ReactivateUserDefault() connectormock.Case[lever.UserSummary] {
+	return ReactivateUserUpdatedDefault()
 }

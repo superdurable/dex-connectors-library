@@ -1,6 +1,6 @@
 {
   "connectorId": "meta-ads-insights",
-  "releaseTag": "connectors/meta/ads-insights/go/v0.1.0",
+  "releaseTag": "connectors/meta/ads-insights/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-meta-ads-insights",
