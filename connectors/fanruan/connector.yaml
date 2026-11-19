@@ -8,6 +8,12 @@ metadata:
   categories: [productivity]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-fanruan"
+      operations: [listAppsPage]
+      triggers: []
   provider: fanruan
   codegen:
     go:
