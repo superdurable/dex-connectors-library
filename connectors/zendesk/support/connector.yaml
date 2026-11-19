@@ -6,17 +6,17 @@ metadata:
   description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments, and receive each created, updated, or deleted ticket.
   company: Zendesk
   categories: [customer-support]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: zendesk
   languages:
     python:
-      version: v0.2.0
+      version: v0.3.0
       package: dex-connector-zendesk-support
       operations: [searchTickets, getTicket, createTicket, updateTicket]
       triggers: [ticketChanged]
     typescript:
-      version: v0.2.0
+      version: v0.3.0
       package: "@superdurable/connector-zendesk-support"
       operations: [searchTickets, getTicket, createTicket, updateTicket]
       triggers: [ticketChanged]
@@ -33,7 +33,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete Zendesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions are unusually large. An oversized response selects invalidResponse."
+        description: "Maximum complete Zendesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions are unusually large. An oversized read response selects invalidResponse. An oversized answer to createTicket repeats the keyed request; an oversized updateTicket error is an unknown outcome that is read back before any resend, and an oversized updateTicket success is read back and never resent."
         required: false
         default: 4194304
       - name: pollInterval
@@ -138,12 +138,12 @@ spec:
       inputType: CreateTicketInput
       outputType: CreateTicketOutput
       kind: mutation
-      description: Create one ticket with its first comment under a Zendesk Idempotency-Key derived from the Step, so a retried or re-dispatched Step returns the same ticket.
+      description: Create one ticket with its first comment under a Zendesk Idempotency-Key derived from the Step, so a retried or re-dispatched Step returns the same ticket. An unknown outcome, including an invalid or oversized answer, repeats the identical keyed request.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "The ticket exists; a repeated attempt returns the ticket the first attempt created."}
-        - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and does not echo the API token, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -165,19 +165,21 @@ spec:
       inputType: UpdateTicketInput
       outputType: UpdateTicketOutput
       kind: mutation
-      description: Change the status, priority, assignee, group, or tags of one ticket and optionally add one public reply or internal note, applied at most once per Step.
+      description: "Change the status, priority, assignee, group, or tags of one ticket and optionally add one public reply or internal note. Every attempt rereads the ticket and its latest audit page and finds an earlier attempt's change by its audit metadata. An unknown write outcome retries, also on the last allowed send, so the next attempt reads back first; an unconfirmed write is resent below the send cap and selects uncertain at it. A write Zendesk answered with 2xx is never resent: an unusable 2xx saves the ticket ID and is read back in the same attempt, and later attempts only read back. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send."
       idempotency: required
       branches:
         - {id: updated, goName: Updated, description: "The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment."}
-        - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's agent., optional: true}
-        - {id: conflict, goName: Conflict, description: "The ticket changed after expectedUpdatedAt, so nothing was written.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it.", optional: true}
+        - {id: conflict, goName: Conflict, description: "The ticket read before the first write changed after expectedUpdatedAt, so nothing was written.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket and, for the write, does not echo the API token, such as updating a closed ticket or assigning an unknown agent; nothing was written.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The ticket and its latest audit page show no change by this Step, yet the change and its comment may still appear: the send cap is reached, Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, Zendesk accepted a write that the read-back cannot confirm, or the credentials became unusable after a possible send. Below the cap, an unconfirmed write that Zendesk did not accept is read back and then resent.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Comment reconciliation scans only the latest audit page, so a later retry could miss its own audit and post the comment again."}}
+        durability: sync
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Comment reconciliation scans only the latest audit page, so a resend after an absent read-back could post the comment again."}}
       mocks:
         - name: followedUpCustomerIssue
           branch: updated

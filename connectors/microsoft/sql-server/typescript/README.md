@@ -1,10 +1,18 @@
 # Microsoft SQL Server TypeScript connector
 
-`@superdurable/connector-microsoft-sql-server` implements the SQL Server `query` and `execute`
-operations for Dex. The runnable [query Flow](examples/query-rows/README.md) and
-[record-refund Flow](examples/record-refund/README.md) are application entry points. Both
-operations use a fresh SQL authentication connection and a transaction. A query
-rolls back; an execute commits only after validating its result and row limit.
+`@superdurable/connector-microsoft-sql-server` implements the SQL Server `query`, `execute`, and
+`executeNonIdempotent` operations for Dex. The runnable [query Flow](examples/query-rows/README.md)
+and [record-refund Flow](examples/record-refund/README.md) are application entry points. Every
+operation uses a fresh SQL authentication connection and a transaction. A query rolls back; a
+write commits only after validating its result and row limit.
+
+`execute` (`newExecuteStatementStep`) is `repeatOnUnknown: safe`: a COMMIT whose outcome is unknown
+returns Retry and the statement runs again, so it never selects `uncertain`.
+`executeNonIdempotent` (`newExecuteStatementNonIdempotentStep`) takes the same input for a statement
+that must not run twice. It is `repeatOnUnknown: unsafe`: it records a single-dispatch claim in the
+sync Step heartbeat before COMMIT, selects `uncertain` when COMMIT may have reached SQL Server, and
+selects `uncertain` without connecting on a later attempt after such a COMMIT or a lost Worker. A
+proven rollback returns Retry, and an unreadable checkpoint returns Retry without connecting.
 
 The package uses `mssql` for pooling and request APIs and its Tedious driver for TDS. It disables
 Tedious's internal transient-login retries so Dex sees each attempt. Every transaction pins

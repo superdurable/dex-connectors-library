@@ -5,6 +5,7 @@ package freshdesk_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -51,19 +52,45 @@ func TestUpdateTicketThatAlreadyHoldsTheValuesWritesNothing(t *testing.T) {
 }
 
 func TestUpdateTicketRetriesEveryUnconfirmedWrite(t *testing.T) {
-	for _, status := range []int{http.StatusInternalServerError, http.StatusTooManyRequests} {
+	for name, reply := range map[string]func(http.ResponseWriter){
+		"server error": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusInternalServerError, `{"code":"SENTINEL"}`)
+		},
+		"rate limit": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusTooManyRequests, `{"code":"SENTINEL"}`)
+		},
+		"conflict": func(response http.ResponseWriter) { writeJSON(t, response, http.StatusConflict, `{}`) },
+		"unlisted client error": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusMethodNotAllowed, `{}`)
+		},
+		"lost response":          func(response http.ResponseWriter) { dropConnection(t, response) },
+		"invalid written ticket": func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"id":20}`) },
+		"reflected key": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":20,"subject":"`+testAPIKey+`"}`)
+		},
+		"oversized written ticket": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":20,"description_text":"`+strings.Repeat("x", 4096)+`"}`)
+		},
+		"oversized refusal": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusBadRequest, `{"errors":"`+strings.Repeat("x", 4096)+`"}`)
+		},
+	} {
 		provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 			if request.Method == http.MethodGet {
 				writeJSON(t, response, http.StatusOK, ticketBodyJSON(20, 3, nil))
 				return
 			}
-			writeJSON(t, response, status, `{"code":"SENTINEL"}`)
+			reply(response)
 		})
-		_, err := sdkgo.RunMutation(newFreshdeskDexContext("update-retry"), newFreshdeskClient(t, provider.URL).UpdateTicket(), freshdeskConnection, freshdesk.UpdateTicketInput{
+		client, err := freshdesk.New(freshdesk.Config{Domain: testDomain, MaxResponseBytes: 2048}, testCredentialProvider(), freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+		require.NoError(t, err)
+		_, err = sdkgo.RunMutation(newFreshdeskDexContext("update-retry"), client.UpdateTicket(), freshdeskConnection, freshdesk.UpdateTicketInput{
 			TicketID: 20, Status: freshdesk.TicketStatusOpen,
 		})
 		var retry *sdkgo.RetryError
-		require.ErrorAs(t, err, &retry, "the write sets absolute values, so repeating it is safe")
+		require.ErrorAs(t, err, &retry, "%s: the write sets absolute values, so repeating it is safe", name)
+		require.NotContains(t, err.Error(), testAPIKey, name)
+		require.Equal(t, 2, provider.requestCount(), name)
 	}
 }
 
@@ -71,21 +98,26 @@ func TestUpdateTicketBranches(t *testing.T) {
 	for _, test := range []struct {
 		name        string
 		readStatus  int
+		readBody    string
 		writeStatus int
 		writeBody   string
 		branch      sdkgo.BranchID
 	}{
 		{name: "missing ticket", readStatus: http.StatusNotFound, branch: freshdesk.UpdateTicketBranchNotFound},
-		{name: "spam ticket", readStatus: http.StatusOK, writeStatus: http.StatusMethodNotAllowed, branch: freshdesk.UpdateTicketBranchProviderRejected},
+		{name: "missing ticket on write", readStatus: http.StatusOK, writeStatus: http.StatusNotFound, branch: freshdesk.UpdateTicketBranchNotFound},
+		{name: "unprocessable change", readStatus: http.StatusOK, writeStatus: http.StatusUnprocessableEntity, branch: freshdesk.UpdateTicketBranchProviderRejected},
 		{name: "missing required field", readStatus: http.StatusOK, writeStatus: http.StatusBadRequest,
 			writeBody: `{"errors":[{"field":"cf_reason","code":"missing_field"}]}`, branch: freshdesk.UpdateTicketBranchProviderRejected},
-		{name: "invalid written ticket", readStatus: http.StatusOK, writeStatus: http.StatusOK, writeBody: `{"id":20}`, branch: freshdesk.UpdateTicketBranchInvalidResponse},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 				if request.Method == http.MethodGet {
 					if test.readStatus != http.StatusOK {
 						writeJSON(t, response, test.readStatus, ``)
+						return
+					}
+					if test.readBody != "" {
+						writeJSON(t, response, http.StatusOK, test.readBody)
 						return
 					}
 					writeJSON(t, response, http.StatusOK, ticketBodyJSON(20, 3, nil))
@@ -100,6 +132,58 @@ func TestUpdateTicketBranches(t *testing.T) {
 			require.Equal(t, test.branch, result.Branch)
 		})
 	}
+}
+
+func TestUpdateTicketReadBeforeTheChangeSelectsABranchOnlyForADefiniteAnswer(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		body   string
+		branch sdkgo.BranchID
+	}{
+		{name: "missing ticket", status: http.StatusNotFound, body: `{}`, branch: freshdesk.UpdateTicketBranchNotFound},
+		{name: "forbidden", status: http.StatusForbidden, body: `{}`, branch: freshdesk.UpdateTicketBranchProviderRejected},
+		{name: "invalid ticket", status: http.StatusOK, body: `{"id":20}`},
+		{name: "conflict", status: http.StatusConflict, body: `{}`},
+		{name: "outage", status: http.StatusInternalServerError, body: `{}`},
+		{name: "redirect", status: http.StatusMovedPermanently, body: `{}`},
+		{name: "credential-reflecting refusal", status: http.StatusBadRequest, body: `{"description":"` + testAPIKey + `"}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				require.Equal(t, http.MethodGet, request.Method, "nothing is written after an unusable read")
+				writeJSON(t, response, test.status, test.body)
+			})
+			result, err := sdkgo.RunMutation(newFreshdeskDexContext("update-read-"+test.name), newFreshdeskClient(t, provider.URL).UpdateTicket(), freshdeskConnection,
+				freshdesk.UpdateTicketInput{TicketID: 20, Status: freshdesk.TicketStatusResolved})
+			if test.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "an earlier attempt's PUT may have applied")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.branch, result.Branch)
+		})
+	}
+}
+
+// A later attempt may follow a PUT that took effect, so a terminal credential failure retries.
+func TestUpdateTicketTerminalCredentialFailureSelectsDefectOnlyOnTheFirstAttempt(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, failingFreshdeskCredentials{err: sdkgo.ErrReauthorizationRequired},
+		freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+	require.NoError(t, err)
+	input := freshdesk.UpdateTicketInput{TicketID: 20, Status: freshdesk.TicketStatusOpen}
+	firstAttempt := newFreshdeskDexContext("update-credential")
+	result, err := sdkgo.RunMutation(firstAttempt, client.UpdateTicket(), freshdeskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.UpdateTicketBranchDefect, result.Branch)
+
+	_, err = sdkgo.RunMutation(firstAttempt.nextAttempt(), client.UpdateTicket(), freshdeskConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAuthentication, retry.Failure.Kind)
+	require.Zero(t, provider.requestCount())
 }
 
 func TestUpdateTicketRejectsInvalidInputBeforeAnyRequest(t *testing.T) {

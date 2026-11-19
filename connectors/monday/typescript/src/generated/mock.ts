@@ -214,7 +214,7 @@ export function updateItemColumnValuesProviderRejectedFailure(): Case<UpdateItem
 /** Manifest scenario invalidResponseFailure for updateItemColumnValues. */
 export function updateItemColumnValuesInvalidResponseFailure(): Case<UpdateItemColumnValuesOutput> {
   const value = emptyUpdateItemColumnValuesOutput;
-  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "updateItemColumnValues", message: "monday.com returned a malformed item, so the values may have been set; repeating the Step is safe." });
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "updateItemColumnValues", message: "monday.com response reflected the connection credential" });
 }
 
 /** Script the added branch. */

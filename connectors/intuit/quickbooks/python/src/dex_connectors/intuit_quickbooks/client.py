@@ -22,10 +22,13 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
+    ProviderTransportError,
     parse_retry_after,
     read_bounded_body,
     send_traced,
@@ -66,6 +69,10 @@ class Exchange:
     request_id: str = ""
     metadata: dict[str, str] = field(default_factory=dict)
     retry_after: float = 0
+    # No request byte reached QuickBooks, such as a credential failure or a refused connection.
+    provably_unsent: bool = False
+    # A non-2xx body failed to read or exceeded its prefix, so it proves no refusal.
+    is_error_body_incomplete: bool = False
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -204,17 +211,20 @@ def _classify(
     return Exchange("succeeded", status=status, body=body, request_id=request_id)
 
 
-async def _read_error_body(response: httpx.Response) -> bytes:
-    """Read at most Go's 64 KiB error token prefix and close the response."""
+async def _read_error_body(response: httpx.Response) -> tuple[bytes, bool]:
+    """Read at most Go's 64 KiB error token prefix, close the response, and report an incomplete read."""
     chunks: list[bytes] = []
     remaining = MAX_ERROR_BODY_BYTES
     try:
         async for chunk in response.aiter_bytes():
-            if not remaining:
-                break
-            chunks.append(chunk[:remaining])
-            remaining -= min(len(chunk), remaining)
-        return b"".join(chunks)
+            if len(chunk) > remaining:
+                chunks.append(chunk[:remaining])
+                return b"".join(chunks), True
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(chunks), False
+    except (httpx.HTTPError, OSError):
+        return b"", True
     finally:
         await response.aclose()
 
@@ -377,8 +387,13 @@ class Client:
         query: dict[str, str] | None = None,
         payload: bytes | None = None,
         mutation: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Resolve credentials and issue one bounded Accounting API request."""
+        """Resolve credentials and issue one bounded Accounting API request.
+
+        Each response status is appended to `observed_statuses` when its headers arrive, so a
+        caller whose deadline cuts the body read still knows QuickBooks answered.
+        """
         try:
             credentials = await self.credentials.resolve(call)
         except ReauthorizationRequiredError:
@@ -389,6 +404,7 @@ class Client:
                     FailureKind.AUTHENTICATION,
                     "QuickBooks authorization must be renewed: connect the company again",
                 ),
+                provably_unsent=True,
             )
         except RefreshFailedError:
             return Exchange(
@@ -398,13 +414,37 @@ class Client:
                     FailureKind.AVAILABILITY,
                     "Intuit access token refresh is temporarily unavailable",
                 ),
+                provably_unsent=True,
             )
-        except Exception:
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
             return Exchange(
                 "defect",
                 _failure(
                     operation, FailureKind.AUTHENTICATION, "QuickBooks connection credentials are unavailable"
                 ),
+                provably_unsent=True,
+            )
+        except Exception as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return Exchange(
+                    "defect",
+                    _failure(
+                        operation, FailureKind.AUTHENTICATION, "QuickBooks stored credentials are malformed"
+                    ),
+                    provably_unsent=True,
+                )
+            # Any other resolve failure, such as an unavailable broker, is transient.
+            return Exchange(
+                "retry",
+                _failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the Dex credential broker is temporarily unavailable; nothing was sent",
+                ),
+                provably_unsent=True,
             )
         if not isinstance(credentials, Credentials) or not credentials.access_token.reveal():
             return Exchange(
@@ -412,11 +452,14 @@ class Client:
                 _failure(
                     operation, FailureKind.AUTHENTICATION, "QuickBooks connection credentials are unavailable"
                 ),
+                provably_unsent=True,
             )
         try:
             realm = _resolve_realm(credentials, self.config.realm_id.strip())
         except ValueError as error:
-            return Exchange("defect", _failure(operation, FailureKind.AUTHENTICATION, str(error)))
+            return Exchange(
+                "defect", _failure(operation, FailureKind.AUTHENTICATION, str(error)), provably_unsent=True
+            )
         parameters = dict(query or {})
         parameters["minorversion"] = "75"
         if mutation:
@@ -426,6 +469,7 @@ class Client:
                     _failure(
                         operation, FailureKind.LOCAL_DEFECT, "QuickBooks mutation has no usable requestid"
                     ),
+                    provably_unsent=True,
                 )
             parameters["requestid"] = str(call.idempotency_key)
         query_string = _encode_query(parameters)
@@ -447,6 +491,9 @@ class Client:
                 timeout=20,
             )
             response, _ = await send_traced(self.http_client, request)
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
+            is_error_body_incomplete = False
             if 200 <= response.status_code < 300:
                 try:
                     body = await read_bounded_body(response, self.config.max_response_bytes)
@@ -472,7 +519,7 @@ class Client:
                         metadata={"realmId": realm, "environment": self.config.environment},
                     )
             else:
-                body = await _read_error_body(response)
+                body, is_error_body_incomplete = await _read_error_body(response)
             result = _classify(
                 operation,
                 response.status_code,
@@ -482,6 +529,7 @@ class Client:
                 credentials.access_token.reveal(),
                 self.now(),
             )
+            result.is_error_body_incomplete = is_error_body_incomplete
             if response.status_code == 401 and hasattr(self.credentials, "resolve_after_rejection"):
                 try:
                     replacement = await self.credentials.resolve_after_rejection(call)
@@ -502,6 +550,8 @@ class Client:
                             timeout=20,
                         )
                         response, _ = await send_traced(self.http_client, replacement_request)
+                        if observed_statuses is not None:
+                            observed_statuses.append(response.status_code)
                         if 200 <= response.status_code < 300:
                             try:
                                 body = await read_bounded_body(response, self.config.max_response_bytes)
@@ -538,7 +588,7 @@ class Client:
                                     self.now(),
                                 )
                         else:
-                            body = await _read_error_body(response)
+                            body, is_error_body_incomplete = await _read_error_body(response)
                             result = _classify(
                                 operation,
                                 response.status_code,
@@ -548,6 +598,7 @@ class Client:
                                 replacement.access_token.reveal(),
                                 self.now(),
                             )
+                            result.is_error_body_incomplete = is_error_body_incomplete
                     except (httpx.HTTPError, OSError, ValueError):
                         result = Exchange(
                             "retry",
@@ -557,12 +608,18 @@ class Client:
                                 "QuickBooks request failed before a response arrived",
                             ),
                         )
-        except (httpx.HTTPError, OSError, ValueError):
+        except (httpx.HTTPError, OSError, ValueError) as error:
+            is_unsent = isinstance(error, ProviderTransportError) and error.provably_not_sent
             result = Exchange(
                 "retry",
                 _failure(
-                    operation, FailureKind.TRANSPORT, "QuickBooks request failed before a response arrived"
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "QuickBooks could not be reached; no request was sent"
+                    if is_unsent
+                    else "QuickBooks request failed before a response arrived",
                 ),
+                provably_unsent=is_unsent,
             )
         result.metadata.update({"realmId": realm, "environment": self.config.environment})
         return result

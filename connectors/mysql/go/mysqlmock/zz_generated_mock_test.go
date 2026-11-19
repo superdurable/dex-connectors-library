@@ -28,6 +28,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[mysql.StatementExecution](`{"rowsAffected":0,"columns":[],"rows":[],"lastInsertId":"1","warningCount":0}`)
 			return err
 		}},
+		{name: "executeNonIdempotent/addedToDailyTotal/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[mysql.StatementExecution](`{"rowsAffected":1,"columns":[],"rows":[],"lastInsertId":"0","warningCount":0}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -43,5 +47,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ExecuteStatement().Definition().Operation.OperationID != "execute" {
 		t.Errorf("execute mock has another definition")
+	}
+	if mock.ExecuteStatementNonIdempotent().Definition().Operation.OperationID != "executeNonIdempotent" {
+		t.Errorf("executeNonIdempotent mock has another definition")
 	}
 }

@@ -108,6 +108,7 @@ export const UpdateValuesDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateValues. */
 export const UpdateValuesMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -132,7 +133,7 @@ export const AppendTableRowsBranchColumnsMismatch = AppendTableRowsBranch.Column
 export const AppendTableRowsBranchProviderRejected = AppendTableRowsBranch.ProviderRejected;
 /** Microsoft returned an invalid or oversized response before the append was sent. */
 export const AppendTableRowsBranchInvalidResponse = AppendTableRowsBranch.InvalidResponse;
-/** The append was sent but its outcome cannot be confirmed and the table does not show its rows yet; the connector never sends it again. */
+/** The append reached the send cap, or a send was refused after an earlier unconfirmed send, and the table still does not show every row. */
 export const AppendTableRowsBranchUncertain = AppendTableRowsBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AppendTableRowsBranchDefect = AppendTableRowsBranch.Defect;
@@ -145,10 +146,12 @@ export const AppendTableRowsDefinition: MutationDefinition = {
     { id: "columnsMismatch", description: "The table has no column with the key column's name or with a name a row uses; nothing was written.", optional: true },
     { id: "providerRejected", description: "Microsoft conclusively rejected the append or the key lookup, such as a protected worksheet or a missing permission; nothing was written.", optional: true },
     { id: "invalidResponse", description: "Microsoft returned an invalid or oversized response before the append was sent.", optional: true },
-    { id: "uncertain", description: "The append was sent but its outcome cannot be confirmed and the table does not show its rows yet; the connector never sends it again.", optional: true },
+    { id: "uncertain", description: "The append reached the send cap, or a send was refused after an earlier unconfirmed send, and the table still does not show every row.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for appendTableRows. */
 export const AppendTableRowsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

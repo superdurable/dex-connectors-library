@@ -40,7 +40,7 @@ describe('Freshdesk operation boundaries', () => {
     expect(attempt.failure?.kind).toBe('AVAILABILITY');
   });
 
-  it('records a next-attempt permit after a provably unsent create', async () => {
+  it('records canResend after a provably unsent create', async () => {
     let sent = 0;
     const client = new FreshdeskClient({ domain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inertKey') }) }, {
       send: async () => { sent++; throw new ProviderTransportError(true); },
@@ -50,13 +50,10 @@ describe('Freshdesk operation boundaries', () => {
     expect(attempt.kind).toBe('retry');
     expect(attempt.failure?.kind).toBe('TRANSPORT');
     expect(sent).toBe(1);
-    expect(heartbeats).toEqual([
-      { freshdeskDispatchedCallId: call.id, freshdeskDispatchedAttempt: 1 },
-      { freshdeskDispatchedCallId: call.id, freshdeskRetryAttempt: 2 },
-    ]);
+    expect(heartbeats.map(marker => (marker as { state: string }).state)).toEqual(['claimed', 'canResend']);
   });
 
-  it('retries an address-policy refusal and permits a later create attempt', async () => {
+  it('retries an address-policy refusal and records canResend for a later create attempt', async () => {
     const client = new FreshdeskClient({ domain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inertKey') }) }, {
       send: async () => { throw new AddressRefusal('resolved address violates policy'); },
     });
@@ -64,10 +61,19 @@ describe('Freshdesk operation boundaries', () => {
     const attempt = await client.createTicket().invoke(call, createInput);
     expect(attempt.kind).toBe('retry');
     expect(attempt.failure?.kind).toBe('TRANSPORT');
-    expect(heartbeats).toEqual([
-      { freshdeskDispatchedCallId: call.id, freshdeskDispatchedAttempt: 1 },
-      { freshdeskDispatchedCallId: call.id, freshdeskRetryAttempt: 2 },
-    ]);
+    expect(heartbeats.map(marker => (marker as { state: string }).state)).toEqual(['claimed', 'canResend']);
+  });
+
+  it('resends a lost create answer while the send cap allows', async () => {
+    let sent = 0;
+    const client = new FreshdeskClient({ domain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inertKey') }) }, {
+      send: async () => { sent++; throw new ProviderTransportError(false); },
+    });
+    const { call, heartbeats } = testCall();
+    const attempt = await client.createTicket().invoke(call, createInput);
+    expect(attempt.kind).toBe('retry');
+    expect(sent).toBe(1);
+    expect(heartbeats.map(marker => (marker as { state: string }).state)).toEqual(['claimed']);
   });
 
   it('records the ticket ID on get and update rejection receipts', async () => {
@@ -84,7 +90,7 @@ describe('Freshdesk operation boundaries', () => {
     expect(updateAttempt.receipt.providerObjectId).toBe('1201');
   });
 
-  it('does not resend when an earlier write may have reached Freshdesk', async () => {
+  it('retries without sending after a checkpoint written by v0.2.0', async () => {
     let sent = 0;
     const marker = { freshdeskDispatchedCallId: '703d7ec0-692e-50db-a914-86d5fecf7dcc', freshdeskDispatchedAttempt: 1 };
     const { call } = testCall();
@@ -93,6 +99,20 @@ describe('Freshdesk operation boundaries', () => {
       send: async () => { sent++; throw new Error('unexpected request'); },
     });
     const attempt = await client.createTicket().invoke(call, createInput);
+    expect(attempt.kind).toBe('retry');
+    expect(attempt.failure?.kind).toBe('AVAILABILITY');
+    expect(sent).toBe(0);
+  });
+
+  it('never resends after the send cap is reached', async () => {
+    let sent = 0;
+    const marker = { callId: '703d7ec0-692e-50db-a914-86d5fecf7dcc', attempt: 3, state: 'claimed', sendCount: 3 };
+    const { call } = testCall();
+    Object.assign(call.context, { attempt: 4, hasLastHeartbeatValue: () => true, getLastHeartbeatValue: () => marker });
+    const client = new FreshdeskClient({ domain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inertKey') }) }, {
+      send: async () => { sent++; throw new Error('unexpected request'); },
+    });
+    const attempt = await client.addNote().invoke(call, { ticketId: 1201, body: 'Checking billing' });
     expect(attempt.kind).toBe('uncertain');
     expect(sent).toBe(0);
   });

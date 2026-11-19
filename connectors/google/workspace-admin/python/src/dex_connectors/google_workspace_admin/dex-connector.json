@@ -1,10 +1,10 @@
 {
   "connectorId": "google-workspace-admin",
-  "releaseTag": "connectors/google/workspace-admin/go/v0.24.0",
+  "releaseTag": "connectors/google/workspace-admin/go/v0.24.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-workspace-admin",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

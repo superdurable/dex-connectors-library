@@ -47,21 +47,22 @@ func TestCreateTicketFactoryRequiresOnlyTheHappyPath(t *testing.T) {
 	})
 }
 
-// TestOnlyUnkeyedWritesAreUncertainAndSync records the duplicate-dispatch decision per operation.
-func TestOnlyUnkeyedWritesAreUncertainAndSync(t *testing.T) {
+// TestOnlyUnkeyedWritesAreUncertainAndFencedWritesAreSync records the duplicate-dispatch decision per operation.
+func TestOnlyUnkeyedWritesAreUncertainAndFencedWritesAreSync(t *testing.T) {
 	for _, test := range []struct {
 		operation    string
 		branches     []sdkgo.BranchDefinition
 		defaults     sdkgo.StepDefaults
 		hasUncertain bool
+		isFenced     bool
 	}{
-		{"findCustomerByEmail", jiraservicemanagement.FindCustomerByEmailDefinition.Branches, jiraservicemanagement.FindCustomerByEmailDefinition.StepDefaults, false},
-		{"searchTickets", jiraservicemanagement.SearchTicketsDefinition.Branches, jiraservicemanagement.SearchTicketsDefinition.StepDefaults, false},
-		{"getTicket", jiraservicemanagement.GetTicketDefinition.Branches, jiraservicemanagement.GetTicketDefinition.StepDefaults, false},
-		{"createTicket", jiraservicemanagement.CreateTicketDefinition.Branches, jiraservicemanagement.CreateTicketDefinition.StepDefaults, true},
-		{"updateTicket", jiraservicemanagement.UpdateTicketDefinition.Branches, jiraservicemanagement.UpdateTicketDefinition.StepDefaults, false},
-		{"transitionTicket", jiraservicemanagement.TransitionTicketDefinition.Branches, jiraservicemanagement.TransitionTicketDefinition.StepDefaults, false},
-		{"addComment", jiraservicemanagement.AddCommentDefinition.Branches, jiraservicemanagement.AddCommentDefinition.StepDefaults, true},
+		{"findCustomerByEmail", jiraservicemanagement.FindCustomerByEmailDefinition.Branches, jiraservicemanagement.FindCustomerByEmailDefinition.StepDefaults, false, false},
+		{"searchTickets", jiraservicemanagement.SearchTicketsDefinition.Branches, jiraservicemanagement.SearchTicketsDefinition.StepDefaults, false, false},
+		{"getTicket", jiraservicemanagement.GetTicketDefinition.Branches, jiraservicemanagement.GetTicketDefinition.StepDefaults, false, false},
+		{"createTicket", jiraservicemanagement.CreateTicketDefinition.Branches, jiraservicemanagement.CreateTicketDefinition.StepDefaults, true, true},
+		{"updateTicket", jiraservicemanagement.UpdateTicketDefinition.Branches, jiraservicemanagement.UpdateTicketDefinition.StepDefaults, false, false},
+		{"transitionTicket", jiraservicemanagement.TransitionTicketDefinition.Branches, jiraservicemanagement.TransitionTicketDefinition.StepDefaults, false, true},
+		{"addComment", jiraservicemanagement.AddCommentDefinition.Branches, jiraservicemanagement.AddCommentDefinition.StepDefaults, true, true},
 	} {
 		required, hasUncertain := 0, false
 		for _, branch := range test.branches {
@@ -75,10 +76,10 @@ func TestOnlyUnkeyedWritesAreUncertainAndSync(t *testing.T) {
 		require.Equal(t, 1, required, test.operation)
 		require.Equal(t, test.hasUncertain, hasUncertain, test.operation)
 		expectedDurability := dex.StepDurabilityAsync
-		if test.hasUncertain {
+		if test.isFenced {
 			expectedDurability = dex.StepDurabilitySync
 		}
-		require.Equal(t, expectedDurability, test.defaults.ExecuteDurability, "%s: an async fallback attempt would resend an unkeyed write", test.operation)
+		require.Equal(t, expectedDurability, test.defaults.ExecuteDurability, "%s: an async fallback attempt would lose the dispatch checkpoint", test.operation)
 	}
 }
 

@@ -115,7 +115,7 @@ class Client:
             try:
                 contents = await read_bounded_body(response, 65536)
             except (BodyTooLargeError, ProviderTransportError):
-                contents = b""
+                contents = _IncompleteErrorBody()
             return response, contents
         contents = await read_bounded_body(response, self.max_response_bytes)
         return response, contents
@@ -123,6 +123,10 @@ class Client:
     def receipt(self, call: Call, object_id: str = "") -> Receipt:
         """Record the provider identity and observed time without secrets."""
         return Receipt(call.id, "typeform", datetime.now(UTC), call.idempotency_key, object_id)
+
+
+class _IncompleteErrorBody(bytes):
+    """Empty error body that marks an oversized or unreadable non-2xx answer."""
 
 
 def _query_escape(value: str) -> str:

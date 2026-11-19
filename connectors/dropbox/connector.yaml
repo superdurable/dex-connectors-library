@@ -6,16 +6,16 @@ metadata:
   description: List folders, read metadata, download bounded files, and overwrite bounded files through typed Dex operations.
   company: Dropbox
   categories: [files-documents]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: dropbox
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listFolder, getMetadata, continueFolder, downloadFile, uploadFile]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listFolder, getMetadata, continueFolder, downloadFile, uploadFile]
       triggers: []
   codegen:
@@ -198,11 +198,15 @@ spec:
       description: Overwrite one Dropbox path with bounded Base64-decoded content.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # Overwrite mode replaces the same path with the same bytes, so a repeat leaves one file.
+        repeatOnUnknown: safe
       branches:
         - {id: uploaded, goName: Uploaded, description: Dropbox stored the replacement file content.}
         - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the upload., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized upload metadata., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retained for compatibility and no longer selected: malformed or oversized upload metadata now retries the overwrite.", optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: uploadedDefault

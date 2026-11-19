@@ -9,10 +9,10 @@ import { createSecureContext, type TLSSocket } from 'node:tls';
 import sql from 'mssql';
 import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
-import { QueryRowsOperation, ExecuteStatementOperation } from './operations.js';
+import { QueryRowsOperation, ExecuteStatementOperation, ExecuteStatementNonIdempotentOperation } from './operations.js';
 
 type Phase = 'connect' | 'begin' | 'statement' | 'commit';
-export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect';
+export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect' | 'limitExceeded';
 export interface ClassifiedFailure { disposition: Disposition; kind: Failure['kind']; message: string; number?: number; state?: number; severity?: number; }
 interface ServerErrorToken { number: number; class: number; state: number; }
 const connectionTokens = new WeakMap<object, ServerErrorToken>();
@@ -109,6 +109,11 @@ function isLoopbackHost(host: string): boolean {
 export class ConnectionConfigurationError extends Error {}
 /** Strict TDS 8 TLS cannot be verified before LOGIN7 through Tedious's connector API. */
 export class UnsupportedStrictVerificationError extends Error {}
+
+/** Resolved credential material that fails a local check, which no retry repairs. */
+export class InvalidCredentialMaterialError extends Error {
+  constructor() { super('SQL Server connection credentials are unavailable'); this.name = 'InvalidCredentialMaterialError'; }
+}
 const numberGroups: Array<[Failure['kind'], number[]]> = [
   ['CONFLICT', [1205, 1222, 3960, 3961, 3902, 3903, 515, 547, 2601, 2627]],
   ['AVAILABILITY', [615, 701, 926, 1101, 1105, 4221, 6005, 8628, 8645, 8651, 9002, 10922, 10928, 10929, 10936, 18401, 40197, 40501, 40613, 49918, 49919, 49920, 40549, 40550, 40551, 40552, 40553]],
@@ -172,7 +177,8 @@ export class SQLServerClient {
     if (this.config.encrypt === 'strict') throw new UnsupportedStrictVerificationError('strict TLS hostname verification is unavailable in this Tedious version');
   }
   /** Bind the read operation. */ query(): QueryRowsOperation { return new QueryRowsOperation(this); }
-  /** Bind the write operation. */ execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
+  /** Bind the repeat-safe write operation. */ execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
+  /** Bind the fenced write operation, which never runs its statement twice. */ executeNonIdempotent(): ExecuteStatementNonIdempotentOperation { return new ExecuteStatementNonIdempotentOperation(this); }
   /** Build a receipt without including connection settings or credentials. */
   receipt(call: Call, pool?: sql.ConnectionPool, classification?: ClassifiedFailure): ReceiptDraft {
     const metadata = { ...(pool ? sessionIdentities.get(pool) : {}), ...(classification?.number ? { errorNumber: String(classification.number), errorState: String(classification.state), errorSeverity: String(classification.severity) } : {}) };
@@ -189,7 +195,7 @@ export class SQLServerClient {
   /** Resolve the password for this call before entering the driver error path. */
   async resolvePassword(call: Call): Promise<string> {
     const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-    if (!(credentials.password instanceof SecretString) || !credentials.password.reveal()) throw new TypeError('SQL Server connection credentials are unavailable');
+    if (!(credentials.password instanceof SecretString) || !credentials.password.reveal()) throw new InvalidCredentialMaterialError();
     return credentials.password.reveal();
   }
   /** Open the driver using credentials already resolved by the operation. */

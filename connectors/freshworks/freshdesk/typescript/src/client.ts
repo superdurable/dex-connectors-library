@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, ReauthorizationRequiredError, defaultTriggerLogger, type TriggerLogger, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, CreateTicketOperation, UpdateTicketOperation, AddNoteOperation } from './operations.js';
 
 const domainPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -30,7 +30,21 @@ const minimumPollIntervalMs = 10_000;
 /** Classified result of one Freshdesk HTTP exchange. */
 export type Exchange =
   | { outcome: 'succeeded'; response: ProviderResponse }
-  | { outcome: 'rateLimited' | 'notSent' | 'serviceUnavailable' | 'unavailable' | 'notFound' | 'invalid' | 'defect' | 'rejected'; failure: Failure; response?: ProviderResponse; retryAfterMs: number };
+  | {
+    outcome: 'rateLimited' | 'notSent' | 'serviceUnavailable' | 'unavailable' | 'notFound' | 'invalid' | 'defect' | 'rejected'; failure: Failure; response?: ProviderResponse; retryAfterMs: number;
+    /** A non-2xx body exceeded maxResponseBytes or reflected the credential, so it cannot prove a refusal. */ isBodyIncomplete?: boolean;
+    /** A created object's id in a non-2xx body, which means acceptance. */ bodyProviderID?: number;
+  };
+
+/** Return the positive top-level integer id of a response body, or 0 when it has none. */
+export function acceptedProviderID(body: Uint8Array): number {
+  try {
+    const document = JSON.parse(Buffer.from(body).toString('utf8')) as unknown;
+    if (!document || typeof document !== 'object' || Array.isArray(document)) return 0;
+    const providerID = (document as Record<string, unknown>).id;
+    return typeof providerID === 'number' && Number.isSafeInteger(providerID) && providerID > 0 ? providerID : 0;
+  } catch { return 0; }
+}
 
 /** Validated, concurrent Freshdesk API client. */
 export class FreshdeskClient {
@@ -68,7 +82,7 @@ export class FreshdeskClient {
     let credential: Credentials;
     try { credential = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) {
-      const terminal = error instanceof ObjectNotFoundError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+      const terminal = error instanceof ObjectNotFoundError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
       return { failure: this.failure(operation, terminal ? 'AUTHENTICATION' : 'AVAILABILITY', terminal ? 'connection credentials are unavailable' : 'connection credentials could not be read; no request was sent'), transient: !terminal };
     }
     if (!(credential.apiKey instanceof SecretString) || !isHeaderSafeCredential(credential.apiKey.reveal()) || credential.apiKey.reveal().includes(':')) {
@@ -89,21 +103,26 @@ export class FreshdeskClient {
         if (Buffer.from(response.body).includes(Buffer.from(key))) return { outcome: 'invalid', response, failure: this.failure(operation, 'PROTOCOL', 'Freshdesk response reflected the connection credential'), retryAfterMs: 0 };
         return { outcome: 'succeeded', response };
       }
+      // A credential-reflecting refusal body is untrusted, so it cannot prove a refusal either.
+      if (key !== '' && Buffer.from(response.body).includes(Buffer.from(key))) return { ...this.classifyStatus(operation, key, response), isBodyIncomplete: true };
       return this.classifyStatus(operation, key, response);
     } catch (error) {
       if (error instanceof BodyTooLargeError) {
-        if (error.status !== undefined && (error.status < 200 || error.status >= 300)) {
-          return this.classifyStatus(operation, key, { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() });
-        }
-        return { outcome: 'invalid', failure: this.failure(operation, 'RESPONSE_TOO_LARGE', 'Freshdesk response exceeds the configured maxResponseBytes limit'), retryAfterMs: 0 };
+        const response: ProviderResponse | undefined = error.status === undefined ? undefined : { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+        if (response && (response.status < 200 || response.status >= 300)) return { ...this.classifyStatus(operation, key, response), isBodyIncomplete: true };
+        return { outcome: 'invalid', ...(response ? { response } : {}), failure: this.failure(operation, 'RESPONSE_TOO_LARGE', 'Freshdesk response exceeds the configured maxResponseBytes limit'), retryAfterMs: 0 };
       }
       if (error instanceof AddressRefusal) return { outcome: 'notSent', failure: this.failure(operation, 'TRANSPORT', 'Freshdesk could not be reached; no request was sent'), retryAfterMs: 0 };
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return { outcome: 'notSent', failure: this.failure(operation, 'TRANSPORT', 'Freshdesk could not be reached; no request was sent'), retryAfterMs: 0 };
+      if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined) {
+        // Keep the status so a write Freshdesk accepted is never resent.
+        return { outcome: 'unavailable', response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, failure: this.failure(operation, 'TRANSPORT', 'Freshdesk response could not be read'), retryAfterMs: 0 };
+      }
       return { outcome: 'unavailable', failure: this.failure(operation, 'TRANSPORT', 'Freshdesk request failed before a response arrived'), retryAfterMs: 0 };
     }
   }
 
-  private classifyStatus(operation: string, key: string, response: ProviderResponse): Exchange {
+  private classifyStatus(operation: string, key: string, response: ProviderResponse): Exclude<Exchange, { outcome: 'succeeded' }> {
       const status = response.status;
       const retryAfterMs = parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.now());
       let outcome: Exclude<Exchange['outcome'], 'succeeded'>;
@@ -116,7 +135,8 @@ export class FreshdeskClient {
       else if (status >= 300 && status < 400) { outcome = 'rejected'; kind = 'PROTOCOL'; message = `Freshdesk redirected the request (HTTP ${status}); check that the domain is the freshdesk.com helpdesk domain`; }
       else { outcome = 'rejected'; kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 409 ? 'CONFLICT' : status === 400 ? 'VALIDATION' : 'PROVIDER_REJECTION'; message = `Freshdesk rejected the request (HTTP ${status})`; }
       if (status < 300 || status >= 400) message += safeErrorSummary(response.body, key);
-      return { outcome, response, failure: this.failure(operation, kind, message), retryAfterMs };
+      const bodyProviderID = acceptedProviderID(response.body);
+      return { outcome, response, failure: this.failure(operation, kind, message), retryAfterMs, ...(bodyProviderID ? { bodyProviderID } : {}) };
   }
 
   /** Build secret-free failure metadata. */ failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'freshdesk', operation, message }; }

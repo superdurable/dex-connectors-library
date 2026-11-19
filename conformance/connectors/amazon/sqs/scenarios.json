@@ -997,6 +997,53 @@
       "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
       "exchanges": [
         {
+          "body": "{\"__type\":\"Unlisted\",\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-unlisted-status-retries",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
           "keyMode": "absent",
           "method": "POST",
           "path": "/",

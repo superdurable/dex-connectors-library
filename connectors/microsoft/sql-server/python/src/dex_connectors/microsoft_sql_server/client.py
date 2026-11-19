@@ -24,7 +24,12 @@ from ._generated.config import Config, Credentials
 from ._generated.definitions import CONNECTOR_ID, EXECUTE_DEFINITION, QUERY_DEFINITION
 
 if TYPE_CHECKING:
-    from .operations import ExecuteStatementOperation, QueryRowsOperation, _AttemptDeadline
+    from .operations import (
+        ExecuteStatementNonIdempotentOperation,
+        ExecuteStatementOperation,
+        QueryRowsOperation,
+        _AttemptDeadline,
+    )
 
 _SESSION_SETTINGS = (
     "SET LANGUAGE us_english",
@@ -192,10 +197,16 @@ class Client:
         return QueryRowsOperation(self)
 
     def execute(self) -> ExecuteStatementOperation:
-        """Bind the transactional write operation to this client."""
+        """Bind the repeat-safe transactional write operation to this client."""
         from .operations import ExecuteStatementOperation
 
         return ExecuteStatementOperation(self)
+
+    def execute_non_idempotent(self) -> ExecuteStatementNonIdempotentOperation:
+        """Bind the fenced transactional write operation, which never runs its statement twice."""
+        from .operations import ExecuteStatementNonIdempotentOperation
+
+        return ExecuteStatementNonIdempotentOperation(self)
 
     async def aclose(self) -> None:
         """Release client resources; individual calls already close their sessions."""

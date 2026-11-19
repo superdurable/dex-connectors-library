@@ -67,6 +67,7 @@ func TestClassifyFailureTreatsOnlyAPossiblyReceivedCommitAsUncertain(t *testing.
 	require.Equal(t, dispositionRejected, deferredConstraint.disposition, "a deferred constraint rejects COMMIT conclusively")
 	require.Contains(t, deferredConstraint.message, `on constraint "orders_pkey"`)
 	require.Equal(t, dispositionRetry, classifyFailure(&pgconn.PgError{Code: "40001"}, phaseCommit).disposition)
+	require.Equal(t, dispositionUncertain, classifyFailure(&pgconn.PgError{Code: "40003"}, phaseCommit).disposition, "statement_completion_unknown proves nothing")
 	terminated := classifyFailure(&pgconn.PgError{Code: "57P01"}, phaseCommit)
 	require.Equal(t, dispositionUncertain, terminated.disposition, "a backend terminated while committing may already have committed locally")
 	require.Equal(t, "57P01", terminated.sqlState)

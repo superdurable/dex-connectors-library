@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -150,8 +151,8 @@ func TestCreatePageRetriesAfterAnUnavailableDatabaseLookupWithoutDuplicatingTheP
 	require.Equal(t, http.MethodPost, provider.request(2).method)
 }
 
-// TestCreatePageNeverResendsARequestNotionMayHaveReceived covers responses that do not authorize another POST.
-func TestCreatePageNeverResendsARequestNotionMayHaveReceived(t *testing.T) {
+// TestCreatePageMapsTheFirstSendOutcome covers definite refusals, accepted answers, and unknown outcomes.
+func TestCreatePageMapsTheFirstSendOutcome(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		status  int
@@ -163,15 +164,15 @@ func TestCreatePageNeverResendsARequestNotionMayHaveReceived(t *testing.T) {
 		{name: "validation error", status: http.StatusBadRequest, body: notionError(400, "validation_error"), branch: notion.CreatePageBranchProviderRejected, kind: sdkgo.FailureValidation},
 		{name: "missing capability or block limit", status: http.StatusForbidden, body: notionError(403, "restricted_resource"), branch: notion.CreatePageBranchProviderRejected, kind: sdkgo.FailureAuthorization},
 		{name: "unshared data source", status: http.StatusNotFound, body: notionError(404, "object_not_found"), branch: notion.CreatePageBranchNotFound, kind: sdkgo.FailureNotFound},
-		{name: "row limit", status: http.StatusNotAcceptable, body: notionError(406, "row_limit_exceeded"), branch: notion.CreatePageBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
-		{name: "internal error", status: http.StatusInternalServerError, body: notionError(500, "internal_server_error"), branch: notion.CreatePageBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "bad gateway", status: http.StatusBadGateway, body: notionError(502, "bad_gateway"), branch: notion.CreatePageBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "503 without a saved page", status: http.StatusServiceUnavailable, body: notionError(503, "service_unavailable"), branch: notion.CreatePageBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: notionError(504, "gateway_timeout"), branch: notion.CreatePageBranchUncertain, kind: sdkgo.FailureAvailability},
+		{name: "row limit", status: http.StatusNotAcceptable, body: notionError(406, "row_limit_exceeded"), isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "internal error", status: http.StatusInternalServerError, body: notionError(500, "internal_server_error"), isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "bad gateway", status: http.StatusBadGateway, body: notionError(502, "bad_gateway"), isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "503 without a saved page", status: http.StatusServiceUnavailable, body: notionError(503, "service_unavailable"), isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: notionError(504, "gateway_timeout"), isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "unusable 200", status: http.StatusOK, body: `{"object":"page"}`, branch: notion.CreatePageBranchUncertain, kind: sdkgo.FailureProtocol},
 		{name: "unparsable 200", status: http.StatusOK, body: `{"object":`, branch: notion.CreatePageBranchUncertain, kind: sdkgo.FailureProtocol},
 		{name: "rate limited", status: http.StatusTooManyRequests, body: notionError(429, "rate_limited"), isRetry: true, kind: sdkgo.FailureRateLimit},
-		{name: "overloaded", status: 529, body: notionError(529, "service_overload"), isRetry: true, kind: sdkgo.FailureRateLimit},
+		{name: "overloaded", status: 529, body: notionError(529, "service_overload"), isRetry: true, kind: sdkgo.FailureAvailability},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -194,7 +195,75 @@ func TestCreatePageNeverResendsARequestNotionMayHaveReceived(t *testing.T) {
 	}
 }
 
-func TestCreatePageRetriesAnUncommitted409AfterRecordingCanResend(t *testing.T) {
+func TestCreatePageResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
+	for _, status := range []int{http.StatusInternalServerError, http.StatusConflict, 529} {
+		t.Run(strconv.Itoa(status), func(t *testing.T) {
+			provider := newRecordingNotion(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				writeJSON(t, response, status, notionError(status, "unknown"))
+			})
+			client := newNotionClient(t, provider.URL)
+			ctx := singledispatchtest.NewContext("notion-flow", "create-page-cap")
+			for attempt := 1; attempt < 3; attempt++ {
+				_, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "attempt %d is below the send cap of 3", attempt)
+				ctx.AdvanceAttempt()
+			}
+			result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+			require.NoError(t, err)
+			require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
+			ctx.AdvanceAttempt()
+			result, err = sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+			require.NoError(t, err)
+			require.Equal(t, notion.CreatePageBranchUncertain, result.Branch, "no send is allowed at the cap")
+			posts := 0
+			for index := range provider.requestCount() {
+				if provider.request(index).method == http.MethodPost {
+					posts++
+				}
+			}
+			require.Equal(t, 3, posts)
+		})
+	}
+}
+
+func TestCreatePageRecordsCanResendBeforeADefiniteRefusal(t *testing.T) {
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusBadRequest, notionError(400, "validation_error"))
+	})
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page-refused")
+	result, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	require.Equal(t, notion.CreatePageBranchProviderRejected, result.Branch)
+	heartbeats := ctx.Heartbeats()
+	require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"canResend"`)
+}
+
+func TestCreatePageSelectsUncertainForARefusalAfterAPossibleSend(t *testing.T) {
+	var posts int
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method != http.MethodPost {
+			return
+		}
+		posts++
+		if posts == 1 {
+			writeJSON(t, response, http.StatusBadGateway, notionError(502, "bad_gateway"))
+			return
+		}
+		writeJSON(t, response, http.StatusBadRequest, notionError(400, "validation_error"))
+	})
+	client := newNotionClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page-refused-after-send")
+	_, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch, "the first send may have created the page")
+	require.Equal(t, 2, posts)
+}
+
+func TestCreatePageResendsAnUncommitted409BelowTheSendCap(t *testing.T) {
 	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		if index == 0 {
 			writeJSON(t, response, http.StatusConflict, notionError(409, "conflict_error"))
@@ -282,9 +351,9 @@ func TestCreatePageReadBackKeepsTheResolvedDataSourceForAnotherParentType(t *tes
 	require.Equal(t, savedPageID, result.Value.PageID)
 }
 
-func TestCreatePageFenceRetries429And529OnlyAfterAResendCheckpoint(t *testing.T) {
+func TestCreatePageFenceRetries429And529ThenCreatesThePage(t *testing.T) {
 	for _, status := range []int{http.StatusTooManyRequests, 529} {
-		t.Run(http.StatusText(status), func(t *testing.T) {
+		t.Run(strconv.Itoa(status), func(t *testing.T) {
 			provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 				if index == 0 {
 					writeJSON(t, response, status, notionError(status, "rate_limited"))
@@ -295,7 +364,12 @@ func TestCreatePageFenceRetries429And529OnlyAfterAResendCheckpoint(t *testing.T)
 			client := newNotionClient(t, provider.URL)
 			ctx := singledispatchtest.NewContext("notion-flow", "create-page")
 			_, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
-			requireRetry(t, err, sdkgo.FailureRateLimit)
+			if status == http.StatusTooManyRequests {
+				requireRetry(t, err, sdkgo.FailureRateLimit)
+			} else {
+				// A 529 is a 5xx, so the claim counts it as a possible send.
+				requireRetry(t, err, sdkgo.FailureAvailability)
+			}
 			ctx.AdvanceAttempt()
 			result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
 			require.NoError(t, err)
@@ -306,28 +380,39 @@ func TestCreatePageFenceRetries429And529OnlyAfterAResendCheckpoint(t *testing.T)
 	}
 }
 
-func TestCreatePageFenceFailsClosedAfterLostClaim(t *testing.T) {
+func TestCreatePageFenceCountsALostClaimAsAPossibleSend(t *testing.T) {
 	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusServiceUnavailable, notionError(503, "service_unavailable"))
 	})
 	client := newNotionClient(t, provider.URL)
 	ctx := singledispatchtest.NewContext("notion-flow", "create-page")
 	ctx.LoseNextHeartbeat()
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		ctx.AdvanceAttempt()
+	}
 	result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
 	require.NoError(t, err)
-	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
-	ctx.AdvanceAttempt()
-	result, err = sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
-	require.NoError(t, err)
-	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch, "the lost claim's attempt still counts toward the cap")
+	require.Equal(t, 3, provider.requestCount())
 }
 
 func TestCreatePageFenceCredentialFailureRecordsNotSent(t *testing.T) {
+	for name, resolveErr := range map[string]error{
+		"broker unavailable":    projectconfig.ErrCredentialBrokerUnavailable,
+		"static not configured": errors.New("connection is not configured"),
+		"unlisted error":        errors.New("credential unavailable"),
+	} {
+		t.Run(name, func(t *testing.T) { testCreatePageTransientCredentialFailureRecordsNotSent(t, resolveErr) })
+	}
+}
+
+func testCreatePageTransientCredentialFailureRecordsNotSent(t *testing.T, resolveErr error) {
 	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
 	})
-	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, notionCredentialError{err: projectconfig.ErrCredentialBrokerUnavailable})
+	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, notionCredentialError{err: resolveErr})
 	require.NoError(t, err)
 	ctx := singledispatchtest.NewContext("notion-flow", "create-page")
 	_, err = sdkgo.RunMutation(ctx, failedClient.CreatePage(), notionConnection, validCreatePageInput())
@@ -349,7 +434,8 @@ func TestCreatePageTerminalCredentialFailuresSelectDefectAfterNotSent(t *testing
 		{name: "reauthorization required", credentials: notionCredentialError{err: sdkgo.ErrReauthorizationRequired}},
 		{name: "connection not selected", credentials: notionCredentialError{err: projectconfig.ErrConnectionNotSelected}},
 		{name: "broker rejected credentials", credentials: notionCredentialError{err: projectconfig.ErrCredentialBrokerRejected}},
-		{name: "unclassified credential failure", credentials: notionCredentialError{err: errors.New("credential unavailable")}},
+		{name: "project reauthorization", credentials: notionCredentialError{err: projectconfig.ErrReauthorizationRequired}},
+		{name: "connection absent", credentials: notionCredentialError{err: projectconfig.ErrObjectNotFound}},
 		{name: "invalid API token", credentials: sdkgo.StaticCredentialProvider[notion.Credentials]{
 			notionConnection: {APIToken: sdkgo.NewSecretString("invalid\nheader")},
 		}},
@@ -375,30 +461,38 @@ func TestCreatePageTerminalCredentialFailuresSelectDefectAfterNotSent(t *testing
 	}
 }
 
-func TestCreatePageCheckpointWriteFailuresRetryWithoutSendingAgain(t *testing.T) {
+// TestCreatePageCheckpointWriteFailuresRetryAndCountThePossibleSend shows that a lost checkpoint
+// returns Retry; the next attempt counts the possible send and, below the cap, posts again.
+func TestCreatePageCheckpointWriteFailuresRetryAndCountThePossibleSend(t *testing.T) {
 	checkpointFailure := errors.New("checkpoint unavailable")
 	for _, test := range []struct {
 		name       string
 		prepare    func(*singledispatchtest.Context)
-		respond    func(*singledispatchtest.Context, http.ResponseWriter)
+		respond    func(*singledispatchtest.Context, http.ResponseWriter, int)
 		credential sdkgo.CredentialProvider[notion.Credentials]
 		wantPosts  int
 		wantKind   sdkgo.FailureKind
 	}{
 		{name: "claim", prepare: func(ctx *singledispatchtest.Context) { ctx.SetWriteError(checkpointFailure) }, wantPosts: 0, wantKind: sdkgo.FailureTransport},
-		{name: "canResend", respond: func(ctx *singledispatchtest.Context, response http.ResponseWriter) {
-			ctx.SetWriteError(checkpointFailure)
-			writeJSON(t, response, http.StatusTooManyRequests, notionError(429, "rate_limited"))
+		{name: "canResend", respond: func(ctx *singledispatchtest.Context, response http.ResponseWriter, index int) {
+			if index == 0 {
+				ctx.SetWriteError(checkpointFailure)
+				writeJSON(t, response, http.StatusTooManyRequests, notionError(429, "rate_limited"))
+				return
+			}
+			writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
 		}, wantPosts: 1, wantKind: sdkgo.FailureAvailability},
 		{name: "notSent", prepare: func(ctx *singledispatchtest.Context) { ctx.SetWriteError(checkpointFailure) },
 			credential: notionCredentialError{err: projectconfig.ErrCredentialBrokerUnavailable}, wantPosts: 0, wantKind: sdkgo.FailureAvailability},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := singledispatchtest.NewContext("notion-flow", "create-page")
-			provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+			provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 				if test.respond != nil {
-					test.respond(ctx, response)
+					test.respond(ctx, response, index)
+					return
 				}
+				writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
 			})
 			if test.prepare != nil {
 				test.prepare(ctx)
@@ -416,8 +510,8 @@ func TestCreatePageCheckpointWriteFailuresRetryWithoutSendingAgain(t *testing.T)
 			ctx.AdvanceAttempt()
 			result, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
 			require.NoError(t, err)
-			require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
-			require.Equal(t, test.wantPosts, provider.requestCount())
+			require.Equal(t, notion.CreatePageBranchCreated, result.Branch, "one possible send is below the cap")
+			require.Equal(t, test.wantPosts+1, provider.requestCount())
 		})
 	}
 }
@@ -509,6 +603,47 @@ func TestCreatePageReadsBackAnAcceptedPageWithAnUnusableBody(t *testing.T) {
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }
 
+func TestCreatePageSelectsUncertainWhenAnUnsavedAcceptedPageCannotBeReadBack(t *testing.T) {
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page-unsaved-id")
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			ctx.SetWriteError(errors.New("heartbeat unavailable"))
+			writeJSON(t, response, http.StatusOK, `{"object":"page","id":"`+testPageID+`","properties":"bad"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusServiceUnavailable, notionError(503, "service_unavailable"))
+	})
+	result, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err, "a later attempt without the saved page ID could post again")
+	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreatePageSelectsUncertainWhenTerminalCredentialsBlockReadBack(t *testing.T) {
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
+	})
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page-revoked")
+	_, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	ctx.AdvanceAttempt()
+	revoked, err := notion.New(notion.Config{Endpoint: provider.URL}, notionCredentialError{sdkgo.ErrReauthorizationRequired})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(ctx, revoked.CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreatePageTreatsAnOversizedRefusalAsAnUnknownOutcome(t *testing.T) {
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusBadRequest, `{"object":"error","status":400,"code":"validation_error","message":"`+strings.Repeat("x", 70000)+`"}`)
+	})
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("notion-flow", "create-page-oversized-refusal"), newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Equal(t, 1, provider.requestCount())
+}
+
 func TestCreatePageDoesNotResendAnOversizedAcceptedPage(t *testing.T) {
 	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
@@ -530,16 +665,10 @@ func TestCreatePageFenceCutsOffAnInFlightWrite(t *testing.T) {
 	stepDeadline := time.Now().Add(1200 * time.Millisecond)
 	cancel := ctx.SetDeadline(stepDeadline)
 	t.Cleanup(cancel)
-	result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
-	require.NoError(t, err)
-	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
+	_, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
 	require.Equal(t, 1, provider.requestCount())
 	require.Greater(t, time.Until(stepDeadline), 100*time.Millisecond, "the fence must leave a Step deadline margin")
-	ctx.AdvanceAttempt()
-	result, err = sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
-	require.NoError(t, err)
-	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestCreatePageDoesNotReplayOnAReusedConnectionWhenReplyIsLost(t *testing.T) {
@@ -560,34 +689,20 @@ func TestCreatePageDoesNotReplayOnAReusedConnectionWhenReplyIsLost(t *testing.T)
 		PageID: testPageID, ShouldSkipContent: true,
 	})
 	require.NoError(t, err)
-	result, err := sdkgo.RunMutation(newNotionDexContext("create-reused"), client.CreatePage(), notionConnection, validCreatePageInput())
-	require.NoError(t, err)
-	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
-	require.Equal(t, 2, provider.requestCount())
+	_, err = sdkgo.RunMutation(newNotionDexContext("create-reused"), client.CreatePage(), notionConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Equal(t, 2, provider.requestCount(), "net/http did not replay the POST")
 	require.Equal(t, http.MethodPost, provider.request(1).method)
 }
 
-func TestCreatePageFenceRejectsStaleAndUnreadableMarkers(t *testing.T) {
-	for _, test := range []struct {
-		name    string
-		prepare func(*singledispatchtest.Context)
-	}{
-		{name: "foreign", prepare: func(ctx *singledispatchtest.Context) {
-			require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "wrong", Attempt: 1, State: singledispatch.StateCanResend}))
-		}},
-		{name: "unreadable", prepare: func(ctx *singledispatchtest.Context) { ctx.SetReadError(errors.New("checkpoint unavailable")) }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			provider := newRecordingNotion(t, func(http.ResponseWriter, *http.Request, int) {})
-			ctx := singledispatchtest.NewContext("notion-flow", "create-page")
-			ctx.AdvanceAttempt()
-			test.prepare(ctx)
-			result, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
-			require.NoError(t, err)
-			require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
-			require.Zero(t, provider.requestCount())
-		})
-	}
+func TestCreatePageFenceRejectsAnUnreadableMarker(t *testing.T) {
+	provider := newRecordingNotion(t, func(http.ResponseWriter, *http.Request, int) {})
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page")
+	ctx.AdvanceAttempt()
+	ctx.SetReadError(errors.New("checkpoint unavailable"))
+	_, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, provider.requestCount(), "FailClosed never sends or selects a terminal branch")
 }
 
 func TestCreatePageFenceNeverUsesAStaleResendMarker(t *testing.T) {
@@ -599,11 +714,11 @@ func TestCreatePageFenceNeverUsesAStaleResendMarker(t *testing.T) {
 	result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
 	require.NoError(t, err)
 	ctx.AdvanceAttempt()
-	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{
+	seedPersistedMarker(t, ctx, singledispatch.Marker{
 		CallID: result.Receipt.CallID, Attempt: 1, State: singledispatch.StateCanResend,
-	}))
+	})
 	ctx.AdvanceAttempt()
-	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, failingCredentials{})
+	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, notionCredentialError{err: projectconfig.ErrCredentialBrokerRejected})
 	require.NoError(t, err)
 	result, err = sdkgo.RunMutation(ctx, failedClient.CreatePage(), notionConnection, validCreatePageInput())
 	require.NoError(t, err)
@@ -611,7 +726,32 @@ func TestCreatePageFenceNeverUsesAStaleResendMarker(t *testing.T) {
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestCreatePageTimeoutAfterDispatchIsUncertain(t *testing.T) {
+func TestCreatePageReadsASavedPageIDBackWhenTheDecisionAllowsASend(t *testing.T) {
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		if request.Method == http.MethodPost && index > 0 {
+			writeJSON(t, response, http.StatusInternalServerError, `{"object":"error"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
+	})
+	client := newNotionClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page")
+	result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	ctx.AdvanceAttempt()
+	ctx.AdvanceAttempt()
+	seedPersistedMarker(t, ctx, singledispatch.Marker{
+		CallID: result.Receipt.CallID, Attempt: 2, State: singledispatch.StateCanResend,
+		ProviderID: testPageID, SendCount: 1,
+	})
+	result, err = sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	require.Equal(t, notion.CreatePageBranchCreated, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(1).method, "a saved page ID is read back, never resent")
+}
+
+func TestCreatePageTimeoutAfterDispatchIsResentBelowTheSendCap(t *testing.T) {
 	release := make(chan struct{})
 	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		<-release
@@ -619,10 +759,8 @@ func TestCreatePageTimeoutAfterDispatchIsUncertain(t *testing.T) {
 	})
 	t.Cleanup(func() { close(release) })
 	client := newNotionClient(t, provider.URL, notion.WithHTTPClient(&http.Client{Timeout: 200 * time.Millisecond}))
-	result, err := sdkgo.RunMutation(newNotionDexContext("timeout"), client.CreatePage(), notionConnection, validCreatePageInput())
-	require.NoError(t, err)
-	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
+	_, err := sdkgo.RunMutation(newNotionDexContext("timeout"), client.CreatePage(), notionConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
 	require.Equal(t, 1, provider.requestCount())
 }
 

@@ -241,9 +241,12 @@ func TestCredentialResolutionClassifiesTerminalAndTransientFailures(t *testing.T
 	}{
 		{name: "missing object", credential: projectconfig.ErrObjectNotFound},
 		{name: "reauthorization", credential: sdkgo.ErrReauthorizationRequired},
+		{name: "project reauthorization", credential: projectconfig.ErrReauthorizationRequired},
 		{name: "unselected connection", credential: projectconfig.ErrConnectionNotSelected},
 		{name: "broker rejection", credential: projectconfig.ErrCredentialBrokerRejected},
 		{name: "transient store read", credential: errors.New("temporary credential store failure"), isRetry: true},
+		{name: "broker unavailable", credential: projectconfig.ErrCredentialBrokerUnavailable, isRetry: true},
+		{name: "connection not configured", credential: errors.New("connection is not configured"), isRetry: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, failingFreshdeskCredentials{err: test.credential},

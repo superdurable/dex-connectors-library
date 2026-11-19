@@ -1,10 +1,10 @@
 {
   "connectorId": "microsoft-onedrive",
-  "releaseTag": "connectors/microsoft/onedrive/go/v0.24.0",
+  "releaseTag": "connectors/microsoft/onedrive/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-microsoft-onedrive",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

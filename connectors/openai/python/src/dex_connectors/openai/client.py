@@ -30,7 +30,13 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
+    MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
     ProviderTransportError,
     is_header_safe_credential,
@@ -97,6 +103,9 @@ UI_UNIT_MODEL_PICKER = "modelPicker"
 UI_MODEL_PICKER_PORT_MODEL = "model"
 INVALID_CREATE_INPUT_MESSAGE = "input and a model of printable ASCII without spaces are required"
 NOT_SERIALIZABLE_MESSAGE = "request is not JSON serializable"
+# A later attempt may resolve these credentials; every other request-building failure repeats.
+CREDENTIALS_UNAVAILABLE_MESSAGE = "connection credentials are unavailable"
+CREDENTIALS_TERMINAL_MESSAGE = "connection credentials are missing or need reauthorization"
 _DEFAULT_MODEL = "gpt-6-sol"
 _DEFAULT_ENDPOINT = "https://api.openai.com/v1"
 _DEFAULT_MAX_RESPONSE_BYTES = 8_388_608
@@ -130,6 +139,48 @@ class CreateResponseCheckpoint:
     can_resend: bool = field(
         default=False, metadata={"dex_json_name": "canResend", "dex_json_omit_default": True}
     )
+    # Possibly effective creates through attempt; None in checkpoints of earlier releases.
+    send_count: int | None = field(
+        default=None, metadata={"dex_json_name": "sendCount", "dex_json_omit_default": True}
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _CreateResponseSendBudget:
+    """Bounds possibly effective creates across attempts, as the single-dispatch Fence does."""
+
+    prior_send_upper_bound: int
+    max_sends: int
+
+    @property
+    def can_send_now(self) -> bool:
+        return self.prior_send_upper_bound < self.max_sends
+
+    @property
+    def can_resend_later(self) -> bool:
+        return self.prior_send_upper_bound + 1 < self.max_sends
+
+    @property
+    def has_possible_earlier_send(self) -> bool:
+        return self.prior_send_upper_bound > 0
+
+
+def _new_send_budget(
+    call: Call, previous: CreateResponseCheckpoint | None, is_trusted: bool
+) -> _CreateResponseSendBudget:
+    """Trust a valid send count, add one possible send per later attempt, else use attempt - 1."""
+    attempt = _attempt(call)
+    bound = attempt - 1
+    count = previous.send_count if previous is not None and is_trusted else None
+    if (
+        previous is not None
+        and isinstance(count, int)
+        and not isinstance(count, bool)
+        and 1 <= previous.attempt < attempt
+        and 0 <= count <= previous.attempt
+    ):
+        bound = count + attempt - 1 - previous.attempt
+    return _CreateResponseSendBudget(bound, call.max_sends)
 
 
 class Client:
@@ -183,10 +234,21 @@ class Client:
         operation = call.operation.operation_id
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
-            return openai_failure(
-                FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
-            )
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_TERMINAL_MESSAGE)
+        except Exception as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_TERMINAL_MESSAGE)
+            # Any other resolve failure is transient, as in the Go and TypeScript packages.
+            return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_UNAVAILABLE_MESSAGE)
         api_key = credentials.api_key.reveal()
         if not api_key or not is_header_safe_credential(api_key):
             return openai_failure(FailureKind.AUTHENTICATION, operation, "connection credentials are invalid")
@@ -241,16 +303,25 @@ class _CreateResponseHeartbeat:
         return is_recorded
 
     async def record_response_id(self, response_id: str) -> bool:
-        """Checkpoint the observed response ID so a retry reads it back instead of resending."""
+        """Checkpoint the observed response ID, keeping the claim's send count."""
         return await self.record(
-            CreateResponseCheckpoint(str(self._call.id), _attempt(self._call), response_id)
+            CreateResponseCheckpoint(
+                str(self._call.id), _attempt(self._call), response_id, send_count=self.current_send_count
+            )
         )
 
-    async def record_can_resend(self) -> bool:
-        """Checkpoint that this attempt provably created nothing, so the next attempt may resend."""
+    async def record_can_resend(self, send_count: int) -> bool:
+        """Checkpoint that the next attempt may resend, with send_count possible creates so far."""
         return await self.record(
-            CreateResponseCheckpoint(str(self._call.id), _attempt(self._call), can_resend=True)
+            CreateResponseCheckpoint(
+                str(self._call.id), _attempt(self._call), can_resend=True, send_count=send_count
+            )
         )
+
+    @property
+    def current_send_count(self) -> int | None:
+        """Return the send count of the checkpoint this attempt last recorded."""
+        return self._checkpoint.send_count
 
     async def record(self, checkpoint: CreateResponseCheckpoint) -> bool:
         """Replace and record the checkpoint; False means Dex did not accept it."""
@@ -343,41 +414,39 @@ class CreateResponseOperation:
             previous = call.context.get_last_heartbeat_value(CreateResponseCheckpoint)
         except Exception:  # noqa: BLE001 - any undecodable value is a foreign heartbeat.
             previous = _FOREIGN_CHECKPOINT
-        if previous is _FOREIGN_CHECKPOINT or (previous is not None and previous.call_id != str(call.id)):
+        is_trusted = previous is not _FOREIGN_CHECKPOINT and (
+            previous is None or previous.call_id == str(call.id)
+        )
+        attempt = _attempt(call)
+        if not is_trusted and attempt == 1:
             return _create_defect(
                 FailureKind.LOCAL_DEFECT,
                 "the Step's heartbeat value is not this call's checkpoint; createResponse must be the "
                 "Step's only heartbeat writer",
             )
+        # A later attempt treats an unreadable or foreign checkpoint, or an invalid saved ID, as none.
+        is_trusted = is_trusted and (
+            previous is None or not previous.response_id or is_safe_response_id(previous.response_id)
+        )
+        sends = _new_send_budget(call, previous, is_trusted)
         heartbeat = _CreateResponseHeartbeat(call, self.client.checkpoint_heartbeat_interval_seconds)
-        attempt = _attempt(call)
         try:
-            if previous is not None and previous.response_id:
-                if not is_safe_response_id(previous.response_id):
-                    return _create_defect(FailureKind.LOCAL_DEFECT, "saved response ID is invalid")
-                await heartbeat.begin(CreateResponseCheckpoint(str(call.id), attempt, previous.response_id))
-                return await self._read_back_response(call, heartbeat, previous.response_id, None, "")
-            if (previous is None and attempt == 1) or (
-                previous is not None and previous.can_resend and previous.attempt == attempt - 1
-            ):
-                return await self._send_create_request(call, heartbeat, payload, is_streaming)
-            if previous is None:
-                return MutationAttempt.uncertain(
-                    Response(),
-                    openai_failure(
-                        FailureKind.TRANSPORT,
-                        CREATE_RESPONSE_OPERATION_ID,
-                        "an earlier attempt left no checkpoint and may have created a response; "
-                        "createResponse requires sync Execute durability",
-                    ),
-                    response_receipt(call, "", None, ""),
+            if is_trusted and previous is not None and previous.response_id:
+                await heartbeat.begin(
+                    CreateResponseCheckpoint(
+                        str(call.id), attempt, previous.response_id, send_count=sends.prior_send_upper_bound
+                    )
                 )
+                return await self._read_back_response(call, heartbeat, previous.response_id, None, "")
+            if sends.can_send_now:
+                return await self._send_create_request(call, heartbeat, sends, payload, is_streaming)
             return MutationAttempt.uncertain(
                 Response(),
                 openai_failure(
                     FailureKind.TRANSPORT,
                     CREATE_RESPONSE_OPERATION_ID,
-                    "an earlier attempt may have created a response without recording its ID",
+                    "earlier attempts may have created responses without recording an ID, "
+                    "and the send cap is reached",
                 ),
                 response_receipt(call, "", None, ""),
             )
@@ -385,12 +454,26 @@ class CreateResponseOperation:
             await heartbeat.stop()
 
     async def _send_create_request(
-        self, call: Call, heartbeat: _CreateResponseHeartbeat, payload: dict[str, Any], is_streaming: bool
+        self,
+        call: Call,
+        heartbeat: _CreateResponseHeartbeat,
+        sends: _CreateResponseSendBudget,
+        payload: dict[str, Any],
+        is_streaming: bool,
     ) -> MutationAttempt[Response]:
         request = await self.client.build_request(call, "POST", "/responses", str(call.id), payload)
+        if isinstance(request, Failure) and request.message == CREDENTIALS_UNAVAILABLE_MESSAGE:
+            # Nothing was sent now, so the next attempt does not count this one.
+            return await _retry_create_response(heartbeat, request, 0, sends.prior_send_upper_bound)
+        if isinstance(request, Failure) and sends.has_possible_earlier_send:
+            # A lasting local failure cannot resend, and an earlier create may exist.
+            return MutationAttempt.uncertain(Response(), request, response_receipt(call, "", None, ""))
         if isinstance(request, Failure):
             return MutationAttempt.branch_result(DEFECT, Response(), Receipt(), request)
-        if not await heartbeat.begin(CreateResponseCheckpoint(str(call.id), _attempt(call))):
+        claim = CreateResponseCheckpoint(
+            str(call.id), _attempt(call), send_count=sends.prior_send_upper_bound + 1
+        )
+        if not await heartbeat.begin(claim):
             return await _retry_create_response(
                 heartbeat,
                 openai_failure(
@@ -399,6 +482,7 @@ class CreateResponseOperation:
                     "dispatch checkpoint could not be recorded",
                 ),
                 0,
+                sends.prior_send_upper_bound,
             )
         try:
             response, _ = await send_traced(self.client.http_client, request)
@@ -410,9 +494,10 @@ class CreateResponseOperation:
                         FailureKind.TRANSPORT, CREATE_RESPONSE_OPERATION_ID, "request was not sent"
                     ),
                     0,
+                    sends.prior_send_upper_bound,
                 )
-            return MutationAttempt.uncertain(
-                Response(),
+            return _resend_or_select_uncertain(
+                sends,
                 openai_failure(
                     FailureKind.TRANSPORT, CREATE_RESPONSE_OPERATION_ID, "provider outcome is unknown"
                 ),
@@ -421,28 +506,41 @@ class CreateResponseOperation:
         try:
             request_id = response.headers.get("X-Request-Id", "")
             if not 200 <= response.status_code < 300:
+                named_response_id, is_complete = await _read_create_error_body(response)
+                if named_response_id:
+                    # An error answer naming a response means OpenAI created it: read back, never resend.
+                    # A lost checkpoint leaves the claim, so a later attempt counts this send.
+                    await heartbeat.record_response_id(named_response_id)
+                    return await self._read_back_response(
+                        call, heartbeat, named_response_id, response.headers, request_id
+                    )
+                is_definite_refusal = response.status_code in _DEFINITE_REFUSAL_STATUSES and is_complete
                 return await _create_status_attempt(
-                    call, heartbeat, response.status_code, response.headers, request_id
+                    call,
+                    heartbeat,
+                    sends,
+                    response.status_code,
+                    is_definite_refusal,
+                    response.headers,
+                    request_id,
                 )
             if is_streaming:
-                return await self._read_stream(call, heartbeat, response, request_id)
+                return await self._read_stream(call, heartbeat, sends, response, request_id)
             document = await self.client.read_response(response, CREATE_RESPONSE_OPERATION_ID)
             if isinstance(document, Failure):
-                return MutationAttempt.uncertain(
-                    Response(), document, response_receipt(call, request_id, response.headers, "")
+                return _select_accepted_create_uncertain(
+                    document, response_receipt(call, request_id, response.headers, "")
                 )
             result = decode_wire_response(document)
             if not result.id:
-                return MutationAttempt.uncertain(
-                    Response(),
+                return _select_accepted_create_uncertain(
                     openai_failure(
                         FailureKind.PROTOCOL, CREATE_RESPONSE_OPERATION_ID, "provider response has no ID"
                     ),
                     response_receipt(call, request_id, response.headers, ""),
                 )
             if not is_safe_response_id(result.id):
-                return MutationAttempt.uncertain(
-                    Response(),
+                return _select_accepted_create_uncertain(
                     openai_failure(
                         FailureKind.PROTOCOL, CREATE_RESPONSE_OPERATION_ID, "provider response ID is invalid"
                     ),
@@ -454,7 +552,12 @@ class CreateResponseOperation:
             await response.aclose()
 
     async def _read_stream(
-        self, call: Call, heartbeat: _CreateResponseHeartbeat, response: httpx.Response, request_id: str
+        self,
+        call: Call,
+        heartbeat: _CreateResponseHeartbeat,
+        sends: _CreateResponseSendBudget,
+        response: httpx.Response,
+        request_id: str,
     ) -> MutationAttempt[Response]:
         reader = ResponseStreamReader(
             call,
@@ -465,8 +568,7 @@ class CreateResponseOperation:
         )
         outcome = await reader.read()
         if outcome.has_invalid_response_id:
-            return MutationAttempt.uncertain(
-                Response(),
+            return _select_accepted_create_uncertain(
                 openai_failure(
                     FailureKind.PROTOCOL, CREATE_RESPONSE_OPERATION_ID, "provider response ID is invalid"
                 ),
@@ -486,8 +588,7 @@ class CreateResponseOperation:
             message = outcome.error_message
             if reader.has_stream_error:
                 message = "provider streamed an error before naming a response, which may exist"
-            return MutationAttempt.uncertain(
-                Response(),
+            return _select_accepted_create_uncertain(
                 openai_failure(FailureKind.PROTOCOL, CREATE_RESPONSE_OPERATION_ID, message),
                 response_receipt(call, request_id, response.headers, ""),
             )
@@ -515,6 +616,8 @@ class CreateResponseOperation:
             )
             return MutationAttempt.branch_result(FAILED, result, receipt, failure)
         if result.status == "cancelled":
+            # The cancelled response may be billed, so it still counts toward the send cap.
+            send_count = heartbeat.current_send_count
             return await _retry_create_response(
                 heartbeat,
                 openai_failure(
@@ -523,6 +626,7 @@ class CreateResponseOperation:
                     "response " + result.id + " was cancelled before it completed",
                 ),
                 0,
+                _attempt(call) if send_count is None else send_count,
             )
         if result.status in ("queued", "in_progress"):
             return await self._read_back_response(call, heartbeat, result.id, headers, request_id)
@@ -579,6 +683,15 @@ class CreateResponseOperation:
         request = await self.client.build_request(
             call, "GET", "/responses/" + quote(response_id, safe="-._~$&+=:@"), "", None
         )
+        if isinstance(request, Failure) and request.message != CREDENTIALS_UNAVAILABLE_MESSAGE:
+            # A lasting credential or local failure cannot confirm the created response.
+            return _StoredResponseRead(
+                unconfirmed_failure=openai_failure(
+                    request.kind,
+                    CREATE_RESPONSE_OPERATION_ID,
+                    "response " + response_id + " read-back request could not be built: " + request.message,
+                )
+            )
         if isinstance(request, Failure):
             return _StoredResponseRead(
                 retry_failure=openai_failure(
@@ -717,24 +830,70 @@ class RetrieveResponseOperation:
 
 
 async def _retry_create_response(
-    heartbeat: _CreateResponseHeartbeat, failure: Failure, retry_after_seconds: float
+    heartbeat: _CreateResponseHeartbeat, failure: Failure, retry_after_seconds: float, send_count: int
 ) -> MutationAttempt[Response]:
-    await heartbeat.record_can_resend()
+    """Let the next attempt send again; call it only when this send created nothing to repeat."""
+    await heartbeat.record_can_resend(send_count)
     return MutationAttempt.retry(failure, retry_after_seconds)
 
 
-async def _create_status_attempt(
-    call: Call, heartbeat: _CreateResponseHeartbeat, status: int, headers: httpx.Headers, request_id: str
+def _select_accepted_create_uncertain(failure: Failure, receipt: Receipt) -> MutationAttempt[Response]:
+    """End a 2xx create whose response ID cannot be read: it can be neither read back nor resent."""
+    message = "OpenAI accepted the create request, but " + failure.message
+    accepted = openai_failure(failure.kind, CREATE_RESPONSE_OPERATION_ID, message)
+    return MutationAttempt.uncertain(Response(), accepted, receipt)
+
+
+def _resend_or_select_uncertain(
+    sends: _CreateResponseSendBudget, failure: Failure, receipt: Receipt
 ) -> MutationAttempt[Response]:
+    """Retry while a later attempt may create again, and select uncertain at the cap."""
+    if sends.can_resend_later:
+        # The claim stays the last checkpoint, so the next attempt counts this send.
+        return MutationAttempt.retry(failure)
+    return MutationAttempt.uncertain(Response(), failure, receipt)
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+async def _read_create_error_body(response: httpx.Response) -> tuple[str, bool]:
+    """Read a non-2xx create body.
+
+    Returns the response ID a complete body names, which means OpenAI created it, or "", and
+    whether the body was read in full within the error limit.
+    """
+    try:
+        data = await read_bounded_body(response, MAX_ERROR_BODY_BYTES)
+    except (BodyTooLargeError, ProviderTransportError):
+        return "", False
+    try:
+        document = json.loads(data)
+    except (ValueError, UnicodeDecodeError):
+        return "", True
+    response_id = document.get("id") if isinstance(document, dict) else None
+    if not isinstance(response_id, str) or not is_safe_response_id(response_id):
+        return "", True
+    return response_id, True
+
+
+async def _create_status_attempt(
+    call: Call,
+    heartbeat: _CreateResponseHeartbeat,
+    sends: _CreateResponseSendBudget,
+    status: int,
+    is_definite_refusal: bool,
+    headers: httpx.Headers,
+    request_id: str,
+) -> MutationAttempt[Response]:
+    """Classify a non-2xx create; is_definite_refusal also requires a complete body naming no response."""
     failure, retry_after, is_retryable = classify_openai_status(CREATE_RESPONSE_OPERATION_ID, status, headers)
     if is_retryable:
-        return await _retry_create_response(heartbeat, failure, retry_after)
+        return await _retry_create_response(heartbeat, failure, retry_after, sends.prior_send_upper_bound)
     receipt = response_receipt(call, request_id, headers, "")
-    if status >= 500:
-        return MutationAttempt.uncertain(Response(), failure, receipt)
     if status == 408:
-        return MutationAttempt.uncertain(
-            Response(),
+        return _resend_or_select_uncertain(
+            sends,
             openai_failure(
                 FailureKind.TRANSPORT,
                 CREATE_RESPONSE_OPERATION_ID,
@@ -743,8 +902,8 @@ async def _create_status_attempt(
             receipt,
         )
     if status == 409:
-        return MutationAttempt.uncertain(
-            Response(),
+        return _resend_or_select_uncertain(
+            sends,
             openai_failure(
                 FailureKind.CONFLICT,
                 CREATE_RESPONSE_OPERATION_ID,
@@ -752,6 +911,15 @@ async def _create_status_attempt(
             ),
             receipt,
         )
+    if not is_definite_refusal:
+        # A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete body can
+        # follow a stored response.
+        return _resend_or_select_uncertain(sends, failure, receipt)
+    # The refusal proves this send created nothing.
+    await heartbeat.record_can_resend(sends.prior_send_upper_bound)
+    if sends.has_possible_earlier_send:
+        # This send was refused, but an earlier attempt may have created a response.
+        return MutationAttempt.uncertain(Response(), failure, receipt)
     return MutationAttempt.branch_result(PROVIDER_REJECTED, Response(), receipt, failure)
 
 

@@ -443,9 +443,14 @@ func repeatOnUnknownIdentifier(repeatOnUnknown string) string {
 	}
 }
 
-// hasMaxSendsOverride reports whether the generated factory config offers MaxSends; other tiers omit it so the compiler rejects it.
+// hasMaxSendsOverride reports whether the generated factory config forwards MaxSends to the SDK.
 func hasMaxSendsOverride(operation schema.Operation, config generateConfig) bool {
 	return config.hasRepeatOnUnknownSendCaps && operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() == schema.RepeatOnUnknownLimited
+}
+
+// hasIgnoredMaxSendsField reports whether a safe Mutation keeps MaxSends so callers written for a limited tier compile.
+func hasIgnoredMaxSendsField(operation schema.Operation, config generateConfig) bool {
+	return config.hasRepeatOnUnknownSendCaps && operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() == schema.RepeatOnUnknownSafe
 }
 
 func writeOperationFactory(generation *generator, manifest schema.Manifest, operation schema.Operation, config generateConfig) {
@@ -481,6 +486,9 @@ func writeOperationFactory(generation *generator, manifest schema.Manifest, oper
 	generation.mustWrite("\tStepOptionsOverride *dex.StepOptions `connector:\"stepOptionsOverride\"`\n")
 	if hasMaxSendsOverride(operation, config) {
 		generation.mustWrite("\t// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.\n")
+		generation.mustWrite("\tMaxSends int32 `connector:\"maxSends\"`\n")
+	} else if hasIgnoredMaxSendsField(operation, config) {
+		generation.mustWrite("\t// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.\n")
 		generation.mustWrite("\tMaxSends int32 `connector:\"maxSends\"`\n")
 	}
 	generation.mustWrite("}\n\n")

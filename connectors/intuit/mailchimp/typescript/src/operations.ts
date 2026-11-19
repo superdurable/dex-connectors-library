@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { createHash } from 'node:crypto';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { CheckpointError, newFence, type DecisionKind, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { GetMemberDefinition, ListMembersDefinition, UpsertMemberDefinition, UpdateMemberTagsDefinition, SendCampaignDefinition } from './generated/definitions.js';
 import type { Campaign, GetMemberInput, ListMembersInput, ListMembersOutput, Member, SendCampaignInput, SendCampaignOutput, UpdateMemberTagsInput, UpdateMemberTagsOutput, UpsertMemberInput, UpsertMemberOutput } from './generated/models.js';
 import { mailchimpFailure, type MailchimpClient, type MailchimpExchange } from './client.js';
@@ -80,8 +81,9 @@ export class UpsertMemberOperation implements Mutation<UpsertMemberInput, Upsert
     const operation = 'upsertMember';
     const validation = validateUpsertInput(input);
     if (validation) return newMutationBranch('defect', emptyUpsert, zeroReceipt(), mailchimpFailure(operation, 'VALIDATION', validation));
-    const connection = await this.client.resolveConnection(call);
-    if (!connection) return credentialMutationDefect(operation, emptyUpsert);
+    const resolved = await this.client.resolveClassifiedConnection(call);
+    if (!('connection' in resolved)) return resolved.isTransient ? credentialRetry(operation) : credentialMutationDefect(operation, emptyUpsert);
+    const connection = resolved.connection;
     const hash = subscriberHash(input.emailAddress);
     const body = { email_address: input.emailAddress, status_if_new: input.statusIfNew,
       ...(input.status ? { status: input.status } : {}),
@@ -93,7 +95,8 @@ export class UpsertMemberOperation implements Mutation<UpsertMemberInput, Upsert
     const classified = mutationExchange(result, receipt, emptyUpsert, false);
     if (classified) return classified;
     try { return newMutationBranch('upserted', { member: decodeMember(result.body, hash) }, receipt); }
-    catch { return newMutationBranch('invalidResponse', emptyUpsert, receipt, mailchimpFailure(operation, 'PROTOCOL', 'Mailchimp accepted the contact but returned an invalid contact')); }
+    // The absolute upsert is safe to resend, so an unusable answer is retried.
+    catch { return newMutationRetry(mailchimpFailure(operation, 'PROTOCOL', 'Mailchimp accepted the contact but returned an invalid contact')); }
   }
 }
 /** Set contact tags active or inactive with repeatable declarations. */
@@ -106,8 +109,9 @@ export class UpdateMemberTagsOperation implements Mutation<UpdateMemberTagsInput
     const operation = 'updateMemberTags';
     const validation = validateTagsInput(input);
     if (validation) return newMutationBranch('defect', emptyTags, zeroReceipt(), mailchimpFailure(operation, 'VALIDATION', validation));
-    const connection = await this.client.resolveConnection(call);
-    if (!connection) return credentialMutationDefect(operation, emptyTags);
+    const resolved = await this.client.resolveClassifiedConnection(call);
+    if (!('connection' in resolved)) return resolved.isTransient ? credentialRetry(operation) : credentialMutationDefect(operation, emptyTags);
+    const connection = resolved.connection;
     const hash = subscriberHash(input.emailAddress);
     const tags = [...(input.addTags ?? []).map(name => ({ name, status: 'active' })), ...(input.removeTags ?? []).map(name => ({ name, status: 'inactive' }))];
     const body = { tags, ...(input.shouldSuppressAutomations ? { is_syncing: true } : {}) };
@@ -124,52 +128,154 @@ export class SendCampaignOperation implements Mutation<SendCampaignInput, SendCa
   /** Bind the client. */ constructor(private readonly client: MailchimpClient) {}
   /** Return the manifest definition. */ definition() { return SendCampaignDefinition; }
   /** Use the stable Call ID for receipt correlation. */ idempotencyKey(callId: string) { return callId; }
-  /** Read status, checkpoint dispatch, and send only a draft. */
+  /** Read status and send only a draft under the single-dispatch fence; resend an unknown outcome only below the cap. */
   async invoke(call: Call, input: SendCampaignInput): Promise<MutationAttempt<SendCampaignOutput>> {
     const operation = 'sendCampaign';
     const validation = validateResourceID('campaignId', input.campaignId) || (input.expectedListId ? validateResourceID('expectedListId', input.expectedListId) : '');
     if (validation) return newMutationBranch('defect', emptySend, zeroReceipt(), mailchimpFailure(operation, 'VALIDATION', validation));
-    const connection = await this.client.resolveConnection(call);
-    if (!connection) return credentialMutationDefect(operation, emptySend);
-    const query = new URLSearchParams({ fields: campaignFields });
-    let earlier = false;
-    try {
-      const previous = call.context.hasLastHeartbeatValue() ? call.context.getLastHeartbeatValue() : undefined;
-      earlier = previous !== undefined && previous !== null;
-    } catch { earlier = true; }
-    const read = await this.client.exchange(call, connection, operation, 'GET', `/campaigns/${input.campaignId}`, query);
-    const readReceipt = this.client.receipt(call, read, input.campaignId);
-    if (earlier) {
-      if (read.outcome === 'succeeded') {
-        try { const campaign = decodeCampaign(read.body, input.campaignId);
-          if (campaign.status === 'sending' || campaign.status === 'sent') return newMutationBranch('alreadySent', { campaign }, readReceipt);
-          return newMutationUncertain({ campaign }, mailchimpFailure(operation, 'TRANSPORT', 'an earlier attempt may have sent the campaign'), readReceipt);
-        } catch { /* An unreadable status cannot authorize another send. */ }
-      }
-      return newMutationUncertain(emptySend, mailchimpFailure(operation, 'TRANSPORT', 'an earlier attempt may have sent the campaign and its status could not be read'), readReceipt);
+    if (hasLegacyDispatch(call)) return readBackWithoutSend(this.client, call, input, 'an earlier attempt of this Step may have sent the campaign');
+    const operationMaxSends = definitionMaxSends(SendCampaignDefinition);
+    let fence: Fence;
+    try { fence = newFence(call, SendCampaignDefinition.stepDefaults.executeMethodTimeoutMs ?? 60_000, { maxSends: operationMaxSends }); }
+    catch { return newMutationBranch('defect', emptySend, zeroReceipt(), mailchimpFailure(operation, 'LOCAL_DEFECT', 'the Mailchimp dispatch fence could not be constructed')); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(mailchimpFailure(operation, 'AVAILABILITY', 'the dispatch checkpoint could not be read; nothing was sent in this attempt'));
+    if (decision.kind === 'readBackRequired') return readBackWithoutSend(this.client, call, input, 'the send cap is reached');
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    return new SendCampaignAttempt(this.client, call, input, fence, decision.kind,
+      priorSends + 1 < effectiveMaxSends(call, operationMaxSends), priorSends > 0).readThenSend();
+  }
+}
+
+/** One fenced sendCampaign attempt after the Fence decided it may send. */
+class SendCampaignAttempt {
+  /**
+   * Bind one attempt. canResendUnknownOutcome is false when this send is the last the cap allows;
+   * hasPossibleEarlierSend means a refusal or a changed campaign cannot prove nothing was sent.
+   */
+  constructor(private readonly client: MailchimpClient, private readonly call: Call, private readonly input: SendCampaignInput,
+    private readonly fence: Fence, private readonly decisionKind: DecisionKind,
+    private readonly canResendUnknownOutcome: boolean, private readonly hasPossibleEarlierSend: boolean) {}
+
+  /** Read the campaign, which is also the read-back of an earlier send, and send a draft. */
+  async readThenSend(): Promise<MutationAttempt<SendCampaignOutput>> {
+    const operation = 'sendCampaign';
+    const resolved = await this.client.resolveClassifiedConnection(this.call);
+    if (!('connection' in resolved)) {
+      // A later attempt reads the campaign before any send; notSent is recorded only before any send.
+      if (resolved.isTransient) return this.retryBeforeSend(mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'), 0);
+      if (this.hasPossibleEarlierSend) return newMutationUncertain(emptySend, mailchimpFailure(operation, 'AUTHENTICATION', 'an earlier attempt may have sent the campaign, and the connection credentials are unavailable to read it; reconnect the connection'), zeroReceipt());
+      return credentialMutationDefect(operation, emptySend);
     }
-    const classified = mutationExchange(read, readReceipt, emptySend, true);
-    if (classified) return classified;
+    const connection = resolved.connection;
+    const read = await this.client.exchange(this.call, connection, operation, 'GET', `/campaigns/${this.input.campaignId}`, new URLSearchParams({ fields: campaignFields }));
+    const readReceipt = this.client.receipt(this.call, read, this.input.campaignId);
+    if (read.outcome === 'rateLimited' || read.outcome === 'notSent' || read.outcome === 'unavailable') return this.retryBeforeSend(read.failure!, read.retryAfterMs);
+    if (read.outcome !== 'succeeded') return this.refuseOrSelectUncertain(campaignReadBranch(read.outcome), emptySend, read.failure!, readReceipt);
     let campaign: Campaign;
-    try { campaign = decodeCampaign(read.body, input.campaignId); }
-    catch { return newMutationBranch('invalidResponse', emptySend, readReceipt, mailchimpFailure(operation, 'PROTOCOL', 'Mailchimp returned an invalid campaign, so it was not sent')); }
+    try { campaign = decodeCampaign(read.body, this.input.campaignId); }
+    catch { return this.refuseOrSelectUncertain('invalidResponse', emptySend, mailchimpFailure(operation, 'PROTOCOL', 'Mailchimp returned an invalid campaign, so it was not sent'), readReceipt); }
     const output = { campaign };
     if (campaign.status === 'sending' || campaign.status === 'sent') return newMutationBranch('alreadySent', output, readReceipt);
-    const blocker = campaign.status !== 'save' ? 'the campaign is not a draft' : !['regular', 'plaintext', 'absplit', 'variate'].includes(campaign.type) ? 'the campaign type does not send immediately' : input.expectedListId && campaign.listId !== input.expectedListId ? 'the campaign targets another audience than expectedListId' : '';
-    if (blocker) return newMutationBranch('notSendable', output, readReceipt, mailchimpFailure(operation, 'CONFLICT', `${blocker}; nothing was sent`));
-    try { await call.context.recordHeartbeat({ mailchimpDispatchedCallId: call.id }); }
-    catch { return newMutationRetry(mailchimpFailure(operation, 'AVAILABILITY', 'Dex did not record the dispatch checkpoint; nothing was sent')); }
-    const sent = await this.client.exchange(call, connection, operation, 'POST', `/campaigns/${input.campaignId}/actions/send`);
-    const receipt = this.client.receipt(call, sent, input.campaignId);
-    if (sent.outcome === 'succeeded') return newMutationBranch('sent', output, receipt);
-    if (sent.outcome === 'rateLimited' || sent.outcome === 'notSent') {
-      try { await call.context.recordHeartbeat(undefined); } catch { /* A stale checkpoint prevents a repeated send. */ }
+    const blocker = campaign.status !== 'save' ? 'the campaign is not a draft' : !['regular', 'plaintext', 'absplit', 'variate'].includes(campaign.type) ? 'the campaign type does not send immediately' : this.input.expectedListId && campaign.listId !== this.input.expectedListId ? 'the campaign targets another audience than expectedListId' : '';
+    // A campaign canceled or changed after a possible earlier send may have partly sent.
+    if (blocker) return this.refuseOrSelectUncertain('notSendable', output, mailchimpFailure(operation, 'CONFLICT', `${blocker}; nothing was sent in this attempt`), readReceipt);
+    return this.send(connection, output);
+  }
+
+  private async send(connection: { key: string; baseURL: string }, output: SendCampaignOutput): Promise<MutationAttempt<SendCampaignOutput>> {
+    const operation = 'sendCampaign';
+    let sent: MailchimpExchange;
+    try { sent = await this.fence.dispatch(signal => this.client.exchange(this.call, connection, operation, 'POST', `/campaigns/${this.input.campaignId}/actions/send`, undefined, undefined, signal)); }
+    catch (error) {
+      if (error instanceof CheckpointError) return newMutationRetry(mailchimpFailure(operation, 'AVAILABILITY', 'Dex did not record the dispatch checkpoint; nothing was sent in this attempt'));
+      return newMutationRetry(mailchimpFailure(operation, 'AVAILABILITY', 'too little of the Step deadline remained to send; nothing was sent in this attempt'));
+    }
+    const receipt = this.client.receipt(this.call, sent, this.input.campaignId);
+    // A 2xx accepted the send even when its body is unreadable or oversized; it is never resent.
+    if (sent.outcome === 'succeeded' || (sent.status >= 200 && sent.status < 300)) return newMutationBranch('sent', output, receipt);
+    if (sent.outcome === 'rateLimited' || sent.outcome === 'notSent' || (sent.outcome === 'unavailable' && sent.status === 503)) {
+      try { await this.fence.recordCanResend(); }
+      catch { return newMutationRetry(mailchimpFailure(operation, 'AVAILABILITY', 'the Mailchimp retry checkpoint could not be recorded')); }
       return newMutationRetry(sent.failure!, sent.retryAfterMs);
     }
-    if (sent.outcome === 'unavailable' || sent.outcome === 'invalid') return newMutationUncertain(output, sent.failure!, receipt);
-    if (sent.outcome === 'defect') return newMutationBranch('defect', output, receipt, sent.failure!);
-    return newMutationBranch(sent.outcome === 'notFound' ? 'notFound' : 'providerRejected', output, receipt, sent.failure!);
+    if (isOutcomeUnknownAfterDispatch(sent)) {
+      // The claim stays the last marker, so the next attempt counts this send and reads first.
+      return this.canResendUnknownOutcome ? newMutationRetry(sent.failure!, sent.retryAfterMs) : newMutationUncertain(output, sent.failure!, receipt);
+    }
+    // A refused resend usually means an earlier send landed, so the campaign is read instead.
+    if (this.hasPossibleEarlierSend) return readBackWithoutSend(this.client, this.call, this.input, 'Mailchimp refused a resend after a possible earlier send');
+    try { await this.fence.recordCanResend(); } catch { /* The refusal proves nothing was sent; a lost checkpoint only makes a replay read first. */ }
+    return newMutationBranch(sent.outcome === 'notFound' ? 'notFound' : sent.outcome === 'defect' ? 'defect' : 'providerRejected', output, receipt, sent.failure!);
   }
+
+  /** Record notSent before a pre-send Retry so the next attempt does not count a send. */
+  private async retryBeforeSend(failure: Failure, retryAfterMs: number): Promise<MutationAttempt<SendCampaignOutput>> {
+    // After a possible earlier send, notSent could hide it, so the earlier marker stays.
+    if (this.decisionKind === 'sendAllowed' && !this.hasPossibleEarlierSend) {
+      try { await this.fence.recordNotSent(); }
+      catch { return newMutationRetry(mailchimpFailure('sendCampaign', 'AVAILABILITY', 'the no-send checkpoint could not be recorded; nothing was sent in this attempt')); }
+    }
+    return newMutationRetry(failure, retryAfterMs);
+  }
+
+  /** Select branch only when no earlier attempt may have sent the campaign. */
+  private refuseOrSelectUncertain(branch: string, output: SendCampaignOutput, refusal: Failure, receipt: ReceiptDraft): MutationAttempt<SendCampaignOutput> {
+    if (this.hasPossibleEarlierSend) return newMutationUncertain(output, mailchimpFailure('sendCampaign', refusal.kind, `an earlier attempt may have sent the campaign and Mailchimp does not show it sending or sent: ${refusal.message}`), receipt);
+    return newMutationBranch(branch, output, receipt, refusal);
+  }
+}
+
+/** Report a pre-fence checkpoint of this call; such a Step execution never sends again. */
+function hasLegacyDispatch(call: Call): boolean {
+  try {
+    if (!call.context.hasLastHeartbeatValue()) return false;
+    const previous = call.context.getLastHeartbeatValue() as { mailchimpDispatchedCallId?: unknown } | null | undefined;
+    return typeof previous === 'object' && previous !== null && previous.mailchimpDispatchedCallId === call.id;
+  } catch { return false; }
+}
+
+/** Never send; report alreadySent only when Mailchimp shows the campaign sending or sent. */
+async function readBackWithoutSend(client: MailchimpClient, call: Call, input: SendCampaignInput, reason: string): Promise<MutationAttempt<SendCampaignOutput>> {
+  const operation = 'sendCampaign';
+  const resolved = await client.resolveClassifiedConnection(call);
+  // The next attempt reads the campaign again before any send.
+  if (!('connection' in resolved) && resolved.isTransient) return newMutationRetry(mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
+  if (!('connection' in resolved)) return newMutationUncertain(emptySend, mailchimpFailure(operation, 'AUTHENTICATION', `${reason}, and the connection credentials are unavailable to read the campaign; reconnect the connection`), zeroReceipt());
+  const connection = resolved.connection;
+  const read = await client.exchange(call, connection, operation, 'GET', `/campaigns/${input.campaignId}`, new URLSearchParams({ fields: campaignFields }));
+  const receipt = client.receipt(call, read, input.campaignId);
+  // Reading is harmless to repeat, and a retry of this path never sends.
+  if (read.outcome === 'rateLimited' || read.outcome === 'notSent' || read.outcome === 'unavailable') return newMutationRetry(read.failure!, read.retryAfterMs);
+  if (read.outcome === 'succeeded') {
+    let campaign: Campaign | undefined;
+    try { campaign = decodeCampaign(read.body, input.campaignId); } catch { /* An undecodable campaign cannot confirm the earlier send. */ }
+    if (campaign) {
+      if (campaign.status === 'sending' || campaign.status === 'sent') return newMutationBranch('alreadySent', { campaign }, receipt);
+      return newMutationUncertain({ campaign }, mailchimpFailure(operation, 'TRANSPORT', `${reason} and Mailchimp does not show it sending or sent, so it is not sent again`), receipt);
+    }
+  }
+  return newMutationUncertain(emptySend, mailchimpFailure(operation, 'TRANSPORT', `${reason} and its status could not be read, so it is not sent again`), receipt);
+}
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+}
+
+/** Map a definite read failure before a send; nothing was sent by this attempt. */
+function campaignReadBranch(outcome: MailchimpExchange['outcome']): string {
+  return outcome === 'notFound' ? 'notFound' : outcome === 'invalid' ? 'invalidResponse' : outcome === 'defect' ? 'defect' : 'providerRejected';
+}
+
+/** Statuses that prove a write was refused; 409, 3xx, and other statuses are unknown. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Report an outcome that does not prove Mailchimp refused or skipped a write. */
+function isOutcomeUnknownAfterDispatch(exchange: MailchimpExchange): boolean {
+  if (exchange.isErrorBodyTooLarge) return true;
+  if (['rateLimited', 'notSent', 'unavailable', 'invalid'].includes(exchange.outcome)) return true;
+  return exchange.outcome === 'rejected' && !definiteRefusalStatuses.has(exchange.status);
 }
 
 function queryExchange<T>(exchange: MailchimpExchange, receipt: ReceiptDraft, zero: T, hasNotFound: boolean): QueryAttempt<T> | undefined {
@@ -180,12 +286,14 @@ function queryExchange<T>(exchange: MailchimpExchange, receipt: ReceiptDraft, ze
 }
 function mutationExchange<T>(exchange: MailchimpExchange, receipt: ReceiptDraft, zero: T, hasNotFound: boolean): MutationAttempt<T> | undefined {
   if (exchange.outcome === 'succeeded') return undefined;
-  if (['rateLimited', 'notSent', 'unavailable'].includes(exchange.outcome)) return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
-  const branch = exchange.outcome === 'notFound' && hasNotFound ? 'notFound' : exchange.outcome === 'invalid' ? 'invalidResponse' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
+  // A status that is not a definite refusal and an unusable 2xx are retried.
+  if (isOutcomeUnknownAfterDispatch(exchange)) return newMutationRetry(exchange.failure!, exchange.retryAfterMs);
+  const branch = exchange.outcome === 'notFound' && hasNotFound ? 'notFound' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
   return newMutationBranch(branch, zero, receipt, exchange.failure!);
 }
 function credentialQueryDefect<T>(operation: string, zero: T): QueryAttempt<T> { return newQueryBranch('defect', zero, zeroReceipt(), mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
 function credentialMutationDefect<T>(operation: string, zero: T): MutationAttempt<T> { return newMutationBranch('defect', zero, zeroReceipt(), mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
+function credentialRetry<T>(operation: string): MutationAttempt<T> { return newMutationRetry(mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
 function validateResourceID(name: string, value: string): string { return /^[A-Za-z0-9]{1,64}$/.test(value) ? '' : `${name} must be a Mailchimp ID of 1 to 64 letters and digits`; }
 function validateEmail(value: string): string {
   if (!value || Buffer.byteLength(value) > 254) return 'emailAddress must be one email address of at most 254 bytes';

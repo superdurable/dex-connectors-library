@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { escapePath, goQueryEscape, type DocuSignClient } from '../src/client.js';
-import { CreateEnvelopeFromTemplateOperation, parseDocuSignTimestamp } from '../src/operations.js';
-import type { Call } from '@superdurable/connectors-sdk';
+import { DocuSignClient, SessionError, escapePath, goQueryEscape, type DocuSignSession } from '../src/client.js';
+import { CreateEnvelopeFromTemplateOperation, VoidEnvelopeOperation, parseDocuSignTimestamp } from '../src/operations.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 
 describe('Go-compatible DocuSign wire values', () => {
   it('escapes path segments like Go url.PathEscape', () => {
@@ -31,8 +34,211 @@ describe('Go-compatible DocuSign wire values', () => {
   });
 });
 
+/** A DocuSign client that answers each POST from a script and every listing with no tagged envelope. */
+function scriptedDocuSign(posts: Array<{ status: number; body: string; isErrorBodyIncomplete?: boolean } | Error>, sessionError?: SessionError, envelopes: Record<string, string> = {}) {
+  const methods: string[] = [];
+  const paths: string[] = [];
+  const client = {
+    openSession: async () => { if (sessionError) throw sessionError; return {}; }, currentTime: () => new Date('2026-10-04T12:00:00Z'), receipt: () => ({}),
+    classify: (operation: string, response: { status: number }) => ({
+      retry: response.status === 429 || response.status >= 500, notFound: false, retryAfterMs: 0, errorCode: '',
+      failure: { kind: response.status === 429 ? 'RATE_LIMIT' : response.status >= 500 ? 'AVAILABILITY' : 'PROVIDER_REJECTION', provider: 'docusign', operation, message: `HTTP ${response.status}` },
+    }),
+    requestAPI: async (_call: Call, _session: unknown, method: string, path: string) => {
+      methods.push(method);
+      paths.push(`${method} ${path}`);
+      const stored = envelopes[path];
+      if (method === 'GET' && stored !== undefined) return { status: 200, headers: {}, body: Buffer.from(stored), isTooLarge: false };
+      if (method === 'GET' && path !== '/envelopes') return { status: 404, headers: {}, body: Buffer.from('{"errorCode":"ENVELOPE_DOES_NOT_EXIST"}'), isTooLarge: false };
+      if (method === 'GET') return { status: 200, headers: {}, body: Buffer.from('{"envelopes":[]}'), isTooLarge: false };
+      const answer = posts.shift();
+      if (!answer) throw new Error('unexpected POST');
+      if (answer instanceof Error) throw answer;
+      return { status: answer.status, headers: {}, body: Buffer.from(answer.body), isTooLarge: false, isErrorBodyIncomplete: answer.isErrorBodyIncomplete };
+    },
+  } as unknown as DocuSignClient;
+  return { client, methods, paths };
+}
+
+/** Run one attempt of a Step execution from the heartbeat its previous attempt left. */
+async function runCreateAttempt(client: DocuSignClient, attempt: number, heartbeat: unknown, isAcceptedMarkerLost = false) {
+  let value = heartbeat;
+  const call = { id: 'call-1', idempotencyKey: 'call-1', context: {
+    attempt, firstAttemptAt: new Date('2026-10-04T12:00:00Z'), deadline: undefined,
+    hasLastHeartbeatValue: () => value !== undefined, getLastHeartbeatValue: () => value,
+    recordHeartbeat: async (recorded: { isAccepted?: boolean } | undefined) => {
+      if (isAcceptedMarkerLost && recorded?.isAccepted) throw new Error('the heartbeat could not be recorded');
+      value = recorded;
+    },
+  } } as unknown as Call;
+  const result = await new CreateEnvelopeFromTemplateOperation(client).invoke(call, {
+    templateId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a',
+    templateRoles: [{ roleName: 'Customer', name: 'Priya Raman', email: 'priya@example.com' }],
+  });
+  return { result, heartbeat: value };
+}
+
+describe('create send counting', () => {
+  it('does not count rate-limited resends and reads back before each resend', async () => {
+    const { client, methods } = scriptedDocuSign([
+      { status: 500, body: '{}' }, { status: 429, body: '{}' }, { status: 429, body: '{}' },
+      { status: 201, body: '{"envelopeId":"8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a","status":"sent"}' },
+    ]);
+    let heartbeat: unknown;
+    for (const attempt of [1, 2, 3]) {
+      const run = await runCreateAttempt(client, attempt, heartbeat);
+      heartbeat = run.heartbeat;
+      expect(run.result.kind).toBe('retry');
+      // Every attempt after the unknown send reads back first.
+      expect(methods.filter(method => method === 'GET')).toHaveLength(attempt);
+    }
+    expect(heartbeat).toMatchObject({ sendCount: 1 });
+    const final = await runCreateAttempt(client, 4, heartbeat);
+    expect(final.result).toMatchObject({ kind: 'branch', branch: 'created' });
+    expect(methods.filter(method => method === 'GET')).toHaveLength(4);
+    expect(methods.filter(method => method === 'POST')).toHaveLength(4);
+  });
+  it.each([
+    ['an unusable summary', { status: 201, body: '{"envelopeId":' }],
+    ['a body cut off after the headers', new ProviderTransportError(false, 201, {})],
+  ] as const)('never resends a create accepted with %s', async (_name, answer) => {
+    const { client, methods } = scriptedDocuSign([answer]);
+    let run = await runCreateAttempt(client, 1, undefined);
+    expect(run.result.kind).toBe('retry');
+    expect(run.heartbeat).toMatchObject({ isAccepted: true });
+    run = await runCreateAttempt(client, 2, run.heartbeat);
+    expect(run.result.kind).toBe('retry');
+    run = await runCreateAttempt(client, 3, run.heartbeat);
+    expect(run.result.kind).toBe('uncertain');
+    expect(methods.filter(method => method === 'POST')).toHaveLength(1);
+    expect(methods.filter(method => method === 'GET')).toHaveLength(3);
+  });
+  it('retries a 503 without counting a send', async () => {
+    const { client, methods } = scriptedDocuSign([{ status: 503, body: '{}' }]);
+    const run = await runCreateAttempt(client, 1, undefined);
+    expect(run.result.kind).toBe('retry');
+    expect(methods).toEqual(['POST']);
+    expect(run.heartbeat).toMatchObject({ isDispatched: false, sendCount: 0 });
+  });
+  it('selects uncertain for a refusal after a lost checkpoint', async () => {
+    const { client, methods } = scriptedDocuSign([{ status: 400, body: '{}' }]);
+    const run = await runCreateAttempt(client, 2, undefined);
+    expect(run.result.kind).toBe('uncertain');
+    expect(methods).toEqual(['GET', 'POST']);
+  });
+  it('records no send for a refused first send', async () => {
+    const { client } = scriptedDocuSign([{ status: 400, body: '{}' }]);
+    const run = await runCreateAttempt(client, 1, undefined);
+    expect(run.result).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    expect(run.heartbeat).toMatchObject({ isDispatched: false, sendCount: 0 });
+  });
+  it('selects uncertain when an accepted create misses and its marker could not be recorded', async () => {
+    const { client, methods } = scriptedDocuSign([{ status: 201, body: '{"envelopeId":' }]);
+    const run = await runCreateAttempt(client, 1, undefined, true);
+    expect(run.result.kind).toBe('uncertain');
+    expect(methods).toEqual(['POST', 'GET']);
+  });
+  it.each([400, 422, 500])('adopts the envelope a %i answer names, read back by its ID, and never resends', async status => {
+    const envelopeId = '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a';
+    const stored = JSON.stringify({ envelopeId, status: 'sent', customFields: { textCustomFields: [{ name: 'dexIdempotencyKey', value: 'call-1' }] } });
+    const { client, paths } = scriptedDocuSign([{ status, body: `{"errorCode":"UNSPECIFIED_ERROR","envelopeId":"${envelopeId.toUpperCase()}"}` }], undefined, { [`/envelopes/${envelopeId}`]: stored });
+    const run = await runCreateAttempt(client, 1, undefined);
+    expect(run.result).toMatchObject({ kind: 'branch', branch: 'created', value: { envelopeId, wasRecovered: true } });
+    expect(run.heartbeat).toMatchObject({ isAccepted: true });
+    expect(paths).toEqual(['POST /envelopes', `GET /envelopes/${envelopeId}`]);
+  });
+  it('never resends a create whose refusal named an envelope that cannot be found yet', async () => {
+    const { client, methods } = scriptedDocuSign([{ status: 422, body: '{"errorCode":"UNSPECIFIED_ERROR","envelopeId":"8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a"}' }]);
+    let run = await runCreateAttempt(client, 1, undefined);
+    expect(run.result.kind).toBe('retry');
+    expect(run.heartbeat).toMatchObject({ isAccepted: true });
+    run = await runCreateAttempt(client, 2, run.heartbeat);
+    expect(run.result.kind).toBe('retry');
+    run = await runCreateAttempt(client, 3, run.heartbeat);
+    expect(run.result.kind).toBe('uncertain');
+    expect(methods.filter(method => method === 'POST')).toHaveLength(1);
+  });
+  it.each([
+    ['an incomplete refusal body', { status: 400, body: '', isErrorBodyIncomplete: true }],
+  ] as const)('resends below the cap and selects uncertain at it after %s', async (_name, answer) => {
+    const { client, methods } = scriptedDocuSign([answer, answer, answer]);
+    let run = await runCreateAttempt(client, 1, undefined);
+    expect(run.result.kind).toBe('retry');
+    expect(methods).toEqual(['POST', 'GET']);
+    run = await runCreateAttempt(client, 2, run.heartbeat);
+    expect(run.result.kind).toBe('retry');
+    run = await runCreateAttempt(client, 3, run.heartbeat);
+    expect(run.result.kind).toBe('uncertain');
+    expect(methods.filter(method => method === 'POST')).toHaveLength(3);
+  });
+  it.each([2, 3])('selects uncertain for a terminal session failure on attempt %i after a possible send', async attempt => {
+    const dispatched = { isDispatched: true, dispatchedAt: '2026-10-04T12:00:00Z', attempt: 1, sendCount: 1, isAccepted: false };
+    const { client, methods } = scriptedDocuSign([], new SessionError('defect', { kind: 'AUTHENTICATION', provider: 'docusign', operation: 'createEnvelopeFromTemplate', message: 'authorize again' }));
+    const run = await runCreateAttempt(client, attempt, dispatched);
+    expect(run.result.kind).toBe('uncertain');
+    expect(run.heartbeat).toEqual(dispatched);
+    expect(methods).toEqual([]);
+  });
+});
+
+describe('incomplete error bodies', () => {
+  it.each([
+    ['beyond the response limit', async () => { throw new BodyTooLargeError(400, {}); }],
+    ['beyond the error limit', async () => ({ status: 400, headers: {}, body: Buffer.alloc(65 << 10, 32) })],
+  ])('marks a non-2xx body %s incomplete', async (_name, send) => {
+    const client = new DocuSignClient({}, new StaticCredentialProvider([]), { send });
+    const session = { credentials: { accessToken: new SecretString('token') }, accountId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a', baseUri: 'https://na3.docusign.net' } as unknown as DocuSignSession;
+    const call = { context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    const response = await client.requestAPI(call, session, 'POST', '/envelopes', undefined, {});
+    expect(response).toMatchObject({ status: 400, isErrorBodyIncomplete: true });
+  });
+  it.each([
+    ['an incomplete body', Buffer.alloc(65 << 10, 32)],
+    ['a body naming an envelope', Buffer.from('{"errorCode":"USER_AUTHENTICATION_FAILED","envelopeId":"8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a"}')],
+  ])('does not refresh and resend a create answered 401 with %s', async (_name, body) => {
+    let posts = 0; let refreshes = 0;
+    const send = async () => { posts++; return { status: 401, headers: {}, body }; };
+    const credentials = {
+      resolve: async () => ({ accessToken: new SecretString('token') }),
+      resolveAfterRejection: async () => { refreshes++; return { accessToken: new SecretString('new-token') }; },
+    };
+    const client = new DocuSignClient({}, credentials as never, { send });
+    const session = { credentials: { accessToken: new SecretString('token') }, accountId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a', baseUri: 'https://na3.docusign.net' } as unknown as DocuSignSession;
+    const call = { context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    const response = await client.requestAPI(call, session, 'POST', '/envelopes', undefined, {});
+    expect(response.status).toBe(401);
+    expect(posts).toBe(1);
+    expect(refreshes).toBe(0);
+  });
+  it.each([
+    ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['credentials missing', () => new ObjectNotFoundError(), 'defect'],
+    ['connection unselected', () => new ConnectionNotSelectedError(), 'defect'],
+    ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+    ['reauthorization', () => new ReauthorizationRequiredError(), 'defect'],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
+    ['unlisted type error', () => new TypeError('unlisted'), 'retry'],
+  ] as const)('classifies %s as a %s session failure', async (_name, error, route) => {
+    const fail = async () => { throw error(); };
+    const client = new DocuSignClient({}, { resolve: fail, resolveWithRefresh: fail });
+    const call = { connection: { provider: 'docusign', name: 'docusign' }, context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    await expect(client.openSession(call, 'createEnvelopeFromTemplate')).rejects.toMatchObject({ route });
+  });
+  it('retries a void refusal with an incomplete body', async () => {
+    const client = {
+      openSession: async () => ({}), receipt: () => ({}),
+      classify: (operation: string) => ({ retry: false, notFound: false, retryAfterMs: 0, errorCode: 'USER_LACKS_PERMISSIONS', failure: { kind: 'AUTHORIZATION', provider: 'docusign', operation, message: 'denied' } }),
+      requestAPI: async () => ({ status: 400, headers: {}, body: new Uint8Array(), isTooLarge: false, isErrorBodyIncomplete: true }),
+    } as unknown as DocuSignClient;
+    const call = { id: 'call-1', idempotencyKey: 'call-1', context: { attempt: 1 } } as unknown as Call;
+    const result = await new VoidEnvelopeOperation(client).invoke(call, { envelopeId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a', voidedReason: 'Deal lost' });
+    expect(result.kind).toBe('retry');
+  });
+});
+
 describe('create checkpoint recovery', () => {
-  it('preserves the create failure when read-back finds multiple envelopes', async () => {
+  it('selects uncertain without resending when read-back finds multiple envelopes', async () => {
     const original = { kind: 'AVAILABILITY', provider: 'docusign', operation: 'createEnvelopeFromTemplate', message: 'original create failure' };
     const envelope = { envelopeId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a', status: 'sent', customFields: { textCustomFields: [{ name: 'dexIdempotencyKey', value: 'call-1' }] } };
     const client = {
@@ -53,7 +259,30 @@ describe('create checkpoint recovery', () => {
     });
     expect(result.kind).toBe('uncertain');
     if (result.kind !== 'uncertain') throw new Error('expected uncertainty');
-    expect(result.failure).toEqual(original);
+    expect(result.failure).toMatchObject({ kind: 'CONFLICT' });
+  });
+  it.each([[1, 'retry'], [3, 'uncertain']] as const)('after an unknown send on attempt %i of a cap of 3, a read-back miss selects %s', async (attempt, expected) => {
+    const original = { kind: 'AVAILABILITY', provider: 'docusign', operation: 'createEnvelopeFromTemplate', message: 'original create failure' };
+    const methods: string[] = [];
+    const client = {
+      openSession: async () => ({}), currentTime: () => new Date('2026-10-04T12:00:00Z'), receipt: () => ({}),
+      classify: () => ({ retry: true, retryAfterMs: 0, failure: original }),
+      requestAPI: async (_call: Call, _session: unknown, method: string) => {
+        methods.push(method);
+        return { status: method === 'POST' ? 500 : 200, headers: {}, isTooLarge: false, body: Buffer.from(method === 'POST' ? '{}' : '{"envelopes":[]}') };
+      },
+    } as unknown as DocuSignClient;
+    const call = { id: 'call-1', idempotencyKey: 'call-1', context: {
+      attempt, firstAttemptAt: new Date('2026-10-04T12:00:00Z'), hasLastHeartbeatValue: () => false,
+      recordHeartbeat: async () => {},
+    } } as unknown as Call;
+    const result = await new CreateEnvelopeFromTemplateOperation(client).invoke(call, {
+      templateId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a',
+      templateRoles: [{ roleName: 'Customer', name: 'Priya Raman', email: 'priya@example.com' }],
+    });
+    expect(result.kind).toBe(expected);
+    expect(result).toMatchObject({ failure: original });
+    expect(methods).toEqual(attempt === 1 ? ['POST', 'GET'] : ['GET', 'POST', 'GET']);
   });
   it('records a timestamp with trimmed fractional zeros', async () => {
     let checkpoint: unknown;
@@ -71,7 +300,7 @@ describe('create checkpoint recovery', () => {
       templateId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a',
       templateRoles: [{ roleName: 'Customer', name: 'Priya Raman', email: 'priya@example.com' }],
     });
-    expect(checkpoint).toEqual({ isDispatched: true, dispatchedAt: '2026-10-04T12:00:00.12Z' });
+    expect(checkpoint).toEqual({ isDispatched: true, dispatchedAt: '2026-10-04T12:00:00.12Z', attempt: 1, sendCount: 1, isAccepted: false });
   });
   it.each([undefined, { isDispatched: false, dispatchedAt: '2026-10-04T10:00:00Z' }, { isDispatched: true, dispatchedAt: '2026-10-04T11:00:00Z' }])('handles a cleared, false, or dispatched checkpoint: %j', async stored => {
     let heartbeat: unknown = { isDispatched: true, dispatchedAt: '2026-10-04T11:00:00Z' };
@@ -102,16 +331,35 @@ describe('create checkpoint recovery', () => {
       templateId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a',
       templateRoles: [{ roleName: 'Customer', name: 'Priya Raman', email: 'priya@example.com' }],
     });
-    if (stored?.isDispatched) {
-      expect(result.kind).toBe('uncertain');
-      expect(methods).toEqual(['GET']);
-      expect(fromDates).toEqual(['2026-10-04T10:00:00Z']);
-    } else {
-      expect(result.kind).toBe('branch');
-      if (result.kind !== 'branch') throw new Error('expected created branch');
-      expect(result.branch).toBe('created');
-      expect(methods).toEqual(['GET', 'POST']);
-      expect(fromDates).toEqual(['2026-10-04T11:00:00Z']);
-    }
+    // Below the cap of 3, every later attempt reads back and then resends.
+    expect(result.kind).toBe('branch');
+    if (result.kind !== 'branch') throw new Error('expected created branch');
+    expect(result.branch).toBe('created');
+    expect(methods).toEqual(['GET', 'POST']);
+    expect(fromDates).toEqual([stored?.isDispatched ? '2026-10-04T10:00:00Z' : '2026-10-04T11:00:00Z']);
+    // The resend keeps the earliest dispatch time.
+    if (stored?.isDispatched) expect(heartbeat).toEqual({ ...stored, attempt: 2, sendCount: 2, isAccepted: false });
+  });
+  it('selects uncertain without sending when earlier attempts reached the cap', async () => {
+    let heartbeat: unknown = { isDispatched: true, dispatchedAt: '2026-10-04T11:00:00Z' };
+    const methods: string[] = [];
+    const client = {
+      openSession: async () => ({}), currentTime: () => new Date('2026-10-04T12:00:00Z'), receipt: () => ({}),
+      requestAPI: async (_call: Call, _session: unknown, method: string) => {
+        methods.push(method);
+        return { status: 200, headers: {}, body: Buffer.from('{"envelopes":[]}'), isTooLarge: false };
+      },
+    } as unknown as DocuSignClient;
+    const call = { id: 'call-1', idempotencyKey: 'call-1', context: {
+      attempt: 4, firstAttemptAt: new Date('2026-10-04T12:00:00Z'), deadline: undefined,
+      hasLastHeartbeatValue: () => true, getLastHeartbeatValue: () => heartbeat,
+      recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+    } } as unknown as Call;
+    const result = await new CreateEnvelopeFromTemplateOperation(client).invoke(call, {
+      templateId: '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a',
+      templateRoles: [{ roleName: 'Customer', name: 'Priya Raman', email: 'priya@example.com' }],
+    });
+    expect(result.kind).toBe('uncertain');
+    expect(methods).toEqual(['GET']);
   });
 });

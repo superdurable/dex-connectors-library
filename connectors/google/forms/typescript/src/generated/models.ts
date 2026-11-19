@@ -75,74 +75,93 @@ export interface Credentials {
   serviceAccountKey?: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the selected authorization method. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "access_token", "delegated_user", "oauth_client_id", "oauth_client_secret", "refresh_token", "service_account_key"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["delegated_user"] != null && !(typeof fields["delegated_user"] === 'string')) throw new TypeError("credential delegated_user has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
-  if (fields["service_account_key"] != null && !(typeof fields["service_account_key"] === 'string')) throw new TypeError("credential service_account_key has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["delegated_user"] != null && !(typeof fields["delegated_user"] === 'string')) throw new CredentialMaterialError("credential delegated_user has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new CredentialMaterialError("credential refresh_token has an invalid type");
+  if (fields["service_account_key"] != null && !(typeof fields["service_account_key"] === 'string')) throw new CredentialMaterialError("credential service_account_key has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "google-oauth";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "google-oauth") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
-    if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+    if (!fields["oauth_client_secret"]) throw new CredentialMaterialError("credential oauth_client_secret is required");
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (!fields["refresh_token"]) throw new TypeError("credential refresh_token is required");
+    if (!fields["refresh_token"]) throw new CredentialMaterialError("credential refresh_token is required");
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
   } else if (method === "workspace-domain-delegation") {
-    if (!fields["service_account_key"]) throw new TypeError("credential service_account_key is required");
+    if (!fields["service_account_key"]) throw new CredentialMaterialError("credential service_account_key is required");
     if (fields["service_account_key"]) credentials.serviceAccountKey = new SecretString(fields["service_account_key"] as string);
-    if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
+    if (!fields["delegated_user"]) throw new CredentialMaterialError("credential delegated_user is required");
     if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
     credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }
 
 /** Decode shared credential fields for the selected authorization method. */
 export function decodeSharedCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "access_token", "delegated_user", "oauth_client_id", "oauth_client_secret", "refresh_token", "service_account_key"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["delegated_user"] != null && !(typeof fields["delegated_user"] === 'string')) throw new TypeError("credential delegated_user has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
-  if (fields["service_account_key"] != null && !(typeof fields["service_account_key"] === 'string')) throw new TypeError("credential service_account_key has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["delegated_user"] != null && !(typeof fields["delegated_user"] === 'string')) throw new CredentialMaterialError("credential delegated_user has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new CredentialMaterialError("credential refresh_token has an invalid type");
+  if (fields["service_account_key"] != null && !(typeof fields["service_account_key"] === 'string')) throw new CredentialMaterialError("credential service_account_key has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "google-oauth";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "google-oauth") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
   } else if (method === "workspace-domain-delegation") {
     if (fields["service_account_key"]) credentials.serviceAccountKey = new SecretString(fields["service_account_key"] as string);
-    if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
+    if (!fields["delegated_user"]) throw new CredentialMaterialError("credential delegated_user is required");
     if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }

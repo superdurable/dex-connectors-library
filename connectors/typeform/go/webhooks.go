@@ -4,6 +4,8 @@
 package typeform
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -100,6 +102,10 @@ func (operation UpsertWebhookOperation) Invoke(call sdkgo.Call, input UpsertWebh
 		return mutationAttempt[Webhook](client, validationOutcome(operationID, err), "")
 	}
 	credentials, err := client.resolveCredentials(call)
+	if errors.Is(err, errTypeformCredentialsRevoked) && call.Context.Attempt() > 1 {
+		// defect would hide a PUT an earlier attempt may have sent; repeating it is harmless.
+		return sdkgo.NewMutationRetry[Webhook](typeformFailure(operationID, sdkgo.FailureAuthentication, err.Error()), 0)
+	}
 	if err != nil {
 		return mutationAttempt[Webhook](client, credentialOutcome(operationID, err), "")
 	}
@@ -119,17 +125,49 @@ func (operation UpsertWebhookOperation) Invoke(call sdkgo.Call, input UpsertWebh
 		invalidResponse: UpsertWebhookBranchInvalidResponse,
 	}
 	if outcome, isTerminal := classifyExchange(client, operationID, response, err, branches); isTerminal {
-		return mutationAttempt[Webhook](client, outcome, input.FormID)
+		return mutationAttempt[Webhook](client, upsertWebhookOutcome(operationID, response, err, outcome), input.FormID)
 	}
 	var decoded typeformWebhook
 	if err := decodeTypeformJSON(response.body, &decoded); err != nil {
-		return mutationAttempt[Webhook](client, malformedOutcome(operationID, UpsertWebhookBranchInvalidResponse), input.FormID)
+		return sdkgo.NewMutationRetry[Webhook](unsettledWebhookPutFailure(operationID), 0)
 	}
 	webhook, err := decoded.convert()
 	if err != nil || webhook.FormID != input.FormID || webhook.Tag != input.Tag || webhook.IsEnabled == input.IsDisabled {
-		return mutationAttempt[Webhook](client, malformedOutcome(operationID, UpsertWebhookBranchInvalidResponse), input.FormID)
+		return sdkgo.NewMutationRetry[Webhook](unsettledWebhookPutFailure(operationID), 0)
 	}
 	return sdkgo.NewMutationBranch(UpsertWebhookBranchUpserted, webhook, nil, client.typeformReceipt(webhook.ID))
+}
+
+// upsertWebhookOutcome repeats the PUT for any answer short of a definite refusal or a local defect.
+func upsertWebhookOutcome(operationID string, response typeformResponse, err error, outcome exchangeOutcome) exchangeOutcome {
+	if outcome.isRetry || outcome.branch == sdkgo.DefectBranchID || (err == nil && isDefiniteTypeformRefusal(response)) {
+		return outcome
+	}
+	return exchangeOutcome{isRetry: true, failure: unsettledWebhookPutFailure(operationID)}
+}
+
+// isDefiniteTypeformRefusal reports an allowlisted refusal status whose body does not carry a stored webhook.
+func isDefiniteTypeformRefusal(response typeformResponse) bool {
+	if response.isErrorBodyIncomplete {
+		return false
+	}
+	switch response.statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity,
+		// Typeform documents 402 as a plan without the feature, a definite refusal.
+		http.StatusPaymentRequired:
+	default:
+		return false
+	}
+	var body struct {
+		ID json.RawMessage `json:"id"`
+	}
+	return json.Unmarshal(response.body, &body) != nil || len(body.ID) == 0 || string(body.ID) == "null" || string(body.ID) == `""`
+}
+
+func unsettledWebhookPutFailure(operationID string) sdkgo.Failure {
+	return typeformFailure(operationID, sdkgo.FailureProtocol, "Typeform's answer did not confirm the webhook PUT, so the idempotent PUT is repeated")
 }
 
 func (input UpsertWebhookInput) validate() error {

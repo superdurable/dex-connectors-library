@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.utils import parseaddr
@@ -20,6 +21,11 @@ from dex_connectors.sdk import (
     FailureKind,
     ReauthorizationRequiredError,
     Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
 )
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -60,6 +66,8 @@ class Exchange:
     status: int = 0
     body: bytes = b""
     request_id: str = ""
+    # A non-2xx answer whose body exceeded max_response_bytes, or reflected the credential.
+    has_oversized_body: bool = False
 
     @property
     def is_retryable_read(self) -> bool:
@@ -151,15 +159,32 @@ class Client:
         """Resolve current credentials and distinguish transient reads from unusable values."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError as error:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ) as error:
             raise CredentialsUnusableError("connection credentials are unavailable") from error
         except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                raise CredentialsUnusableError("connection credentials are unavailable") from error
             raise CredentialsUnavailableError(
                 "connection credentials could not be loaded yet; nothing was sent"
             ) from error
         if not is_bare_email_address(credentials.email) or not _is_safe_token(credentials.api_token.reveal()):
             raise CredentialsUnusableError("connection credentials are unavailable")
         return credentials
+
+    async def resolve_write_credentials(self, call: Call) -> Credentials:
+        """Resolve credentials for a Mutation, treating a revoked or unselected connection as unusable.
+
+        Another attempt cannot repair those, so a write selects defect before any send and uncertain
+        after one.
+        """
+        return await self.resolve_credentials(call)
 
     async def exchange(
         self,
@@ -171,8 +196,13 @@ class Client:
         *,
         query: dict[str, str] | None = None,
         payload: object | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
-        """Send one request and classify transport, status, and body independently of an operation."""
+        """Send one request and classify transport, status, and body independently of an operation.
+
+        on_response_status receives the HTTP status as soon as the headers arrive, so a caller cancelled
+        while the body is read still knows whether Re:amaze accepted the request.
+        """
         headers = {
             "Authorization": "Basic "
             + base64.b64encode(f"{credentials.email}:{credentials.api_token.reveal()}".encode()).decode(),
@@ -206,10 +236,13 @@ class Client:
             )
             return Exchange(outcome, failure=reamaze_failure(FailureKind.TRANSPORT, operation, message))
         status = response.status_code
+        if on_response_status is not None:
+            on_response_status(status)
         request_id = response.headers.get("X-Request-Id", "")
         if not _REQUEST_ID.fullmatch(request_id):
             request_id = ""
         retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
+        has_oversized_body = False
         try:
             body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:
@@ -225,6 +258,7 @@ class Client:
                     request_id=request_id,
                 )
             body = b""
+            has_oversized_body = True
         except ProviderTransportError:
             return Exchange(
                 "unavailable",
@@ -245,6 +279,10 @@ class Client:
                     request_id=request_id,
                 )
             return Exchange("succeeded", status=status, body=body, request_id=request_id)
+        token = credentials.api_token.reveal().encode()
+        if token and token in body:
+            # A credential-reflecting refusal is untrusted, so it cannot prove a refusal either.
+            has_oversized_body = True
         if status == 429:
             return Exchange(
                 "rate_limited",
@@ -277,6 +315,7 @@ class Client:
                 ),
                 status=status,
                 request_id=request_id,
+                has_oversized_body=has_oversized_body,
             )
         if 300 <= status < 400:
             return Exchange(
@@ -304,6 +343,7 @@ class Client:
             reamaze_failure(kind, operation, f"Re:amaze rejected the request (HTTP {status})"),
             status=status,
             request_id=request_id,
+            has_oversized_body=has_oversized_body,
         )
 
     def receipt(self, call: Call, exchange: Exchange, object_id: str = "") -> Receipt:

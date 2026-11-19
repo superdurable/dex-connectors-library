@@ -79,7 +79,7 @@ export interface CreateCardStepConfig<StepInput, OperationInput = CreateCardInpu
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically. */
+  /** The send cap is reached, or Trello accepted the card without a usable answer, and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -109,15 +109,18 @@ export interface UpdateCardStepConfig<StepInput, OperationInput = UpdateCardInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Trello returned an invalid or oversized card, or a card that does not show a requested change. */
+  /** No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateCard Step from a named connection. */
 export function newUpdateCardStep<StepInput, OperationInput = UpdateCardInput, OperationOutput = UpdateCardOutput>(configuration: UpdateCardStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateCard(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -140,7 +143,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically. */
+  /** The send cap is reached, or Trello accepted the comment without a usable answer, and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

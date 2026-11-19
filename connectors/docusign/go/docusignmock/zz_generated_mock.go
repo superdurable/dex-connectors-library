@@ -263,7 +263,7 @@ func VoidEnvelopeProviderRejected(value docusign.VoidedEnvelope, failure *sdkgo.
 	return connectormock.Branch(docusign.VoidEnvelopeBranchProviderRejected, value, failure)
 }
 
-// VoidEnvelopeInvalidResponse selects the invalidResponse branch: DocuSign returned a malformed or oversized response.
+// VoidEnvelopeInvalidResponse selects the invalidResponse branch: DocuSign returned malformed or oversized account information before the void was sent; an unreadable answer after the void retries, since voiding again is safe.
 func VoidEnvelopeInvalidResponse(value docusign.VoidedEnvelope, failure *sdkgo.Failure) connectormock.Case[docusign.VoidedEnvelope] {
 	return connectormock.Branch(docusign.VoidEnvelopeBranchInvalidResponse, value, failure)
 }

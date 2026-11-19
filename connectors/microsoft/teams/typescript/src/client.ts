@@ -7,13 +7,14 @@ import {
   type ReceiptDraft,
 } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential,
   parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL,
   type ProviderHTTPClient, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { queryEncode, safeToken } from './message.js';
 import { ListThreadRepliesOperation, PostChannelMessageOperation, PostChatMessageOperation, PostThreadReplyOperation } from './operations.js';
 
@@ -76,12 +77,22 @@ export class TeamsClient {
   /** Return the postChatMessage Mutation. */
   postChatMessage(): PostChatMessageOperation { return new PostChatMessageOperation(this); }
 
-  /** Resolve a renewable credential and check its bearer header form. */
+  /**
+   * Resolve a renewable credential and check its bearer header form. Throws ReauthorizationRequiredError
+   * for every terminal credential failure; any other error is transient.
+   */
   async resolveCredentials(call: Call): Promise<Credentials> {
     const deadline = Date.now() + 25_000;
     this.#operationDeadlines.set(call, deadline);
     const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(25_000)]);
-    const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, signal);
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, signal); }
+    catch (error) {
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) {
+        throw new ReauthorizationRequiredError();
+      }
+      throw error;
+    }
     if (!isHeaderSafeCredential(credentials.accessToken.reveal())) throw new ReauthorizationRequiredError();
     return credentials;
   }

@@ -32,6 +32,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sqlserver.StatementExecution](`{"rowsAffected":0,"columns":[{"name":"refund_id","typeName":"BIGINT"},{"name":"order_id","typeName":"NVARCHAR"},{"name":"amount_usd","typeName":"DECIMAL"},{"name":"external_reference","typeName":"NVARCHAR"},{"name":"idempotency_key","typeName":"UNIQUEIDENTIFIER"},{"name":"recorded_at","typeName":"DATETIME2"}],"rows":[]}`)
 			return err
 		}},
+		{name: "executeNonIdempotent/addedToDailyTotal/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sqlserver.StatementExecution](`{"rowsAffected":1,"columns":[],"rows":[]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -47,5 +51,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ExecuteStatement().Definition().Operation.OperationID != "execute" {
 		t.Errorf("execute mock has another definition")
+	}
+	if mock.ExecuteStatementNonIdempotent().Definition().Operation.OperationID != "executeNonIdempotent" {
+		t.Errorf("executeNonIdempotent mock has another definition")
 	}
 }

@@ -13,9 +13,16 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     OperationRef,
+    ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.zoho_crm import (
     Client,
@@ -28,6 +35,7 @@ from dex_connectors.zoho_crm import (
     UpsertRecordInput,
     new_project_connection,
 )
+from dex_connectors.zoho_crm._generated.connection import CredentialMaterialError
 from dex_connectors.zoho_crm.client import Exchange
 from dex_connectors.zoho_crm.operations import (
     GetRecordOperation,
@@ -148,6 +156,52 @@ async def test_boolean_page_limit_is_not_an_integer() -> None:
     assert result.kind == "branch" and result.branch == "defect"
 
 
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Zoho CRM credential access_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
+
+
+@pytest.mark.parametrize(
+    ("error", "outcome"),
+    [
+        (ReauthorizationRequiredError(), "rejected"),
+        (ObjectNotFoundError("connection"), "rejected"),
+        (ConnectionNotSelectedError("connection"), "rejected"),
+        (CredentialBrokerRejectedError("broker"), "rejected"),
+        (CredentialMaterialError("Zoho CRM credential access_token is required"), "rejected"),
+        (_sdk_wrapped_material_error(), "rejected"),
+        (CredentialBrokerUnavailableError("broker"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_credential_resolve_failures_share_one_classification(error: Exception, outcome: str) -> None:
+    """Only the four terminal classes reject; every other resolve error retries."""
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: pytest.fail("unexpected request"))
+    ) as http_client:
+        client = Client(
+            Config(), _FailingCredentials(error), http_client, api_base_url="http://127.0.0.1:12345/crm/v8"
+        )
+        result = await client.exchange(_call("getRecord"), "getRecord", "GET", "/Deals/123")
+    assert result.outcome == outcome
+
+
 @pytest.mark.asyncio
 async def test_expired_operation_deadline_retries_without_a_request() -> None:
     """The total Execute budget prevents a request after it has expired."""
@@ -216,6 +270,20 @@ async def test_whitespace_duplicate_check_sends_nothing() -> None:
             UpsertRecordInput("Contacts", ("Email",), {"Email": "   "}),
         )
     assert result.branch == "defect"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [405, 409, 425])
+async def test_upsert_retries_an_unlisted_status(status: int) -> None:
+    body = {"code": "UNLISTED", "details": {}, "message": "SENTINEL", "status": "error"}
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(status, json=body))
+    ) as http_client:
+        result = await UpsertRecordOperation(_client(http_client)).invoke(
+            _call("upsertRecord"),
+            UpsertRecordInput("Contacts", ("Email",), {"Email": "ada@example.test"}),
+        )
+    assert result.kind == "retry"
 
 
 def test_modified_time_counts_within_fifty_selected_fields() -> None:

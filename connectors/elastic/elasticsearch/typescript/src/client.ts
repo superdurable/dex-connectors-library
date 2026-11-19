@@ -2,18 +2,20 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry,
+  newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, ReauthorizationRequiredError,
   type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
   type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
 import { DeleteDocumentDefinition, IndexDocumentDefinition, SearchDocumentsDefinition } from './generated/definitions.js';
-import type {
-  Config, Credentials, DeleteDocumentInput, DeletedDocument, IndexDocumentInput,
-  IndexedDocument, SearchDocumentsInput, SearchHit, SearchPage,
+import {
+  isCredentialMaterialError,
+  type Config, type Credentials, type DeleteDocumentInput, type DeletedDocument, type IndexDocumentInput,
+  type IndexedDocument, type SearchDocumentsInput, type SearchHit, type SearchPage,
 } from './generated/models.js';
 
 const indexPattern = /^[a-z0-9.][a-z0-9._-]*$/;
@@ -74,8 +76,15 @@ export class ElasticsearchClient {
 
   /** Resolve Basic authorization without returning credentials in failures. */
   async authorization(call: Call): Promise<string | undefined> {
+    return (await this.resolveAuthorization(call)) ?? undefined;
+  }
+
+  /** Return null for a transient credential failure and undefined for a terminal or invalid one. */
+  private async resolveAuthorization(call: Call): Promise<string | null | undefined> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) { return isTerminalCredentialError(error) ? undefined : null; }
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
       const username = credentials.username;
       const password = credentials.password.reveal();
       if (!username || /[:\r\n\0]/.test(username) || !password || /[\r\n\0]/.test(password)) return undefined;
@@ -127,7 +136,8 @@ export class IndexDocumentOperation implements Mutation<IndexDocumentInput, Inde
     try { body = Buffer.from(JSON.stringify(input.source)); }
     catch { return indexFailure('defect', 'VALIDATION'); }
     if (body.byteLength > this.client.maxDocumentBytes) return indexFailure('defect', 'VALIDATION');
-    const authorization = await this.client.authorization(call);
+    const authorization = await this.client['resolveAuthorization'](call);
+    if (authorization === null) return indexRetry('AVAILABILITY');
     if (!authorization) return indexFailure('defect', 'AUTHENTICATION');
     const exchange = await this.client.exchange(call, 'PUT', documentURL(this.client.clusterUrl, input.index, input.documentId),
       { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: authorization }, body);
@@ -139,6 +149,7 @@ export class IndexDocumentOperation implements Mutation<IndexDocumentInput, Inde
         (result.result !== 'created' && result.result !== 'updated')) return indexRetry('PROTOCOL');
       return newMutationBranch('indexed', { index: input.index, id: input.documentId });
     }
+    if (!isDefiniteRefusalStatus(exchange.status)) return indexRetry('AVAILABILITY');
     return indexFailure('providerRejected', rejectionKind(exchange.status));
   }
 }
@@ -154,7 +165,8 @@ export class DeleteDocumentOperation implements Mutation<DeleteDocumentInput, De
   async invoke(call: Call, input: DeleteDocumentInput): Promise<MutationAttempt<DeletedDocument>> {
     if (!input || !validIndex(input.index) || !validDocumentID(input.documentId))
       return deleteFailure('defect', 'VALIDATION');
-    const authorization = await this.client.authorization(call);
+    const authorization = await this.client['resolveAuthorization'](call);
+    if (authorization === null) return deleteRetry('AVAILABILITY');
     if (!authorization) return deleteFailure('defect', 'AUTHENTICATION');
     const exchange = await this.client.exchange(call, 'DELETE', documentURL(this.client.clusterUrl, input.index, input.documentId),
       { Accept: 'application/json', Authorization: authorization });
@@ -172,6 +184,7 @@ export class DeleteDocumentOperation implements Mutation<DeleteDocumentInput, De
         index: input.index, id: input.documentId, wasDeleted: result.result === 'deleted',
       });
     }
+    if (!isDefiniteRefusalStatus(exchange.status)) return deleteRetry('AVAILABILITY');
     return deleteFailure('providerRejected', rejectionKind(exchange.status));
   }
 }
@@ -189,7 +202,8 @@ export class SearchDocumentsOperation implements Query<SearchDocumentsInput, Sea
       Buffer.byteLength(input.query) > 4096 || !Number.isSafeInteger(size) || size < 1 || size > 100 ||
       !Number.isSafeInteger(from) || from < 0 || from + size > 10_000)
       return searchFailure('defect', 'VALIDATION');
-    const authorization = await this.client.authorization(call);
+    const authorization = await this.client['resolveAuthorization'](call);
+    if (authorization === null) return searchRetry('AVAILABILITY');
     if (!authorization) return searchFailure('defect', 'AUTHENTICATION');
     const query = new URLSearchParams({ q: input.query, size: String(size), from: String(from),
       allow_partial_search_results: 'false' });
@@ -260,6 +274,17 @@ function documentRetry<T>(exchange: ElasticsearchExchange, operation: string): M
 function indexFailure(branch: string, kind: Failure['kind']): MutationAttempt<IndexedDocument> {
   return newMutationBranch(branch, emptyIndexed, {}, failure('indexDocument', kind));
 }
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
+
+/** Report a status that proves Elasticsearch refused a write; any other status is unknown. */
+function isDefiniteRefusalStatus(status: number): boolean {
+  return [400, 401, 403, 404, 411, 413, 414, 415, 422].includes(status);
+}
+
 function indexRetry(kind: Failure['kind']): MutationAttempt<IndexedDocument> {
   return newMutationRetry(failure('indexDocument', kind));
 }

@@ -126,15 +126,25 @@ func (operation CreateIssueCommentOperation) Invoke(call sdkgo.Call, input Creat
 	}
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
-		return writer.uncertain(sdkgo.FailureProtocol, "GitHub dispatch checkpoint cannot be trusted", sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CreatedIssueComment](providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub dispatch checkpoint could not be read; nothing was sent"), 0)
 	}
-	credential, failure := operation.client.resolveCredential(call, createIssueCommentOperationID)
+	credential, failure, isTerminalCredential := operation.client.resolveCredentialWithTerminality(call, createIssueCommentOperationID)
 	if failure == nil && credential.AuthMethodID != RepositoryAuthMethodID {
 		scopeFailure := providerFailure(createIssueCommentOperationID, sdkgo.FailureAuthorization, "createIssueComment requires a connection authorized with the github-oauth-repository method")
-		failure = &scopeFailure
+		failure, isTerminalCredential = &scopeFailure, true
+	}
+	hasPossibleEarlierSend := decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0
+	if failure != nil && !isTerminalCredential {
+		// A transient failure sent nothing; notSent would hide an earlier possible send.
+		if !hasPossibleEarlierSend {
+			if err := fence.RecordNotSent(); err != nil {
+				return sdkgo.NewMutationRetry[CreatedIssueComment](providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub credentials and the not-sent checkpoint are unavailable"), 0)
+			}
+		}
+		return sdkgo.NewMutationRetry[CreatedIssueComment](*failure, 0)
 	}
 	if failure != nil {
-		if decision.Kind != singledispatch.SendAllowed {
+		if hasPossibleEarlierSend {
 			// An earlier attempt may have created the comment, and this connection cannot read it back.
 			return sdkgo.NewMutationUncertain(writer.requested, *failure, sdkgo.Receipt{})
 		}
@@ -147,7 +157,8 @@ func (operation CreateIssueCommentOperation) Invoke(call sdkgo.Call, input Creat
 		return sdkgo.NewMutationBranch(branch, writer.requested, failure, sdkgo.Receipt{})
 	}
 	writer.credential = credential
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
+	// After a 429 or 503 recorded canResend, SendAllowed still carries the earlier possible send.
+	if hasPossibleEarlierSend {
 		providerID := ""
 		if decision.Marker.CallID == call.ID {
 			providerID = decision.Marker.ProviderID
@@ -163,21 +174,21 @@ func (operation CreateIssueCommentOperation) Invoke(call sdkgo.Call, input Creat
 			return writer.uncertain(sdkgo.FailureAvailability, "GitHub comment creation outcome is unknown", receipt(readBack.response))
 		}
 	}
-	return writer.dispatch(fence, request, decision.MaximumPriorSends+1)
+	return writer.dispatch(fence, request, decision.MaximumPriorSends+1, hasPossibleEarlierSend)
 }
 
 // dispatch sends the comment once and classifies the answer. claimSendCount counts this send.
-func (writer *commentWriter) dispatch(fence *singledispatch.Fence, request createIssueCommentRequestBody, claimSendCount int32) sdkgo.MutationAttempt[CreatedIssueComment] {
+func (writer *commentWriter) dispatch(fence *singledispatch.Fence, request createIssueCommentRequestBody, claimSendCount int32, hasPossibleEarlierSend bool) sdkgo.MutationAttempt[CreatedIssueComment] {
 	payload, err := json.Marshal(request)
 	if err != nil {
-		return writer.branch(CreateIssueCommentBranchDefect, sdkgo.FailureLocalDefect, "GitHub comment request could not be encoded", sdkgo.Receipt{})
+		return writer.localFailureBeforeSend(hasPossibleEarlierSend, "GitHub comment request could not be encoded")
 	}
 	attempt := &commentWriteAttempt{writer: writer, payload: payload}
 	if err := fence.Dispatch(attempt.send); err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return sdkgo.NewMutationRetry[CreatedIssueComment](providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub dispatch checkpoint or request budget is unavailable"), 0)
 		}
-		return writer.branch(CreateIssueCommentBranchDefect, sdkgo.FailureLocalDefect, "GitHub dispatch was not allowed", sdkgo.Receipt{})
+		return writer.localFailureBeforeSend(hasPossibleEarlierSend, "GitHub dispatch was not allowed")
 	}
 	isBelowSendCap := claimSendCount < writer.call.MaxSends()
 	if attempt.err != nil {
@@ -201,20 +212,44 @@ func (writer *commentWriter) dispatch(fence *singledispatch.Fence, request creat
 		return writer.retryUnprocessed(fence, providerFailure(createIssueCommentOperationID, sdkgo.FailureRateLimit, "GitHub rate limit was reached"), retryDelay(response.header, writer.client.now()))
 	case status == http.StatusServiceUnavailable:
 		return writer.retryUnprocessed(fence, providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub is unavailable"), 0)
+	case attempt.hasUnusableBody && status >= 400:
+		// An oversized or interrupted refusal body cannot prove GitHub refused the comment.
+		return writer.reconcileUnknownSend(providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub comment creation outcome is unknown after an unreadable HTTP "+strconv.Itoa(status)+" body"), isBelowSendCap, responseReceipt)
 	case status == http.StatusUnauthorized:
 		if writer.client.hasReplacementCredential(writer.call) {
 			return writer.retryUnprocessed(fence, providerFailure(createIssueCommentOperationID, sdkgo.FailureAuthentication, "GitHub access token was refreshed for retry"), 0)
 		}
-		return writer.branch(CreateIssueCommentBranchAuthorizationRevoked, sdkgo.FailureAuthentication, "GitHub authorization is invalid or revoked", responseReceipt)
+		return writer.refuse(fence, claimSendCount, CreateIssueCommentBranchAuthorizationRevoked, sdkgo.FailureAuthentication, "GitHub authorization is invalid or revoked", responseReceipt)
 	case status == http.StatusForbidden:
-		return writer.branch(CreateIssueCommentBranchInsufficientScope, sdkgo.FailureAuthorization, "GitHub authorization is forbidden or lacks scope", responseReceipt)
+		return writer.refuse(fence, claimSendCount, CreateIssueCommentBranchInsufficientScope, sdkgo.FailureAuthorization, "GitHub authorization is forbidden or lacks scope", responseReceipt)
 	case status == http.StatusNotFound:
-		return writer.branch(CreateIssueCommentBranchNotFound, sdkgo.FailureNotFound, "GitHub repository or issue was not found", responseReceipt)
-	case status >= 500:
-		return writer.reconcileUnknownSend(providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub comment creation outcome is unknown after HTTP "+strconv.Itoa(status)), isBelowSendCap, responseReceipt)
+		return writer.refuse(fence, claimSendCount, CreateIssueCommentBranchNotFound, sdkgo.FailureNotFound, "GitHub repository or issue was not found", responseReceipt)
+	case isDefiniteRefusalStatus(status):
+		return writer.refuse(fence, claimSendCount, CreateIssueCommentBranchProviderRejected, statusFailureKind(status), "GitHub rejected the comment with HTTP "+strconv.Itoa(status), responseReceipt)
 	default:
-		return writer.branch(CreateIssueCommentBranchProviderRejected, statusFailureKind(status), "GitHub rejected the comment with HTTP "+strconv.Itoa(status), responseReceipt)
+		// A 5xx, 408, 409, redirect, or other status does not prove whether GitHub created the comment.
+		return writer.reconcileUnknownSend(providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub comment creation outcome is unknown after HTTP "+strconv.Itoa(status)), isBelowSendCap, responseReceipt)
 	}
+}
+
+// refuse selects a definite refusal of the first send after recording canResend; after an
+// earlier possible send, the refusal cannot prove no comment exists, so it selects uncertain.
+// localFailureBeforeSend selects defect only when no earlier send may have created the comment.
+func (writer *commentWriter) localFailureBeforeSend(hasPossibleEarlierSend bool, message string) sdkgo.MutationAttempt[CreatedIssueComment] {
+	if hasPossibleEarlierSend {
+		return writer.uncertain(sdkgo.FailureLocalDefect, message+" after an earlier possible send", sdkgo.Receipt{})
+	}
+	return writer.branch(CreateIssueCommentBranchDefect, sdkgo.FailureLocalDefect, message, sdkgo.Receipt{})
+}
+
+func (writer *commentWriter) refuse(fence *singledispatch.Fence, claimSendCount int32, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string, refusalReceipt sdkgo.Receipt) sdkgo.MutationAttempt[CreatedIssueComment] {
+	if claimSendCount > 1 {
+		return writer.uncertain(kind, message, refusalReceipt)
+	}
+	if err := fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[CreatedIssueComment](providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub refusal checkpoint could not be recorded"), 0)
+	}
+	return writer.branch(branch, kind, message, refusalReceipt)
 }
 
 // send performs the single fenced POST. It never retries inside the fence.

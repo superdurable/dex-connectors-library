@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-microsoft-entra-id",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Dex Microsoft Entra ID connector for TypeScript",
   "repository": {

@@ -8,7 +8,6 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
-    IdempotencyKey,
     OperationRef,
     SecretString,
     StaticCredentialProvider,
@@ -18,9 +17,9 @@ from dex_connectors.discord import (
     AddReactionInput,
     Client,
     Config,
-    CreateMessageInput,
     Credentials,
     GetChannelInput,
+    ListChannelMessagesInput,
 )
 
 REFERENCE = ConnectionRef("discord", "discord")
@@ -49,33 +48,38 @@ async def test_bad_channel_id_never_reaches_provider() -> None:
         assert "inert.test.token" not in attempt.failure.message
 
 
+LISTED_MESSAGE = {
+    "id": "998877665544332211",
+    "channel_id": "112233445566778899",
+    "author": {"id": "123456789012345678", "username": "dex-bot", "bot": True},
+    "content": "Release",
+    "timestamp": "2026-10-13T20:00:00+00:00",
+    "type": 0,
+}
+
+
 @pytest.mark.asyncio
-async def test_message_timestamp_without_timezone_is_invalid_response() -> None:
-    """Reject a provider timestamp that Go's RFC3339 decoder rejects."""
-    channel_id = "112233445566778899"
+@pytest.mark.parametrize(
+    "message",
+    [
+        *({key: value for key, value in LISTED_MESSAGE.items() if key != field} for field in LISTED_MESSAGE),
+        LISTED_MESSAGE | {"author": {"username": "dex-bot"}},
+        LISTED_MESSAGE | {"timestamp": 1760385600},
+        LISTED_MESSAGE | {"timestamp": "2026-10-13T24:00:00+00:00"},
+    ],
+)
+async def test_listed_message_with_a_missing_field_is_invalid_response(message: dict[str, object]) -> None:
+    """A missing or wrongly typed message field selects invalidResponse, as in the Go connector."""
 
     def reply(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json={
-                "id": "998877665544332211",
-                "channel_id": channel_id,
-                "author": {"id": "123456789012345678", "username": "dex-bot", "bot": True},
-                "content": "hello",
-                "timestamp": "2026-10-13T20:00:00",
-                "type": 0,
-            },
-        )
+        return httpx.Response(200, json=[message])
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(reply)) as transport:
         client = Client(Config(endpoint="http://127.0.0.1:22048"), CREDENTIALS, transport)
-        call = Call(
-            CallID("bad-timestamp"),
-            REFERENCE,
-            OperationRef("discord", "createMessage"),
-            IdempotencyKey("bad-timestamp"),
+        call = Call(CallID("list"), REFERENCE, OperationRef("discord", "listChannelMessages"))
+        attempt = await client.list_channel_messages().invoke(
+            call, ListChannelMessagesInput("112233445566778899", 10)
         )
-        attempt = await client.create_message().invoke(call, CreateMessageInput(channel_id, "hello"))
         assert attempt.branch == "invalidResponse"
 
 
@@ -113,7 +117,5 @@ async def test_reaction_emoji_matches_go_path_escape(emoji: str, expected_emoji_
     assert attempt.branch == "added"
     assert len(requests) == 1
     assert requests[0].url.raw_path == (
-        b"/channels/112233445566778899/messages/998877665544332211/reactions/"
-        + expected_emoji_path
-        + b"/@me"
+        b"/channels/112233445566778899/messages/998877665544332211/reactions/" + expected_emoji_path + b"/@me"
     )

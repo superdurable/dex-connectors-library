@@ -60,6 +60,8 @@ export const sendMessageSentToCustomer = adaptGeneratedSendCase(generatedMock.se
 export const sendMessageInvalidRecipient = adaptGeneratedSendCase(generatedMock.sendMessageInvalidRecipient);
 /** The manifest's connectionLost retry. */
 export const sendMessageConnectionLost = adaptGeneratedSendCase(generatedMock.sendMessageConnectionLost);
+/** The manifest's sendOutcomeUnknown uncertain outcome. */
+export const sendMessageSendOutcomeUnknown = adaptGeneratedSendCase(generatedMock.sendMessageSendOutcomeUnknown);
 /** The manifest's noRecipients defect. */
 export const sendMessageNoRecipients = adaptGeneratedSendCase(generatedMock.sendMessageNoRecipients);
 /** The manifest's unavailable retry. */
@@ -79,6 +81,8 @@ export const replyToMessageSourceMissing = adaptGeneratedSendCase(generatedMock.
 export const replyToMessageMalformedSource = adaptGeneratedSendCase(generatedMock.replyToMessageMalformedSource);
 /** The manifest's connectionLost retry. */
 export const replyToMessageConnectionLost = adaptGeneratedSendCase(generatedMock.replyToMessageConnectionLost);
+/** The manifest's replyOutcomeUnknown uncertain outcome. */
+export const replyToMessageReplyOutcomeUnknown = adaptGeneratedSendCase(generatedMock.replyToMessageReplyOutcomeUnknown);
 /** The manifest's emptyBody defect. */
 export const replyToMessageEmptyBody = adaptGeneratedSendCase(generatedMock.replyToMessageEmptyBody);
 /** The manifest's default replyToMessage scenario. */

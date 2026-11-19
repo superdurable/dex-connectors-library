@@ -253,6 +253,8 @@ def new_update_page_properties_step(
     defect: dex.StepTarget[MutationResult[UpdatePagePropertiesOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdatePagePropertiesOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdatePagePropertiesInput, UpdatePagePropertiesOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Notion Step connection name must match its connection reference")

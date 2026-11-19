@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from typing import NoReturn, Protocol, TypeVar, cast
 
+from ._step_attempt import _begin_running_mutation
 from .errors import Failure, FailureKind, RetryError
 from .timestamps import RFC3339NanoTimestamp
 from .types import (
@@ -100,6 +101,11 @@ async def run_mutation(
 
     The returned Call ID is the fallback key. A retry raises RetryError; only a
     declared uncertain route may represent an unconfirmable, non-repeatable write.
+    Concurrent calls of the same operation in one Step attempt are unsupported:
+    a call that starts while an earlier one is still running selects `defect`
+    without invoking the operation, so it never sends. The refused call keeps
+    the occurrence its `derive_step_call_id` Call ID was built with, so later
+    Call IDs follow construction order, never which calls overlapped.
     """
     definition = operation.definition()
     try:
@@ -107,6 +113,26 @@ async def run_mutation(
         _validate_call(call, definition.operation)
     except ValueError as error:
         return _mutation_defect(call, str(error))
+    if call.context is None:
+        return await _run_validated_mutation(operation, definition, call, input)
+    end_running = _begin_running_mutation(
+        call.context, definition.operation.connector_id, definition.operation.operation_id
+    )
+    if end_running is None:
+        return _mutation_defect(call, (
+            f"concurrent calls of connector operation {definition.operation.connector_id} "
+            f"{definition.operation.operation_id} in one Step are not supported; an earlier "
+            "call of it is still running, so this call was not sent"
+        ))
+    try:
+        return await _run_validated_mutation(operation, definition, call, input)
+    finally:
+        end_running()
+
+
+async def _run_validated_mutation(
+    operation: Mutation[Input, Output], definition: MutationDefinition, call: Call, input: Input
+) -> MutationResult[Output]:
     idempotency_key = operation.idempotency_key(call.id, input) or IdempotencyKey(call.id)
     if not idempotency_key.strip():
         return _mutation_defect(call, "mutation returned an invalid idempotency key")

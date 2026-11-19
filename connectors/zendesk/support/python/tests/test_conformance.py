@@ -31,6 +31,7 @@ ADAPTER = PythonOperationAdapter(
         http_client,
         api_base_url="http://127.0.0.1:37001/api/v2",
     ),
+    with_context=True,
 )
 
 

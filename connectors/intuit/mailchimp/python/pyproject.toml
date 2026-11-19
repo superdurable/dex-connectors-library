@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-intuit-mailchimp"
-version = "0.2.0"
+version = "0.2.1"
 description = "Dex-native Mailchimp Marketing API connector"
 readme = "README.md"
 requires-python = ">=3.11"

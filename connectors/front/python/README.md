@@ -1,6 +1,6 @@
 # Front connector for Python
 
-`dex-connector-front==0.1.0` implements all five Front operations as Dex Python
+`dex-connector-front==0.1.1` implements all five Front operations as Dex Python
 Queries and Mutations: `searchConversations`, `getConversation`,
 `replyToConversation`, `updateConversation`, and `findContactByEmail`. It has
 no Python Trigger. Import from `dex_connectors.front`; the generated models,
@@ -35,8 +35,9 @@ branch. Optional branches fail the Flow when left unwired. Searches select
 `searched`; conversation reads and contact lookups select `found`; replies
 select `replied`; updates select `updated`. Reads and updates retry safe
 transient failures. A reply or internal comment uses the SDK single-dispatch
-fence because Front has no provider idempotency key. Ambiguous delivery
-selects `uncertain`; reconcile it in Front before making a new request. An
+fence because Front has no provider idempotency key. Ambiguous delivery is
+resent while the manifest send cap allows and selects `uncertain` at the cap;
+reconcile it in Front before making a new request. An
 update reads back its requested values and can repeat absolute writes.
 
 `frontmock.Mock` and its generated named scenarios can exercise branch routing

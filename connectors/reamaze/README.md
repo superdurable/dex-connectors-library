@@ -1,8 +1,8 @@
 # Re:amaze Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reamaze/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reamaze/go@v0.24.1`.
 
-The Python package is `dex-connector-reamaze==0.2.0` (`dex_connectors.reamaze`)
+The Python package is `dex-connector-reamaze==0.2.1` (`dex_connectors.reamaze`)
 on `dex-connectors-sdk>=0.12.0`. It implements all six operations and, from
 0.2.0, the `conversationCreated` poll Trigger at parity with Go: the same
 requests, event IDs, floor, seen-set, backlog, reset, and rate-limit rules, and
@@ -52,7 +52,7 @@ release has no Studio pickers; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-The independent `@superdurable/connector-reamaze` package is at `v0.2.0` on `@superdurable/connectors-sdk` `0.12.0` and implements all six operations and, from `v0.2.0`, the `conversationCreated` poll Trigger at parity with Go: the same requests, event IDs, floor, seen-set, backlog, reset, and rate-limit rules, and poll cursor documents that Go and TypeScript replicas read and write byte for byte. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), the [new-conversation example](typescript/examples/new-conversation/README.md), and Go-recorded conformance coverage. The Go connector is at `v0.24.0`. The Python package implements the `conversationCreated` Trigger from `v0.2.0` as well.
+The independent `@superdurable/connector-reamaze` package is at `v0.2.1` on `@superdurable/connectors-sdk` `0.12.0` and implements all six operations and, from `v0.2.0`, the `conversationCreated` poll Trigger at parity with Go: the same requests, event IDs, floor, seen-set, backlog, reset, and rate-limit rules, and poll cursor documents that Go and TypeScript replicas read and write byte for byte. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), the [new-conversation example](typescript/examples/new-conversation/README.md), and Go-recorded conformance coverage. The Go connector is at `v0.24.0`. The Python package implements the `conversationCreated` Trigger from `v0.2.0` as well.
 
 ## Re:amaze setup
 
@@ -231,39 +231,60 @@ require.Equal(t, TriageConversationOpened, outcome.Action)
 
 ## Duplicate safety
 
-`updateConversation` sets absolute values and safely retries. `createConversation`
-and `replyToConversation` use the shared `sdkgo/singledispatch` fence with sync
-Execute durability. The fence checks the prior attempt's heartbeat before
-credentials are loaded, claims the write, bounds its HTTP request inside the
-Step deadline, and permits one send per attempt. A missing, stale, foreign,
-or claimed checkpoint never authorizes a resend. A 429, 503, or provably
-undispatched connection permits one retry; a 409 triggers read-back. A 2xx
-with an unusable body triggers read-back in the same attempt without another
-POST. A transient read-back failure retries as a read, while an absent record
-selects `uncertain`.
+`updateConversation` sets absolute values, declares `repeatOnUnknown: safe`,
+and retries every unknown outcome. An earlier attempt's change may have
+applied before this attempt reads, so on its first read as on the `PUT`
+only a definite refusal selects a branch. `createConversation` and
+`replyToConversation` use the shared `sdkgo/singledispatch` fence with sync
+Execute durability and the manifest send cap (`maxSends`, 3 by default). The
+fence checks the prior attempt's heartbeat before credentials are loaded,
+claims the write, bounds its HTTP request inside the Step deadline, and
+counts every possible send of the Call ID. An unreadable or foreign
+checkpoint returns Retry without sending. A 429, 503, or provably
+undispatched connection records `canResend` and retries. Any other answer
+except a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422),
+such as a 409, 3xx, other 5xx, lost answer, or unlisted status, returns Retry.
+A refusal whose body exceeds `maxResponseBytes` is unread, so it also returns
+Retry. Every attempt after a possible send reads back first, including one
+that the fence lets send after a rate-limited resend: a confirmed record
+selects the happy path; a read that proves the record absent permits a resend
+while fewer sends than the cap may have taken effect, and selects `uncertain`
+once the cap is reached. A read-back that is refused, finds no conversation
+(404), or returns an invalid page cannot prove the write absent and selects
+`uncertain`. A 2xx means Re:amaze accepted the write, so it is never resent:
+when its body is unreadable, oversized, or malformed, including a body the
+fence write window cuts off after the 2xx headers arrived, the connector
+reads back in the same attempt, ending that read one second before the
+attempt deadline, and selects the happy path when it finds the record, and
+`uncertain` otherwise. A create answer that still names a valid conversation
+slug saves that slug in the fence first and reads the conversation by it; only
+then may a transient read failure retry, because every later attempt reads
+that slug back and never resends. A definite refusal of a first send records
+`canResend` before its branch; after a possible earlier send it selects
+`uncertain`. Credentials that cannot be loaded after a possible send record
+nothing and retry, and unusable credentials then select `uncertain`, never
+`defect`.
 
 The create request stores the Step's key in conversation `data`, then a later
 attempt searches for that key and confirms it on the conversation detail when
 the list omits `data`. The reply stores the key as `origin_id` and reads the
-newest message page. If these reads cannot confirm an earlier write, the
-operation selects `uncertain`; a transient read failure retries. Re:amaze
+newest message page. A transient read failure retries. Re:amaze
 [documents `origin_id` as a duplicate prevention aid](https://www.reamaze.com/api/post_messages),
 but does not specify an enforced deduplication window or conflict behavior.
-That guarantee remains unverified, so a possibly accepted reply is never
-resent. Re:amaze [documents conversation data filters](https://www.reamaze.com/api/get_conversations),
-but a filtered or newest page may omit a created record; absence cannot prove
-that another POST is safe.
+Re:amaze [documents conversation data filters](https://www.reamaze.com/api/get_conversations),
+but a filtered or newest page may omit a created record, so a resend after an
+absent read-back can still create a duplicate conversation or reply within
+the send cap.
 
 A heartbeat frame can be lost between the Worker and Dex storage. The shared
-fence fails closed when the claim is missing on a later attempt, so no second
-POST follows that ambiguity. Heartbeats may not reach durable storage before
-a later attempt reads the fence.
+fence counts a missing claim as a possible send for every earlier attempt.
+Heartbeats may not reach durable storage before a later attempt reads the
+fence.
 
 Before upgrading an in-flight v0.21.2 create or reply, reconcile it in
 Re:amaze by its conversation data key or message `origin_id`. The shared fence
-cannot read legacy dispatch markers; a v0.21.2 marker or a heartbeat cleared
-after 429 fails closed to `uncertain` on the next attempt, even when the
-provider did not apply the request.
+cannot read legacy dispatch markers, so such an attempt returns Retry without
+sending until its retry budget runs out.
 
 ## Errors
 
@@ -275,19 +296,27 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | --- | --- | --- |
 | 400, 422 | `providerRejected`, `VALIDATION` | `providerRejected`, `VALIDATION` |
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
-| 404 | `notFound` where declared, otherwise `providerRejected` | same |
-| 404 during reply read-back | N/A | `uncertain`: the conversation may have been removed after accepting the reply |
-| 409 | `providerRejected`, `CONFLICT` | Retry as a read-back, never a resend |
-| other 4xx | `providerRejected` | `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
+| 404 | `notFound` where declared, otherwise `providerRejected` | same on a first send; `uncertain` after a possible earlier send |
+| 404, 401, 403, or another refusal during read-back | N/A | `uncertain`; it cannot prove the write absent |
+| refusal status whose body exceeds `maxResponseBytes` or contains the API token | the refusal branch for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| 409 | `providerRejected`, `CONFLICT`, for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| 411, 413, 414, 415 | `providerRejected` | `providerRejected` on a first send; `uncertain` after a possible earlier send |
+| other 4xx | `providerRejected` for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for both requests of `updateConversation`; redirects are never followed | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
 | 429 | Retry after `Retry-After`, or after one minute without it | Retry after `Retry-After` or one minute, then send |
 | connection refused before sending | Retry | Retry, then send |
 | 503 | Retry, after `Retry-After` when present | Retry with the next attempt’s fence marker |
-| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry as a read-back, never a resend |
-| oversized, interrupted, or credential-reflecting 2xx | `invalidResponse` or Retry for a read | Read back in the same attempt; `uncertain` if no record confirms acceptance |
-| malformed 2xx | `invalidResponse` | Read back in the same attempt; `uncertain` if unconfirmed |
-| connection credentials that cannot be read yet, such as a storage outage | Retry, with no request | Retry, with no request |
+| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| oversized, interrupted, or credential-reflecting 2xx | `invalidResponse` or Retry for a read; Retry for both requests of `updateConversation` | Never resent: read back in the same attempt; a found record selects the happy path, otherwise `uncertain` |
+| malformed 2xx | `invalidResponse` for a read; Retry for both requests of `updateConversation`, which never selects its declared `invalidResponse` | Never resent: a create answer naming a valid slug saves it and reads that conversation; otherwise read back by key; a found record selects the happy path, otherwise `uncertain` |
+| unreadable or foreign fence checkpoint | N/A | Retry without sending |
+| connection credentials that cannot be read yet, such as a storage or credential broker outage, a connection the static provider does not configure, or any other unlisted error | Retry, with no request | Retry, with no request; after a possible send nothing is recorded |
 | invalid input or unusable connection credentials | `defect`, with no request | `defect`, `AUTHENTICATION` with a reconnect hint before send; `uncertain` with a reconnect hint after a possible send |
+| a connection that needs reconnecting, is missing, is no longer selected, or that the credential broker refuses | `defect`, with no request, in every language | same as unusable connection credentials |
+
+Unusable credentials select `defect` for `updateConversation` only on its
+first attempt. A later attempt returns Retry instead, because an earlier
+attempt's `PUT` may have applied and `defect` would hide it.
 
 The Receipt carries the Call ID and idempotency key. It includes a conversation
 slug when the connector knows one, including a saved slug on a read-back

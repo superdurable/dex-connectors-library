@@ -28,6 +28,7 @@ NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
 READ = "read"
 SENT = "sent"
+UNCERTAIN = "uncertain"
 
 GET_MESSAGE_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, GET_MESSAGE_OPERATION_ID),
@@ -50,6 +51,7 @@ SEND_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match.", False),
         BranchDefinition(PROVIDER_REJECTED, "Gmail conclusively rejected the message.", True),
+        BranchDefinition(UNCERTAIN, "Gmail may have sent the message, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -67,6 +69,7 @@ REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
         BranchDefinition(SENT, "Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains.", False),
         BranchDefinition(PROVIDER_REJECTED, "Gmail conclusively rejected the reply.", True),
         BranchDefinition(INVALID_RESPONSE, "Gmail returned an invalid or oversized source message response before sending the reply.", True),
+        BranchDefinition(UNCERTAIN, "Gmail may have sent the reply, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

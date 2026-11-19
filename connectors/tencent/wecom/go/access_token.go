@@ -136,8 +136,11 @@ func doFetchAccessToken(ctx context.Context, client *Client, operation, corpID, 
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		return retryAccessToken(operation, sdkgo.FailureAvailability, "WeCom access token service is unavailable"), 0
 	}
-	if response.StatusCode != http.StatusOK {
+	if isDefiniteRefusalStatus(response.StatusCode) {
 		return rejectedAccessToken(operation, sdkgo.FailureProviderRejection, "WeCom rejected the access token request with an unexpected HTTP status"), 0
+	}
+	if response.StatusCode != http.StatusOK {
+		return retryAccessToken(operation, sdkgo.FailureAvailability, "WeCom access token outcome is unknown after an unexpected HTTP status"), 0
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

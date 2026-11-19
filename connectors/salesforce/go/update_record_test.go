@@ -4,13 +4,16 @@
 package salesforce_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/salesforce/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func runUpdate(t *testing.T, client *salesforce.Client, input salesforce.UpdateRecordInput) (sdkgo.MutationResult[salesforce.UpdateRecordOutput], error) {
@@ -90,6 +93,19 @@ func TestUpdateRecordRetriesRowLocksAndOutages(t *testing.T) {
 	}
 }
 
+func TestUpdateRecordRetriesAStatusThatDoesNotProveARefusal(t *testing.T) {
+	for _, status := range []int{http.StatusConflict, http.StatusPreconditionFailed, http.StatusFound, http.StatusTeapot, http.StatusMultipleChoices} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			fake := newFakeSalesforce(t, func(response http.ResponseWriter, _ *http.Request, _ []byte) {
+				writeJSON(t, response, status, `[{"message":"`+providerMessageSentinel+`","errorCode":"UNKNOWN"}]`)
+			})
+			_, err := runUpdate(t, newSalesforceClient(t, fake.URL), closeOpportunity())
+			var retryErr *sdkgo.RetryError
+			require.ErrorAs(t, err, &retryErr, "the update is repeat-safe, so an unknown outcome is retried")
+		})
+	}
+}
+
 func TestUpdateRecordValidatesInputWithoutAProviderRequest(t *testing.T) {
 	fake := newFakeSalesforce(t, func(http.ResponseWriter, *http.Request, []byte) {})
 	client := newSalesforceClient(t, fake.URL)
@@ -106,4 +122,43 @@ func TestUpdateRecordValidatesInputWithoutAProviderRequest(t *testing.T) {
 		})
 	}
 	require.Empty(t, fake.recorded())
+}
+
+type failingCredentialSource struct{ resolveErr error }
+
+func (source failingCredentialSource) Resolve(sdkgo.Call) (salesforce.Credentials, error) {
+	return salesforce.Credentials{}, source.resolveErr
+}
+
+func (source failingCredentialSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[salesforce.Credentials]) (salesforce.Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestUpdateRecordClassifiesCredentialFailures(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		branch     sdkgo.BranchID
+	}{
+		"broker unavailable":            {resolveErr: projectconfig.ErrCredentialBrokerUnavailable},
+		"static not configured":         {resolveErr: errors.New("connection is not configured")},
+		"unlisted error":                {resolveErr: errors.New("credential store hiccup")},
+		"sdk reauthorization":           {sdkgo.NewReauthorizationRequiredError(nil), salesforce.UpdateRecordBranchProviderRejected},
+		"projectconfig reauthorization": {projectconfig.ErrReauthorizationRequired, salesforce.UpdateRecordBranchProviderRejected},
+		"object not found":              {projectconfig.ErrObjectNotFound, salesforce.UpdateRecordBranchDefect},
+		"connection not selected":       {projectconfig.ErrConnectionNotSelected, salesforce.UpdateRecordBranchDefect},
+		"broker rejected":               {projectconfig.ErrCredentialBrokerRejected, salesforce.UpdateRecordBranchDefect},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := salesforce.New(salesforce.Config{}, failingCredentialSource{resolveErr: testCase.resolveErr})
+			require.NoError(t, err)
+			result, err := runUpdate(t, client, closeOpportunity())
+			if testCase.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, testCase.branch, result.Branch)
+		})
+	}
 }

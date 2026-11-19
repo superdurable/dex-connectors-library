@@ -132,7 +132,10 @@ func (operation FindEmployeeByEmailOperation) Invoke(call sdkgo.Call, input Find
 	if err := validateFindEmployeeByEmailInput(input); err != nil {
 		return sdkgo.NewQueryBranch(FindEmployeeByEmailBranchDefect, FindEmployeeByEmailOutput{}, bambooHRFailurePointer(sdkgo.FailureValidation, findEmployeeByEmailOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, findEmployeeByEmailOperation)
+	credentials, failure, isTransient := operation.client.resolveCredentials(call, findEmployeeByEmailOperation)
+	if isTransient {
+		return sdkgo.NewQueryRetry[FindEmployeeByEmailOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(FindEmployeeByEmailBranchDefect, FindEmployeeByEmailOutput{}, failure, sdkgo.Receipt{})
 	}

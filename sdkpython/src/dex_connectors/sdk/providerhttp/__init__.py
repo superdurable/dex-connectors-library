@@ -14,6 +14,7 @@ from urllib.parse import quote_plus, urlsplit, urlunsplit
 
 import httpx
 
+from .._dispatch_observation import _clear_dispatch_response_status, _record_dispatch_response_status
 from .address_policy import AddressPolicy as AddressPolicy
 from .address_policy import AddressRefusal as AddressRefusal
 from .address_policy import _AddressPolicyTransport
@@ -103,6 +104,11 @@ def new_provider_http_client(
     for Host and TLS verification, and accept only known safe client options.
     Environment CA certificates are honored without enabling environment proxies.
     The caller owns and closes the returned client. Refusals raise AddressRefusal.
+    A response event hook, after any caller hooks, records each response status
+    for an enclosing `singledispatch.Fence` dispatch, so its
+    `WriteWindowTimeoutError.observed_status` survives a body read cut off at
+    the write deadline. A request event hook clears that status as each request
+    starts, so it is only ever the status of the request that was cut off.
     """
     if request_timeout_seconds <= 0:
         raise ValueError("provider request timeout must be positive")
@@ -110,6 +116,7 @@ def new_provider_http_client(
         raise ValueError("redirect and timeout policy are owned by providerhttp")
     if address_policy not in ("publicHTTPS", "privateNetworkHTTP", "unrestricted"):
         raise ValueError("address policy is invalid")
+    options = _with_response_status_hook(options)
     if address_policy != "unrestricted":
         if set(options) - _RESTRICTED_CLIENT_OPTIONS:
             raise ValueError("restricted address policy received an unsupported client option")
@@ -137,10 +144,29 @@ async def send_traced(
     """Send once; callers own and must close the returned streaming response."""
     trace = RequestTrace()
     request.extensions["trace"] = trace.observe
+    _clear_dispatch_response_status()
     try:
-        return await client.send(request, follow_redirects=False, stream=True), trace
+        response = await client.send(request, follow_redirects=False, stream=True)
     except httpx.TransportError:
         raise ProviderTransportError(trace.provably_not_sent) from None
+    _record_dispatch_response_status(response.status_code)
+    return response, trace
+
+
+async def _clear_response_status_hook(request: httpx.Request) -> None:
+    _clear_dispatch_response_status()
+
+
+async def _record_response_status_hook(response: httpx.Response) -> None:
+    _record_dispatch_response_status(response.status_code)
+
+
+def _with_response_status_hook(options: dict[str, Any]) -> dict[str, Any]:
+    """Add the dispatch status clear and record hooks, keeping caller hooks first."""
+    event_hooks = dict(options.get("event_hooks") or {})
+    event_hooks["request"] = [*event_hooks.get("request", ()), _clear_response_status_hook]
+    event_hooks["response"] = [*event_hooks.get("response", ()), _record_response_status_hook]
+    return {**options, "event_hooks": event_hooks}
 
 
 async def read_bounded_body(response: httpx.Response, maximum_bytes: int) -> bytes:

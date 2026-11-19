@@ -151,12 +151,12 @@ func UpdateTaskUpdated(value todoist.Task, failure *sdkgo.Failure) connectormock
 	return connectormock.Branch(todoist.UpdateTaskBranchUpdated, value, failure)
 }
 
-// UpdateTaskNotFound selects the notFound branch: Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.
+// UpdateTaskNotFound selects the notFound branch: Todoist reports that the task does not exist. An accepted update whose read-back finds no active task repeats instead.
 func UpdateTaskNotFound(value todoist.Task, failure *sdkgo.Failure) connectormock.Case[todoist.Task] {
 	return connectormock.Branch(todoist.UpdateTaskBranchNotFound, value, failure)
 }
 
-// UpdateTaskProviderRejected selects the providerRejected branch: Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.
+// UpdateTaskProviderRejected selects the providerRejected branch: Todoist conclusively rejected the update. An accepted update whose read-back is rejected repeats instead.
 func UpdateTaskProviderRejected(value todoist.Task, failure *sdkgo.Failure) connectormock.Case[todoist.Task] {
 	return connectormock.Branch(todoist.UpdateTaskBranchProviderRejected, value, failure)
 }

@@ -104,8 +104,11 @@ func (operation UpdateCardOperation) Invoke(call sdkgo.Call, input UpdateCardInp
 		return sdkgo.NewMutationBranch(UpdateCardBranchDefect, output, failurePointer(updateCardOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
 	session, cancel, startFailure := client.startSession(call, updateCardOperationID)
+	if startFailure != nil && startFailure.isTransient {
+		return sdkgo.NewMutationRetry[UpdateCardOutput](startFailure.failure, 0)
+	}
 	if startFailure != nil {
-		return sdkgo.NewMutationBranch(UpdateCardBranchDefect, output, startFailure, sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(UpdateCardBranchDefect, output, &startFailure.failure, sdkgo.Receipt{})
 	}
 	defer cancel()
 	if len(update.addLabelIDs) > 0 || len(update.removeLabelIDs) > 0 {
@@ -124,11 +127,13 @@ func (operation UpdateCardOperation) Invoke(call sdkgo.Call, input UpdateCardInp
 	}
 	card, readReceipt, classification := client.readCard(session, updateCardOperationID, update.cardID)
 	if classification.outcome != readSucceeded {
-		return cardReadAttempt(classification, output, readReceipt)
+		// Trello accepted the PUT, so an unusable read-back retries the repeatable update instead of failing it.
+		return sdkgo.NewMutationRetry[UpdateCardOutput](classification.failure, classification.retryAfter)
 	}
 	if field := update.expectation.firstUnappliedField(card); field != "" {
-		return sdkgo.NewMutationBranch(UpdateCardBranchInvalidResponse, output, failurePointer(updateCardOperationID, sdkgo.FailureProtocol,
-			"Trello accepted the update but the card read back does not show the requested "+field), readReceipt)
+		// An accepted write never selects a failure branch; the absolute update repeats instead.
+		return sdkgo.NewMutationRetry[UpdateCardOutput](*failurePointer(updateCardOperationID, sdkgo.FailureProtocol,
+			"Trello accepted the update but the card read back does not show the requested "+field+", so the update is sent again"), 0)
 	}
 	output.Card = &card
 	return sdkgo.NewMutationBranch(UpdateCardBranchUpdated, output, nil, readReceipt)
@@ -164,7 +169,8 @@ func cardReadAttempt(classification readClassification, output UpdateCardOutput,
 	case readRejected:
 		return sdkgo.NewMutationBranch(UpdateCardBranchProviderRejected, output, &classification.failure, receipt)
 	default:
-		return sdkgo.NewMutationBranch(UpdateCardBranchInvalidResponse, output, &classification.failure, receipt)
+		// An unusable read is an unknown outcome, which a repeatable update retries.
+		return sdkgo.NewMutationRetry[UpdateCardOutput](classification.failure, classification.retryAfter)
 	}
 }
 

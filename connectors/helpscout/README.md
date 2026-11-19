@@ -3,14 +3,14 @@
 The TypeScript package `@superdurable/connector-helpscout` implements the five
 conversation and customer operations and, from `0.2.0`, the signed
 `conversationEvent` webhook Trigger at parity with Go. Its package version is
-`0.2.0`. See the [TypeScript README](typescript/README.md), its
+`0.2.1`. See the [TypeScript README](typescript/README.md), its
 [runnable search example](typescript/examples/search-conversations/README.md),
 and its [new-conversation tagging example](typescript/examples/tag-new-conversations/README.md).
 The Python package `dex-connector-helpscout` adds the same Trigger in `0.2.0`;
 see the [Python README](python/README.md) and its
 [new-conversation tagging example](python/examples/tag_new_conversations/README.md).
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/helpscout/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/helpscout/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/helpscout`.
 
@@ -154,22 +154,47 @@ Help Scout documents no idempotency key or client-supplied thread marker. The
 operation uses the Connector SDK's single-dispatch fence with sync durability:
 
 - the fence reads the prior Dex heartbeat before credentials or a provider
-  lookup and permits a send only on attempt one or immediately after a
-  checkpoint proving the preceding attempt did not apply;
+  lookup and counts every possible send of the Call ID against the manifest
+  send cap (`maxSends`, 3 by default). An unreadable or foreign checkpoint
+  returns Retry without sending; a missing or stale one counts as a possible
+  send;
 - the request ends within the observed attempt deadline, with time left for
   classification; a short budget records `notSent` and returns Retry;
-- a `429`, `503`, Help Scout's documented safe-to-retry `504`, or a traced
-  DNS, connect, or TLS failure before a connection was obtained records
-  `canResend` and returns Retry. A missing or stale checkpoint fails closed;
-- a `201` with a valid `Resource-Id` records the thread ID. If Dex retries
-  after acceptance, the connector lists that conversation's thread pages
-  and confirms the ID without another POST. A temporary read failure returns
+- a `429`, `503`, or a traced DNS, connect, or TLS failure before a
+  connection was obtained records `canResend` and returns Retry;
+- a `201` with a valid `Resource-Id` records the thread ID, even when its
+  body is unreadable, oversized, or malformed. If Dex retries after
+  acceptance, the connector lists that conversation's thread pages and
+  confirms the ID without another POST. A temporary read failure returns
   Retry; an inconclusive read selects `uncertain`;
-- an accepted response without a valid ID, ambiguous transport failure,
-  `3xx`, `408`, `409`, or other `5xx` selects `uncertain` without another POST;
-- a `404` or `410`, including a merged conversation, selects `notFound`;
-  terminal `4xx` such as `412` for a conversation locked at 100 threads or
-  by age selects `providerRejected`. Nothing was added.
+- a `2xx` without a valid `Resource-Id` was accepted but cannot be read back,
+  so it selects `uncertain` and is never resent;
+- an ambiguous transport failure, including the end of the write window,
+  `3xx`, `408`, `409`, `410`, another unlisted status, or a `5xx` other than
+  `503`, including the `504` Help Scout calls safe to retry, returns Retry so
+  the next attempt resends while fewer sends than the cap may have taken
+  effect, which can add a duplicate thread; the send that reaches the cap
+  selects `uncertain`;
+- a `404`, or a merged conversation on the read before a reply, selects
+  `notFound`; a `400`, `401`, `403`, `411`, `413`, `414`, `415`, or `422`
+  selects `providerRejected`. A `412` or `423` for a locked conversation is
+  an unknown outcome like any other unlisted status.
+  Each records `canResend` first, and nothing was added. After a possible
+  earlier send, any of these refusals selects `uncertain` instead. A refusal
+  whose error body is larger than 64 KiB or breaks while it is read, including
+  one the write window cuts off, or whose body echoes the access token, is an
+  unknown outcome: it records nothing, resends within the send cap, and the
+  send that reaches the cap selects `uncertain`;
+- a non-2xx that carries a valid `Resource-Id` names a thread that may exist:
+  the connector saves that ID and returns Retry, so the next attempt reads
+  the thread back and never resends; when the ID cannot be saved it selects
+  `uncertain`;
+- an earlier send is possible whenever the decision is not a plain first
+  send: a read-back decision, a saved thread ID, or any earlier claim, even
+  one a later `429` marked `canResend`. Then a credential, local, or
+  pre-send read failure records nothing: a transient one returns Retry, and
+  a terminal one selects `uncertain` instead of `defect`. Only a first send
+  records `notSent` before such a Retry or `defect`.
 
 Do not override this Step's Execute durability to async. Async local-phase
 heartbeats are not visible to later attempts, so the fence cannot prevent a
@@ -204,6 +229,16 @@ again or finds them applied and reports `wasAlreadyApplied`. The real-Dex test
 lets Dex dispatch the Step again while a status write answers after nine
 seconds, and the conversation ends with the status and one copy of the tag. A
 tag that someone else changes between the read and the `PUT` is overwritten.
+A write refusal whose error body is larger than 64 KiB, breaks while it is
+read, or echoes the access token is an unknown outcome, so the attempt returns
+Retry and repeats the write. The read before the writes reads its error body in
+full, as a write does, so a truncated or broken refusal body is never taken as
+definite.
+The read before the writes follows one rule on every attempt: a 301 for a
+merged conversation, or a readable 400, 401, 403, 404, 411, 413, 414, 415, or
+422 that does not echo the token, selects its branch; any other answer, such as
+409, 410, another unlisted status, or an oversized, incomplete, unparseable, or
+credential-reflecting body, returns Retry without writing.
 
 ### findCustomerByEmail
 
@@ -324,14 +359,17 @@ and the Receipt carries Help Scout's `logRef` for support.
 | 400, 413, 415, 422 | `providerRejected`, `VALIDATION` |
 | 401, after one token refresh on reads or repeatable writes | `providerRejected`, `AUTHENTICATION`; the fenced reply does not resend in the attempt |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as an account without API access or payment |
-| 404, 410 | `notFound` where declared, otherwise `providerRejected` |
-| 409 | `providerRejected`, `CONFLICT`; the fenced reply selects `uncertain` without a thread ID |
-| 412, 423 | `providerRejected`, a locked conversation or customer |
-| 301 | `merged` for `getConversation`; a reply selects `uncertain` if its POST receives one |
-| other 3xx | `providerRejected`, `PROTOCOL` on reads and repeatable writes; `uncertain` on a reply |
+| 404 | `notFound` where declared, otherwise `providerRejected` |
+| 410 | `notFound` for reads; Retry for the `updateConversation` read and write; the fenced reply resends within the send cap |
+| 409, other unlisted 4xx | `providerRejected`, `CONFLICT` for reads; Retry for the `updateConversation` read and write; the fenced reply resends within the send cap, then selects `uncertain` |
+| 412, 423 | `providerRejected`, a locked conversation or customer, for reads; Retry for the `updateConversation` read and write; the fenced reply resends within the send cap, then selects `uncertain` |
+| 301 | `merged` for `getConversation`; the fenced reply resends within the send cap if its POST receives one |
+| other 3xx | `providerRejected`, `PROTOCOL` on reads; Retry for the `updateConversation` read and write; the fenced reply resends within the send cap |
 | 408, 429, 5xx, transport failure | Retry, after `X-RateLimit-Retry-After` or `Retry-After`; see the reply's exceptions above |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; a reply uses `Resource-Id` to confirm acceptance, or selects `uncertain` without it |
-| invalid input or credentials | `defect`, with no request |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads; Retry for the `updateConversation` read before any write and after a write; a reply uses `Resource-Id` to confirm acceptance, or selects `uncertain` without it |
+| unreadable or foreign fence checkpoint | Retry without sending for the fenced reply |
+| invalid input, or credentials that need reauthorization, belong to a missing or unselected connection, are refused by the credential broker, or carry an unusable token | `defect`, with no request; `uncertain` after a possible reply send |
+| any other credential failure, such as a token endpoint or broker outage or a connection the static provider does not configure | Retry, with no request |
 
 ## Security boundary
 
@@ -385,7 +423,7 @@ Worker loss or a retry following an accepted provider write.
 
 ## Python package
 
-The [`python/`](python/) package `dex-connector-helpscout` v0.2.0 implements
+The [`python/`](python/) package `dex-connector-helpscout` v0.2.1 implements
 `searchConversations`, `getConversation`, `replyToConversation`,
 `updateConversation`, and `findCustomerByEmail` with generated client-credentials
 refresh wiring, and the signed `conversationEvent` webhook Trigger at parity with

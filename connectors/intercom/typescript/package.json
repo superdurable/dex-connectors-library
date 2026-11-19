@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-intercom",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "description": "Intercom conversation operations and webhook Trigger for Dex TypeScript applications",
   "repository": {

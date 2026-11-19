@@ -31,7 +31,7 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated import definitions
-from .client import Client, Exchange, _is_ascii_decimal
+from .client import Client, Exchange, ResponseHead, _is_ascii_decimal
 from .decode import (
     array_value,
     conversation,
@@ -151,6 +151,49 @@ def _mutation_exchange(
         return MutationAttempt.retry(failure, delay)
     branch = not_found if exchange.status in (404, 410) and not_found else rejected
     return MutationAttempt.branch_result(branch, value, client.receipt(call, object_id, request_id), failure)
+
+
+# Only these statuses prove Help Scout applied nothing; 412, 423, and every other 4xx are unknown.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
+def _is_unknown_write_outcome(exchange: Exchange) -> bool:
+    """Report an answer to a sent write that neither confirms nor definitely refuses it."""
+    if exchange.error:
+        return exchange.error in ("tooLarge", "malformed")
+    if exchange.is_error_body_incomplete or _is_credential_echoing_body(exchange):
+        # A refusal whose body was not read in full, or that echoes the token, may hide an applied write.
+        return True
+    status = exchange.status
+    # _mutation_exchange already retries 408, 429, and 5xx.
+    return (
+        not 200 <= status < 300
+        and status not in (408, 429)
+        and status < 500
+        and status not in DEFINITE_REFUSAL_STATUSES
+    )
+
+
+def _is_unknown_pre_write_read(exchange: Exchange) -> bool:
+    """Report a read that is neither a conversation nor a definite refusal.
+
+    408, 429, and 5xx retry through _mutation_exchange, which keeps Retry-After.
+    """
+    if exchange.error:
+        return exchange.error in ("tooLarge", "malformed")
+    status = exchange.status
+    if 200 <= status < 300 or status == 301 or status in (408, 429) or status >= 500:
+        return False
+    return (
+        status not in DEFINITE_REFUSAL_STATUSES
+        or exchange.is_error_body_incomplete
+        or _is_credential_echoing_body(exchange)
+    )
+
+
+def _is_credential_echoing_body(exchange: Exchange) -> bool:
+    """Report a response body that contains the access token."""
+    return bool(exchange.token) and exchange.token.encode() in exchange.body
 
 
 def _credential_query(operation: str, error: str, value: Any) -> QueryAttempt[Any]:
@@ -577,7 +620,7 @@ class UpdateConversationOperation:
         if resolve_error:
             return _credential_mutation("updateConversation", resolve_error, empty)
         path = f"/v2/conversations/{input.conversation_id}"
-        current, terminal = await self._read(call, token, path, input.conversation_id, empty)
+        current, terminal = await self._read(call, token, path, input.conversation_id, empty, False)
         if terminal:
             return terminal
         assert current is not None
@@ -591,6 +634,15 @@ class UpdateConversationOperation:
         current_output = UpdateConversationOutput(current)
         for method, write_path, payload in writes:
             exchange = await self.client.exchange(call, token, method, write_path, payload=payload)
+            if _is_unknown_write_outcome(exchange):
+                # Every write sets a final value, so an unknown outcome repeats it.
+                return MutationAttempt.retry(
+                    _failure(
+                        "updateConversation",
+                        FailureKind.AVAILABILITY,
+                        f"the Help Scout write outcome is unknown (HTTP {exchange.status})",
+                    )
+                )
             terminal = _mutation_exchange(
                 self.client,
                 call,
@@ -603,7 +655,7 @@ class UpdateConversationOperation:
             )
             if terminal:
                 return terminal
-        updated, terminal = await self._read(call, token, path, input.conversation_id, current_output)
+        updated, terminal = await self._read(call, token, path, input.conversation_id, current_output, True)
         if terminal:
             return terminal
         assert updated is not None
@@ -618,8 +670,24 @@ class UpdateConversationOperation:
         path: str,
         conversation_id: int,
         value: UpdateConversationOutput,
+        is_after_write: bool,
     ) -> tuple[Conversation | None, MutationAttempt[UpdateConversationOutput] | None]:
         exchange = await self.client.exchange(call, token, "GET", path)
+        if is_after_write:
+            # After a write, the final values are safe to repeat, so a refused read-back retries.
+            terminal = _mutation_exchange(
+                self.client, call, "updateConversation", exchange, value, conversation_id, "providerRejected"
+            )
+            if terminal and terminal.kind == "retry":
+                return None, terminal
+            if terminal:
+                return None, MutationAttempt.retry(
+                    _failure(
+                        "updateConversation",
+                        FailureKind.AVAILABILITY,
+                        "Help Scout accepted the change but its read-back failed",
+                    )
+                )
         if not exchange.error and exchange.status == 301:
             return None, MutationAttempt.branch_result(
                 "notFound",
@@ -630,6 +698,15 @@ class UpdateConversationOperation:
                     FailureKind.NOT_FOUND,
                     "the conversation was merged into another; update that conversation",
                 ),
+            )
+        if _is_unknown_pre_write_read(exchange):
+            return None, MutationAttempt.retry(
+                _failure(
+                    "updateConversation",
+                    FailureKind.AVAILABILITY,
+                    "Help Scout's conversation read before the update was inconclusive "
+                    f"(HTTP {exchange.status})",
+                )
             )
         terminal = _mutation_exchange(
             self.client,
@@ -646,15 +723,21 @@ class UpdateConversationOperation:
         try:
             return conversation(parse_json(exchange.body), conversation_id), None
         except (ValueError, TypeError, UnicodeError) as error:
-            return None, MutationAttempt.branch_result(
-                "invalidResponse",
-                value,
-                self.client.receipt(call, conversation_id),
+            if is_after_write:
+                return None, MutationAttempt.retry(
+                    _failure(
+                        "updateConversation",
+                        FailureKind.PROTOCOL,
+                        "Help Scout accepted the change but returned an invalid conversation: " + str(error),
+                    )
+                )
+            # An unusable 2xx read before the update proves nothing, so the attempt repeats.
+            return None, MutationAttempt.retry(
                 _failure(
                     "updateConversation",
                     FailureKind.PROTOCOL,
                     "Help Scout returned an invalid conversation: " + str(error),
-                ),
+                )
             )
 
 
@@ -726,7 +809,7 @@ class ReplyToConversationOperation:
                 _failure("replyToConversation", FailureKind.VALIDATION, str(error)),
             )
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
             decision = await fence.decide()
         except (ValueError, RuntimeError) as error:
             return MutationAttempt.branch_result(
@@ -736,29 +819,38 @@ class ReplyToConversationOperation:
                 _failure("replyToConversation", FailureKind.LOCAL_DEFECT, str(error)),
             )
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return self._uncertain(
-                call, output, "the dispatch checkpoint is unavailable, so the thread is not sent again"
+            # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+            return MutationAttempt.retry(
+                _failure(
+                    "replyToConversation",
+                    FailureKind.AVAILABILITY,
+                    "the dispatch checkpoint could not be read; nothing was sent in this attempt",
+                )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        saved_provider_id = decision.marker.provider_id if decision.marker is not None else ""
+        # Help Scout reads a thread back only by its ID, which it returns only for a created thread.
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or saved_provider_id:
             return await self._read_back(call, output, decision.marker)
+        is_earlier_send_possible = (
+            decision.kind != DecisionKind.SEND_ALLOWED
+            or decision.prior_send_upper_bound > 0
+            or bool(saved_provider_id)
+        )
+        is_first_send = not is_earlier_send_possible
+        can_resend = decision.prior_send_upper_bound + 1 < call.max_sends
         token, resolve_error = await self.client.resolve_token(call)
         if resolve_error:
-            if resolve_error == "retry":
-                try:
-                    await fence.record_not_sent()
-                except (CheckpointError, DispatchNotAllowedError):
-                    pass  # A failed checkpoint cannot authorize another send.
-                return MutationAttempt.retry(
-                    _failure(
-                        "replyToConversation",
-                        FailureKind.AVAILABILITY,
-                        "the Help Scout access token could not be loaded or obtained yet",
-                    )
-                )
-            return _credential_mutation("replyToConversation", resolve_error, output)
+            return await self._credential_failure(call, output, fence, is_first_send, resolve_error)
         if not input.is_internal_note and input.customer_id == 0:
-            result = await self._read_primary_customer(call, token, output, fence)
+            result = await self._read_primary_customer(call, token, output, fence, is_first_send)
             if isinstance(result, MutationAttempt):
+                if result.kind == "branch" and not is_first_send:
+                    return self._uncertain(
+                        call,
+                        output,
+                        "an earlier attempt may have sent the thread, "
+                        "and the conversation read before a resend failed",
+                    )
                 return result
             output = replace(output, customer_id=result)
         path = f"/v2/conversations/{input.conversation_id}/" + (
@@ -769,13 +861,21 @@ class ReplyToConversationOperation:
             payload["status"] = input.status
         if not input.is_internal_note:
             payload["customer"] = {"id": output.customer_id}
+        response_head = ResponseHead()
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
-                    call, token, "POST", path, payload=payload, allow_refresh=False
+                    call,
+                    token,
+                    "POST",
+                    path,
+                    payload=payload,
+                    allow_refresh=False,
+                    response_head=response_head,
                 )
             )
-        except (CheckpointError, InsufficientAttemptTimeError):
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            # Dispatch refused before sending, so nothing reached Help Scout in this attempt.
             return MutationAttempt.retry(
                 _failure(
                     "replyToConversation",
@@ -783,22 +883,36 @@ class ReplyToConversationOperation:
                     "the thread was not sent before the Execute dispatch deadline",
                 )
             )
-        except (TimeoutError, DispatchNotAllowedError):
-            return self._uncertain(call, output, "the thread may exist because Help Scout's answer was lost")
-        if exchange.error == "notBuilt":
-            return MutationAttempt.branch_result(
-                "defect",
-                output,
-                Receipt(),
-                _failure(
-                    "replyToConversation", FailureKind.LOCAL_DEFECT, "Help Scout request could not be built"
-                ),
+        except TimeoutError:
+            if not response_head.status:
+                return self._resend_or_uncertain(
+                    call,
+                    output,
+                    can_resend,
+                    self._lost_answer(),
+                    0,
+                    self.client.receipt(call, output.conversation_id),
+                )
+            # The write window cut off the body after the status arrived: a 2xx was accepted.
+            is_accepted = 200 <= response_head.status < 300
+            exchange = Exchange(
+                response_head.status,
+                response_head.headers,
+                error="bodyRead" if is_accepted else "",
+                token=token,
+                is_error_body_incomplete=not is_accepted,
             )
+        if exchange.error == "notBuilt":
+            built = _failure(
+                "replyToConversation", FailureKind.LOCAL_DEFECT, "Help Scout request could not be built"
+            )
+            # _reject selects uncertain after a possible earlier send, because defect would hide it.
+            return await self._reject(call, output, fence, is_first_send, "defect", built, Receipt())
         if exchange.error == "beforeSend":
             try:
                 await fence.record_can_resend()
             except (CheckpointError, DispatchNotAllowedError):
-                pass  # A failed checkpoint cannot authorize another send.
+                pass  # A lost checkpoint leaves the claim, so the next attempt counts this send.
             return MutationAttempt.retry(
                 _failure(
                     "replyToConversation",
@@ -807,40 +921,187 @@ class ReplyToConversationOperation:
                 )
             )
         if exchange.error and not (200 <= exchange.status < 300):
-            return self._uncertain(call, output, "the thread may exist because Help Scout's answer was lost")
+            return self._resend_or_uncertain(
+                call,
+                output,
+                can_resend,
+                self._lost_answer(),
+                0,
+                self.client.receipt(call, output.conversation_id),
+            )
         if 200 <= exchange.status < 300:
             raw_id = exchange.headers.get("Resource-Id", "").strip()
             thread_id = int(raw_id) if _is_ascii_decimal(raw_id) else 0
             if thread_id < 1:
-                return self._uncertain(
-                    call,
+                # Help Scout accepted the thread, and without its ID no read-back can confirm it.
+                return MutationAttempt.uncertain(
                     output,
-                    "Help Scout accepted the thread without a valid Resource-Id; the thread may exist",
+                    _failure(
+                        "replyToConversation",
+                        FailureKind.PROTOCOL,
+                        "Help Scout accepted the thread without a valid Resource-Id; the thread may exist",
+                    ),
+                    self.client.receipt(call, output.conversation_id),
                 )
             output = replace(output, thread_id=thread_id)
             try:
                 await fence.record_provider_id(str(thread_id))
             except (CheckpointError, DispatchNotAllowedError):
-                pass  # An unrecorded ID still forbids a second send.
+                pass  # The 2xx confirms the thread; a lost ID leaves only the claim for a later attempt.
             return MutationAttempt.branch_result("replied", output, self.client.receipt(call, thread_id))
         retry, failure, delay, request_id = self.client.classify_failure("replyToConversation", exchange)
         receipt = self.client.receipt(call, output.conversation_id, request_id)
-        if exchange.status in (429, 503, 504):
+        raw_named_id = exchange.headers.get("Resource-Id", "").strip()
+        named_thread_id = int(raw_named_id) if _is_ascii_decimal(raw_named_id) else 0
+        if named_thread_id > 0:
+            return await self._confirm_contradictory_thread_id(
+                output, fence, named_thread_id, failure, receipt
+            )
+        if exchange.is_error_body_incomplete and exchange.status in DEFINITE_REFUSAL_STATUSES:
+            # A refusal whose body was not read in full may hide an applied write.
+            return self._resend_or_uncertain(
+                call,
+                output,
+                can_resend,
+                replace(
+                    failure,
+                    message=failure.message
+                    + "; the error body could not be read in full, so the thread may exist",
+                ),
+                0,
+                receipt,
+            )
+        if exchange.status in DEFINITE_REFUSAL_STATUSES and _is_credential_echoing_body(exchange):
+            # A refusal body that echoes the access token is untrustworthy, so the thread may exist.
+            return self._resend_or_uncertain(
+                call,
+                output,
+                can_resend,
+                replace(
+                    failure,
+                    message=failure.message
+                    + "; the error body echoed the access token, so the thread may exist",
+                ),
+                0,
+                receipt,
+            )
+        if exchange.status in (429, 503):
             try:
                 await fence.record_can_resend()
             except (CheckpointError, DispatchNotAllowedError):
-                pass  # A failed checkpoint cannot authorize another send.
+                pass  # A lost checkpoint leaves the claim, so the next attempt counts this send.
             return MutationAttempt.retry(failure, delay)
-        if exchange.status in (404, 410):
-            return MutationAttempt.branch_result("notFound", output, receipt, failure)
-        if 400 <= exchange.status < 500 and exchange.status not in (408, 409):
-            return MutationAttempt.branch_result("providerRejected", output, receipt, failure)
-        return MutationAttempt.uncertain(
-            output, replace(failure, message=failure.message + "; the thread may exist"), receipt
+        if exchange.status == 404:
+            return await self._reject(call, output, fence, is_first_send, "notFound", failure, receipt)
+        if exchange.status in DEFINITE_REFUSAL_STATUSES:
+            return await self._reject(
+                call, output, fence, is_first_send, "providerRejected", failure, receipt
+            )
+        # A 3xx, 408, 409, 410, another unlisted status, or a 5xx other than 503 can follow a created thread.
+        return self._resend_or_uncertain(
+            call,
+            output,
+            can_resend,
+            replace(failure, message=failure.message + "; the thread may exist"),
+            delay,
+            receipt,
         )
 
+    async def _confirm_contradictory_thread_id(
+        self,
+        output: ConversationReply,
+        fence: Fence,
+        thread_id: int,
+        problem: Failure,
+        receipt: Receipt,
+    ) -> MutationAttempt[ConversationReply]:
+        """Save the thread ID a non-2xx names, so later attempts read it back, never resend."""
+        problem = replace(
+            problem,
+            message=problem.message + f"; the answer names thread {thread_id}, so the thread may exist",
+        )
+        try:
+            await fence.record_provider_id(str(thread_id))
+        except (CheckpointError, DispatchNotAllowedError):
+            return MutationAttempt.uncertain(output, problem, receipt)
+        return MutationAttempt.retry(problem)
+
+    def _lost_answer(self) -> Failure:
+        return _failure(
+            "replyToConversation",
+            FailureKind.TRANSPORT,
+            "the thread may exist because Help Scout's answer was lost",
+        )
+
+    def _resend_or_uncertain(
+        self,
+        call: Call,
+        output: ConversationReply,
+        can_resend: bool,
+        problem: Failure,
+        retry_after: float,
+        receipt: Receipt,
+    ) -> MutationAttempt[ConversationReply]:
+        """Retry an unknown outcome while the send cap allows another send."""
+        if can_resend:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return MutationAttempt.retry(problem, retry_after)
+        return MutationAttempt.uncertain(output, problem, receipt)
+
+    async def _reject(
+        self,
+        call: Call,
+        output: ConversationReply,
+        fence: Fence,
+        is_first_send: bool,
+        branch: str,
+        problem: Failure,
+        receipt: Receipt,
+    ) -> MutationAttempt[ConversationReply]:
+        """Select a refusal branch only when no earlier send of this call may have applied."""
+        if not is_first_send:
+            return MutationAttempt.uncertain(
+                output, problem, self.client.receipt(call, output.conversation_id)
+            )
+        try:
+            await fence.record_can_resend()
+        except (CheckpointError, DispatchNotAllowedError):
+            return MutationAttempt.retry(
+                _failure(
+                    "replyToConversation",
+                    FailureKind.AVAILABILITY,
+                    "the refusal checkpoint could not be recorded",
+                )
+            )
+        return MutationAttempt.branch_result(branch, output, receipt, problem)
+
+    async def _credential_failure(
+        self, call: Call, output: ConversationReply, fence: Fence, is_first_send: bool, resolve_error: str
+    ) -> MutationAttempt[ConversationReply]:
+        """Send nothing; after a possible earlier send, record nothing and never select defect."""
+        is_transient = resolve_error == "retry"
+        if not is_first_send:
+            if is_transient:
+                return MutationAttempt.retry(
+                    _failure(
+                        "replyToConversation",
+                        FailureKind.AVAILABILITY,
+                        "the Help Scout access token could not be loaded or obtained yet",
+                    )
+                )
+            return self._uncertain(
+                call,
+                output,
+                "an earlier attempt may have sent the thread, and authorization failed before a resend",
+            )
+        try:
+            await fence.record_not_sent()
+        except (CheckpointError, DispatchNotAllowedError):
+            pass  # A failed checkpoint cannot authorize another send.
+        return _credential_mutation("replyToConversation", resolve_error, output)
+
     async def _read_primary_customer(
-        self, call: Call, token: str, output: ConversationReply, fence: Fence
+        self, call: Call, token: str, output: ConversationReply, fence: Fence, is_first_send: bool
     ) -> int | MutationAttempt[ConversationReply]:
         exchange = await self.client.exchange(
             call, token, "GET", f"/v2/conversations/{output.conversation_id}"
@@ -867,7 +1128,8 @@ class ReplyToConversationOperation:
             "notFound",
         )
         if terminal:
-            if terminal.kind == "retry":
+            # After a possible earlier send, notSent would hide that send, so nothing is recorded.
+            if terminal.kind == "retry" and is_first_send:
                 try:
                     await fence.record_not_sent()
                 except (CheckpointError, DispatchNotAllowedError):
@@ -916,9 +1178,7 @@ class ReplyToConversationOperation:
         self, call: Call, output: ConversationReply, marker: Any
     ) -> MutationAttempt[ConversationReply]:
         thread_id = (
-            int(marker.provider_id)
-            if marker is not None and _is_ascii_decimal(marker.provider_id)
-            else 0
+            int(marker.provider_id) if marker is not None and _is_ascii_decimal(marker.provider_id) else 0
         )
         if marker is None or marker.call_id != call.id or thread_id < 1:
             return self._uncertain(

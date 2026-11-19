@@ -427,7 +427,7 @@ var CreateCardDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCardBranchCreated, Description: "Trello created the card and returned its ID."},
 		{ID: CreateCardBranchProviderRejected, Description: "Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateCardBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", Optional: true},
+		{ID: CreateCardBranchUncertain, Description: "The send cap is reached, or Trello accepted the card without a usable answer, and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateCardBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -507,7 +507,7 @@ var UpdateCardDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateCardBranchUpdated, Description: "Trello applied every requested change, including when the card already had those values, and the Value holds the card Trello returned."},
 		{ID: UpdateCardBranchNotFound, Description: "The card does not exist.", Optional: true},
 		{ID: UpdateCardBranchProviderRejected, Description: "Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission.", Optional: true},
-		{ID: UpdateCardBranchInvalidResponse, Description: "Trello returned an invalid or oversized card, or a card that does not show a requested change.", Optional: true},
+		{ID: UpdateCardBranchInvalidResponse, Description: "No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility.", Optional: true},
 		{ID: UpdateCardBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -537,6 +537,8 @@ type UpdateCardStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateCardResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateCardOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateCardStep[IN any](config UpdateCardStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCardInput, UpdateCardOutput] {
@@ -587,7 +589,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Trello added the comment and returned its action ID."},
 		{ID: AddCommentBranchNotFound, Description: "The card does not exist; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The send cap is reached, or Trello accepted the comment without a usable answer, and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

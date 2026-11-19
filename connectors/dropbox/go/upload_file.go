@@ -57,8 +57,15 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 		return uploadFailure(UploadFileBranchDefect, sdkgo.FailureValidation, "upload content must be bounded Base64")
 	}
 	response := operation.client.upload(call, input.Path, content)
-	if errors.Is(response.err, errCredential) {
+	if errors.Is(response.err, errCredential) && response.status == 0 {
+		if call.Context != nil && call.Context.Attempt() > 1 {
+			// An earlier attempt may have stored the file, so defect would misreport it.
+			return uploadRetry(sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid after a possible earlier upload", 0)
+		}
 		return uploadFailure(UploadFileBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+	}
+	if errors.Is(response.err, errCredential) {
+		return uploadRetry(sdkgo.FailureProtocol, "Dropbox echoed the access token, so the overwrite is repeated", response.retryAfter)
 	}
 	if errors.Is(response.err, errRefresh) {
 		return uploadRetry(sdkgo.FailureAvailability, "Dropbox credentials could not be refreshed", 0)
@@ -72,11 +79,15 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return uploadRetry(sdkgo.FailureAvailability, "Dropbox upload is temporarily unavailable", response.retryAfter)
 	}
-	if response.status != http.StatusOK {
+	if response.status != http.StatusOK && isDefiniteDropboxUploadRefusal(response) {
 		return uploadFailure(UploadFileBranchProviderRejected, sdkgo.FailureProviderRejection, "Dropbox rejected HTTP "+strconv.Itoa(response.status))
 	}
+	if response.status != http.StatusOK {
+		return uploadRetry(sdkgo.FailureProtocol, "Dropbox answered the overwrite with unsettled HTTP "+strconv.Itoa(response.status), response.retryAfter)
+	}
+	// The overwrite is absolute, so an unusable 2xx body repeats it instead of selecting invalidResponse.
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return uploadFailure(UploadFileBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Dropbox upload metadata exceeded the configured limit")
+		return uploadRetry(sdkgo.FailureResponseTooLarge, "Dropbox upload metadata exceeded the configured limit", 0)
 	}
 	if response.err != nil {
 		return uploadRetry(sdkgo.FailureTransport, "Dropbox upload response was interrupted", 0)
@@ -87,10 +98,35 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 		PathDisplay string `json:"path_display"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.ID == "" || wire.Name == "" || wire.PathDisplay == "" {
-		return uploadFailure(UploadFileBranchInvalidResponse, sdkgo.FailureProtocol, "Dropbox returned invalid upload metadata")
+		return uploadRetry(sdkgo.FailureProtocol, "Dropbox returned invalid upload metadata", 0)
 	}
 	output := UploadedFile{File: EntryMetadata{ID: wire.ID, Name: wire.Name, PathDisplay: wire.PathDisplay, Kind: "file"}}
 	return sdkgo.NewMutationBranch(UploadFileBranchUploaded, output, nil, sdkgo.Receipt{})
+}
+
+// isDefiniteDropboxUploadRefusal accepts an allowlisted status, or Dropbox's documented 409 endpoint error with an
+// error_summary, when the fully read body carries no stored file.
+func isDefiniteDropboxUploadRefusal(response contentResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	var wire struct {
+		ID           json.RawMessage `json:"id"`
+		ErrorSummary string          `json:"error_summary"`
+	}
+	isObject := json.Unmarshal(response.body, &wire) == nil
+	if isObject && len(wire.ID) > 0 && string(wire.ID) != "null" && string(wire.ID) != `""` {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	case http.StatusConflict:
+		return isObject && wire.ErrorSummary != ""
+	}
+	return false
 }
 
 func uploadFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[UploadedFile] {

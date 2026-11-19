@@ -1,6 +1,6 @@
 # Sentry connector for Python
 
-Install with `pip install dex-connector-sentry==0.1.0`. The package requires
+Install with `pip install dex-connector-sentry==0.1.1`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `listIssues` and `getIssue` (Queries) and
 `updateIssueStatus` (Mutation) with the same branches, defaults, and failure
@@ -19,7 +19,10 @@ Sentry search `query` and returns the first result page. `updateIssueStatus`
 sets `resolved`, `unresolved`, or `ignored`; the absolute replacement makes a
 repeated attempt safe. 408, 429, 5xx, and transport failures retry; other
 non-success responses select `providerRejected`, and HTTP 404 selects
-`notFound` where the operation declares it.
+`notFound` where the operation declares it. `updateIssueStatus` is declared
+`repeatOnUnknown: safe`, so it rejects only HTTP 400, 401, 403, 404, 411, 413,
+414, 415, or 422 and retries every other unknown answer, including 409 and a
+malformed or oversized response.
 
 ## Authorization
 

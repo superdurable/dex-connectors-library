@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted postgresql connection. Script each operation through its accessor.
 type Mock struct {
-	connection       postgresql.Connection
-	queryRows        *connectormock.Query[postgresql.QueryRowsInput, postgresql.RowSet]
-	executeStatement *connectormock.Mutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution]
+	connection                    postgresql.Connection
+	queryRows                     *connectormock.Query[postgresql.QueryRowsInput, postgresql.RowSet]
+	executeStatement              *connectormock.Mutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution]
+	executeStatementNonIdempotent *connectormock.Mutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		queryRows:        connectormock.NewQuery[postgresql.QueryRowsInput, postgresql.RowSet](t, postgresql.QueryRowsDefinition),
-		executeStatement: connectormock.NewMutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution](t, postgresql.ExecuteStatementDefinition),
+		queryRows:                     connectormock.NewQuery[postgresql.QueryRowsInput, postgresql.RowSet](t, postgresql.QueryRowsDefinition),
+		executeStatement:              connectormock.NewMutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution](t, postgresql.ExecuteStatementDefinition),
+		executeStatementNonIdempotent: connectormock.NewMutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution](t, postgresql.ExecuteStatementNonIdempotentDefinition),
 	}
 	mock.queryRows.Default(QueryRowsDefault())
 	mock.executeStatement.Default(ExecuteStatementDefault())
+	mock.executeStatementNonIdempotent.Default(ExecuteStatementNonIdempotentDefault())
 	connection, err := postgresql.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "postgresql", Name: connectionName})
 	if err != nil {
 		t.Fatalf("postgresql mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) ExecuteStatement() *connectormock.Mutation[postgresql.ExecuteS
 	return mock.executeStatement
 }
 
+// ExecuteStatementNonIdempotent returns the executeNonIdempotent script.
+func (mock *Mock) ExecuteStatementNonIdempotent() *connectormock.Mutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution] {
+	return mock.executeStatementNonIdempotent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) QueryRows() sdkgo.Query[postgresql.QueryRowsInput, postgresql.RowSet] {
@@ -60,6 +68,9 @@ func (operations mockOperations) QueryRows() sdkgo.Query[postgresql.QueryRowsInp
 }
 func (operations mockOperations) ExecuteStatement() sdkgo.Mutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution] {
 	return operations.mock.executeStatement
+}
+func (operations mockOperations) ExecuteStatementNonIdempotent() sdkgo.Mutation[postgresql.ExecuteStatementInput, postgresql.StatementExecution] {
+	return operations.mock.executeStatementNonIdempotent
 }
 
 // QueryRowsCompleted selects the completed branch: PostgreSQL ran the read-only statement and returned every row, possibly none, within maxRows and maxResponseBytes.
@@ -169,4 +180,56 @@ func ExecuteStatementDuplicateOrder() connectormock.Case[postgresql.StatementExe
 // ExecuteStatementDefault is the manifest default, recordedRefund, which New installs.
 func ExecuteStatementDefault() connectormock.Case[postgresql.StatementExecution] {
 	return ExecuteStatementRecordedRefund()
+}
+
+// ExecuteStatementNonIdempotentCompleted selects the completed branch: PostgreSQL committed the statement's transaction; the Result holds the command, rows affected, and any RETURNING rows.
+func ExecuteStatementNonIdempotentCompleted(value postgresql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[postgresql.StatementExecution] {
+	return connectormock.Branch(postgresql.ExecuteStatementNonIdempotentBranchCompleted, value, failure)
+}
+
+// ExecuteStatementNonIdempotentLimitExceeded selects the limitExceeded branch: The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.
+func ExecuteStatementNonIdempotentLimitExceeded(value postgresql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[postgresql.StatementExecution] {
+	return connectormock.Branch(postgresql.ExecuteStatementNonIdempotentBranchLimitExceeded, value, failure)
+}
+
+// ExecuteStatementNonIdempotentProviderRejected selects the providerRejected branch: PostgreSQL conclusively refused the connection, statement, or commit, such as a constraint violation, a syntax error, or a permission error; nothing was written.
+func ExecuteStatementNonIdempotentProviderRejected(value postgresql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[postgresql.StatementExecution] {
+	return connectormock.Branch(postgresql.ExecuteStatementNonIdempotentBranchProviderRejected, value, failure)
+}
+
+// ExecuteStatementNonIdempotentUncertain returns an uncertain executeNonIdempotent outcome.
+func ExecuteStatementNonIdempotentUncertain(value postgresql.StatementExecution, failure sdkgo.Failure) connectormock.Case[postgresql.StatementExecution] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// ExecuteStatementNonIdempotentInvalidResponse selects the invalidResponse branch: PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.
+func ExecuteStatementNonIdempotentInvalidResponse(value postgresql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[postgresql.StatementExecution] {
+	return connectormock.Branch(postgresql.ExecuteStatementNonIdempotentBranchInvalidResponse, value, failure)
+}
+
+// ExecuteStatementNonIdempotentDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func ExecuteStatementNonIdempotentDefect(value postgresql.StatementExecution, failure *sdkgo.Failure) connectormock.Case[postgresql.StatementExecution] {
+	return connectormock.Branch(postgresql.ExecuteStatementNonIdempotentBranchDefect, value, failure)
+}
+
+// ExecuteStatementNonIdempotentRetry asks Dex to retry the executeNonIdempotent Step, after the delay when it is positive.
+func ExecuteStatementNonIdempotentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postgresql.StatementExecution] {
+	return connectormock.Retry[postgresql.StatementExecution](failure, after)
+}
+
+// ExecuteStatementNonIdempotentAddedToDailyTotal is the manifest mock addedToDailyTotal: Adding the $250.00 order-88213 refund to the 2026-10-26 daily total commits once.
+func ExecuteStatementNonIdempotentAddedToDailyTotal() connectormock.Case[postgresql.StatementExecution] {
+	value := connectormock.MustDecodeOutput[postgresql.StatementExecution](`{"command":"INSERT","rowsAffected":1,"columns":[{"name":"refund_date","typeName":"date","typeOid":1082},{"name":"total_usd","typeName":"numeric","typeOid":1700}],"rows":[{"refund_date":"2026-10-26","total_usd":"250.00"}]}`)
+	return connectormock.Branch(postgresql.ExecuteStatementNonIdempotentBranchCompleted, value, nil)
+}
+
+// ExecuteStatementNonIdempotentMissingDailyTotalTable is the manifest mock missingDailyTotalTable: Adding to a missing refund_daily_totals table receives SQLSTATE 42P01 before commit.
+func ExecuteStatementNonIdempotentMissingDailyTotalTable() connectormock.Case[postgresql.StatementExecution] {
+	value := connectormock.MustDecodeOutput[postgresql.StatementExecution](`{"columns":[],"rows":[]}`)
+	return connectormock.Branch(postgresql.ExecuteStatementNonIdempotentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "PostgreSQL could not find refund_daily_totals."})
+}
+
+// ExecuteStatementNonIdempotentDefault is the manifest default, addedToDailyTotal, which New installs.
+func ExecuteStatementNonIdempotentDefault() connectormock.Case[postgresql.StatementExecution] {
+	return ExecuteStatementNonIdempotentAddedToDailyTotal()
 }

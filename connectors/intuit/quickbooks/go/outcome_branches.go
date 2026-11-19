@@ -51,27 +51,6 @@ type mutationBranches struct {
 	defect           sdkgo.BranchID
 }
 
-// mutationAttemptForExchange leaves accepted but unusable answers to operation-specific read-back.
-func mutationAttemptForExchange[OUT any](result quickbooksExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
-	switch result.outcome {
-	case exchangeSucceeded:
-		return sdkgo.MutationAttempt[OUT]{}, false
-	case exchangeRetry:
-		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case exchangeInvalid, exchangeInterrupted:
-		return sdkgo.MutationAttempt[OUT]{}, false
-	case exchangeNameConflict:
-		if branches.nameConflict != "" {
-			return sdkgo.NewMutationBranch(branches.nameConflict, requested, &result.failure, receipt), true
-		}
-		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
-	case exchangeDefect:
-		return sdkgo.NewMutationBranch(branches.defect, requested, &result.failure, receipt), true
-	default:
-		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
-	}
-}
-
 // decodeEntity reads the one entity of a QuickBooks response such as {"Invoice":{...},"time":"..."}.
 func decodeEntity[W any](body []byte, entityName string) (W, error) {
 	var zero W

@@ -1,10 +1,10 @@
 {
   "connectorId": "mailchimp",
-  "releaseTag": "connectors/intuit/mailchimp/go/v0.24.0",
+  "releaseTag": "connectors/intuit/mailchimp/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-intuit-mailchimp",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -358,7 +358,7 @@
       "kind": "mutation",
       "operationId": "sendCampaign",
       "inputType": "SendCampaignInput",
-      "description": "Send one existing draft campaign now. The connector reads the campaign first and sends only a draft; a send is irreversible and Mailchimp has no idempotency key, so the Step runs with sync durability and sends at most once per Step execution.",
+      "description": "Send one existing draft campaign now. Every attempt reads the campaign first and sends only a draft; Mailchimp has no idempotency key, so a send whose outcome is unknown is retried, and the retry reads the campaign again and sends only while it is still a draft and the possible sends stay below maxSends.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

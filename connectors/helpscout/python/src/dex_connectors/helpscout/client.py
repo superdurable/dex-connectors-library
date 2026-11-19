@@ -19,6 +19,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -64,6 +69,16 @@ class Exchange:
     body: bytes = b""
     error: str = ""
     token: str = ""
+    # is_error_body_incomplete marks a non-2xx body that was oversized or could not be read in full.
+    is_error_body_incomplete: bool = False
+
+
+@dataclass(slots=True)
+class ResponseHead:
+    """Status and headers of the latest response, kept when a write window cuts off its body."""
+
+    status: int = 0
+    headers: httpx.Headers = field(default_factory=httpx.Headers)
 
 
 class Client:
@@ -155,12 +170,20 @@ class Client:
 
     async def resolve_token(self, call: Call) -> tuple[str, str]:
         """Return token and error class: terminal, retry, or empty on success."""
+        # The generated connection module imports this module, so import it lazily.
+        from ._generated.connection import is_credential_material_error
+
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return "", "terminal"
-        except Exception:
-            return "", "retry"
+        except Exception as error:
+            return "", "terminal" if is_credential_material_error(error) else "retry"
         if not isinstance(credentials, Credentials) or not is_header_safe_credential(
             credentials.access_token.reveal()
         ):
@@ -177,8 +200,12 @@ class Client:
         payload: object | None = None,
         *,
         allow_refresh: bool = True,
+        response_head: ResponseHead | None = None,
     ) -> Exchange:
-        """Send once, refreshing a rejected token once when the source supports it."""
+        """Send once, refreshing a rejected token once when the source supports it.
+
+        response_head, when given, receives each response's status and headers before its body is read.
+        """
         target = _API_BASE + path
         if query:
             target += "?" + encode_query_values(query)
@@ -205,20 +232,29 @@ class Client:
                 return Exchange(error="beforeSend" if error.provably_not_sent else "afterSend")
             except (httpx.HTTPError, ValueError):
                 return Exchange(error="transport")
+            if response_head is not None:
+                response_head.status, response_head.headers = response.status_code, response.headers
             limit = (
                 self.config.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
             )
+            is_error_body_incomplete = False
             try:
                 contents = await read_bounded_body(response, limit)
             except BodyTooLargeError:
                 if 200 <= response.status_code < 300:
                     return Exchange(response.status_code, response.headers, error="tooLarge", token=token)
-                contents = b""
+                contents, is_error_body_incomplete = b"", True
             except ProviderTransportError:
                 if 200 <= response.status_code < 300:
                     return Exchange(response.status_code, response.headers, error="bodyRead", token=token)
-                contents = b""
-            exchange = Exchange(response.status_code, response.headers, contents, token=token)
+                contents, is_error_body_incomplete = b"", True
+            exchange = Exchange(
+                response.status_code,
+                response.headers,
+                contents,
+                token=token,
+                is_error_body_incomplete=is_error_body_incomplete,
+            )
             if 200 <= response.status_code < 300 and token.encode() in contents:
                 return Exchange(response.status_code, response.headers, error="malformed", token=token)
             if (

@@ -509,9 +509,9 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertObject"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertObjectBranchUpserted, Description: "HubSpot created the record or updated the record that owns the unique value."},
-		{ID: UpsertObjectBranchConflict, Description: "The properties conflict with another record, such as an email that another contact already owns.", Optional: true},
+		{ID: UpsertObjectBranchConflict, Description: "HubSpot reports with a documented CONFLICT, in its batch answer or in a second HTTP 409, that the properties conflict with another record, such as an email that another contact already owns; a 409 without that category is retried.", Optional: true},
 		{ID: UpsertObjectBranchProviderRejected, Description: "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", Optional: true},
-		{ID: UpsertObjectBranchInvalidResponse, Description: "HubSpot applied or rejected the upsert but returned an invalid or oversized response.", Optional: true},
+		{ID: UpsertObjectBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.", Optional: true},
 		{ID: UpsertObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -519,8 +519,7 @@ var UpsertObjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertObjectResult = sdkgo.MutationResult[UpsertedObject]
@@ -542,7 +541,7 @@ type UpsertObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertObjectResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertedObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -579,7 +578,6 @@ func NewUpsertObjectStep[IN any](config UpsertObjectStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -595,9 +593,9 @@ var UpdateObjectDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateObjectBranchUpdated, Description: "HubSpot updated the record and returned it."},
 		{ID: UpdateObjectBranchNotFound, Description: "No unarchived record of that object type has the record ID.", Optional: true},
-		{ID: UpdateObjectBranchConflict, Description: "The properties conflict with another record, such as an email that another contact already owns.", Optional: true},
+		{ID: UpdateObjectBranchConflict, Description: "HubSpot answered 409 with its documented CONFLICT category: the properties conflict with another record, such as an email that another contact already owns.", Optional: true},
 		{ID: UpdateObjectBranchProviderRejected, Description: "HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit.", Optional: true},
-		{ID: UpdateObjectBranchInvalidResponse, Description: "HubSpot applied or rejected the update but returned an invalid or oversized response.", Optional: true},
+		{ID: UpdateObjectBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because setting the same values again is safe.", Optional: true},
 		{ID: UpdateObjectBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -605,8 +603,7 @@ var UpdateObjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateObjectResult = sdkgo.MutationResult[CRMObject]
@@ -629,7 +626,7 @@ type UpdateObjectStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateObjectResult]                `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CRMObject]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -669,6 +666,5 @@ func NewUpdateObjectStep[IN any](config UpdateObjectStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }

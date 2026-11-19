@@ -10,8 +10,9 @@
 // item. CreateItem creates an item with typed column values,
 // UpdateItemColumnValues sets typed absolute column values, and AddUpdate posts
 // an update, monday.com's item comment. Every mutation sends an
-// Idempotency-Key header derived from the Dex Call ID. Create and add-update
-// retries also require a durable checkpoint, because monday.com's cache can be bypassed.
+// Idempotency-Key header derived from the Dex Call ID. Because monday.com's cache
+// can be bypassed, CreateItem and AddUpdate also count possible sends in a durable
+// checkpoint and resend an unknown outcome only while the Step's send cap allows.
 //
 // Every request pins the API-Version header to APIVersion. A connection
 // authenticates with a personal API token or with monday.com OAuth 2.1, whose
@@ -35,6 +36,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -126,10 +128,11 @@ type Client struct {
 
 // graphQLRequest is one GraphQL document with its variables; mutations carry the Step's idempotency key.
 type graphQLRequest struct {
-	document                   string
-	variables                  map[string]any
-	isMutation                 bool
-	requiresDispatchCheckpoint bool
+	document   string
+	variables  map[string]any
+	isMutation bool
+	// isFencedWrite resends after an OAuth rejection only when the write window still fits a request.
+	isFencedWrite bool
 }
 
 type graphQLRequestBody struct {
@@ -161,11 +164,18 @@ const (
 
 // mondayExchange is one classified request; failure is set for every outcome except exchangeSucceeded.
 type mondayExchange struct {
-	outcome                 exchangeOutcome
-	response                mondayResponse
-	failure                 sdkgo.Failure
-	retryAfter              time.Duration
-	isConfirmedNotProcessed bool
+	outcome    exchangeOutcome
+	response   mondayResponse
+	failure    sdkgo.Failure
+	retryAfter time.Duration
+	// isProvenNotProcessed marks a rate limit, 503, or unsent request that monday.com never processed.
+	isProvenNotProcessed bool
+	// isDefiniteRefusal marks a listed refusal status or error code, or a request never sent.
+	isDefiniteRefusal bool
+	// isCredentialReflected marks a response that echoed the connection credential.
+	isCredentialReflected bool
+	// isSuccessBodyUnreadable marks a 2xx whose body broke after its headers, so a write may have been accepted.
+	isSuccessBodyUnreadable bool
 }
 
 // graphQLErrorSummary holds only machine-readable tokens from monday.com's errors array.
@@ -238,62 +248,27 @@ func (client *Client) UpdateItemColumnValues() UpdateItemColumnValuesOperation {
 // AddUpdate returns the addUpdate Mutation bound to this client.
 func (client *Client) AddUpdate() AddUpdateOperation { return AddUpdateOperation{client: client} }
 
-// exchange classifies one request and fences non-idempotent writes with attempt-numbered checkpoints.
+// exchange resolves credentials and classifies one unfenced request.
 func (client *Client) exchange(call sdkgo.Call, operation string, request graphQLRequest) mondayExchange {
-	var heartbeat *mutationHeartbeat
-	if request.requiresDispatchCheckpoint {
-		var previous mutationCheckpoint
-		hasPrevious, err := call.Context.GetLastHeartbeatValue(&previous)
-		if err != nil || hasPrevious && previous.CallID != call.ID {
-			outcome := exchangeDefect
-			failureKind := sdkgo.FailureLocalDefect
-			if call.Context.Attempt() > 1 {
-				outcome = exchangeUncertain
-				failureKind = sdkgo.FailureTransport
-			}
-			return mondayExchange{outcome: outcome, failure: mondayFailure(failureKind, operation, "mutation checkpoint is invalid")}
-		}
-		attempt := call.Context.Attempt()
-		if !(!hasPrevious && attempt == 1 || hasPrevious && previous.CanResend && previous.Attempt == attempt-1) {
-			return mondayExchange{outcome: exchangeUncertain, failure: mondayFailure(sdkgo.FailureTransport, operation, "an earlier attempt may have applied the mutation")}
-		}
-		heartbeat = newMutationHeartbeat(call)
-		defer heartbeat.stop()
-	}
 	credentials, failedResolution := client.resolveCredentials(call, operation)
 	if failedResolution != nil {
-		if heartbeat != nil && failedResolution.outcome == exchangeRetry {
-			_ = heartbeat.recordCanResend()
-		}
 		return *failedResolution
 	}
-	if heartbeat != nil {
-		if !hasRequestBudget(call.Context, requestDeadlineMargin+minimumMutationRequestWindow) {
-			_ = heartbeat.recordCanResend()
-			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "not enough time remains to send the mutation")}
-		}
-		if err := heartbeat.begin(); err != nil {
-			_ = heartbeat.recordCanResend()
-			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "dispatch checkpoint could not be recorded")}
-		}
-	}
-	result := client.send(call.Context, call, credentials, operation, request)
+	return client.sendWithRejectionRefresh(call.Context, call, credentials, operation, request)
+}
+
+// sendWithRejectionRefresh sends under ctx and resends once after monday.com rejects an OAuth token.
+func (client *Client) sendWithRejectionRefresh(ctx context.Context, call sdkgo.Call, credentials Credentials, operation string, request graphQLRequest) mondayExchange {
+	result := client.send(ctx, call, credentials, operation, request)
 	if result.response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection(credentials) {
 		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 		if err == nil && validateResolvedCredentials(replacement) == nil {
-			if heartbeat != nil && !hasRequestBudget(call.Context, requestDeadlineMargin+minimumMutationRequestWindow) {
-				result = mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "not enough time remains to resend the mutation")}
-			} else {
-				result = client.send(call.Context, call, replacement, operation, request)
+			if request.isFencedWrite && !hasRequestBudget(ctx, requestDeadlineMargin+minimumMutationRequestWindow) {
+				// HTTP 401 proves the first send was refused, and the refreshed one is not sent.
+				return mondayExchange{outcome: exchangeRetry, isProvenNotProcessed: true,
+					failure: mondayFailure(sdkgo.FailureAvailability, operation, "not enough time remains to resend the mutation")}
 			}
-		}
-	}
-	if heartbeat != nil {
-		switch {
-		case result.outcome == exchangeRetry && result.response.statusCode >= 200 && result.response.statusCode < 300 && (!result.isConfirmedNotProcessed || result.response.data != nil):
-			result.outcome = exchangeUncertain
-		case result.outcome == exchangeRetry && result.response.data == nil:
-			_ = heartbeat.recordCanResend()
+			result = client.send(ctx, call, replacement, operation, request)
 		}
 	}
 	return result
@@ -304,16 +279,26 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
 	case sdkgo.IsReauthorizationRequired(err):
-		return Credentials{}, &mondayExchange{outcome: exchangeRejected,
+		return Credentials{}, &mondayExchange{outcome: exchangeRejected, isDefiniteRefusal: true,
 			failure: mondayFailure(sdkgo.FailureAuthentication, operation, "monday.com authorization must be renewed")}
 	case errors.Is(err, errCredentialRefreshUnavailable):
-		return Credentials{}, &mondayExchange{outcome: exchangeRetry,
+		return Credentials{}, &mondayExchange{outcome: exchangeRetry, isProvenNotProcessed: true,
 			failure: mondayFailure(sdkgo.FailureAvailability, operation, "monday.com OAuth token refresh is temporarily unavailable")}
+	case err != nil && !isTerminalCredentialError(err):
+		return Credentials{}, &mondayExchange{outcome: exchangeRetry, isProvenNotProcessed: true,
+			failure: mondayFailure(sdkgo.FailureAvailability, operation, "monday.com connection credentials could not be read, so nothing was sent")}
 	case err != nil || validateResolvedCredentials(credentials) != nil:
-		return Credentials{}, &mondayExchange{outcome: exchangeDefect,
+		return Credentials{}, &mondayExchange{outcome: exchangeDefect, isDefiniteRefusal: true,
 			failure: mondayFailure(sdkgo.FailureAuthentication, operation, "monday.com connection credentials are unavailable")}
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as store reads, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) canRefreshAfterRejection(credentials Credentials) bool {
@@ -329,7 +314,7 @@ func (client *Client) canRefreshAfterRejection(credentials Credentials) bool {
 func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Credentials, operation string, request graphQLRequest) mondayExchange {
 	httpRequest, err := client.buildRequest(ctx, call, credentials, request)
 	if err != nil {
-		return mondayExchange{outcome: exchangeDefect, failure: mondayFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
+		return mondayExchange{outcome: exchangeDefect, isDefiniteRefusal: true, failure: mondayFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
 	requestContext := ctx
 	if deadline, hasDeadline := ctx.Deadline(); hasDeadline {
@@ -338,7 +323,8 @@ func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Cre
 		defer cancel()
 	}
 	if requestContext.Err() != nil {
-		return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com request context expired before dispatch")}
+		return mondayExchange{outcome: exchangeRetry, isProvenNotProcessed: true,
+			failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com request context expired before dispatch")}
 	}
 	var hasConnectionAttempt, hasConnection atomic.Bool
 	requestContext = httptrace.WithClientTrace(requestContext, &httptrace.ClientTrace{
@@ -348,10 +334,11 @@ func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Cre
 	httpResponse, err := client.httpClient.Do(httpRequest.WithContext(requestContext))
 	if err != nil {
 		if !hasConnection.Load() && (hasConnectionAttempt.Load() || requestContext.Err() != nil) {
-			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com could not be reached; no request was sent")}
+			return mondayExchange{outcome: exchangeRetry, isProvenNotProcessed: true,
+				failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com could not be reached; no request was sent")}
 		}
 		outcome := exchangeRetry
-		if request.isMutation && operation != updateItemColumnValuesOperationID {
+		if request.isMutation {
 			outcome = exchangeUncertain
 		}
 		return mondayExchange{outcome: outcome, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com request failed before a response arrived")}
@@ -371,16 +358,23 @@ func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Cre
 		if request.isMutation && isSuccess {
 			outcome = exchangeInvalid
 		}
-		return mondayExchange{outcome: outcome, response: response, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com response could not be read")}
+		return mondayExchange{outcome: outcome, response: response, isSuccessBodyUnreadable: isSuccess,
+			failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com response could not be read")}
 	}
 	token := credentials.authorizationToken().Reveal()
 	if bytes.Contains(body, []byte(token)) {
-		return mondayExchange{outcome: exchangeInvalid, response: response, failure: mondayFailure(sdkgo.FailureProtocol, operation, "monday.com response reflected the connection credential")}
+		return mondayExchange{outcome: exchangeInvalid, response: response, isCredentialReflected: true,
+			failure: mondayFailure(sdkgo.FailureProtocol, operation, "monday.com response reflected the connection credential")}
 	}
 	response.requestID = safeRequestID(body)
 	retryAfter := providerhttp.ParseRetryAfter(httpResponse.Header.Get("Retry-After"), client.now())
 	if !isSuccess {
-		return classifyFailedResponse(operation, response, summarizeGraphQLErrors(body, token), retryAfter)
+		result := classifyFailedResponse(operation, response, summarizeGraphQLErrors(body, token), retryAfter)
+		if request.isMutation && readErr != nil && result.isDefiniteRefusal {
+			// An oversized error body may hide an accepted write, so its refusal status proves nothing.
+			result.outcome, result.isDefiniteRefusal = exchangeRetry, false
+		}
+		return result
 	}
 	var envelope struct {
 		Data   json.RawMessage   `json:"data"`
@@ -462,36 +456,61 @@ func queryAttemptForExchange[OUT any](result mondayExchange, output OUT, receipt
 	}
 }
 
-// mutationBranches names an operation's branches for the shared write outcome mapping.
-type mutationBranches struct {
-	notFound         sdkgo.BranchID
-	providerRejected sdkgo.BranchID
-	defect           sdkgo.BranchID
-	// invalidResponse receives an unusable accepted response; blank selects uncertain instead.
-	invalidResponse sdkgo.BranchID
+// writeDisposition is what a write exchange proves about the provider's processing of the request.
+type writeDisposition uint8
+
+const (
+	writeAccepted writeDisposition = iota + 1
+	// writeNotProcessed proves monday.com did not process the request, so resending is free.
+	writeNotProcessed
+	// writeRefused is a definite refusal, or a request that was never sent.
+	writeRefused
+	// writeUnknown means the request may have been processed.
+	writeUnknown
+)
+
+// classifyWrite separates definite write outcomes from unknown ones. Any refusal beside a value in
+// the mutation field is unknown, because the value suggests monday.com accepted the write.
+func classifyWrite(result mondayExchange, mutationField string) writeDisposition {
+	switch {
+	case result.outcome == exchangeSucceeded:
+		return writeAccepted
+	case hasMutationFieldValue(result.response.data, mutationField):
+		return writeUnknown
+	case result.outcome == exchangeRetry && result.isProvenNotProcessed:
+		return writeNotProcessed
+	case result.isDefiniteRefusal && (result.outcome == exchangeNotFound || result.outcome == exchangeRejected || result.outcome == exchangeDefect):
+		return writeRefused
+	default:
+		return writeUnknown
+	}
 }
 
-// mutationAttemptForExchange maps a classified mutation failure to its branch or retry.
-func mutationAttemptForExchange[OUT any](result mondayExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
-	switch result.outcome {
-	case exchangeSucceeded:
-		return sdkgo.MutationAttempt[OUT]{}, false
-	case exchangeRetry:
-		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case exchangeUncertain:
-		return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
-	case exchangeNotFound:
-		return sdkgo.NewMutationBranch(branches.notFound, requested, &result.failure, receipt), true
-	case exchangeDefect:
-		return sdkgo.NewMutationBranch(branches.defect, requested, &result.failure, receipt), true
-	case exchangeInvalid:
-		if branches.invalidResponse != "" {
-			return sdkgo.NewMutationBranch(branches.invalidResponse, requested, &result.failure, receipt), true
-		}
-		return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
-	default:
-		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
+// hasMutationFieldValue reports a non-null value in the named mutation field.
+func hasMutationFieldValue(data json.RawMessage, mutationField string) bool {
+	if data == nil {
+		return false
 	}
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal(data, &document); err != nil {
+		return false
+	}
+	value, isPresent := document[mutationField]
+	return isPresent && !isJSONNull(value)
+}
+
+// acceptedReferenceID returns the numeric ID in the mutation field, even when the rest is unusable.
+func acceptedReferenceID(data json.RawMessage, mutationField string) string {
+	if data == nil {
+		return ""
+	}
+	var document map[string]*struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &document); err != nil || document[mutationField] == nil || !numericIDPattern.MatchString(document[mutationField].ID) {
+		return ""
+	}
+	return document[mutationField].ID
 }
 
 // decodeMutationItem reads the item a mutation field returned, even beside a nested field error.
@@ -517,64 +536,84 @@ func classifyFailedResponse(operation string, response mondayResponse, summary g
 		retryAfter = max(retryAfter, min(time.Duration(summary.retryInSeconds)*time.Second, time.Hour))
 	}
 	code := summary.code
-	isConfirmedNotProcessed := rateLimitErrorCodes[code] || code == "IDEMPOTENCY_CONFLICT" || temporarilyUnavailableErrorCodes[code] ||
-		status == http.StatusTooManyRequests || status == http.StatusConflict || status == http.StatusLocked || status == http.StatusServiceUnavailable
-	// A readable refusal without mutation data permits a resend even when the envelope arrived with HTTP 200.
-	if response.data != nil {
-		isConfirmedNotProcessed = false
-	}
 	describe := func(verb string) string {
 		return withErrorSummary(fmt.Sprintf("monday.com %s (HTTP %d)", verb, response.statusCode), summary)
 	}
 	outcome := func(outcome exchangeOutcome, kind sdkgo.FailureKind, message string) mondayExchange {
-		return mondayExchange{outcome: outcome, response: response, retryAfter: retryAfter, failure: mondayFailure(kind, operation, message),
-			isConfirmedNotProcessed: isConfirmedNotProcessed}
+		return mondayExchange{outcome: outcome, response: response, retryAfter: retryAfter, failure: mondayFailure(kind, operation, message)}
+	}
+	// Rate limits and 503 prove nothing was processed; a listed code or status proves a refusal.
+	notProcessed := func(kind sdkgo.FailureKind, message string) mondayExchange {
+		result := outcome(exchangeRetry, kind, message)
+		result.isProvenNotProcessed = true
+		return result
+	}
+	refused := func(disposition exchangeOutcome, kind sdkgo.FailureKind, message string) mondayExchange {
+		result := outcome(disposition, kind, message)
+		result.isDefiniteRefusal = true
+		return result
 	}
 	switch {
 	case code == "DAILY_LIMIT_EXCEEDED":
-		return outcome(exchangeRejected, sdkgo.FailureQuotaExhausted, describe("daily call limit is exhausted until midnight UTC"))
+		return refused(exchangeRejected, sdkgo.FailureQuotaExhausted, describe("daily call limit is exhausted until midnight UTC"))
 	case rateLimitErrorCodes[code]:
-		return outcome(exchangeRetry, sdkgo.FailureRateLimit, describe("rate limited the request"))
+		return notProcessed(sdkgo.FailureRateLimit, describe("rate limited the request"))
 	case code == "IDEMPOTENCY_CONFLICT":
 		retryAfter = max(retryAfter, minimumIdempotencyConflictDelay)
 		return outcome(exchangeRetry, sdkgo.FailureConflict, describe("is still processing an earlier attempt with this idempotency key"))
 	case temporarilyUnavailableErrorCodes[code]:
-		return outcome(exchangeRetry, sdkgo.FailureAvailability, describe("temporarily refused the request"))
+		return notProcessed(sdkgo.FailureAvailability, describe("temporarily refused the request"))
 	case authenticationErrorCodes[code]:
-		return outcome(exchangeRejected, sdkgo.FailureAuthentication, describe("rejected the credential"))
+		return refused(exchangeRejected, sdkgo.FailureAuthentication, describe("rejected the credential"))
 	case authorizationErrorCodes[code]:
-		return outcome(exchangeRejected, sdkgo.FailureAuthorization, describe("denied permission"))
+		return refused(exchangeRejected, sdkgo.FailureAuthorization, describe("denied permission"))
 	case notFoundErrorCodes[code]:
-		return outcome(exchangeNotFound, sdkgo.FailureNotFound, describe("found no such board, group, or item"))
+		return refused(exchangeNotFound, sdkgo.FailureNotFound, describe("found no such board, group, or item"))
 	case validationErrorCodes[code]:
-		return outcome(exchangeRejected, sdkgo.FailureValidation, describe("rejected the input"))
+		return refused(exchangeRejected, sdkgo.FailureValidation, describe("rejected the input"))
 	case documentErrorCodes[code]:
-		return outcome(exchangeDefect, sdkgo.FailureProtocol, describe("rejected the connector's GraphQL request"))
+		return refused(exchangeDefect, sdkgo.FailureProtocol, describe("rejected the connector's GraphQL request"))
 	}
 	switch {
 	case status == http.StatusTooManyRequests:
-		return outcome(exchangeRetry, sdkgo.FailureRateLimit, describe("rate limited the request"))
+		return notProcessed(sdkgo.FailureRateLimit, describe("rate limited the request"))
 	case status == http.StatusConflict && code == "":
 		retryAfter = max(retryAfter, minimumIdempotencyConflictDelay)
 		return outcome(exchangeRetry, sdkgo.FailureConflict, describe("is still processing an earlier attempt with this idempotency key"))
 	case status == http.StatusLocked:
 		return outcome(exchangeRetry, sdkgo.FailureAvailability, describe("locked the board for a concurrent change"))
+	case status == http.StatusServiceUnavailable:
+		return notProcessed(sdkgo.FailureAvailability, describe("could not complete the request"))
 	case status == http.StatusRequestTimeout || status >= 500:
 		return outcome(exchangeRetry, sdkgo.FailureAvailability, describe("could not complete the request"))
 	case status == http.StatusUnauthorized:
-		return outcome(exchangeRejected, sdkgo.FailureAuthentication, describe("rejected the credential"))
+		return refused(exchangeRejected, sdkgo.FailureAuthentication, describe("rejected the credential"))
 	case status == http.StatusForbidden:
-		return outcome(exchangeRejected, sdkgo.FailureAuthorization, describe("denied permission"))
+		return refused(exchangeRejected, sdkgo.FailureAuthorization, describe("denied permission"))
 	case status == http.StatusNotFound:
-		return outcome(exchangeNotFound, sdkgo.FailureNotFound, describe("found no such board, group, or item"))
+		return refused(exchangeNotFound, sdkgo.FailureNotFound, describe("found no such board, group, or item"))
 	case status == http.StatusBadRequest:
-		return outcome(exchangeDefect, sdkgo.FailureProtocol, describe("rejected the connector's GraphQL request"))
+		return refused(exchangeDefect, sdkgo.FailureProtocol, describe("rejected the connector's GraphQL request"))
 	case status == http.StatusUnprocessableEntity:
-		return outcome(exchangeRejected, sdkgo.FailureValidation, describe("rejected the input"))
+		return refused(exchangeRejected, sdkgo.FailureValidation, describe("rejected the input"))
 	case status >= 300 && status < 400:
 		return outcome(exchangeRejected, sdkgo.FailureProtocol, describe("redirected the request"))
+	case isDefiniteWriteRefusalStatus(status):
+		return refused(exchangeRejected, sdkgo.FailureProviderRejection, describe("rejected the request"))
 	default:
 		return outcome(exchangeRejected, sdkgo.FailureProviderRejection, describe("rejected the request"))
+	}
+}
+
+// isDefiniteWriteRefusalStatus reports a status proving monday.com refused a write; others leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
 	}
 }
 

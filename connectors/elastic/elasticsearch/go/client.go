@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -132,6 +133,9 @@ func (operation SearchDocumentsOperation) Invoke(call sdkgo.Call, input SearchDo
 		return searchFailure(SearchDocumentsBranchDefect, sdkgo.FailureValidation, "size and from must fit a 10000-result window")
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return searchRetry(sdkgo.FailureAvailability, "Elasticsearch credentials are temporarily unavailable", 0)
+	}
 	if err != nil || credentials.Validate() != nil || !validUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(credentials.Password.Reveal()) {
 		return searchFailure(SearchDocumentsBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -224,6 +228,14 @@ func decodeSearchPage(body []byte) (SearchPage, bool, error) {
 func validIndexName(index string) bool {
 	return len(index) <= 255 && indexNamePattern.MatchString(index) && index != "." && index != ".."
 }
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func validUsername(username string) bool {
 	return username != "" && utf8.ValidString(username) && !strings.ContainsAny(username, ":\r\n\x00")
 }

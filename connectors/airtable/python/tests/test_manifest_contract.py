@@ -90,7 +90,10 @@ def test_manifest_operations_branches_defaults_and_units() -> None:
             (branch["id"], branch["description"], branch.get("optional", False))
             for branch in operation["branches"]
         ] == [(branch.id, branch.description, branch.optional) for branch in definition.branches or ()]
-        assert operation["execution"] == {"executeMethodTimeout": "30s", "durability": durability}
+        expected_execution = {"executeMethodTimeout": "30s", "durability": durability}
+        if kind == "mutation":
+            expected_execution["repeatOnUnknown"] = "safe"
+        assert operation["execution"] == expected_execution
         assert definition.step_defaults.execute_method_timeout == timedelta(seconds=30)
         assert definition.step_defaults.execute_durability == (1 if durability == "sync" else 2)
         assert definition.step_defaults.execute_retry == default_connector_step_execute_retry_policy()

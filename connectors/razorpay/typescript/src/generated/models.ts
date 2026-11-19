@@ -31,18 +31,37 @@ export interface Credentials {
   keySecret: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["key_id", "key_secret"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["key_id"] != null && !(typeof fields["key_id"] === 'string')) throw new TypeError("credential key_id has an invalid type");
-  if (fields["key_secret"] != null && !(typeof fields["key_secret"] === 'string')) throw new TypeError("credential key_secret has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["key_id"] != null && !(typeof fields["key_id"] === 'string')) throw new CredentialMaterialError("credential key_id has an invalid type");
+  if (fields["key_secret"] != null && !(typeof fields["key_secret"] === 'string')) throw new CredentialMaterialError("credential key_secret has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["key_id"]) throw new TypeError("credential key_id is required");
+  if (!fields["key_id"]) throw new CredentialMaterialError("credential key_id is required");
   credentials.keyId = new SecretString((fields["key_id"] ?? '') as string);
-  if (!fields["key_secret"]) throw new TypeError("credential key_secret is required");
+  if (!fields["key_secret"]) throw new CredentialMaterialError("credential key_secret is required");
   credentials.keySecret = new SecretString((fields["key_secret"] ?? '') as string);
   return credentials;
 }

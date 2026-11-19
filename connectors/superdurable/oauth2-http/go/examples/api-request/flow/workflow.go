@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package apirequest demonstrates one authenticated GET request to an OAuth 2.0 protected API.
+// Package apirequest demonstrates one authenticated request to an OAuth 2.0 protected API: a repeat-safe
+// GET, or a POST that must never be sent twice.
 package apirequest
 
 import (
@@ -18,6 +19,7 @@ const (
 	ConnectionName = "oauth2-http-api"
 	// Application Step types match the Flow Definition Graph so Dex Web starts and displays the same Steps.
 	sendRequestStepType    = "SendRequest"
+	postOrderStepType      = "PostOrder"
 	startRequestStepType   = "startRequest"
 	recordResponseStepType = "recordResponse"
 )
@@ -35,6 +37,8 @@ const (
 // authorization server's UserInfo path.
 type Input struct {
 	Path string `json:"path"`
+	// OrderBody, when set, is sent once as a POST to Path with postNonIdempotent instead of the GET.
+	OrderBody string `json:"orderBody,omitempty"`
 }
 
 // Report is the bounded record of the answer that the Flow returns.
@@ -71,6 +75,15 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:  flow.connection,
 			MapToOperationInput: func(input Input) oauth2http.SendRequestInput {
 				return oauth2http.SendRequestInput{Method: "GET", Path: input.Path}
+			},
+			Completed: sdkgo.GoTo(recordResponse{}),
+		})),
+		dex.DefineStep(oauth2http.NewPostNonIdempotentStep(oauth2http.PostNonIdempotentStepConfig[Input]{
+			StepType: postOrderStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "oauth2-http", GroupLabel: "OAuth 2.0 HTTP", Explanation: "Send the order once as a POST that is never repeated after it may have reached the API."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input Input) oauth2http.PostNonIdempotentInput {
+				return oauth2http.PostNonIdempotentInput{Path: input.Path, Body: input.OrderBody}
 			},
 			Completed: sdkgo.GoTo(recordResponse{}),
 		})),
@@ -118,7 +131,7 @@ func optionalReport(ctx dex.Context) (Report, error) {
 }
 
 // dex:group group-id:report group-label:"Report"
-// dex:explanation text:"Record the requested path before calling the API."
+// dex:explanation text:"Record the requested path, then read it or send the order."
 type startRequest struct {
 	dex.StepDefaults
 }
@@ -134,6 +147,9 @@ func (startRequest) WaitFor(dex.Context, Input) (*dex.Wait, error) {
 func (startRequest) Execute(ctx dex.Context, input Input) (*dex.StepDecision, error) {
 	if err := reportAttribute.Set(ctx, Report{Input: input, Status: StatusRequesting}); err != nil {
 		return nil, err
+	}
+	if input.OrderBody != "" {
+		return dex.GoTo(sdkgo.StepRef[Input](postOrderStepType), input), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[Input](sendRequestStepType), input), nil
 }

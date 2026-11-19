@@ -49,7 +49,7 @@ mkdir -p /tmp/youtube-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/youtube/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/youtube/go \
-  --version v0.4.0 --tag connectors/google/youtube/go/v0.4.0 \
+  --version v0.4.1 --tag connectors/google/youtube/go/v0.4.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/youtube-release/connector-release.json \
   --digest-output /tmp/youtube-release/connector-release.json.sha256
@@ -103,9 +103,9 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 ```
 
 The real Dex suite covers an insert that answers HTTP 500 after storing the
-item, whose retry only reads the playlist back and finds the item instead of
+item, whose retry first reads the playlist back and finds the item instead of
 adding it twice. It also covers HTTP 500 and 503 inserts whose playlist listing
-lags: the retry reads back, selects the unwired `uncertain` branch, and the Flow
-fails after exactly one insert. It asserts that reads
+lags: the retry reads back, does not see the item, inserts again below the send
+cap, and the Flow completes after two inserts. It asserts that reads
 send the read-only token and the insert sends the manage token, plus an unknown
 handle, no matching video, and invalid start input.

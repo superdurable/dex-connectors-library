@@ -1,6 +1,6 @@
 # Amazon SQS connector for Python
 
-Install with `pip install dex-connector-amazon-sqs==0.1.0`. The package
+Install with `pip install dex-connector-amazon-sqs==0.1.1`. The package
 requires `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and
 implements the manifest Mutations `receiveMessages`, `deleteMessage`, and
 `changeMessageVisibility` over the SQS JSON protocol with the same validation,

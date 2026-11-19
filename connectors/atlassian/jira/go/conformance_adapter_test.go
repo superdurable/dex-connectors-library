@@ -23,10 +23,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	priorAttempt := 0
 	if len(scenario.PriorHeartbeat) > 0 {
 		var marker struct {
-			Attempt int `json:"attempt"`
+			Attempt int             `json:"attempt"`
+			Value   json.RawMessage `json:"value"`
 		}
 		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
-		require.NoError(t, context.SetPersistedCheckpoint(scenario.PriorHeartbeat))
+		// The wrapped form carries an operation's own checkpoint, such as transitionIssue's.
+		checkpoint := scenario.PriorHeartbeat
+		if len(marker.Value) > 0 {
+			checkpoint = marker.Value
+		}
+		require.NoError(t, context.SetPersistedCheckpoint(checkpoint))
 		priorAttempt = marker.Attempt
 		for range priorAttempt {
 			context.AdvanceAttempt()

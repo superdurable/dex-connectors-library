@@ -1174,18 +1174,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "eventTypes": [],
-          "formId": "",
-          "id": "",
-          "isEnabled": false,
-          "tag": "",
-          "url": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1196,7 +1188,7 @@
         "tag": "dex-hook",
         "url": "https://example.test/webhook"
       },
-      "name": "upsertWebhook-invalid-response",
+      "name": "upsertWebhook-malformed-answer-retries",
       "operation": "upsertWebhook"
     },
     {

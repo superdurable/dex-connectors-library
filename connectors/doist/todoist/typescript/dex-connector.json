@@ -1,10 +1,10 @@
 {
   "connectorId": "todoist",
-  "releaseTag": "connectors/doist/todoist/go/v0.4.0",
+  "releaseTag": "connectors/doist/todoist/go/v0.4.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-doist-todoist",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "factories": [
     {
@@ -177,7 +177,7 @@
       "kind": "mutation",
       "operationId": "createTask",
       "inputType": "CreateTaskInput",
-      "description": "Create a task with content and optional description or project; omitted project uses Inbox. Sends a stable X-Request-ID.",
+      "description": "Create a task with content and optional description or project; omitted project uses Inbox. Sends a stable X-Request-ID and resends an unknown outcome up to the send cap.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

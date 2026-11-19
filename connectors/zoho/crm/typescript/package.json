@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-zoho-crm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Zoho CRM record operations for Dex Flows",
   "license": "MIT",
   "repository": {"type": "git", "url": "git+https://github.com/superdurable/dex-connectors-library.git", "directory": "connectors/zoho/crm/typescript"},

@@ -4,6 +4,9 @@
 package xero_test
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/xero/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -176,7 +180,7 @@ func TestCreateInvoiceSendsExactNumberLiteralsUnderTheStepKey(t *testing.T) {
 	require.Equal(t, request.header.Get("Idempotency-Key"), provider.request(1).header.Get("Idempotency-Key"), "one Step execution, one key")
 }
 
-func TestCreateInvoiceRetriesOnlyWhatTheKeyMakesSafe(t *testing.T) {
+func TestCreateInvoiceRetriesEveryUnknownOutcomeUnderTheKey(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		reply func(http.ResponseWriter)
@@ -196,10 +200,26 @@ func TestCreateInvoiceRetriesOnlyWhatTheKeyMakesSafe(t *testing.T) {
 		{name: "maintenance", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusServiceUnavailable, `The Xero API is currently offline for maintenance`)
 		}, kind: sdkgo.FailureAvailability},
+		{name: "conflict", reply: func(response http.ResponseWriter) { writeJSON(t, response, http.StatusConflict, `{}`) },
+			kind: sdkgo.FailureProviderRejection},
+		{name: "not implemented", reply: func(response http.ResponseWriter) { writeJSON(t, response, http.StatusNotImplemented, `{}`) },
+			kind: sdkgo.FailureProviderRejection},
+		{name: "redirect", reply: func(response http.ResponseWriter) {
+			response.Header().Set("Location", "https://example.com/")
+			response.WriteHeader(http.StatusTemporaryRedirect)
+		}, kind: sdkgo.FailureProtocol},
+		{name: "unusable accepted answer", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"InvoiceID":"not-a-uuid"}]}`)
+		}, kind: sdkgo.FailureProtocol},
+		{name: "oversized accepted answer", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"Description":"`+strings.Repeat("x", 2048)+`"}]}`)
+		}, kind: sdkgo.FailureResponseTooLarge},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { test.reply(response) })
-			_, err := sdkgo.RunMutation(newXeroDexContext("create-"+test.name), newXeroClient(t, provider.URL).CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+			client, err := xero.New(xero.Config{MaxResponseBytes: 1024}, customConnectionCredentials(), xero.WithLocalProviderURL(provider.URL))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newXeroDexContext("create-"+test.name), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry)
 			require.Equal(t, test.kind, retry.Failure.Kind)
@@ -246,20 +266,16 @@ func TestCreateInvoiceMapsRejectionsLimitsAndUnknownOutcomes(t *testing.T) {
 			writeJSON(t, response, http.StatusTooManyRequests, `{}`)
 		}, branch: xero.CreateInvoiceBranchDailyLimitReached, kind: sdkgo.FailureQuotaExhausted,
 			metadata: map[string]string{xero.RetryAfterSecondsReceiptKey: "3600"}},
-		{name: "cached internal error", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusInternalServerError, `{"Message":"SENTINEL"}`)
-		}, branch: xero.CreateInvoiceBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "unusable accepted answer", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"InvoiceID":"not-a-uuid"}]}`)
-		}, branch: xero.CreateInvoiceBranchUncertain, kind: sdkgo.FailureProtocol},
-		{name: "oversized accepted answer", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"Description":"`+strings.Repeat("x", 2048)+`"}]}`)
-		}, branch: xero.CreateInvoiceBranchUncertain, kind: sdkgo.FailureResponseTooLarge},
 		{name: "per-invoice error", reply: func(response http.ResponseWriter) {
 			invoice := invoiceJSON()
 			invoice["HasErrors"], invoice["ValidationErrors"] = true, []any{map[string]any{"Message": "SENTINEL"}}
 			writeValue(t, response, http.StatusOK, map[string]any{"Invoices": []any{invoice}})
 		}, branch: xero.CreateInvoiceBranchProviderRejected, kind: sdkgo.FailureValidation},
+		// Xero caches a 500 under the key, so a resend would only replay it.
+		{name: "cached internal error", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusInternalServerError, `{"Message":"SENTINEL"}`)
+		}, branch: xero.CreateInvoiceBranchUncertain, kind: sdkgo.FailureAvailability,
+			message: "Xero failed internally (HTTP 500)"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { test.reply(response) })
@@ -281,6 +297,91 @@ func TestCreateInvoiceMapsRejectionsLimitsAndUnknownOutcomes(t *testing.T) {
 			require.Equal(t, 1, provider.requestCount(), "no branch resends the request")
 		})
 	}
+}
+
+func TestCreateInvoiceSelectsUncertainForACredentialFailureOnALaterAttempt(t *testing.T) {
+	forbidden := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+		writeJSON(t, response, http.StatusForbidden, `{"title":"Forbidden","status":403,"detail":"AuthorizationUnsuccessful"}`)
+	})
+	result, err := sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later-403"), newXeroClient(t, forbidden.URL).CreateInvoice(),
+		xeroConnection, validCreateInvoiceInput())
+	require.NoError(t, err)
+	require.Equal(t, xero.CreateInvoiceBranchUncertain, result.Branch, "an earlier attempt may have created the invoice")
+	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
+
+	validation := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+		writeJSON(t, response, http.StatusBadRequest, `{"ErrorNumber":10,"Type":"ValidationException","Message":"SENTINEL"}`)
+	})
+	result, err = sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later-400"), newXeroClient(t, validation.URL).CreateInvoice(),
+		xeroConnection, validCreateInvoiceInput())
+	require.NoError(t, err)
+	require.Equal(t, xero.CreateInvoiceBranchProviderRejected, result.Branch, "Xero replays the keyed answer, so a 400 stays definite")
+
+	unconfigured, err := xero.New(xero.Config{}, sdkgo.StaticCredentialProvider[xero.Credentials]{}, xero.WithLocalProviderURL(validation.URL))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later-unconfigured"), unconfigured.CreateInvoice(),
+		xeroConnection, validCreateInvoiceInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unconfigured static connection is transient")
+}
+
+// failingResolveCredentials fails every resolve with resolveErr.
+type failingResolveCredentials struct{ resolveErr error }
+
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (xero.Credentials, error) {
+	return xero.Credentials{}, credentials.resolveErr
+}
+
+func (credentials failingResolveCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[xero.Credentials]) (xero.Credentials, error) {
+	return credentials.Resolve(call)
+}
+
+func TestMutationsClassifyCredentialResolveFailures(t *testing.T) {
+	provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+		writeJSON(t, response, http.StatusInternalServerError, `{}`)
+	})
+	transient := map[string]error{
+		"broker unavailable": fmt.Errorf("%w: HTTP 503", projectconfig.ErrCredentialBrokerUnavailable),
+		"not configured":     errors.New("connection is not configured"),
+		"deadline":           context.DeadlineExceeded,
+		"unlisted":           errors.New("unlisted resolve failure"),
+	}
+	terminal := map[string]error{
+		"sdk reauthorization":     sdkgo.NewReauthorizationRequiredError(nil),
+		"project reauthorization": projectconfig.ErrReauthorizationRequired,
+		"object not found":        projectconfig.ErrObjectNotFound,
+		"not selected":            projectconfig.ErrConnectionNotSelected,
+		"broker rejected":         projectconfig.ErrCredentialBrokerRejected,
+	}
+	for name, resolveErr := range transient {
+		t.Run("transient "+name, func(t *testing.T) {
+			client, err := xero.New(xero.Config{}, failingResolveCredentials{resolveErr}, xero.WithLocalProviderURL(provider.URL))
+			require.NoError(t, err)
+			for attempt, newContext := range map[string]func(string) *xeroDexContext{
+				"first": newXeroDexContext, "later": newLaterAttemptXeroDexContext,
+			} {
+				_, err := sdkgo.RunMutation(newContext("create-"+attempt), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "a transient credential failure never selects defect or uncertain")
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+				_, err = sdkgo.RunMutation(newContext("payment-"+attempt), client.RecordPayment(), xeroConnection, validRecordPaymentInput())
+				require.ErrorAs(t, err, &retry)
+			}
+		})
+	}
+	for name, resolveErr := range terminal {
+		t.Run("terminal "+name, func(t *testing.T) {
+			client, err := xero.New(xero.Config{}, failingResolveCredentials{resolveErr}, xero.WithLocalProviderURL(provider.URL))
+			require.NoError(t, err)
+			first, err := sdkgo.RunMutation(newXeroDexContext("create-first"), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+			require.NoError(t, err)
+			require.NotEqual(t, xero.CreateInvoiceBranchUncertain, first.Branch, "nothing was sent before the first attempt")
+			later, err := sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later"), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+			require.NoError(t, err)
+			require.Equal(t, xero.CreateInvoiceBranchUncertain, later.Branch, "an earlier attempt may have created the invoice")
+		})
+	}
+	require.Zero(t, provider.requestCount(), "nothing is sent without credentials")
 }
 
 func TestCreateInvoiceRejectsInexactOrInvalidInputBeforeAnyRequest(t *testing.T) {

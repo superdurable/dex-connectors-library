@@ -28,6 +28,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[oauth2http.SendRequestOutput](`{"statusCode":0}`)
 			return err
 		}},
+		{name: "postNonIdempotent/createdOrder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[oauth2http.SendRequestOutput](`{"statusCode":201,"contentType":"application/json","body":"{\"id\":\"order-1\",\"status\":\"created\"}"}`)
+			return err
+		}},
+		{name: "postNonIdempotent/invalidOrder/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[oauth2http.SendRequestOutput](`{"statusCode":422,"contentType":"application/json","body":"{\"error\":\"invalid_order\"}"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -40,5 +48,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.SendRequest().Definition().Operation.OperationID != "sendRequest" {
 		t.Errorf("sendRequest mock has another definition")
+	}
+	if mock.PostNonIdempotent().Definition().Operation.OperationID != "postNonIdempotent" {
+		t.Errorf("postNonIdempotent mock has another definition")
 	}
 }

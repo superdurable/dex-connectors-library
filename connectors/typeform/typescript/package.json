@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-typeform",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Typeform form, response, and webhook operations for Dex",
   "repository": {
     "type": "git",

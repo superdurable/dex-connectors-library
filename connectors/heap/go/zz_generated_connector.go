@@ -193,7 +193,7 @@ var SetUserPropertiesDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SetUserPropertiesBranchAccepted, Description: "Heap accepted the property updates."},
 		{ID: SetUserPropertiesBranchProviderRejected, Description: "Heap conclusively rejected the request.", Optional: true},
-		{ID: SetUserPropertiesBranchInvalidResponse, Description: "Heap returned an oversized or unreadable confirmation.", Optional: true},
+		{ID: SetUserPropertiesBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an oversized or unreadable confirmation now retries, because repeating the overwrite is safe.", Optional: true},
 		{ID: SetUserPropertiesBranchDefect, Description: "Local identity, property input, or app ID is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

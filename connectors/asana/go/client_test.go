@@ -110,9 +110,9 @@ func TestRateLimitedReadRetriesAfterRetryAfter(t *testing.T) {
 
 func TestUnavailableCredentialsSelectDefectWithoutAProviderRequest(t *testing.T) {
 	provider := newRecordingAsana(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
-	for name, credentials := range map[string]sdkgo.StaticCredentialProvider[asana.Credentials]{
-		"missing connection":  {},
-		"header-unsafe token": {asanaConnection: {AccessToken: sdkgo.NewSecretString("token\r\nX-Injected: 1")}},
+	for name, credentials := range map[string]sdkgo.CredentialProvider[asana.Credentials]{
+		"reauthorization required": reauthorizationRequiredCredentials{},
+		"header-unsafe token":      sdkgo.StaticCredentialProvider[asana.Credentials]{asanaConnection: {AccessToken: sdkgo.NewSecretString("token\r\nX-Injected: 1")}},
 	} {
 		client, err := asana.New(asana.Config{Endpoint: provider.URL}, credentials)
 		require.NoError(t, err)
@@ -121,6 +121,24 @@ func TestUnavailableCredentialsSelectDefectWithoutAProviderRequest(t *testing.T)
 		require.Equal(t, asana.CreateTaskBranchDefect, result.Branch, name)
 		require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind, name)
 	}
+}
+
+// reauthorizationRequiredCredentials fails every resolution terminally.
+type reauthorizationRequiredCredentials struct{}
+
+func (reauthorizationRequiredCredentials) Resolve(sdkgo.Call) (asana.Credentials, error) {
+	return asana.Credentials{}, sdkgo.ErrReauthorizationRequired
+}
+
+func TestTransientCredentialFailureRetriesWithoutAProviderRequest(t *testing.T) {
+	provider := newRecordingAsana(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client, err := asana.New(asana.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[asana.Credentials]{})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newAsanaDexContext("transient-credentials"), client.CreateTask(), asanaConnection, validCreateTaskInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a store read can pass later, so it never selects defect")
+	_, err = sdkgo.RunQuery(newAsanaDexContext("transient-credentials-read"), client.GetTask(), asanaConnection, asana.GetTaskInput{TaskID: testTaskID})
+	require.ErrorAs(t, err, &retry)
 }
 
 func TestRedirectsAreNeverFollowed(t *testing.T) {

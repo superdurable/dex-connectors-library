@@ -12,16 +12,35 @@ from dex_connectors.sdk import (
     FailureKind,
     IdempotencyKey,
     OperationRef,
+    ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 
 from dex_connectors.twilio_messaging import Client, Config, Credentials
+from dex_connectors.twilio_messaging._generated.connection import CredentialMaterialError
 from dex_connectors.twilio_messaging.models import SendMessageInput
 from dex_connectors.twilio_messaging.operations import _send_form
 
 ACCOUNT = "AC" + "0123456789abcdef" * 2
 CONNECTION = ConnectionRef("twilio-messaging", "twilio-messaging")
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Twilio credential auth_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 
 def test_client_rejects_bad_configuration() -> None:
@@ -69,3 +88,35 @@ async def test_invalid_credentials_are_terminal_and_lookup_failure_retries() -> 
     authorization, problem, is_transient = await client.authorization(call, "getMessage")
     assert authorization is None and problem and problem.kind == FailureKind.AVAILABILITY
     assert is_transient
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+        (CredentialMaterialError("Twilio credential auth_token is required"), True),
+        (_sdk_wrapped_material_error(), True),
+    ],
+)
+async def test_credential_lookup_classification(error: Exception, is_terminal: bool) -> None:
+    """Only the listed credential failures are terminal; every other one retries."""
+    call = Call(
+        CallID("call-1"), CONNECTION, OperationRef("twilio-messaging", "sendMessage"), IdempotencyKey("")
+    )
+
+    class FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = Client(Config(account_sid=ACCOUNT), FailingCredentials())
+    authorization, problem, is_transient = await client.authorization(call, "sendMessage")
+    assert authorization is None and problem is not None
+    assert is_transient is not is_terminal
+    assert problem.kind == (FailureKind.AUTHENTICATION if is_terminal else FailureKind.AVAILABILITY)

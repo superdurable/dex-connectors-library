@@ -6,16 +6,16 @@ metadata:
   description: Read chat metadata and send text messages through a Telegram bot.
   company: Telegram
   categories: [communication]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: telegram
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [sendMessage, getChat]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-telegram'
       operations: [sendMessage, getChat]
       triggers: []
@@ -60,15 +60,15 @@ spec:
       inputType: SendMessageInput
       outputType: SentMessage
       kind: mutation
-      description: Send one text message to a chat. If Telegram does not confirm the outcome, check the chat before sending again.
+      description: Send one text message to a chat. An unknown outcome resends up to the send cap, so the chat may show a duplicate.
       idempotency: required
       authorization: required
       branches:
         - {id: sent, goName: Sent, description: Telegram created the message and returned its ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send before creating a message., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The request may have reached Telegram but no message ID was confirmed; do not resend automatically., optional: true}
-        - {id: defect, goName: Defect, description: "Local input, bot token, or dispatch checkpoint is invalid.", optional: true}
-      # Sync exposes the single-dispatch heartbeat to retries; Telegram has no send idempotency key.
+        - {id: uncertain, goName: Uncertain, description: "Telegram may have created the message, but the send cap was reached or Telegram accepted it without a complete confirmation; check the chat before sending again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, bot token, or dispatch fence is invalid before any send.", optional: true}
+      # Sync exposes the single-dispatch heartbeat to retries; Telegram has no send idempotency key or read-back.
       execution:
         executeMethodTimeout: 30s
         durability: sync

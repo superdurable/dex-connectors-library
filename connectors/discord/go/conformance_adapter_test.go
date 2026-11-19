@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/discord/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/api/v10"
@@ -21,10 +22,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, discord.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := newStepDexContext("conformance")
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	// createMessage's single-dispatch fence reads each earlier attempt's heartbeat checkpoint.
+	fencedContext := singledispatchtest.NewContext("announcement-flow", "conformance")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			fencedContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
 		"getChannel":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetChannel(), discordConnection),
 		"listChannelMessages": newConformanceQueryInvocation(t, scenario.Input, context, client.ListChannelMessages(), discordConnection),
-		"createMessage":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateMessage(), discordConnection, scenario.CallID),
+		"createMessage":       newConformanceMutationInvocation(t, scenario.Input, fencedContext, client.CreateMessage(), discordConnection, scenario.CallID),
 		"addReaction":         newConformanceMutationInvocation(t, scenario.Input, context, client.AddReaction(), discordConnection, scenario.CallID),
 	}}
 }

@@ -27,6 +27,8 @@ ADAPTER = conformance.PythonOperationAdapter(
         ),
         client,
     ),
+    # createMessage's single-dispatch fence reads each earlier attempt's heartbeat checkpoint.
+    with_context=True,
 )
 
 

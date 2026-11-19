@@ -509,7 +509,7 @@ var CreateItemDefinition = sdkgo.MutationDefinition{
 		{ID: CreateItemBranchCreated, Description: "monday.com created the item, or replayed the item this Step already created, and returned it."},
 		{ID: CreateItemBranchNotFound, Description: "The board or group does not exist or the connection cannot see it; nothing was created.", Optional: true},
 		{ID: CreateItemBranchProviderRejected, Description: "monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateItemBranchUncertain, Description: "An earlier create may have been accepted, but its result cannot be confirmed; the item must not be created again automatically.", Optional: true},
+		{ID: CreateItemBranchUncertain, Description: "The send cap is reached, or monday.com returned an item value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the item may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateItemBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -593,7 +593,7 @@ var UpdateItemColumnValuesDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateItemColumnValuesBranchUpdated, Description: "monday.com set the column values and returned the item."},
 		{ID: UpdateItemColumnValuesBranchNotFound, Description: "The board or item does not exist or the connection cannot see it; nothing was changed.", Optional: true},
 		{ID: UpdateItemColumnValuesBranchProviderRejected, Description: "monday.com conclusively rejected the change, such as an invalid column value, a missing status label, or missing permission.", Optional: true},
-		{ID: UpdateItemColumnValuesBranchInvalidResponse, Description: "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe.", Optional: true},
+		{ID: UpdateItemColumnValuesBranchInvalidResponse, Description: "monday.com's response echoed the connection credential, so it was discarded; the values may have been set, and repeating the Step is safe. An oversized or malformed item is retried instead.", Optional: true},
 		{ID: UpdateItemColumnValuesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -623,6 +623,8 @@ type UpdateItemColumnValuesStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateItemColumnValuesResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateItemColumnValuesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                   `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateItemColumnValuesStep[IN any](config UpdateItemColumnValuesStepConfig[IN]) sdkgo.MutationStep[IN, UpdateItemColumnValuesInput, UpdateItemColumnValuesOutput] {
@@ -673,7 +675,7 @@ var AddUpdateDefinition = sdkgo.MutationDefinition{
 		{ID: AddUpdateBranchAdded, Description: "monday.com added the update, or replayed the update this Step already added, and returned it."},
 		{ID: AddUpdateBranchNotFound, Description: "The item does not exist or the connection cannot see it; nothing was added.", Optional: true},
 		{ID: AddUpdateBranchProviderRejected, Description: "monday.com conclusively rejected the update, such as missing permission; nothing was added.", Optional: true},
-		{ID: AddUpdateBranchUncertain, Description: "An earlier update may have been accepted, but its result cannot be confirmed; the update must not be added again automatically.", Optional: true},
+		{ID: AddUpdateBranchUncertain, Description: "The send cap is reached, or monday.com returned an update value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the update may exist and must not be added again automatically.", Optional: true},
 		{ID: AddUpdateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

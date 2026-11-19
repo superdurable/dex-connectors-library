@@ -129,7 +129,7 @@ func TestUpdateTicketConflictsWhenTheTicketChangedAfterExpectedUpdatedAt(t *test
 	require.NotEqual(t, support.UpdateTicketBranchConflict, result.Branch, "the same instant in another offset matches")
 }
 
-func TestUpdateTicketRetriesASafeUpdateCollisionFromAFreshRead(t *testing.T) {
+func TestUpdateTicketRetriesASafeUpdateCollisionBelowTheSendCap(t *testing.T) {
 	provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		switch index {
 		case 0:

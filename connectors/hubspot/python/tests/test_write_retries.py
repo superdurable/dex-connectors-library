@@ -1,0 +1,193 @@
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
+"""Repeat-safe HubSpot writes retry an HTTP status that does not prove a refusal."""
+
+from datetime import UTC, datetime
+
+import dex_connectors.sdk as sdk
+import httpx
+import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
+
+import dex_connectors.hubspot as hubspot
+from dex_connectors.hubspot._generated.connection import CredentialMaterialError, decode_credentials
+
+CONNECTION = sdk.ConnectionRef("hubspot", "hubspot-crm")
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
+def make_client(
+    status: int, requests: list[httpx.Request], category: str = "UNKNOWN"
+) -> tuple[hubspot.Client, httpx.AsyncClient]:
+    """Build a client whose provider answers every request with one status and error category."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(status, json={"category": category})
+
+    transport = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    client = hubspot.Client(
+        hubspot.Config(endpoint="http://127.0.0.1:42701"),
+        sdk.StaticCredentialProvider(
+            {CONNECTION: hubspot.Credentials(access_token=sdk.SecretString("pat-na1-test-token"))}
+        ),
+        transport,
+        lambda: datetime(2026, 10, 30, tzinfo=UTC),
+    )
+    return client, transport
+
+
+def call(operation: str) -> sdk.Call:
+    """Return a Call for one HubSpot operation."""
+    return sdk.Call(
+        sdk.CallID("778856d1-a2cd-5939-9ae5-02d7ba5fd015"), CONNECTION, sdk.OperationRef("hubspot", operation)
+    )
+
+
+@pytest.mark.asyncio
+async def test_lasting_documented_conflict_selects_conflict_for_both_writes() -> None:
+    requests: list[httpx.Request] = []
+    client, transport = make_client(409, requests, "CONFLICT")
+    async with transport:
+        upsert = await sdk.run_mutation(
+            client.upsert_object(),
+            call("upsertObject"),
+            hubspot.UpsertObjectInput("contacts", "email", "ada@example.com"),
+        )
+        assert upsert.branch == "conflict"
+        assert len(requests) == 2, "the upsert resends once inside the attempt"
+        update = await sdk.run_mutation(
+            client.update_object(),
+            call("updateObject"),
+            hubspot.UpdateObjectInput("contacts", "501", {"email": "taken@example.com"}),
+        )
+    assert update.branch == "conflict"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [b'{"results":', b"x" * 5000])
+async def test_writes_retry_a_malformed_or_oversized_answer(body: bytes) -> None:
+    """The write may have applied, and repeating it is safe."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = hubspot.Client(
+            hubspot.Config(endpoint="http://127.0.0.1:42701", max_response_bytes=1024),
+            sdk.StaticCredentialProvider(
+                {CONNECTION: hubspot.Credentials(access_token=sdk.SecretString("pat-na1-test-token"))}
+            ),
+            transport,
+            lambda: datetime(2026, 10, 30, tzinfo=UTC),
+        )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.update_object(),
+                call("updateObject"),
+                hubspot.UpdateObjectInput("deals", "9001", {"dealstage": "qualifiedtobuy"}),
+            )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.upsert_object(),
+                call("upsertObject"),
+                hubspot.UpsertObjectInput("contacts", "email", "ada@example.com"),
+            )
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> hubspot.Credentials:
+        raise self.error
+
+
+async def _update_with_failing_credentials(
+    error: Exception,
+) -> sdk.MutationResult[object] | sdk.RetryError:
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = hubspot.Client(
+            hubspot.Config(endpoint="http://127.0.0.1:42701"),
+            _FailingCredentials(error),
+            transport,
+            lambda: datetime(2026, 10, 30, tzinfo=UTC),
+        )
+        try:
+            return await sdk.run_mutation(
+                client.update_object(),
+                call("updateObject"),
+                hubspot.UpdateObjectInput("deals", "9001", {"dealstage": "qualifiedtobuy"}),
+            )
+        except sdk.RetryError as retry:
+            return retry
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError("credential broker is unavailable"),
+        ValueError("connection is not configured"),
+        RuntimeError("credential store hiccup"),
+    ],
+)
+async def test_write_retries_temporarily_unavailable_credentials(error: Exception) -> None:
+    """An earlier attempt may have applied the write, so a broker outage must not select defect."""
+    assert isinstance(await _update_with_failing_credentials(error), sdk.RetryError)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "branch"),
+    [
+        (sdk.ReauthorizationRequiredError(), "providerRejected"),
+        (ObjectNotFoundError(), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (sdk_wrapped_material_error(), "defect"),
+    ],
+)
+async def test_write_selects_a_terminal_branch_for_terminal_credentials(
+    error: Exception, branch: str
+) -> None:
+    result = await _update_with_failing_credentials(error)
+    assert isinstance(result, sdk.MutationResult) and result.branch == branch
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [501, 302, 418, 409])
+async def test_writes_retry_a_status_that_does_not_prove_a_refusal(status: int) -> None:
+    client, transport = make_client(status, [])
+    async with transport:
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.update_object(),
+                call("updateObject"),
+                hubspot.UpdateObjectInput("deals", "9001", {"dealstage": "qualifiedtobuy"}),
+            )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.upsert_object(),
+                call("upsertObject"),
+                hubspot.UpsertObjectInput("contacts", "email", "ada@example.com"),
+            )

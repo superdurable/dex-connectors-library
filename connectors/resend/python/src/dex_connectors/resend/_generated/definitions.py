@@ -30,7 +30,7 @@ SEND_EMAIL_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Resend returned the requested result.", False),
         BranchDefinition(PROVIDER_REJECTED, "The provider definitively rejected the request.", True),
-        BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because the Idempotency-Key makes Resend replay the first send.", True),
         BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
     ),
     StepDefaults(

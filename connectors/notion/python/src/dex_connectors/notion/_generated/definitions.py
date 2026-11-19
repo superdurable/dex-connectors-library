@@ -89,8 +89,8 @@ CREATE_PAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Notion created the page and returned or confirmed its ID.", False),
         BranchDefinition(NOT_FOUND, "The database or data source does not exist or is not shared with the connection; nothing was created.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Notion conclusively rejected the first send with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as a missing property, a value of the wrong type, or missing Insert content capability; nothing was created.", True),
+        BranchDefinition(UNCERTAIN, "Sends up to the send cap had unknown outcomes, or Notion accepted the page without a confirmable ID; Notion has no idempotency key, so the page may exist and must not be created again automatically.", True),
         BranchDefinition(INVALID_RESPONSE, "Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created.", True),
         BranchDefinition(DEFECT, "Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.", True),
     ),
@@ -110,7 +110,7 @@ UPDATE_PAGE_PROPERTIES_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Notion applied the property values and returned the page.", False),
         BranchDefinition(NOT_FOUND, "The page does not exist or is not shared with the connection; nothing was changed.", True),
         BranchDefinition(PROVIDER_REJECTED, "Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability.", True),
-        BranchDefinition(INVALID_RESPONSE, "Notion applied the update but returned an invalid or oversized page.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

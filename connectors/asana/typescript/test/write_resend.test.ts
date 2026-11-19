@@ -1,0 +1,215 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+import { describe, expect, it } from 'vitest';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { Client } from '../src/client.js';
+import { AddCommentDefinition, CreateTaskDefinition } from '../src/generated/definitions.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
+
+const callId = '6072a0ce-9ddb-5937-8998-675e48cfa406';
+const taskId = '1204567890123456';
+const created = `{"data":{"gid":"${taskId}"}}`;
+
+class AttemptContext {
+  marker: unknown;
+  readonly runId = 'run';
+  readonly flowId = 'asana-resend-flow';
+  readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
+  deadline = new Date(Date.now() + 30_000);
+  readonly cancellationSignal = new AbortController().signal;
+  constructor(public attempt = 1, marker?: unknown) { this.marker = marker; }
+  hasLastHeartbeatValue(): boolean { return this.marker !== undefined; }
+  getLastHeartbeatValue(): unknown { return this.marker; }
+  async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
+}
+
+function newClient(status: number, body = '{}') {
+  const requests: ProviderRequest[] = [];
+  const client = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => ({ accessToken: new SecretString('token') }) }, {
+    send: async (request: ProviderRequest) => { requests.push(request); return { status, headers: {}, body: Buffer.from(body) }; },
+  });
+  return { client, requests };
+}
+
+async function run(client: Client, operation: 'createTask' | 'addComment', context: AttemptContext, maxSendsOverride?: number): Promise<string> {
+  const definition = operation === 'createTask' ? CreateTaskDefinition : AddCommentDefinition;
+  const call = { id: callId, connection: { provider: 'asana', name: 'asana-test' }, operation: definition.operation, context, ...(maxSendsOverride === undefined ? {} : { maxSendsOverride }) } as unknown as Call;
+  try {
+    const result: MutationResult<unknown> = operation === 'createTask'
+      ? await runMutation(client.createTask(), call, { name: 'Replace badge reader', projectId: '1201000000000001' })
+      : await runMutation(client.addComment(), call, { taskId, text: 'Approved.' });
+    return result.branch;
+  } catch (error) {
+    if (error instanceof RetryError) return 'retry';
+    throw error;
+  }
+}
+
+describe('Asana bounded resend of unconfirmed writes', () => {
+  it('resends an unknown outcome below the cap, then selects uncertain', async () => {
+    const { client, requests } = newClient(500);
+    const context = new AttemptContext();
+    for (; context.attempt < CreateTaskDefinition.maxSends!; context.attempt++) {
+      expect(await run(client, 'createTask', context)).toBe('retry');
+      expect(context.marker).toMatchObject({ state: 'claimed', sendCount: context.attempt });
+    }
+    expect(await run(client, 'createTask', context)).toBe('uncertain');
+    context.attempt++;
+    expect(await run(client, 'createTask', context)).toBe('uncertain');
+    expect(requests).toHaveLength(3);
+  });
+
+  it('never resends with a send cap of one', async () => {
+    const { client, requests } = newClient(409);
+    expect(await run(client, 'addComment', new AttemptContext(), 1)).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
+
+  it('reads a saved identity back instead of resending', async () => {
+    const posted = newClient(201, created);
+    const context = new AttemptContext(2);
+    expect(await run(posted.client, 'createTask', context)).toBe('created');
+    expect(context.marker).toMatchObject({ providerId: taskId });
+    context.attempt = 3;
+    const readBack = newClient(200, created);
+    expect(await run(readBack.client, 'createTask', context)).toBe('created');
+    expect(readBack.requests.map(request => request.method)).toEqual(['GET']);
+    expect(await run(newClient(201, created).client, 'addComment', new AttemptContext(AddCommentDefinition.maxSends! + 1))).toBe('uncertain');
+  });
+
+  it('records canResend on a definite refusal and never resends it', async () => {
+    const { client, requests } = newClient(400, '{"errors":[{"message":"bad"}]}');
+    const context = new AttemptContext();
+    expect(await run(client, 'createTask', context)).toBe('providerRejected');
+    expect(context.marker).toMatchObject({ state: 'canResend' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('selects uncertain when a resend is refused', async () => {
+    const context = new AttemptContext();
+    expect(await run(newClient(502).client, 'addComment', context)).toBe('retry');
+    context.attempt = 2;
+    expect(await run(newClient(403).client, 'addComment', context)).toBe('uncertain');
+  });
+
+  it('retries an untrusted checkpoint without sending', async () => {
+    const { client, requests } = newClient(201, created);
+    expect(await run(client, 'createTask', new AttemptContext(2, { callId: 'another-call', attempt: 1, state: 'claimed' }))).toBe('retry');
+    expect(requests).toEqual([]);
+  });
+
+  it.each(['createTask', 'addComment'] as const)('%s selects uncertain and never resends a 2xx without a usable ID', async operation => {
+    const unusable = newClient(201, '{"data":{"gid":"invalid"}}');
+    expect(await run(unusable.client, operation, new AttemptContext())).toBe('uncertain');
+    expect(unusable.requests).toHaveLength(1);
+    const requests: ProviderRequest[] = [];
+    const broken = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => ({ accessToken: new SecretString('token') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 201, {}); },
+    });
+    expect(await run(broken, operation, new AttemptContext())).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
+
+  it('treats an error status whose body breaks as an unknown outcome', async () => {
+    const requests: ProviderRequest[] = [];
+    const broken = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => ({ accessToken: new SecretString('token') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 400, {}); },
+    });
+    const context = new AttemptContext();
+    expect(await run(broken, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+  });
+
+  it('retries a credential failure after a possible send without recording notSent', async () => {
+    const requests: ProviderRequest[] = [];
+    const withoutCredentials = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => { throw new Error('credentials unavailable'); } }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new Error('request sent'); },
+    });
+    const context = new AttemptContext(2, { callId, attempt: 1, state: 'claimed', sendCount: 1 });
+    expect(await run(withoutCredentials, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'claimed', attempt: 1 });
+    expect(requests).toEqual([]);
+  });
+
+  it.each([
+    ['reauthorization', () => new ReauthorizationRequiredError()],
+    ['not selected', () => new ConnectionNotSelectedError()],
+    ['broker rejected', () => new CredentialBrokerRejectedError()],
+    ['object not found', () => new ObjectNotFoundError()],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields')],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed')],
+  ])('selects uncertain for a terminal credential failure (%s) after a possible or accepted send', async (_name, newError) => {
+    for (const operation of ['createTask', 'addComment'] as const) {
+      for (const marker of [{ callId, attempt: 1, state: 'claimed', sendCount: 1 }, { callId, attempt: 1, state: 'claimed', sendCount: 1, providerId: taskId }]) {
+        const { client, requests } = newClientWithCredentialError(newError());
+        const context = new AttemptContext(2, marker);
+        expect(await run(client, operation, context)).toBe('uncertain');
+        expect(context.marker).toEqual(marker);
+        expect(requests).toEqual([]);
+      }
+    }
+  });
+
+  it('retries a transient credential failure before any send and selects defect for a terminal one', async () => {
+    const transient = newClientWithCredentialError(new CredentialBrokerUnavailableError());
+    const context = new AttemptContext();
+    expect(await run(transient.client, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'notSent' });
+    const terminal = newClientWithCredentialError(new ReauthorizationRequiredError());
+    expect(await run(terminal.client, 'addComment', new AttemptContext())).toBe('defect');
+    const malformed = newClientWithCredentialError(new TypeError('project credential decoding failed'));
+    expect(await run(malformed.client, 'createTask', new AttemptContext())).toBe('defect');
+    expect([...transient.requests, ...terminal.requests, ...malformed.requests]).toEqual([]);
+  });
+
+  it.each([
+    ['not configured', () => new Error('connection is not configured')],
+    ['unlisted', () => new TypeError('unlisted credential store error')],
+  ])('retries an unlisted credential failure (%s) before any send', async (_name, newError) => {
+    const { client, requests } = newClientWithCredentialError(newError());
+    expect(await run(client, 'createTask', new AttemptContext())).toBe('retry');
+    expect(requests).toEqual([]);
+  });
+
+  it.each([
+    ['createTask', `{"data":{"gid":"${taskId}","permalink_url":7}}`],
+    ['createTask', `{"data":{"gid":"${taskId}","created_at":7}}`],
+    ['addComment', `{"data":{"gid":"${taskId}","created_by":"someone"}}`],
+    ['addComment', `{"data":{"gid":"${taskId}","created_by":{"gid":7}}}`],
+  ] as const)('%s retries a valid gid with mistyped fields and reads it back by ID: %s', async (operation, body) => {
+    const context = new AttemptContext();
+    expect(await run(newClient(201, body).client, operation, context)).toBe('retry');
+    expect(context.marker).toMatchObject({ providerId: taskId });
+    context.attempt = 2;
+    const readBack = newClient(200, created);
+    expect(await run(readBack.client, operation, context)).toBe(operation === 'createTask' ? 'created' : 'added');
+    expect(readBack.requests.map(request => request.method)).toEqual(['GET']);
+  });
+
+  it.each(['createTask', 'addComment'] as const)('%s selects uncertain when the write window aborts a 2xx body', async operation => {
+    const requests: ProviderRequest[] = [];
+    const client = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => ({ accessToken: new SecretString('token') }) }, {
+      send: async (request: ProviderRequest) => {
+        requests.push(request);
+        // The SDK keeps the status of a body that an abort cuts after the headers arrived.
+        await new Promise<void>(resolve => { request.signal?.addEventListener('abort', () => resolve(), { once: true }); });
+        throw new ProviderTransportError(false, 201, {});
+      },
+    });
+    const context = new AttemptContext();
+    context.deadline = new Date(Date.now() + 6_000);
+    expect(await run(client, operation, context)).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
+});
+
+function newClientWithCredentialError(error: Error) {
+  const requests: ProviderRequest[] = [];
+  const client = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => { throw error; } }, {
+    send: async (request: ProviderRequest) => { requests.push(request); return { status: 201, headers: {}, body: Buffer.from(created) }; },
+  });
+  return { client, requests };
+}

@@ -3,7 +3,8 @@
 
 import { z } from 'zod';
 import { BodyTooLargeError, isHeaderSafeCredential, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Call, CredentialProvider, Receipt } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Receipt } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { CheckoutSession, Config, Credentials, PaymentIntent, Refund } from './models.js';
 import { CreateACHCheckoutSessionOperation, CreateCardCheckoutSessionOperation, CreateRefundOperation, GetCheckoutSessionOperation, GetPaymentIntentOperation } from './operations.js';
 
@@ -61,13 +62,21 @@ export class StripeClient {
 
   /** Resolve one current API key without permitting secret-bearing errors. */
   async resolveSecretKey(call: Call): Promise<string | undefined> {
-    try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (credentials.authMethodId !== 'api-key-only' && credentials.authMethodId !== 'api-key-with-webhook') return undefined;
-      const key = credentials.secretKey?.reveal();
-      if (!key || !isHeaderSafeCredential(key)) return undefined;
-      return key;
-    } catch { return undefined; }
+    return (await this.resolveSecretKeyResolution(call)).secretKey;
+  }
+
+  /**
+   * Resolve one current API key and report why none is available. `isCredentialBrokerUnavailable` marks a
+   * resolve failure, such as a broker outage, that another attempt may clear; any other missing key is terminal.
+   */
+  async resolveSecretKeyResolution(call: Call): Promise<{ secretKey?: string; isCredentialBrokerUnavailable: boolean }> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) { return { isCredentialBrokerUnavailable: !isTerminalCredentialError(error) }; }
+    if (credentials?.authMethodId !== 'api-key-only' && credentials?.authMethodId !== 'api-key-with-webhook') return { isCredentialBrokerUnavailable: false };
+    const key = credentials.secretKey instanceof SecretString ? credentials.secretKey.reveal() : undefined;
+    if (!key || !isHeaderSafeCredential(key)) return { isCredentialBrokerUnavailable: false };
+    return { secretKey: key, isCredentialBrokerUnavailable: false };
   }
 
   /** Make one provider request with Go's sorted form encoding and Stripe headers. */
@@ -115,6 +124,13 @@ export class StripeClient {
   }
 }
 
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || error instanceof z.ZodError;
+}
+
 /** Read one case-insensitive provider header without revealing request headers. */
 export function stripeResponseHeader(response: StripeResponse, name: string): string {
   const value = response.headers[name.toLowerCase()];
@@ -140,10 +156,11 @@ export function shouldRetryKeyedConflict(response: StripeResponse): boolean {
   return stripeResponseHeader(response, 'stripe-should-retry').toLowerCase() !== 'false' && parseStripeAPIError(response.body).type !== 'idempotency_error';
 }
 
-interface StripeAPIError { type: string; code: string; message: string }
+/** Stripe's public error type, code, and message; each is empty when absent. */
+export interface StripeAPIError { type: string; code: string; message: string }
 
 /** Parse Stripe's public error code and message without retaining raw response bodies. */
-function parseStripeAPIError(body: Uint8Array): StripeAPIError {
+export function parseStripeAPIError(body: Uint8Array): StripeAPIError {
   try {
     const parsed = z.object({ error: z.object({ type: z.string().optional(), code: z.string().optional(), message: z.string().optional() }).optional() }).parse(JSON.parse(Buffer.from(body).toString('utf8')) as unknown);
     return { type: parsed.error?.type ?? '', code: parsed.error?.code ?? '', message: parsed.error?.message ?? '' };

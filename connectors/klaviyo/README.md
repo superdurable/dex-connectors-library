@@ -1,6 +1,6 @@
 # Klaviyo connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/klaviyo/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/klaviyo/go@v0.2.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/klaviyo`.
 
@@ -28,10 +28,10 @@ Sign in at [Klaviyo API keys](https://www.klaviyo.com/settings/account/api-keys)
 | --- | --- |
 | Profile found or event accepted | `found` or `accepted` |
 | Profile missing | `notFound` |
-| Definite provider rejection | `providerRejected` |
+| Definite provider rejection; for `createEvent` only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` |
 | Malformed or oversized profile response | `invalidResponse` |
-| Invalid input or missing credentials | `defect` |
-| Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
+| Invalid input or credentials, malformed stored credential material, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
+| Transport failure, 408, 409, 429, 5xx, any other `createEvent` status (the manifest declares it `repeatOnUnknown: safe`), or any other credential lookup failure, such as an unavailable broker | Retry with Dex's default one-hour budget |
 
 Only the happy branch is wired in the [profile event example](go/examples/profile-event). Other branches fail its Flow. There is no `uncertain` branch because the unique ID makes event submission repeat-safe.
 

@@ -16,8 +16,11 @@ from dex_connectors.sdk import (
     Call,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -45,6 +48,10 @@ _CLOUD_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-
 _DEFAULT_ENDPOINT = "https://api.atlassian.com"
 # Keeps a pageChanged poll loop from spending the app's Confluence rate-limit quota.
 _MINIMUM_POLL_INTERVAL_SECONDS = 10
+
+
+DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses proving Confluence refused a write; any other status leaves its outcome unknown."""
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -100,6 +107,22 @@ class Classification:
     outcome: str
     failure: Failure | None = None
     retry_after: float = 0
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure no retry fixes; others, such as broker outages, may pass."""
+    # Imported here because the generated connection module imports this module.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,19 +199,33 @@ class Client:
 
     async def start_session(self, call: Call, operation: str) -> Session:
         """Resolve a safe access token and a unique Confluence site."""
+        terminal = SessionError(
+            failure(
+                operation,
+                FailureKind.AUTHENTICATION,
+                "Confluence connection credentials are unavailable; reconnect the connection",
+            )
+        )
         try:
             credential = await self.credentials.resolve(call)
-            token = credential.access_token.reveal()
-            if not is_header_safe_credential(token):
-                raise ValueError("invalid token")
         except Exception as error:
-            raise SessionError(
-                failure(
-                    operation,
-                    FailureKind.AUTHENTICATION,
-                    "Confluence connection credentials are unavailable; reconnect the connection",
-                )
-            ) from error
+            if not _is_terminal_credential_error(error):
+                raise SessionError(
+                    failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        "Confluence connection credentials could not be read, so nothing was sent",
+                    ),
+                    True,
+                ) from error
+            raise terminal from error
+        # Resolved material that fails a local check cannot pass on a later attempt.
+        try:
+            token = credential.access_token.reveal()
+        except AttributeError:
+            token = ""
+        if not isinstance(token, str) or not token or not is_header_safe_credential(token):
+            raise terminal
         session = Session(call, self.cloud_id or self.resolved_cloud_id, token)
         if session.cloud_id:
             return session
@@ -289,8 +326,12 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: object | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one bounded exchange and refresh a rejected token once."""
+        """Send one bounded exchange and refresh a rejected token once.
+
+        ``observed_statuses`` receives each status once headers arrive, before the body is read.
+        """
         prefix = (
             ""
             if api == "gateway"
@@ -320,6 +361,8 @@ class Client:
                 return Exchange(error="transport", is_dispatched=not error.provably_not_sent)
             except (ValueError, httpx.InvalidURL):
                 return Exchange(error="request")
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             if (
                 response.status_code == 401
                 and attempt == 0
@@ -451,7 +494,7 @@ class Client:
         if 200 <= status < 300:
             if response.body_failed:
                 return Classification(
-                    "ambiguous",
+                    "acceptedUnreadable",
                     failure(
                         operation, FailureKind.TRANSPORT,
                         f"Confluence accepted the {subject} but its response was interrupted",
@@ -459,7 +502,7 @@ class Client:
                 )
             if response.is_too_large or response.reflects_secret:
                 return Classification(
-                    "ambiguous",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.RESPONSE_TOO_LARGE if response.is_too_large else FailureKind.PROTOCOL,
@@ -477,12 +520,32 @@ class Client:
                 ),
                 self.retry_after(response),
             )
+        if status == 503:
+            return Classification(
+                "notApplied",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    f"Confluence was unavailable, so no {subject} was written",
+                ),
+                self.retry_after(response),
+            )
+        if response.body_failed or response.is_too_large:
+            # A refusal status proves nothing without its full body, so the outcome is unknown.
+            return Classification(
+                "ambiguous",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Confluence {subject} outcome is unknown after HTTP {status} with an unreadable body",
+                ),
+            )
         if status == 404:
             return Classification(
                 "notFound",
                 failure(operation, FailureKind.NOT_FOUND, f"Confluence rejected the {subject} with HTTP 404"),
             )
-        if 400 <= status < 500 and status != 408:
+        if status in DEFINITE_WRITE_REFUSAL_STATUSES:
             return Classification(
                 "rejected",
                 failure(

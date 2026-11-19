@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { CreateObjectOperation, GetObjectOperation, ListObjectsOperation, SearchObjectsOperation, UpdateObjectOperation, UpsertObjectOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.pipedrive.com';
@@ -71,7 +72,9 @@ export class PipedriveClient {
     catch (error) {
       if (signal.aborted) return { kind: 'retry', failure: this.failure(operation, 'AVAILABILITY', 'Pipedrive connection credentials are temporarily unavailable') };
       if (error instanceof ReauthorizationRequiredError) return { kind: 'rejected', failure: this.failure(operation, 'AUTHENTICATION', 'Pipedrive authorization must be renewed; reconnect the connection') };
-      if (error instanceof Error && error.message === 'connection is not configured') return { kind: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'Pipedrive connection credentials are unavailable; reconnect the connection') };
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) {
+        return { kind: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'Pipedrive connection credentials are unavailable; reconnect the connection') };
+      }
       return { kind: 'retry', failure: this.failure(operation, 'AVAILABILITY', 'Pipedrive connection credentials are temporarily unavailable') };
     }
     if (signal.aborted) return { kind: 'retry', failure: this.failure(operation, 'AVAILABILITY', 'Pipedrive connection credentials are temporarily unavailable') };
@@ -132,6 +135,9 @@ export class PipedriveClient {
         if (response.status >= 200 && response.status < 300) return { ...this.failed('invalid', operation, 'RESPONSE_TOO_LARGE', 'Pipedrive response exceeds the configured maxResponseBytes limit'), response };
       } else if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent || error instanceof Error && 'code' in error && error.code === 'ECONNREFUSED') {
         return this.failed('notSent', operation, 'TRANSPORT', 'Pipedrive could not be reached; no request was sent');
+      } else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.headers) {
+        // Keep the status, including a body that stalled, so a create Pipedrive accepted is never resent.
+        return { ...this.failed('unavailable', operation, 'TRANSPORT', 'Pipedrive response could not be read'), response: { status: error.status, headers: error.headers, body: new Uint8Array() } };
       } else return this.failed('unavailable', operation, 'TRANSPORT', 'Pipedrive request failed before a response arrived');
     }
     if (response.status >= 200 && response.status < 300) {

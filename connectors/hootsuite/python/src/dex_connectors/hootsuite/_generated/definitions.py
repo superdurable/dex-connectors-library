@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -61,12 +62,14 @@ SCHEDULE_POST_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SCHEDULED, "Hootsuite accepted the scheduled message and returned its ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Hootsuite definitively rejected the schedule request.", True),
-        BranchDefinition(UNCERTAIN, "The request may have reached Hootsuite but no message ID was confirmed; inspect Planner before resending.", True),
-        BranchDefinition(DEFECT, "Local post input, credentials, or dispatch checkpoint is invalid.", True),
+        BranchDefinition(UNCERTAIN, "Hootsuite may have scheduled the message, but the send cap was reached or Hootsuite returned a message ID without a complete confirmation; inspect Planner before resending.", True),
+        BranchDefinition(DEFECT, "Local post input, credentials, or dispatch fence is invalid before any send.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )

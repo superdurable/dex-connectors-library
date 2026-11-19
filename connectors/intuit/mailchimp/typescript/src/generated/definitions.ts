@@ -86,7 +86,7 @@ export const UpsertMemberBranch = {
 export const UpsertMemberBranchUpserted = UpsertMemberBranch.Upserted;
 /** Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written. */
 export const UpsertMemberBranchProviderRejected = UpsertMemberBranch.ProviderRejected;
-/** Mailchimp returned an invalid or oversized contact, so the change may have been applied. */
+/** Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert. */
 export const UpsertMemberBranchInvalidResponse = UpsertMemberBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpsertMemberBranchDefect = UpsertMemberBranch.Defect;
@@ -96,7 +96,7 @@ export const UpsertMemberDefinition: MutationDefinition = {
   branches: [
     { id: "upserted", description: "Mailchimp holds the contact with the requested values, written now or by an earlier attempt, and returned it." },
     { id: "providerRejected", description: "Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written.", optional: true },
-    { id: "invalidResponse", description: "Mailchimp returned an invalid or oversized contact, so the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -119,7 +119,7 @@ export const UpdateMemberTagsBranchUpdated = UpdateMemberTagsBranch.Updated;
 export const UpdateMemberTagsBranchNotFound = UpdateMemberTagsBranch.NotFound;
 /** Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access. */
 export const UpdateMemberTagsBranchProviderRejected = UpdateMemberTagsBranch.ProviderRejected;
-/** Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed. */
+/** Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration. */
 export const UpdateMemberTagsBranchInvalidResponse = UpdateMemberTagsBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateMemberTagsBranchDefect = UpdateMemberTagsBranch.Defect;
@@ -130,7 +130,7 @@ export const UpdateMemberTagsDefinition: MutationDefinition = {
     { id: "updated", description: "Mailchimp accepted the tag changes, including tags the contact already had or already lacked." },
     { id: "notFound", description: "The audience has no contact with that address, or the audience does not exist; nothing was changed.", optional: true },
     { id: "providerRejected", description: "Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access.", optional: true },
-    { id: "invalidResponse", description: "Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -152,7 +152,7 @@ export const SendCampaignBranch = {
 } as const;
 /** Mailchimp accepted the send of the draft campaign this Step read. */
 export const SendCampaignBranchSent = SendCampaignBranch.Sent;
-/** Mailchimp reports the campaign as sending or sent, so this attempt sent nothing. */
+/** Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing. */
 export const SendCampaignBranchAlreadySent = SendCampaignBranch.AlreadySent;
 /** The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent. */
 export const SendCampaignBranchNotSendable = SendCampaignBranch.NotSendable;
@@ -160,24 +160,24 @@ export const SendCampaignBranchNotSendable = SendCampaignBranch.NotSendable;
 export const SendCampaignBranchNotFound = SendCampaignBranch.NotFound;
 /** Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent. */
 export const SendCampaignBranchProviderRejected = SendCampaignBranch.ProviderRejected;
-/** Mailchimp returned an invalid or oversized campaign before the send; nothing was sent. */
+/** Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent. */
 export const SendCampaignBranchInvalidResponse = SendCampaignBranch.InvalidResponse;
-/** The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again. */
+/** A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send. */
 export const SendCampaignBranchUncertain = SendCampaignBranch.Uncertain;
-/** Local input, connection configuration, or connector definition is invalid. */
+/** Local input, connection configuration, or connector definition is invalid, and no send was attempted. */
 export const SendCampaignBranchDefect = SendCampaignBranch.Defect;
 /** Manifest definition for sendCampaign. */
 export const SendCampaignDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "sendCampaign" },
   branches: [
     { id: "sent", description: "Mailchimp accepted the send of the draft campaign this Step read." },
-    { id: "alreadySent", description: "Mailchimp reports the campaign as sending or sent, so this attempt sent nothing.", optional: true },
+    { id: "alreadySent", description: "Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing.", optional: true },
     { id: "notSendable", description: "The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent.", optional: true },
     { id: "notFound", description: "The campaign does not exist; nothing was sent.", optional: true },
     { id: "providerRejected", description: "Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent.", optional: true },
-    { id: "invalidResponse", description: "Mailchimp returned an invalid or oversized campaign before the send; nothing was sent.", optional: true },
-    { id: "uncertain", description: "The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again.", optional: true },
-    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "invalidResponse", description: "Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent.", optional: true },
+    { id: "uncertain", description: "A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid, and no send was attempted.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "sync" },
   repeatOnUnknown: "limited",

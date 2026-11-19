@@ -4,9 +4,9 @@
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateIssueOperation, FindUserByEmailOperation, GetIssueOperation, ListWorkflowStatesOperation, SearchIssuesOperation, UpdateIssueOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.linear.app/graphql';
@@ -71,16 +71,20 @@ export class LinearClient {
 
   /** Resolve credentials once for an operation and classify host failures. */
   async open(call: Call, operation: string): Promise<{ credentials: Credentials } | { failed: LinearExchange }> {
+    const unusable = { failed: this.failed(operation, 'defect', 'AUTHENTICATION', 'Linear connection credentials are unavailable or unusable') };
+    let credentials: Credentials;
     try {
-      const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      const token = credentials.authMethodId === 'linear-oauth' ? credentials.accessToken?.reveal() : credentials.apiKey?.reveal();
-      if (!['linear-oauth', 'personal-api-key'].includes(credentials.authMethodId ?? '') || !token || !isHeaderSafeCredential(token)) throw new TypeError('unusable Linear credential');
-      return { credentials };
+      credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { failed: this.failed(operation, 'rejected', 'AUTHENTICATION', 'Linear authorization must be renewed in Dex Web Connections') };
       if (error instanceof RefreshFailedError) return { failed: this.failed(operation, 'retry', 'AVAILABILITY', 'Linear OAuth token refresh is temporarily unavailable') };
-      return { failed: this.failed(operation, 'defect', 'AUTHENTICATION', 'Linear connection credentials are unavailable or unusable') };
+      if (error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error)) return unusable;
+      return { failed: this.failed(operation, 'retry', 'AVAILABILITY', 'Linear connection credentials could not be read, so nothing was sent') };
     }
+    let token: string | undefined;
+    try { token = credentials.authMethodId === 'linear-oauth' ? credentials.accessToken?.reveal() : credentials.apiKey?.reveal(); } catch { /* A wrongly typed token is unusable material. */ }
+    if (!['linear-oauth', 'personal-api-key'].includes(credentials?.authMethodId ?? '') || !token || !isHeaderSafeCredential(token)) return unusable;
+    return { credentials };
   }
 
   /** Send one named GraphQL request, then refresh and resend a rejected OAuth token once. */
@@ -154,6 +158,8 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
 }
 
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
 function classify(operation: string, status: number, summary: { code?: string; errorType?: string }, retryAfterMs: number, requestId: string): LinearExchange {
   const code = summary.code ?? '', errorType = summary.errorType ?? '';
   let disposition: LinearExchange['disposition'] = 'rejected';
@@ -171,7 +177,8 @@ function classify(operation: string, status: number, summary: { code?: string; e
   else if (status === 401) { kind = 'AUTHENTICATION'; verb = 'rejected the credential'; }
   else if (status === 403) { kind = 'AUTHORIZATION'; verb = 'denied permission'; }
   else if (status === 400 && !code && !errorType) { disposition = 'defect'; kind = 'PROTOCOL'; verb = "rejected the connector's GraphQL request"; }
-  else if (status >= 300 && status < 400) { kind = 'PROTOCOL'; verb = 'redirected the request'; }
+  // A redirect or unlisted status proves nothing, so the request is retried.
+  else if (!definiteRefusalStatuses.has(status)) { disposition = 'retry'; kind = 'AVAILABILITY'; verb = 'answered with an unexpected status'; }
   const suffix = [code, errorType].filter(Boolean).join('; ');
   const failure: Failure = { kind, provider: 'linear', operation, message: `Linear ${verb} (HTTP ${status})${suffix ? ` [${suffix}]` : ''}` };
   return { disposition, status, requestId, retryAfterMs, failure };

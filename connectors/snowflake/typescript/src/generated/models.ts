@@ -84,29 +84,48 @@ export interface Credentials {
   user?: string;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the selected authorization method. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "private_key", "programmatic_access_token", "user"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["private_key"] != null && !(typeof fields["private_key"] === 'string')) throw new TypeError("credential private_key has an invalid type");
-  if (fields["programmatic_access_token"] != null && !(typeof fields["programmatic_access_token"] === 'string')) throw new TypeError("credential programmatic_access_token has an invalid type");
-  if (fields["user"] != null && !(typeof fields["user"] === 'string')) throw new TypeError("credential user has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["private_key"] != null && !(typeof fields["private_key"] === 'string')) throw new CredentialMaterialError("credential private_key has an invalid type");
+  if (fields["programmatic_access_token"] != null && !(typeof fields["programmatic_access_token"] === 'string')) throw new CredentialMaterialError("credential programmatic_access_token has an invalid type");
+  if (fields["user"] != null && !(typeof fields["user"] === 'string')) throw new CredentialMaterialError("credential user has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "key-pair";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "key-pair") {
-    if (!fields["user"]) throw new TypeError("credential user is required");
+    if (!fields["user"]) throw new CredentialMaterialError("credential user is required");
     if (fields["user"]) credentials.user = fields["user"] as string;
-    if (!fields["private_key"]) throw new TypeError("credential private_key is required");
+    if (!fields["private_key"]) throw new CredentialMaterialError("credential private_key is required");
     if (fields["private_key"]) credentials.privateKey = new SecretString(fields["private_key"] as string);
   } else if (method === "programmatic-access-token") {
-    if (!fields["programmatic_access_token"]) throw new TypeError("credential programmatic_access_token is required");
+    if (!fields["programmatic_access_token"]) throw new CredentialMaterialError("credential programmatic_access_token is required");
     if (fields["programmatic_access_token"]) credentials.programmaticAccessToken = new SecretString(fields["programmatic_access_token"] as string);
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }

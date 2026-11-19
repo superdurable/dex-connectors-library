@@ -4,6 +4,7 @@
 package intercom
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html"
@@ -14,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -21,6 +23,9 @@ const (
 
 	// replyReconciliationSkew tolerates a difference between the Worker's and Intercom's clocks.
 	replyReconciliationSkew = 5 * time.Minute
+
+	// acceptedReplyWithoutPartID is the checkpoint provider ID of a reply Intercom accepted without a usable part.
+	acceptedReplyWithoutPartID = "dex:acceptedWithoutPartId"
 )
 
 // ReplyMessageType is Intercom's admin reply type.
@@ -77,76 +82,83 @@ type replyRequestWire struct {
 	Body        string `json:"body"`
 }
 
-// replyDispatchMarker is the Dex heartbeat checkpoint recorded before the reply is sent.
-type replyDispatchMarker struct {
-	DispatchedCallID sdkgo.CallID `json:"intercomReplyDispatchedCallId"`
-	// DispatchedAt is the Worker's Unix time just before the send.
-	DispatchedAt int64 `json:"intercomReplyDispatchedAt"`
-}
-
 // Definition returns the immutable connector operation definition.
 func (ReplyToConversationOperation) Definition() sdkgo.MutationDefinition {
 	return ReplyToConversationDefinition
 }
 
 // IdempotencyKey uses the stable connector Call ID. Intercom documents no idempotency key, so the key
-// only correlates the Receipt; single dispatch comes from a Dex heartbeat checkpoint instead.
+// only correlates the Receipt; the single-dispatch fence counts sends instead.
 func (ReplyToConversationOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToConversationInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /conversations/{id}/reply at most once per Step execution. It records a dispatch
-// checkpoint first. An attempt that finds the checkpoint never sends: it reads the conversation and
-// reports the earlier reply when a part by the same admin with the same type and text exists, or
-// selects uncertain. Only a 429 or a connection that never opened clears the checkpoint for a resend.
+// Invoke sends POST /conversations/{id}/reply through the single-dispatch fence under the manifest send
+// cap. Whenever an earlier attempt may have sent, it first reads the conversation and reports the
+// earlier reply when a part by the same admin with the same type and text exists since the Step's
+// first attempt. Only a read-back that shows no such part permits a resend while the cap allows; any
+// other unconfirmed read-back, and an absent one at the cap, selects uncertain. A 2xx is never resent.
+// Only a definite refusal of a first send selects notFound, providerRejected, or defect.
 func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input ReplyToConversationInput) sdkgo.MutationAttempt[ReplyToConversationOutput] {
 	output := ReplyToConversationOutput{ConversationID: input.ConversationID}
 	if err := validateReplyToConversationInput(input); err != nil {
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, intercomFailurePointer(sdkgo.FailureValidation, replyToConversationOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, replyToConversationOperation)
-	if failure != nil {
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, failure, sdkgo.Receipt{})
+	fence, err := singledispatch.NewFence(call, ReplyToConversationDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, intercomFailurePointer(sdkgo.FailureLocalDefect, replyToConversationOperation, err.Error()), sdkgo.Receipt{})
 	}
-	var marker replyDispatchMarker
-	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	if err != nil || isMarkerFound {
-		return operation.reconcileEarlierDispatch(call, credentials, input, marker)
-	}
-	dispatchedAt := operation.client.now()
-	if err := call.Context.RecordHeartbeat(replyDispatchMarker{DispatchedCallID: call.ID, DispatchedAt: dispatchedAt.Unix()}); err != nil {
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		// FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
 		return sdkgo.NewMutationRetry[ReplyToConversationOutput](intercomFailure(sdkgo.FailureAvailability, replyToConversationOperation,
-			"Dex did not record the dispatch checkpoint; nothing was sent"), 0)
+			"dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
 	}
-	result := operation.client.exchange(call, credentials, replyToConversationOperation, intercomRequest{
+	hasPossibleEarlierSend := hasPossibleEarlierReplySend(decision)
+	credentials, credentialProblem := operation.client.resolveWriteCredentials(call, replyToConversationOperation)
+	if credentialProblem != nil {
+		return replyCredentialFailureAttempt(fence, hasPossibleEarlierSend, *credentialProblem, output)
+	}
+	if hasPossibleEarlierSend {
+		readBack := operation.readBackReply(call, credentials, input)
+		switch {
+		case readBack.outcome == replyReadBackFound:
+			readBack.output.WasAlreadyApplied = true
+			return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, readBack.output, nil, readBack.receipt)
+		case readBack.outcome == replyReadBackRetryable:
+			return sdkgo.NewMutationRetry[ReplyToConversationOutput](readBack.failure, readBack.retryAfter)
+		case readBack.outcome != replyReadBackAbsent || !canResendAfterAbsentReadBack(decision):
+			return sdkgo.NewMutationUncertain(readBack.output, intercomFailure(readBack.failure.Kind, replyToConversationOperation,
+				"an earlier attempt of this Step may have sent the reply, and "+readBack.failure.Message), readBack.receipt)
+		}
+		// The read-back found no matching part, so this attempt resends below the cap.
+	}
+	permit := replySendPermit{fence: fence, isFirstSend: decision.MaximumPriorSends == 0}
+	dispatchedAt := operation.client.now()
+	send := &replySend{client: operation.client, call: call, credentials: credentials, request: intercomRequest{
 		method: http.MethodPost, path: conversationPath(input.ConversationID) + "/reply",
 		payload: replyRequestWire{
 			MessageType: string(input.MessageType), Type: "admin", AdminID: input.AdminID, Body: plainTextToIntercomHTML(input.Body),
 		},
-	})
+	}}
+	if err := fence.Dispatch(send.dispatch); err != nil {
+		// Dispatch refused before sending, so nothing reached Intercom in this attempt.
+		return sdkgo.NewMutationRetry[ReplyToConversationOutput](intercomFailure(sdkgo.FailureAvailability, replyToConversationOperation,
+			"the reply was not sent before the attempt deadline or checkpoint"), 0)
+	}
+	result := send.result.withUntrustedRefusalAsUnknown(replyToConversationOperation)
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
-	switch result.outcome {
-	case exchangeSucceeded:
-	case exchangeNotSent, exchangeRateLimited:
-		releaseReplyDispatch(call)
-		return sdkgo.NewMutationRetry[ReplyToConversationOutput](result.failure, result.retryAfter)
-	case exchangeUnconfirmed:
-		// The checkpoint stays, so the next attempt reads the conversation instead of resending.
-		return sdkgo.NewMutationRetry[ReplyToConversationOutput](result.failure, result.retryAfter)
-	case exchangeNotFound:
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &result.failure, receipt)
-	case exchangeInvalid:
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchInvalidResponse, output, &result.failure, receipt)
-	case exchangeDefect:
-		releaseReplyDispatch(call)
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, &result.failure, receipt)
-	default:
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output, &result.failure, receipt)
+	if result.outcome != exchangeSucceeded && result.hasSuccessStatus() {
+		// An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
+		return operation.confirmAcceptedReply(call, fence, credentials, input, result.failure)
+	}
+	if attempt, isTerminal := classifySentReply(permit, result, output, receipt); isTerminal {
+		return attempt
 	}
 	wire, err := decodeConversationEnvelope(result.response.body, input.ConversationID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchInvalidResponse, output, intercomFailurePointer(sdkgo.FailureProtocol, replyToConversationOperation,
-			"Intercom accepted the reply but returned an invalid conversation: "+err.Error()), receipt)
+		return operation.confirmAcceptedReply(call, fence, credentials, input, intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation,
+			"Intercom accepted the reply but returned an invalid conversation: "+err.Error()))
 	}
 	output.ConversationState = ConversationState(wire.State)
 	part, isPartFound := findReplyPart(wire.ConversationParts.Parts, input, dispatchedAt.Add(-replyReconciliationSkew), htmlComparisonText)
@@ -156,8 +168,8 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	if isPartFound {
 		decoded, err := decodePartWire(part)
 		if err != nil {
-			return sdkgo.NewMutationBranch(ReplyToConversationBranchInvalidResponse, output, intercomFailurePointer(sdkgo.FailureProtocol, replyToConversationOperation,
-				"Intercom accepted the reply but returned an invalid part: "+err.Error()), receipt)
+			return operation.confirmAcceptedReply(call, fence, credentials, input, intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation,
+				"Intercom accepted the reply but returned an invalid part: "+err.Error()))
 		}
 		output.Part = decoded
 		receipt.Metadata = map[string]string{"partId": decoded.ID}
@@ -165,52 +177,200 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
 }
 
-// reconcileEarlierDispatch never sends: it reports an earlier attempt's reply found in the conversation, or uncertain.
-func (operation ReplyToConversationOperation) reconcileEarlierDispatch(
-	call sdkgo.Call, credentials Credentials, input ReplyToConversationInput, marker replyDispatchMarker,
+// confirmAcceptedReply never resends an accepted 2xx; a retryable read-back saves an acceptance marker and retries.
+func (operation ReplyToConversationOperation) confirmAcceptedReply(
+	call sdkgo.Call, fence *singledispatch.Fence, credentials Credentials, input ReplyToConversationInput, answerFailure sdkgo.Failure,
 ) sdkgo.MutationAttempt[ReplyToConversationOutput] {
-	output := ReplyToConversationOutput{ConversationID: input.ConversationID}
+	readBack := operation.readBackReply(call, credentials, input)
+	if readBack.outcome == replyReadBackFound {
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, readBack.output, nil, readBack.receipt)
+	}
+	if readBack.outcome == replyReadBackRetryable && fence.RecordProviderID(acceptedReplyWithoutPartID) == nil {
+		return sdkgo.NewMutationRetry[ReplyToConversationOutput](intercomFailure(readBack.failure.Kind, replyToConversationOperation,
+			answerFailure.Message+"; the reply was accepted and is never resent, and "+readBack.failure.Message), readBack.retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(readBack.output, intercomFailure(answerFailure.Kind, replyToConversationOperation,
+		answerFailure.Message+"; the reply was accepted and is never resent, and "+readBack.failure.Message), readBack.receipt)
+}
+
+// replyReadBackOutcome is what reading the conversation back proves about the reply.
+type replyReadBackOutcome uint8
+
+const (
+	// replyReadBackFound means the conversation shows the reply with a valid part.
+	replyReadBackFound replyReadBackOutcome = iota + 1
+	// replyReadBackAbsent means the conversation was read and shows no matching part.
+	replyReadBackAbsent
+	// replyReadBackRetryable means the read may succeed when repeated, such as after a 429.
+	replyReadBackRetryable
+	// replyReadBackUnconfirmed means the read proves neither presence nor absence, such as a 404 or an invalid part.
+	replyReadBackUnconfirmed
+)
+
+// replyReadBack is one read-back result; failure explains every outcome except replyReadBackFound.
+type replyReadBack struct {
+	outcome    replyReadBackOutcome
+	output     ReplyToConversationOutput
+	failure    sdkgo.Failure
+	retryAfter time.Duration
+	receipt    sdkgo.Receipt
+}
+
+// readBackReply never sends: it looks for a part by the input's admin, with its type and words, since the Step's first attempt.
+func (operation ReplyToConversationOperation) readBackReply(
+	call sdkgo.Call, credentials Credentials, input ReplyToConversationInput,
+) replyReadBack {
+	readBack := replyReadBack{output: ReplyToConversationOutput{ConversationID: input.ConversationID}}
 	result := operation.client.readConversation(call, credentials, replyToConversationOperation, input.ConversationID)
-	receipt := operation.client.receipt(call, result.response, input.ConversationID)
+	readBack.receipt = operation.client.receipt(call, result.response, input.ConversationID)
 	switch {
 	case result.outcome == exchangeSucceeded:
 	case result.isRetryableRead():
-		return sdkgo.NewMutationRetry[ReplyToConversationOutput](result.failure, result.retryAfter)
-	case result.outcome == exchangeNotFound:
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &result.failure, receipt)
+		readBack.outcome, readBack.failure, readBack.retryAfter = replyReadBackRetryable, result.failure, result.retryAfter
+		return readBack
 	default:
-		return sdkgo.NewMutationUncertain(output, intercomFailure(result.failure.Kind, replyToConversationOperation,
-			"an earlier attempt of this Step sent the reply, and the conversation could not be read back: "+result.failure.Message), receipt)
+		readBack.outcome = replyReadBackUnconfirmed
+		readBack.failure = intercomFailure(result.failure.Kind, replyToConversationOperation, "the conversation could not be read back: "+result.failure.Message)
+		return readBack
 	}
 	wire, err := decodeConversationEnvelope(result.response.body, input.ConversationID)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(output, intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation,
-			"an earlier attempt of this Step sent the reply, and the conversation read back is invalid: "+err.Error()), receipt)
+		readBack.outcome = replyReadBackUnconfirmed
+		readBack.failure = intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation, "the conversation read back is invalid: "+err.Error())
+		return readBack
 	}
-	output.ConversationState = ConversationState(wire.State)
+	readBack.output.ConversationState = ConversationState(wire.State)
 	var since time.Time
-	if marker.DispatchedAt > 0 {
-		since = time.Unix(marker.DispatchedAt, 0).Add(-replyReconciliationSkew)
+	if firstAttemptAt := call.Context.FirstAttemptAt(); !firstAttemptAt.IsZero() {
+		// Every send of this Step happened after its first attempt began.
+		since = firstAttemptAt.Add(-replyReconciliationSkew)
 	}
 	part, isPartFound := findReplyPart(wire.ConversationParts.Parts, input, since, plainComparisonText)
 	if !isPartFound {
-		return sdkgo.NewMutationUncertain(output, intercomFailure(sdkgo.FailureTransport, replyToConversationOperation,
-			"an earlier attempt of this Step sent the reply without a confirmed outcome, and the conversation shows no matching part, so it is not sent again"), receipt)
+		readBack.outcome = replyReadBackAbsent
+		readBack.failure = intercomFailure(sdkgo.FailureTransport, replyToConversationOperation, "the conversation shows no matching part")
+		return readBack
 	}
 	decoded, err := decodePartWire(part)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(output, intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation,
-			"an earlier attempt of this Step sent the reply, and its part read back is invalid: "+err.Error()), receipt)
+		readBack.outcome = replyReadBackUnconfirmed
+		readBack.failure = intercomFailure(sdkgo.FailureProtocol, replyToConversationOperation, "the conversation shows the reply, but its part is invalid: "+err.Error())
+		return readBack
 	}
-	output.Part, output.WasAlreadyApplied = decoded, true
-	receipt.Metadata = map[string]string{"partId": decoded.ID}
-	return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
+	readBack.outcome, readBack.output.Part = replyReadBackFound, decoded
+	readBack.receipt.Metadata = map[string]string{"partId": decoded.ID}
+	return readBack
 }
 
-// releaseReplyDispatch clears the checkpoint after Intercom provably did not receive or apply the reply.
-func releaseReplyDispatch(call sdkgo.Call) {
-	// A failed clear leaves the checkpoint, so the next attempt reconciles instead of resending.
-	_ = call.Context.RecordHeartbeat(nil)
+// hasPossibleEarlierReplySend reports that an earlier attempt may have sent, so the conversation is read back first.
+func hasPossibleEarlierReplySend(decision singledispatch.Decision) bool {
+	return decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != ""
+}
+
+// canResendAfterAbsentReadBack reports room under the cap and no saved ID proving Intercom accepted a send.
+func canResendAfterAbsentReadBack(decision singledispatch.Decision) bool {
+	return decision.Kind != singledispatch.ReadBackRequired && decision.Marker.ProviderID == ""
+}
+
+// replyCredentialFailureAttempt maps unusable credentials before this attempt's send. After a possible
+// earlier send it records nothing, since notSent would hide that send, and never selects defect.
+func replyCredentialFailureAttempt(fence *singledispatch.Fence, hasPossibleEarlierSend bool, problem credentialFailure,
+	output ReplyToConversationOutput) sdkgo.MutationAttempt[ReplyToConversationOutput] {
+	if hasPossibleEarlierSend {
+		if problem.isTransient {
+			return sdkgo.NewMutationRetry[ReplyToConversationOutput](problem.failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(output, intercomFailure(problem.failure.Kind, replyToConversationOperation,
+			"an earlier attempt of this Step may have sent the reply, and the connection credentials cannot read it back"), sdkgo.Receipt{})
+	}
+	if err := fence.RecordNotSent(); err != nil {
+		return sdkgo.NewMutationRetry[ReplyToConversationOutput](intercomFailure(sdkgo.FailureAvailability, replyToConversationOperation,
+			"credential checkpoint could not be recorded; nothing was sent"), 0)
+	}
+	if problem.isTransient {
+		return sdkgo.NewMutationRetry[ReplyToConversationOutput](problem.failure, 0)
+	}
+	return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, &problem.failure, sdkgo.Receipt{})
+}
+
+// replySend is the fenced reply request and its classified outcome.
+type replySend struct {
+	client      *Client
+	call        sdkgo.Call
+	credentials Credentials
+	request     intercomRequest
+	result      intercomExchange
+}
+
+func (send *replySend) dispatch(requestContext context.Context) error {
+	send.request.requestContext = requestContext
+	send.result = send.client.exchange(send.call, send.credentials, replyToConversationOperation, send.request)
+	return nil
+}
+
+// replySendPermit is a fence that allowed this attempt's send, with its send-cap facts.
+type replySendPermit struct {
+	fence *singledispatch.Fence
+	// isFirstSend means no earlier attempt of this call may have sent.
+	isFirstSend bool
+}
+
+// classifySentReply maps a sent reply. Only a definite refusal selects a refusal branch; any other
+// outcome returns Retry, and the next attempt reads back before it resends or selects uncertain at the cap.
+func classifySentReply(permit replySendPermit, result intercomExchange, output ReplyToConversationOutput, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[ReplyToConversationOutput], bool) {
+	switch result.outcome {
+	case exchangeSucceeded:
+		return sdkgo.MutationAttempt[ReplyToConversationOutput]{}, false
+	case exchangeNotSent, exchangeRateLimited:
+		// A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
+		_ = permit.fence.RecordCanResend()
+	case exchangeUnconfirmed:
+		if result.response.statusCode == http.StatusServiceUnavailable {
+			// Intercom answers 503 before applying the request; a lost checkpoint only overcounts.
+			_ = permit.fence.RecordCanResend()
+		}
+	case exchangeNotFound:
+		if result.response.statusCode == http.StatusNotFound {
+			return rejectSentReply(permit, result, output, receipt, ReplyToConversationBranchNotFound), true
+		}
+	case exchangeDefect:
+		if permit.isFirstSend {
+			return rejectSentReply(permit, result, output, receipt, ReplyToConversationBranchDefect), true
+		}
+	case exchangeRejected:
+		if isDefiniteRefusalStatus(result.response.statusCode) {
+			return rejectSentReply(permit, result, output, receipt, ReplyToConversationBranchProviderRejected), true
+		}
+	}
+	// A 3xx, 408, 409, 410, 5xx, unlisted status, or lost answer may follow an applied reply.
+	return sdkgo.NewMutationRetry[ReplyToConversationOutput](result.failure, result.retryAfter), true
+}
+
+// rejectSentReply selects a refusal branch only when no earlier send of this call may have applied.
+func rejectSentReply(permit replySendPermit, result intercomExchange, output ReplyToConversationOutput, receipt sdkgo.Receipt, branch sdkgo.BranchID) sdkgo.MutationAttempt[ReplyToConversationOutput] {
+	if !permit.isFirstSend {
+		return sdkgo.NewMutationUncertain(output, result.failure, receipt)
+	}
+	if err := permit.fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[ReplyToConversationOutput](intercomFailure(sdkgo.FailureAvailability, replyToConversationOperation,
+			"refusal checkpoint could not be recorded"), 0)
+	}
+	if branch == ReplyToConversationBranchDefect {
+		receipt = sdkgo.Receipt{}
+	}
+	return sdkgo.NewMutationBranch(branch, output, &result.failure, receipt)
+}
+
+// isDefiniteRefusalStatus reports a status that proves Intercom applied nothing.
+func isDefiniteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 func validateReplyToConversationInput(input ReplyToConversationInput) error {

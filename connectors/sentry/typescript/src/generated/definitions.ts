@@ -85,7 +85,7 @@ export const UpdateIssueStatusBranchUpdated = UpdateIssueStatusBranch.Updated;
 export const UpdateIssueStatusBranchNotFound = UpdateIssueStatusBranch.NotFound;
 /** The provider definitively rejected the request. */
 export const UpdateIssueStatusBranchProviderRejected = UpdateIssueStatusBranch.ProviderRejected;
-/** The provider returned malformed or oversized JSON. */
+/** Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because repeating the absolute status update is safe. */
 export const UpdateIssueStatusBranchInvalidResponse = UpdateIssueStatusBranch.InvalidResponse;
 /** Local input or connection credentials are invalid. */
 export const UpdateIssueStatusBranchDefect = UpdateIssueStatusBranch.Defect;
@@ -96,7 +96,7 @@ export const UpdateIssueStatusDefinition: MutationDefinition = {
     { id: "updated", description: "Sentry returned the requested result." },
     { id: "notFound", description: "The requested resource does not exist.", optional: true },
     { id: "providerRejected", description: "The provider definitively rejected the request.", optional: true },
-    { id: "invalidResponse", description: "The provider returned malformed or oversized JSON.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because repeating the absolute status update is safe.", optional: true },
     { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

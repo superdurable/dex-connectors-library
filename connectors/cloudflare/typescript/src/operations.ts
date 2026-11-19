@@ -41,11 +41,17 @@ export class PurgeCacheByURLsOperation implements Mutation<PurgeCacheByURLsInput
     const path = `/zones/${goPathEscape(input.zoneId)}/purge_cache`;
     const body = Buffer.from(JSON.stringify({ files: input.urls }), 'utf8');
     const exchange = await this.client.exchange(call, 'purgeCacheByURLs', 'POST', path, body, true);
-    if (!('response' in exchange)) return mutationOutcome(exchange, emptyCachePurge);
+    if (!('response' in exchange)) {
+      // Repeating a purge has the same effect, so an ambiguous answer retries.
+      if (exchange.disposition === 'invalidResponse') return newMutationRetry(exchange.failure);
+      if (exchange.disposition === 'providerRejected' && exchange.status !== undefined && ![400, 401, 403, 404, 411, 413, 414, 415, 422].includes(exchange.status))
+        return newMutationRetry({ ...exchange.failure, kind: 'AVAILABILITY' });
+      return mutationOutcome(exchange, emptyCachePurge);
+    }
     try {
       const value = decodeCachePurge(exchange.response.body);
       return newMutationBranch('purged', value);
-    } catch { return newMutationBranch('invalidResponse', emptyCachePurge, {}, failure('purgeCacheByURLs', 'PROTOCOL', 'response was malformed')); }
+    } catch { return newMutationRetry(failure('purgeCacheByURLs', 'PROTOCOL', 'response was malformed')); }
   }
 }
 

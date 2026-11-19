@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -211,6 +212,20 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	return credentials, nil
 }
 
+// failingRejectionRefreshCredentialProvider resolves a token, but its refresh after a provider rejection fails with err.
+type failingRejectionRefreshCredentialProvider struct {
+	rejectionRefreshingCredentialProvider
+	err error
+}
+
+func (provider *failingRejectionRefreshCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[desk.Credentials],
+) (desk.Credentials, error) {
+	return desk.Credentials{}, provider.err
+}
+
 // deskDexContext is a dex.Context whose heartbeat reads the previous attempt's value, as Dex supplies it.
 type deskDexContext struct {
 	context.Context
@@ -219,17 +234,24 @@ type deskDexContext struct {
 	recordedHeartbeat json.RawMessage
 	heartbeatCount    int
 	rejectsHeartbeat  bool
-	attempt           int32
+	// acceptedHeartbeatLimit, when positive, rejects every heartbeat after that many.
+	acceptedHeartbeatLimit int
+	attempt                int32
 }
 
 func newDeskDexContext(step string) *deskDexContext {
 	return &deskDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 
-// nextAttempt is the following attempt of the same Step execution, which sees this attempt's last heartbeat.
+// nextAttempt is the following attempt of the same Step execution, which sees the last heartbeat
+// any earlier attempt recorded, as Dex supplies it.
 func (context *deskDexContext) nextAttempt() *deskDexContext {
+	lastHeartbeat := context.recordedHeartbeat
+	if lastHeartbeat == nil {
+		lastHeartbeat = context.previousHeartbeat
+	}
 	return &deskDexContext{
-		Context: context.Context, step: context.step, previousHeartbeat: context.recordedHeartbeat, attempt: context.attempt + 1,
+		Context: context.Context, step: context.step, previousHeartbeat: lastHeartbeat, attempt: context.attempt + 1,
 	}
 }
 
@@ -251,7 +273,7 @@ func (*deskDexContext) GetStepExecutionLocal(string, any) (bool, error) {
 func (*deskDexContext) RecordEvent(string, any) error { return nil }
 
 func (context *deskDexContext) RecordHeartbeat(value any) error {
-	if context.rejectsHeartbeat {
+	if context.rejectsHeartbeat || (context.acceptedHeartbeatLimit > 0 && context.heartbeatCount >= context.acceptedHeartbeatLimit) {
 		return errors.New("heartbeat stream closed")
 	}
 	context.heartbeatCount++
@@ -275,3 +297,36 @@ func (context *deskDexContext) GetLastHeartbeatValue(target any) (bool, error) {
 }
 
 var _ dex.Context = (*deskDexContext)(nil)
+
+func mustJSON(t *testing.T, value any) string {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	require.NoError(t, err)
+	return string(encoded)
+}
+
+// capClaimWithSavedProviderID runs one accepted write against acceptedBody, then returns the fourth
+// attempt of that Step, whose checkpoint is the same claim moved to the third send of a cap of three.
+func capClaimWithSavedProviderID(t *testing.T, step string, write func(*desk.Client, *deskDexContext), acceptedBody string) *deskDexContext {
+	t.Helper()
+	accepting := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, acceptedBody)
+	})
+	first := newDeskDexContext(step)
+	write(newDeskClient(t, accepting.URL), first)
+	marker := recordedMarker(t, first)
+	require.NotEmpty(t, marker.ProviderID)
+	marker.Attempt, marker.SendCount = 3, 3
+	encoded, err := json.Marshal(marker)
+	require.NoError(t, err)
+	return &deskDexContext{Context: first.Context, step: step, previousHeartbeat: encoded, attempt: 4}
+}
+
+// recordedMarker decodes the last fence checkpoint this attempt recorded.
+func recordedMarker(t *testing.T, ctx *deskDexContext) singledispatch.Marker {
+	t.Helper()
+	require.NotEmpty(t, ctx.recordedHeartbeat, "the fence recorded a checkpoint")
+	var marker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(ctx.recordedHeartbeat, &marker))
+	return marker
+}

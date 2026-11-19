@@ -188,6 +188,17 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	return confluence.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 
+// failingConfluenceCredentials is a credential source whose every resolution fails with err.
+type failingConfluenceCredentials struct{ err error }
+
+func (source failingConfluenceCredentials) Resolve(sdkgo.Call) (confluence.Credentials, error) {
+	return confluence.Credentials{}, source.err
+}
+
+func (source failingConfluenceCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[confluence.Credentials]) (confluence.Credentials, error) {
+	return confluence.Credentials{}, source.err
+}
+
 // testDexContext is a Dex Step context that keeps heartbeat details across attempts of one Step execution.
 type testDexContext struct {
 	context.Context
@@ -196,6 +207,7 @@ type testDexContext struct {
 	mutex          sync.Mutex
 	heartbeat      []byte
 	recordErr      error
+	attempt        int32
 }
 
 func newTestDexContext(step string) *testDexContext {
@@ -209,7 +221,7 @@ func (dexContext *testDexContext) StepExecutionID() string      { return dexCont
 func (*testDexContext) FromStepExecutionID() string             { return "" }
 func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
 func (dexContext *testDexContext) FirstAttemptAt() time.Time    { return dexContext.firstAttemptAt }
-func (*testDexContext) Attempt() int32                          { return 1 }
+func (dexContext *testDexContext) Attempt() int32               { return max(dexContext.attempt, 1) }
 func (*testDexContext) HasTimerFired() bool                     { return false }
 func (*testDexContext) HasTimerFiredByIndex(int) bool           { return false }
 func (*testDexContext) WaitForMethodFailed() bool               { return false }

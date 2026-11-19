@@ -1,6 +1,6 @@
 # Google Calendar TypeScript connector
 
-Install `@superdurable/connector-google-calendar@0.2.0` with `@superdurable/connectors-sdk@0.12.0`, which provides the poll Trigger kit. The package exposes `newListEventsStep`, `newGetEventStep`, `newCreateEventStep`, `newUpdateEventStep`, and `newQueryFreeBusyStep`, plus typed inputs, outputs, mock outcomes, `newProjectConnection`, and the `eventChanged` Trigger.
+Install `@superdurable/connector-google-calendar@0.2.1` with `@superdurable/connectors-sdk@0.12.0`, which provides the poll Trigger kit. The package exposes `newListEventsStep`, `newGetEventStep`, `newCreateEventStep`, `newUpdateEventStep`, and `newQueryFreeBusyStep`, plus typed inputs, outputs, mock outcomes, `newProjectConnection`, and the `eventChanged` Trigger.
 
 The connector uses the static Dex Web connection name `google-calendar` in its [runnable meeting example](examples/schedule-meeting/README.md). The example reads an event through a real Dex Worker. Other operations use the same connection. `createEvent` writes under a stable event ID, and `updateEvent` reads before patching so retries do not repeat an already applied write.
 
