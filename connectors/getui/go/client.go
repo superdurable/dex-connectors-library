@@ -19,10 +19,12 @@ const apiBase = "https://restapi.getui.com/v2/"
 // Option supplies a client dependency at construction.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ httpClient *http.Client }
+type clockOption struct{ now func() time.Time }
 
 func (option httpClientOption) applyClientOption(client *Client) {
 	client.httpClient = option.httpClient
 }
+func (option clockOption) applyClientOption(client *Client) { client.now = option.now }
 
 // WithHTTPClient supplies a test transport or trusted proxy. Redirects remain disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -37,6 +39,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 	tokenMu          sync.Mutex
 	tokens           map[string]cachedToken
 }
@@ -50,7 +53,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Validate() != nil || config.Timeout <= 0 || config.MaxResponseBytes <= 0 || config.MaxResponseBytes > 16<<20 {
 		return nil, errors.New("Getui configuration is invalid")
 	}
-	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, tokens: make(map[string]cachedToken)}
+	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, tokens: make(map[string]cachedToken), now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Getui client option is required")
