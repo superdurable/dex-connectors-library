@@ -1,0 +1,1907 @@
+{
+  "connector": "wecom",
+  "scenarios": [
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "providerId": "errcode-0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contentBytes": 22,
+          "messageType": "text"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-sent-text",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"invaliduser\":\"wangwu|zhaoliu\",\"invalidparty\":\"9\",\"invalidtag\":\"\",\"unlicenseduser\":\"lisi\",\"msgid\":\"fake-msgid-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "providerId": "fake-msgid-1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "invalidDepartmentIds": [
+            "9"
+          ],
+          "invalidTagIds": [],
+          "invalidUserIds": [
+            "wangwu",
+            "zhaoliu"
+          ],
+          "messageId": "fake-msgid-1",
+          "unlicensedUserIds": [
+            "lisi"
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "name": "sendApplicationMessage-sent-text",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"msgid\":\"fake-msgid-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "markdown": {
+              "content": "**Incident INC-7 resolved**"
+            },
+            "msgtype": "markdown",
+            "touser": "@all"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "providerId": "fake-msgid-2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "fake-msgid-2",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "**Incident INC-7 resolved**",
+        "messageType": "markdown",
+        "toAllMembers": true
+      },
+      "name": "sendApplicationMessage-sent-all-markdown",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "markdown": {
+              "content": "**Deployment 42 completed**"
+            },
+            "msgtype": "markdown"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "providerId": "errcode-0",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contentBytes": 27,
+          "messageType": "markdown"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "**Deployment 42 completed**",
+        "messageType": "markdown"
+      },
+      "name": "sendGroupRobotMessage-sent-markdown",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":93000,\"errmsg\":\"invalid webhook\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "state": "canResend"
+        },
+        "output": {
+          "contentBytes": 0,
+          "messageType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-providerRejected",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contentBytes": 0,
+          "messageType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "",
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-defect",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-retry-429",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-retry-500",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-retry-503",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":45009,\"errmsg\":\"api freq out of limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-retry-rate-limit",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-retry-transport",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-retry-malformed",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "contentBytes": 0,
+          "messageType": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "bb5da80e-4a9f-5483-a560-aa5a108d5968",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendGroupRobotMessage-uncertain-cap",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":40056,\"errmsg\":\"invalid agent id\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "state": "canResend"
+        },
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "name": "sendApplicationMessage-providerRejected",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "invalid because no recipients",
+        "messageType": "text"
+      },
+      "name": "sendApplicationMessage-defect",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "state": "canResend"
+        },
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendApplicationMessage-retry-429",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendApplicationMessage-retry-500",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "name": "sendApplicationMessage-retry-503",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "name": "sendApplicationMessage-retry-transport",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "name": "sendApplicationMessage-retry-malformed",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "state": "notSent"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "name": "sendApplicationMessage-retry-token-503",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Incident INC-7 is open"
+            },
+            "toparty": "2",
+            "totag": "7",
+            "touser": "zhangsan|lisi"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+      "input": {
+        "content": "Incident INC-7 is open",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "7"
+        ],
+        "toUserIds": [
+          "zhangsan",
+          "lisi"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "3bb3179c-5cf3-5076-a8c3-337e8c93fe94",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendApplicationMessage-uncertain-cap",
+      "operation": "sendApplicationMessage"
+    }
+  ],
+  "schemaVersion": 1
+}
