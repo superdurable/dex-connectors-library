@@ -1,0 +1,229 @@
+{
+  "connector": "ones",
+  "scenarios": [
+    {
+      "callId": "05fd43ea-fe0d-5677-acb4-46694c760fba",
+      "exchanges": [
+        {
+          "body": "{\"result\":\"SUCCESS\",\"data\":{\"teams\":[{\"id\":\"team-1\",\"name\":\"Engineering\",\"status\":1,\"owner\":\"private\",\"createTime\":123}]},\"errorData\":{\"email\":\"private\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v2/account/teams",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "teams": [
+            {
+              "id": "team-1",
+              "name": "Engineering",
+              "status": 1
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTeams-listed",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "d38375e3-790d-5632-be15-22bfb4ca497e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"private-test-key\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v2/account/teams",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "teams": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTeams-providerRejected",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "aaffa1c8-3b7d-5fe7-ab45-76f7e2cdf0bf",
+      "exchanges": [
+        {
+          "body": "{\"result\":\"SUCCESS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v2/account/teams",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "teams": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTeams-invalidResponse",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "79980c44-4c96-598e-b6ba-dfb735e8bb7d",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v2/account/teams",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTeams-rateLimit",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "52580e80-544d-5c66-be07-838d44406f8e",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v2/account/teams",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTeams-serverError",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "b730f1ec-b2c5-5f4e-939f-94aa52218752",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "teams": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTeams-defect",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "6af75769-7326-51f7-8166-7fff4d6a2e3d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v2/account/teams",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer private-test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTeams-transport",
+      "operation": "listTeams"
+    }
+  ],
+  "schemaVersion": 1
+}
