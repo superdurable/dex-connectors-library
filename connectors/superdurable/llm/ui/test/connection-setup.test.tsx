@@ -99,6 +99,13 @@ async function type(control: HTMLInputElement, text: string): Promise<void> {
   });
 }
 
+async function typeText(control: HTMLTextAreaElement, text: string): Promise<void> {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(control, text);
+    control.dispatchEvent(new Event("input", {bubbles: true}));
+  });
+}
+
 /** settle lets the typed-key delay pass and every command result arrive. */
 async function settle(): Promise<void> {
   await act(async () => { await vi.advanceTimersByTimeAsync(800); });
@@ -134,6 +141,66 @@ describe("the llm connection setup", () => {
     expect(commands.filter((command) => command.command === "connection.save").map((command) => command.input)).toEqual([{
       configuration: {provider: "openai-compatible", baseUrl: "https://example.com/v1", model: "qwen-example"},
       credentials: {api_key: "gateway-key"}, keepCredentialFields: [],
+    }]);
+  });
+
+  it("saves the Responses API choice only when it is chosen", async () => {
+    const commands = answerHostCommands();
+    const container = await renderSetup(setupReady(connection({})));
+    await choose(fieldControl(container, "Provider", "select"), "openai-compatible");
+    expect(fieldControl<HTMLSelectElement>(container, "API", "select").value).toBe("chat-completions");
+    await type(fieldControl(container, "OpenAI-compatible gateway API key", "input"), "gateway-key");
+    await type(fieldControl(container, "Base URL", "input"), "https://example.com/v1");
+    await type(fieldControl(container, "Model ID", "input"), "gateway-model");
+    await choose(fieldControl(container, "API", "select"), "responses");
+    await act(async () => { saveButton(container).click(); });
+    expect(commands.filter((command) => command.command === "connection.save").map((command) => command.input?.configuration)).toEqual([{
+      provider: "openai-compatible", baseUrl: "https://example.com/v1", model: "gateway-model", openaiCompatibleApi: "responses",
+    }]);
+  });
+
+  it("configures an Anthropic-compatible gateway with offered models and context windows", async () => {
+    const commands = answerHostCommands();
+    const container = await renderSetup(setupReady(connection({})));
+    await choose(fieldControl(container, "Provider", "select"), "anthropic-compatible");
+    expect(hasField(container, "API")).toBe(false);
+    expect(hasField(container, "Model")).toBe(false);
+    await type(fieldControl(container, "Anthropic-compatible gateway API key", "input"), "gateway-key");
+    await type(fieldControl(container, "Base URL", "input"), "https://example.com/anthropic/v1");
+    await type(fieldControl(container, "Model ID", "input"), "gateway-model");
+    expect(saveButton(container).disabled).toBe(true);
+    await type(fieldControl(container, "Base URL", "input"), "https://example.com/anthropic");
+    await typeText(fieldControl(container, "Offered models (optional)", "textarea"), "gateway-model-2\n");
+    expect(saveButton(container).disabled).toBe(true);
+    expect(container.textContent).toContain("Add the connection's model");
+    await typeText(fieldControl(container, "Offered models (optional)", "textarea"), "gateway-model\n\ngateway-model-2\n");
+    await typeText(fieldControl(container, "Context windows (optional)", "textarea"), "gateway-model=0");
+    expect(saveButton(container).disabled).toBe(true);
+    await typeText(fieldControl(container, "Context windows (optional)", "textarea"), "gateway-model=200000");
+    expect(saveButton(container).disabled).toBe(false);
+    await act(async () => { saveButton(container).click(); });
+    expect(commands.filter((command) => command.command === "provider.command.execute")).toEqual([]);
+    expect(commands.filter((command) => command.command === "connection.save").map((command) => command.input)).toEqual([{
+      configuration: {
+        provider: "anthropic-compatible", baseUrl: "https://example.com/anthropic", model: "gateway-model",
+        models: ["gateway-model", "gateway-model-2"], modelContextWindowTokens: ["gateway-model=200000"],
+      },
+      credentials: {api_key: "gateway-key"}, keepCredentialFields: [],
+    }]);
+  });
+
+  it("keeps saved offered models and the API choice when the saved provider is saved again", async () => {
+    vi.useFakeTimers({shouldAdvanceTime: true});
+    const commands = answerHostCommands();
+    const container = await renderSetup(setupReady(connection({
+      provider: "openai-compatible", baseUrl: "https://example.com/v1", model: "gateway-model", openaiCompatibleApi: "responses",
+      models: ["gateway-model"], modelContextWindowTokens: ["gateway-model=128000"],
+    }, ["api_key"])));
+    await settle();
+    await act(async () => { saveButton(container).click(); });
+    expect(commands.filter((command) => command.command === "connection.save").map((command) => command.input?.configuration)).toEqual([{
+      provider: "openai-compatible", baseUrl: "https://example.com/v1", model: "gateway-model", openaiCompatibleApi: "responses",
+      models: ["gateway-model"], modelContextWindowTokens: ["gateway-model=128000"],
     }]);
   });
 

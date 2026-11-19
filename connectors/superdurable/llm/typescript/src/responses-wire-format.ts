@@ -98,11 +98,11 @@ function decodeResponse(response: JSONRecord, streamedText = ''): DecodedRespons
   return decoded;
 }
 
-/** OpenAI Responses dialect of the shared text generation Query. */
-export function newResponsesWireFormat(): WireFormat {
+/** OpenAI Responses dialect of the shared text generation Query, naming providerName in every Failure and Receipt. */
+export function newResponsesWireFormat(providerName = 'openai'): WireFormat {
   const pointers = ['/error/type', '/error/code'];
   return {
-    providerName: 'openai', modelIDRule: 'body',
+    providerName, modelIDRule: 'body',
     features: {
       supportsInstructions: true, supportsStructuredOutput: true, supportsMaxOutputTokens: true,
       supportsTemperature: true, supportsReasoningEffort: true,

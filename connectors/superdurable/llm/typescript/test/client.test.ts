@@ -37,10 +37,11 @@ it('rejects private literal custom endpoints before credentials can be used', ()
   expect(() => new Client({ provider: 'openai-compatible', model: 'fixture-model', baseUrl: 'http://127.0.0.1:34120/v1' }, credentials)).not.toThrow();
 });
 
-it.each(['openai', 'openai-compatible', 'anthropic', 'gemini', 'qwen', 'deepseek', 'meta', 'mistral', 'kimi', 'xai'])(
+it.each(['openai', 'openai-compatible', 'anthropic', 'anthropic-compatible', 'gemini', 'qwen', 'deepseek', 'meta', 'mistral', 'kimi', 'xai'])(
   'constructs the %s dialect with a default model or required custom model', provider => {
     const config = provider === 'openai-compatible'
       ? { provider, model: 'fixture-model', baseUrl: 'http://127.0.0.1:34120/v1' }
+      : provider === 'anthropic-compatible' ? { provider, model: 'fixture-model', baseUrl: 'http://127.0.0.1:34120' }
       : { provider };
     const client = new Client(config, credentials);
     expect(client.generateText().definition().operation.operationId).toBe('generateText');
@@ -77,6 +78,80 @@ it.each(['openai-compatible', 'openai', 'anthropic'])(
   expect(request.addressPolicy).toBe('publicHTTPS');
   },
 );
+
+it.each([
+  [{ provider: 'openai-compatible', model: 'gateway-model', baseUrl: 'https://gateway.example/v1' }, '/v1/chat/completions', 'openai-compatible'],
+  [{ provider: 'openai-compatible', model: 'gateway-model', baseUrl: 'https://gateway.example/v1', openaiCompatibleApi: 'chat-completions' },
+    '/v1/chat/completions', 'openai-compatible'],
+  [{ provider: 'openai-compatible', model: 'gateway-model', baseUrl: 'https://gateway.example/v1', openaiCompatibleApi: 'responses' },
+    '/v1/responses', 'openai-compatible'],
+  [{ provider: 'anthropic-compatible', model: 'gateway-model', baseUrl: 'https://gateway.example/anthropic' },
+    '/anthropic/v1/messages', 'anthropic-compatible'],
+])('sends a custom endpoint request to its protocol path %#', async (config, path, providerName) => {
+  sendRequest.mockReset().mockResolvedValue({ status: 503, headers: {}, body: Buffer.alloc(0) });
+  const client = new Client(config, credentials);
+  const result = await client.generateText().invoke(testCall(), { messages: [{ role: 'user', text: 'Hello' }] });
+  const request = sendRequest.mock.calls[0]?.[0] as ProviderRequest;
+  expect(new URL(request.url).hostname).toBe('gateway.example');
+  expect(new URL(request.url).pathname).toBe(path);
+  expect(request.addressPolicy).toBe('publicHTTPS');
+  expect(JSON.stringify(result)).toContain(providerName);
+});
+
+it('sends an Anthropic gateway only portable Messages fields', async () => {
+  sendRequest.mockReset().mockResolvedValue({ status: 503, headers: {}, body: Buffer.alloc(0) });
+  const client = new Client({ provider: 'anthropic-compatible', model: 'gateway-model', baseUrl: 'https://gateway.example/anthropic' }, credentials);
+  const structured = await client.generateText().invoke(testCall(), {
+    messages: [{ role: 'user', text: 'Reply with yes.' }],
+    structuredOutput: { name: 'answer', schema: {
+      type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'], additionalProperties: false,
+    } },
+  });
+  expect(structured.kind).toBe('retry');
+  const request = sendRequest.mock.calls[0]?.[0] as ProviderRequest;
+  const body = JSON.parse(Buffer.from(request.body as Uint8Array).toString('utf8')) as Record<string, unknown>;
+  expect(body.output_config).toBeUndefined();
+  expect(String(body.system)).toContain('"answer"');
+  expect(request.headers?.['anthropic-version']).toBe('2023-06-01');
+  const effort = await client.generateText().invoke(testCall(), { messages: [{ role: 'user', text: 'Hello' }], reasoningEffort: 'low' });
+  expect(effort).toMatchObject({ kind: 'branch', branch: 'defect' });
+});
+
+it.each([
+  [{ provider: 'anthropic-compatible', baseUrl: 'https://gateway.example/anthropic' }, /model is required/],
+  [{ provider: 'anthropic-compatible', model: 'm', baseUrl: '' }, /baseUrl is required/],
+  [{ provider: 'anthropic-compatible', model: 'm', baseUrl: 'https://gateway.example/v1' }, /must not end in \/v1/],
+  [{ provider: 'anthropic-compatible', model: 'm', baseUrl: 'https://gateway.example/anthropic/v1/messages' }, /must not end in \/v1 or \/messages/],
+  [{ provider: 'anthropic-compatible', model: 'm', baseUrl: 'https://10.0.0.1/anthropic' }, /public or loopback/],
+  [{ provider: 'anthropic', baseUrl: 'https://gateway.example/anthropic' }, /baseUrl applies only to openai-compatible or anthropic-compatible/],
+  [{ provider: 'openai', openaiCompatibleApi: 'responses' }, /openaiCompatibleApi applies only/],
+  [{ provider: 'openai', openaiCompatibleApi: 'assistants' }, /openaiCompatibleApi is invalid/],
+])('rejects invalid custom endpoint configuration %#', (config, message) => {
+  expect(() => new Client(config, credentials)).toThrow(message);
+});
+
+it.each([
+  [['gpt-6-sol', 'gpt-6-luna'], [], undefined],
+  [[' gpt-6-sol ', 'a=b'], ['gpt-6-sol=128000', 'a=b= 100000000 '], undefined],
+  [['gpt-6-sol', ' '], [], /models entry 2/],
+  [['gpt-6-sol', ' gpt-6-sol'], [], /entry 2 repeats/],
+  [Array.from({ length: 101 }, (_, index) => `model-${index}`), [], /more than 100 entries/],
+  [['gpt-6-luna'], [], /must be one of the models entries/],
+  [[], ['gpt-6-sol=1000'], /names a model that models does not list/],
+  [['gpt-6-sol'], ['gpt-6-sol'], /<model ID>=<tokens>/],
+  [['gpt-6-sol'], ['gpt-6-sol=0'], /from 1 to 100000000/],
+  [['gpt-6-sol'], ['gpt-6-sol=100000001'], /from 1 to 100000000/],
+  [['gpt-6-sol'], ['gpt-6-sol=1.5'], /from 1 to 100000000/],
+  [['gpt-6-sol'], ['gpt-6-sol=1000', 'gpt-6-sol=2000'], /entry 2 repeats/],
+])('applies the Go models rules %#', (models, modelContextWindowTokens, message) => {
+  const construct = () => new Client({ provider: 'openai', models, modelContextWindowTokens }, credentials);
+  if (!message) {
+    expect(construct).not.toThrow();
+    return;
+  }
+  expect(construct).toThrow(message);
+  try { construct(); } catch (error) { expect(String(error)).not.toContain('gpt-6-luna'); }
+});
 
 it('rejects custom transports for every provider', () => {
   for (const config of [{ provider: 'openai' },

@@ -8,11 +8,11 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Model provider whose API serves every generateText Step of this connection and whose key api_key holds: openai (OpenAI Platform), openai-compatible (your own OpenAI-compatible gateway), anthropic (Claude Console), gemini (Google AI Studio), qwen (Alibaba Cloud Model Studio), deepseek (DeepSeek Platform), meta (Meta Model API), mistral (Mistral AI Studio), kimi (Moonshot AI Kimi Platform), or xai (xAI Console). The authorization guide links each fixed provider's API key page. Required; use one connection per provider, and replace api_key, baseUrl, and model when you change it. */
+  /** Model provider whose API serves every generateText Step of this connection and whose key api_key holds: openai (OpenAI Platform), openai-compatible (your own OpenAI-compatible gateway), anthropic (Claude Console), anthropic-compatible (your own gateway that serves the Anthropic Messages API), gemini (Google AI Studio), qwen (Alibaba Cloud Model Studio), deepseek (DeepSeek Platform), meta (Meta Model API), mistral (Mistral AI Studio), kimi (Moonshot AI Kimi Platform), or xai (xAI Console). The authorization guide links each fixed provider's API key page. Required; use one connection per provider, and replace api_key, baseUrl, and model when you change it. */
   provider: string;
-  /** For openai-compatible only, enter your gateway's API base URL ending in /v1, such as https://example.com/v1; the connector appends /chat/completions. Obtain the URL from your gateway's API documentation or administrator. HTTPS is required except for loopback HTTP during local testing. No credentials belong in this URL. A blank value is invalid for openai-compatible; leave it blank for every fixed provider, where a value stops startup. */
+  /** For openai-compatible, enter your gateway's API base URL ending in /v1, such as https://example.com/v1; the connector appends /chat/completions, or /responses when openaiCompatibleApi is responses. For anthropic-compatible, enter the gateway's Anthropic base URL without /v1, as its documentation gives for ANTHROPIC_BASE_URL, such as https://example.com/anthropic; the connector appends /v1/messages. Obtain the URL from your gateway's API documentation or administrator. HTTPS is required except for loopback HTTP during local testing. No credentials belong in this URL. A blank value is invalid for both custom providers; leave it blank for every fixed provider, where a value stops startup. */
   baseUrl?: string;
-  /** Model ID for Steps that pick none, written exactly as the provider names it and never prefixed with the provider, such as gpt-6-sol or claude-opus-5-5. Required for openai-compatible: enter a model ID supplied by your gateway; there is no default or live model list. Blank uses the provider's default model: gpt-6-sol for openai, claude-sonnet-5 for anthropic, gemini-3.5-flash-lite for gemini, qwen3.7-plus for qwen, deepseek-flash for deepseek, muse-spark-1.3 for meta, mistral-large-2512 for mistral, kimi-k2.6 for kimi, and grok-4.3 for xai. Save a fixed-provider connection first to choose it from the provider's live model list. A Step pick or a request model overrides it. */
+  /** Model ID for Steps that pick none, written exactly as the provider names it and never prefixed with the provider, such as gpt-6-sol or claude-opus-5-5. Required for openai-compatible and anthropic-compatible: enter a model ID supplied by your gateway; there is no default or live model list. Blank uses the provider's default model: gpt-6-sol for openai, claude-sonnet-5 for anthropic, gemini-3.5-flash-lite for gemini, qwen3.7-plus for qwen, deepseek-flash for deepseek, muse-spark-1.3 for meta, mistral-large-2512 for mistral, kimi-k2.6 for kimi, and grok-4.3 for xai. Save a fixed-provider connection first to choose it from the provider's live model list. When models lists IDs, this model, or the provider's default model when blank, must be one of them. A Step pick or a request model overrides it. */
   model?: string;
   /** Regional API platform of the key, chosen where the key was created. global is each provider's public API; for qwen it is Model Studio Singapore. Only four providers serve another region: qwen keys created in China (Hong Kong) need hong-kong and keys created in China (Beijing) need china; kimi keys from platform.kimi.com need china; mistral offers eu and us regional inference; xai offers us regional inference, which currently serves only grok-4.7 and grok-4.6. Any other provider and region pair stops the application at startup. */
   region?: string;
@@ -20,6 +20,12 @@ export interface Config {
   anthropicWorkspaceId?: string;
   /** Maximum complete provider response in bytes, counting every byte of a stream; enter a positive integer. Blank uses 64 MiB for deepseek, whose streams carry keep-alive comments and reasoning chunks, and 8 MiB for every other provider. OpenAI adds about 260 bytes of event framing per streamed text delta, so 8 MiB holds roughly 30,000 openai output tokens; raise it for longer outputs. Larger responses select invalidResponse. */
   maxResponseBytes?: number;
+  /** For openai-compatible only, the OpenAI API your gateway implements, as its API documentation lists: chat-completions calls POST <baseUrl>/chat/completions (Chat Completions), and responses calls POST <baseUrl>/responses (the Responses API, sent stateless with store false). Choose responses only when the gateway documents a /responses endpoint, for example to reach models it serves only there. Every other provider must keep the default; responses there stops the application at startup. */
+  openaiCompatibleApi?: string;
+  /** Model IDs this connection offers, one per entry, written exactly as the provider or gateway names them, such as gpt-6-sol or my-gateway-model; take them from the provider's model list or your gateway's API documentation. Applications and agents that read this connection offer these models; generateText still runs any model a Step picks. Each entry is 1 to 256 printable ASCII characters without spaces (gemini IDs follow its model path rule), entries are unique, and the list holds at most 100. When set, model, or the provider's default model when model is blank, must be one of them. Leave the list empty to declare no list. It is not secret. */
+  models?: string[];
+  /** Context window of models listed in models, one entry per model written as <model ID>=<tokens>, such as my-gateway-model=128000. tokens is the model's total context window (input plus output) in tokens, a whole number from 1 to 100000000, from your gateway's or provider's model documentation. Set it for custom-endpoint models that applications cannot look up; each model ID must appear in models and at most once here. Omit a model whose window is unknown. generateText does not read it. It is not secret. */
+  modelContextWindowTokens?: string[];
 }
 
 /** Runtime schema for manifest configuration. */
@@ -30,11 +36,14 @@ export const ConfigSchema = z.object({
   "region": z.string().optional(),
   "anthropicWorkspaceId": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "openaiCompatibleApi": z.string().optional(),
+  "models": z.array(z.string()).optional(),
+  "modelContextWindowTokens": z.array(z.string()).optional(),
 });
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret API key of the provider chosen in provider, created on that provider's API key page that the guide lists, or issued by your OpenAI-compatible gateway administrator: an sk- key for OpenAI, Qwen, DeepSeek, or Kimi, sk-ant- for Claude, AIza for Gemini, LLM|<id>|<secret> for Meta, an opaque key for Mistral or a custom gateway, or xai- for xAI. It is stored only as this connection's secret and sent only to the chosen provider's API host, in x-goog-api-key for Gemini and as an Authorization bearer token for every other provider. Required. */
+  /** Secret API key of the provider chosen in provider, created on that provider's API key page that the guide lists, or issued by your OpenAI-compatible or Anthropic-compatible gateway administrator: an sk- key for OpenAI, Qwen, DeepSeek, or Kimi, sk-ant- for Claude, AIza for Gemini, LLM|<id>|<secret> for Meta, an opaque key for Mistral or a custom gateway, or xai- for xAI. It is stored only as this connection's secret and sent only to the chosen provider's API host, in x-goog-api-key for Gemini and as an Authorization bearer token for every other provider. Required. */
   apiKey: SecretString;
 }
 

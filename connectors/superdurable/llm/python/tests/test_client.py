@@ -109,3 +109,69 @@ def test_unrelated_workspace_and_base_url_are_rejected() -> None:
         Client(Config("openai", "https://example.com/v1", "mock-model", "", 0), InertCredentials())
     with pytest.raises(ValueError, match="anthropicWorkspaceId applies only"):
         Client(Config("gemini", "", "mock-model", "wrkspc_123", 0), InertCredentials())
+    with pytest.raises(ValueError, match="openaiCompatibleApi applies only"):
+        Client(Config("openai", "", "", "", 0, openai_compatible_api="responses"), InertCredentials())
+    with pytest.raises(ValueError, match="openaiCompatibleApi is invalid"):
+        Client(Config("openai", "", "", "", 0, openai_compatible_api="assistants"), InertCredentials())
+
+
+def test_custom_endpoints_select_their_protocols() -> None:
+    """Mirror Go: Chat Completions by default, Responses on request, Messages for Anthropic gateways."""
+    credentials = InertCredentials()
+    openai_root, anthropic_root = "https://example.com/v1", "https://example.com/anthropic"
+    chat = Client(Config("openai-compatible", openai_root, "gateway-model", "", 0), credentials)
+    responses = Client(
+        Config("openai-compatible", openai_root, "gateway-model", "", 0, openai_compatible_api="responses"),
+        credentials,
+    )
+    messages = Client(Config("anthropic-compatible", anthropic_root, "gateway-model", "", 0), credentials)
+    assert chat.generate_text()._config.wire_format.provider_name == "openai-compatible"
+    assert responses.generate_text()._config.wire_format.provider_name == "openai-compatible"
+    assert responses.generate_text()._config.wire_format.finish_reasons["completed"] == "stop"
+    assert messages.generate_text()._config.wire_format.provider_name == "anthropic-compatible"
+    assert messages.generate_text()._config.address_policy == "publicHTTPS"
+    assert not messages.generate_text().request_features().supports_reasoning_effort
+
+
+@pytest.mark.parametrize(
+    ("base_url", "model", "message"),
+    (
+        ("https://example.com/anthropic", "", "model is required"),
+        ("https://example.com/v1", "gateway-model", "must not end in /v1"),
+        ("https://example.com/anthropic/v1/messages", "gateway-model", "must not end in /v1 or /messages"),
+        ("https://10.0.0.1/anthropic", "gateway-model", "public or loopback"),
+        ("http://example.com/anthropic", "gateway-model", "HTTPS"),
+    ),
+)
+def test_anthropic_compatible_rejects_invalid_configuration(base_url: str, model: str, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        Client(Config("anthropic-compatible", base_url, model, "", 0), InertCredentials())
+
+
+@pytest.mark.parametrize(
+    ("models", "windows", "message"),
+    (
+        (("gpt-6-sol", "gpt-6-luna"), (), ""),
+        ((" gpt-6-sol ", "a=b"), ("gpt-6-sol=128000", "a=b= 100000000 "), ""),
+        (("gpt-6-sol", " "), (), "models entry 2"),
+        (("gpt-6-sol", " gpt-6-sol"), (), "entry 2 repeats"),
+        (tuple(f"model-{index}" for index in range(101)), (), "more than 100 entries"),
+        (("gpt-6-luna",), (), "must be one of the models entries"),
+        ((), ("gpt-6-sol=1000",), "names a model that models does not list"),
+        (("gpt-6-sol",), ("gpt-6-sol",), "<model ID>=<tokens>"),
+        (("gpt-6-sol",), ("gpt-6-sol=0",), "from 1 to 100000000"),
+        (("gpt-6-sol",), ("gpt-6-sol=100000001",), "from 1 to 100000000"),
+        (("gpt-6-sol",), ("gpt-6-sol=1.5",), "from 1 to 100000000"),
+        (("gpt-6-sol",), ("gpt-6-sol=1000", "gpt-6-sol=2000"), "entry 2 repeats"),
+    ),
+)
+def test_connection_model_list_follows_go_rules(
+    models: tuple[str, ...], windows: tuple[str, ...], message: str
+) -> None:
+    config = Config("openai", "", "", "", 0, models=models, model_context_window_tokens=windows)
+    if not message:
+        Client(config, InertCredentials())
+        return
+    with pytest.raises(ValueError, match=message) as error:
+        Client(config, InertCredentials())
+    assert "gpt-6-luna" not in str(error.value)

@@ -108,12 +108,12 @@ setattr(new_project_connection, '__module__', 'dex_connectors.superdurable_llm.c
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"provider", "baseUrl", "model", "region", "anthropicWorkspaceId", "maxResponseBytes"}:
+    if set(value) - {"provider", "baseUrl", "model", "region", "anthropicWorkspaceId", "maxResponseBytes", "openaiCompatibleApi", "models", "modelContextWindowTokens"}:
         raise ValueError("LLM configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "provider" in value:
         provider = value["provider"]
-        if not (isinstance(provider, str) and provider in ('openai', 'openai-compatible', 'anthropic', 'gemini', 'qwen', 'deepseek', 'meta', 'mistral', 'kimi', 'xai')):
+        if not (isinstance(provider, str) and provider in ('openai', 'openai-compatible', 'anthropic', 'anthropic-compatible', 'gemini', 'qwen', 'deepseek', 'meta', 'mistral', 'kimi', 'xai')):
             raise ValueError("LLM configuration provider has an invalid type")
         config_arguments['provider'] = provider
     else:
@@ -151,4 +151,19 @@ def _decode_config(value: dict[str, Any]) -> Config:
         config_arguments['max_response_bytes'] = max_response_bytes
     else:
         config_arguments['max_response_bytes'] = 0
+    if "openaiCompatibleApi" in value:
+        openai_compatible_api = value["openaiCompatibleApi"]
+        if not (isinstance(openai_compatible_api, str) and openai_compatible_api in ('chat-completions', 'responses')):
+            raise ValueError("LLM configuration openaiCompatibleApi has an invalid type")
+        config_arguments['openai_compatible_api'] = openai_compatible_api
+    if "models" in value:
+        models = value["models"]
+        if not (isinstance(models, list) and all(isinstance(item, str) for item in models)):
+            raise ValueError("LLM configuration models has an invalid type")
+        config_arguments['models'] = tuple(models)
+    if "modelContextWindowTokens" in value:
+        model_context_window_tokens = value["modelContextWindowTokens"]
+        if not (isinstance(model_context_window_tokens, list) and all(isinstance(item, str) for item in model_context_window_tokens)):
+            raise ValueError("LLM configuration modelContextWindowTokens has an invalid type")
+        config_arguments['model_context_window_tokens'] = tuple(model_context_window_tokens)
     return Config(**config_arguments)
