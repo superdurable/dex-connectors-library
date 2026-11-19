@@ -1,0 +1,419 @@
+{
+  "connector": "feihan",
+  "scenarios": [
+    {
+      "callId": "26c7463e-55f2-53c6-aaf3-0a7cba2a1dbb",
+      "exchanges": [
+        {
+          "body": "{\"retcode\":\"1\",\"sporder_id\":\"ORDER123\",\"game_state\":1}",
+          "form": {
+            "format": [
+              "json"
+            ],
+            "md5_str": [
+              "14BC4ADFFC878A3453634B504819B55E"
+            ],
+            "sporder_id": [
+              "ORDER123"
+            ],
+            "userid": [
+              "A12345"
+            ],
+            "userpws": [
+              "a86d4eaa08e4826bc8c166670f98bc3d"
+            ],
+            "version": [
+              "6.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/queryOrderInfo.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "merchantOrderId": "ORDER123",
+          "rechargeStatus": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryRechargeOrder-found",
+      "operation": "queryRechargeOrder"
+    },
+    {
+      "callId": "8d7ef333-ec44-5f3c-8515-f05675dd5992",
+      "exchanges": [
+        {
+          "body": "{\"retcode\":\"1\",\"sporder_id\":\"ORDER123\",\"game_state\":0}",
+          "form": {
+            "format": [
+              "json"
+            ],
+            "md5_str": [
+              "14BC4ADFFC878A3453634B504819B55E"
+            ],
+            "sporder_id": [
+              "ORDER123"
+            ],
+            "userid": [
+              "A12345"
+            ],
+            "userpws": [
+              "a86d4eaa08e4826bc8c166670f98bc3d"
+            ],
+            "version": [
+              "6.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/queryOrderInfo.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "merchantOrderId": "ORDER123",
+          "rechargeStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryRechargeOrder-processing",
+      "operation": "queryRechargeOrder"
+    },
+    {
+      "callId": "033c11fe-179f-5bc4-9b68-a33af2b1e0ef",
+      "exchanges": [
+        {
+          "body": "{\"retcode\":\"1001\",\"message\":\"bad key\"}",
+          "form": {
+            "format": [
+              "json"
+            ],
+            "md5_str": [
+              "14BC4ADFFC878A3453634B504819B55E"
+            ],
+            "sporder_id": [
+              "ORDER123"
+            ],
+            "userid": [
+              "A12345"
+            ],
+            "userpws": [
+              "a86d4eaa08e4826bc8c166670f98bc3d"
+            ],
+            "version": [
+              "6.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/queryOrderInfo.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "merchantOrderId": "",
+          "rechargeStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryRechargeOrder-providerRejected",
+      "operation": "queryRechargeOrder"
+    },
+    {
+      "callId": "2753b128-7720-5bc1-89be-491c2b502e0f",
+      "exchanges": [
+        {
+          "body": "{\"retcode\":\"1\",\"sporder_id\":\"OTHER\",\"game_state\":1}",
+          "form": {
+            "format": [
+              "json"
+            ],
+            "md5_str": [
+              "14BC4ADFFC878A3453634B504819B55E"
+            ],
+            "sporder_id": [
+              "ORDER123"
+            ],
+            "userid": [
+              "A12345"
+            ],
+            "userpws": [
+              "a86d4eaa08e4826bc8c166670f98bc3d"
+            ],
+            "version": [
+              "6.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/queryOrderInfo.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "merchantOrderId": "",
+          "rechargeStatus": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryRechargeOrder-invalidResponse",
+      "operation": "queryRechargeOrder"
+    },
+    {
+      "callId": "83f3e6d9-e784-5899-a58e-7e485942537d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "merchantOrderId": "",
+          "rechargeStatus": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "merchantOrderId": ""
+      },
+      "name": "queryRechargeOrder-defect",
+      "operation": "queryRechargeOrder"
+    },
+    {
+      "callId": "b321d62d-59f2-59a7-8b63-1b2fb49ab4f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "format": [
+              "json"
+            ],
+            "md5_str": [
+              "14BC4ADFFC878A3453634B504819B55E"
+            ],
+            "sporder_id": [
+              "ORDER123"
+            ],
+            "userid": [
+              "A12345"
+            ],
+            "userpws": [
+              "a86d4eaa08e4826bc8c166670f98bc3d"
+            ],
+            "version": [
+              "6.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/queryOrderInfo.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryRechargeOrder-rateLimit",
+      "operation": "queryRechargeOrder"
+    },
+    {
+      "callId": "fa69a874-5cec-578d-96ff-b65d42b4e9af",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "format": [
+              "json"
+            ],
+            "md5_str": [
+              "14BC4ADFFC878A3453634B504819B55E"
+            ],
+            "sporder_id": [
+              "ORDER123"
+            ],
+            "userid": [
+              "A12345"
+            ],
+            "userpws": [
+              "a86d4eaa08e4826bc8c166670f98bc3d"
+            ],
+            "version": [
+              "6.0"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/queryOrderInfo.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryRechargeOrder-serverError",
+      "operation": "queryRechargeOrder"
+    },
+    {
+      "callId": "5cfb0a6b-f755-53f1-8abe-a118d82bd27f",
+      "exchanges": [
+        {
+          "form": {
+            "format": [
+              "json"
+            ],
+            "md5_str": [
+              "14BC4ADFFC878A3453634B504819B55E"
+            ],
+            "sporder_id": [
+              "ORDER123"
+            ],
+            "userid": [
+              "A12345"
+            ],
+            "userpws": [
+              "a86d4eaa08e4826bc8c166670f98bc3d"
+            ],
+            "version": [
+              "6.0"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/queryOrderInfo.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryRechargeOrder-transport",
+      "operation": "queryRechargeOrder"
+    }
+  ],
+  "schemaVersion": 1
+}
