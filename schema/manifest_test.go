@@ -430,6 +430,88 @@ func TestManifestJSONSchemaRequiresUncertainOfLimitedAndUnsafeMutations(t *testi
 	}
 }
 
+func TestManifestValidationRequiresOptionalUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	const problem = "the uncertain branch of a limited or unsafe mutation must be optional"
+	for name, testCase := range map[string]struct {
+		repeatOnUnknown     string
+		agentRetry          string
+		isUncertainOptional bool
+		isRejected          bool
+	}{
+		"required uncertain of explicit limited":   {repeatOnUnknown: schema.RepeatOnUnknownLimited, isRejected: true},
+		"required uncertain of explicit unsafe":    {repeatOnUnknown: schema.RepeatOnUnknownUnsafe, isRejected: true},
+		"required uncertain of omitted limited":    {isRejected: true},
+		"optional uncertain of explicit limited":   {repeatOnUnknown: schema.RepeatOnUnknownLimited, isUncertainOptional: true},
+		"optional uncertain of explicit unsafe":    {repeatOnUnknown: schema.RepeatOnUnknownUnsafe, isUncertainOptional: true},
+		"required uncertain of explicit safe":      {repeatOnUnknown: schema.RepeatOnUnknownSafe},
+		"required uncertain with safe agent retry": {agentRetry: schema.OperationAgentRetrySafe},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			operation := &manifest.Spec.Operations[0]
+			operation.Kind, operation.Idempotency = "mutation", "required"
+			operation.Execution.RepeatOnUnknown = testCase.repeatOnUnknown
+			if testCase.agentRetry != "" {
+				operation.Agent = &schema.OperationAgent{Retry: testCase.agentRetry}
+			}
+			operation.Branches = append(operation.Branches, schema.OperationBranch{ID: "uncertain", GoName: "Uncertain",
+				Description: "The write may have happened.", Optional: testCase.isUncertainOptional})
+			err = manifest.Validate()
+			if testCase.isRejected {
+				require.ErrorContains(t, err, problem)
+				return
+			}
+			if err != nil {
+				require.NotContains(t, err.Error(), problem)
+			}
+		})
+	}
+}
+
+func TestManifestJSONSchemaRequiresOptionalUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://connectors.dex.dev/connector-manifest.schema.json"
+	require.NoError(t, compiler.AddResource(resource, definition))
+	compiled, err := compiler.Compile(resource + "#/$defs/operation")
+	require.NoError(t, err)
+	operation := func(uncertainOptional, execution, agent string) any {
+		var document any
+		require.NoError(t, json.Unmarshal([]byte(`{"name":"createThing","goName":"CreateThing","inputType":"CreateThingInput","outputType":"CreateThingOutput",`+
+			`"kind":"mutation","description":"Create one thing.","idempotency":"required",`+
+			`"branches":[{"id":"created","goName":"Created","description":"Created."},{"id":"defect","goName":"Defect","description":"Invalid.","optional":true},`+
+			`{"id":"uncertain","goName":"Uncertain","description":"The write may have happened."`+uncertainOptional+`}],`+
+			`"execution":{"executeMethodTimeout":"30s","durability":"async"`+execution+`}`+agent+`}`), &document))
+		return document
+	}
+	const optional = `,"optional":true`
+	const notOptional = `,"optional":false`
+	const safeAgent = `,"agent":{"exposed":true,"retry":"safe"}`
+	for _, testCase := range []struct{ name, uncertainOptional, execution, agent string }{
+		{"optional uncertain of omitted limited", optional, "", ""},
+		{"optional uncertain of explicit unsafe", optional, `,"repeatOnUnknown":"unsafe"`, ""},
+		{"required uncertain of explicit safe", "", `,"repeatOnUnknown":"safe"`, ""},
+		{"required uncertain with safe agent retry", "", "", safeAgent},
+	} {
+		require.NoError(t, compiled.Validate(operation(testCase.uncertainOptional, testCase.execution, testCase.agent)), testCase.name)
+	}
+	for _, testCase := range []struct{ name, uncertainOptional, execution string }{
+		{"omitted optional of explicit limited", "", `,"repeatOnUnknown":"limited"`},
+		{"false optional of explicit limited", notOptional, `,"repeatOnUnknown":"limited"`},
+		{"omitted optional of explicit unsafe", "", `,"repeatOnUnknown":"unsafe"`},
+		{"omitted optional of omitted limited", "", ""},
+	} {
+		require.Error(t, compiled.Validate(operation(testCase.uncertainOptional, testCase.execution, "")), testCase.name)
+	}
+}
+
 func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
 	require.NoError(t, err)

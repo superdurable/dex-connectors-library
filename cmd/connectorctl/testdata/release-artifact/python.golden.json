@@ -143,7 +143,8 @@
             {
               "id": "uncertain",
               "goName": "Uncertain",
-              "description": "Append outcome is unknown."
+              "description": "Append outcome is unknown.",
+              "optional": true
             },
             {
               "id": "defect",
@@ -175,7 +176,7 @@
   "version": "v0.2.1",
   "tag": "connectors/google/sheets-fixture/python/v0.2.1",
   "sourceSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "manifestSha256": "b4797d4d89abc912907c2ad2f1ac99ab6dbcc57a6a7190d425ab5705b84c5ec2",
+  "manifestSha256": "dc1feeeec50f680bc744a65b3fc305129c7d3d24ca163635de4b6bacabb6f11f",
   "ui": {
     "artifact": "connector-ui.tgz",
     "sha256": "00aebfd288d23e571d4f317e1c2ba5c03999c06c76d62789eec9e276bc9b51b9",

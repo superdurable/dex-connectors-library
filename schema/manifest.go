@@ -951,6 +951,10 @@ func (manifest Manifest) Validate() error {
 			if branch.Retired && branch.ID == "uncertain" && operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() != RepeatOnUnknownSafe {
 				problems = append(problems, operation.Name+": the uncertain branch of a limited or unsafe mutation cannot be retired")
 			}
+			// Only the happy path is required; an unwired uncertain branch fails the Flow when selected.
+			if !branch.Optional && branch.ID == "uncertain" && operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() != RepeatOnUnknownSafe {
+				problems = append(problems, operation.Name+": the uncertain branch of a limited or unsafe mutation must be optional")
+			}
 		}
 		if len(branches) == 0 || !branches["defect"] {
 			problems = append(problems, operation.Name+": branches must declare defect")
