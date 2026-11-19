@@ -3,6 +3,7 @@
 """BambooHR operation invocations and provider-specific response decoding."""
 
 import json
+import math
 import re
 from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
@@ -132,7 +133,29 @@ def _validate_written_fields(fields: dict[str, str], minimum: int, refused: froz
 
 
 def _read_json(body: bytes) -> Any:
-    return json.loads(body)
+    return json.loads(body, parse_constant=lambda value: _reject_non_json_number(value))
+
+
+def _reject_non_json_number(value: str) -> None:
+    raise ValueError(f"invalid JSON number: {value}")
+
+
+def _go_int64(value: Any) -> int:
+    if type(value) is not int or not -(1 << 63) <= value < 1 << 63:
+        raise ValueError("integer is outside Go's int64 range")
+    return value
+
+
+def _go_float(value: Any) -> float | int:
+    if type(value) not in (int, float):
+        raise ValueError("amount is not a JSON number")
+    try:
+        number = float(value)
+    except OverflowError as error:
+        raise ValueError("amount is outside Go's float64 range") from error
+    if not math.isfinite(number) or (type(value) is int and int(number) != value):
+        raise ValueError("amount cannot be represented without loss")
+    return int(number) if number.is_integer() and abs(number) < 1e21 else number
 
 
 def _employee_id(value: Any) -> str:
@@ -480,7 +503,7 @@ def _time_off_filter(input: ListTimeOffRequestsInput) -> str:
 
 
 def _time_off_request(row: Any) -> TimeOffRequest:
-    if not isinstance(row, dict) or int(row["id"]) < 1 or int(row["employeeId"]) < 1:
+    if not isinstance(row, dict) or _go_int64(row["id"]) < 1 or _go_int64(row["employeeId"]) < 1:
         raise ValueError("the request or employee ID is missing")
     if not _valid_date(row["startDate"]) or not _valid_date(row["endDate"]):
         raise ValueError("a date is not YYYY-MM-DD")
@@ -488,7 +511,7 @@ def _time_off_request(row: Any) -> TimeOffRequest:
     if status not in ("REQUESTED", "APPROVED", "DENIED", "CANCELED") or unit not in ("HOURS", "DAYS"):
         raise ValueError("the status or unit is not one BambooHR documents")
     daily = tuple(
-        TimeOffDailyAmount(item["date"], float(item["amount"])) for item in row.get("dailyAmounts") or []
+        TimeOffDailyAmount(item["date"], _go_float(item["amount"])) for item in row.get("dailyAmounts") or []
     )
     if any(not _valid_date(item.date) for item in daily):
         raise ValueError("a daily amount date is not YYYY-MM-DD")
@@ -498,12 +521,12 @@ def _time_off_request(row: Any) -> TimeOffRequest:
     updated = row.get("statusUpdatedAt")
     updated_at = datetime.fromisoformat(updated.replace("Z", "+00:00")).astimezone(UTC) if updated else None
     return TimeOffRequest(
-        id=int(row["id"]),
-        employee_id=str(int(row["employeeId"])),
-        category_id=int(row.get("categoryId") or 0),
+        id=_go_int64(row["id"]),
+        employee_id=str(_go_int64(row["employeeId"])),
+        category_id=_go_int64(row.get("categoryId", 0)),
         start_date=row["startDate"],
         end_date=row["endDate"],
-        amount=float(row.get("amount") or 0),
+        amount=_go_float(row.get("amount", 0)),
         unit=unit,
         status=status,
         requested_at=requested_at,
@@ -563,7 +586,8 @@ class ListTimeOffRequestsOperation:
         try:
             document = _read_json(exchange.body)
             rows, meta = document["data"], document["meta"]
-            total_items, total_pages = int(meta.get("totalItems") or 0), int(meta.get("totalPages") or 0)
+            total_items = _go_int64(meta.get("totalItems", 0))
+            total_pages = _go_int64(meta.get("totalPages", 0))
             if not isinstance(rows, list) or len(rows) > page_size or total_items < 0 or total_pages < 0:
                 raise ValueError("the page size or totals are inconsistent")
             output = ListTimeOffRequestsOutput(

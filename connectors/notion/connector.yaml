@@ -11,6 +11,12 @@ spec:
   codegen:
     go:
       package: notion
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-notion
+      operations: [search, queryDatabase, getPage, createPage, updatePageProperties]
+      triggers: []
   configuration:
     fields:
       - name: endpoint

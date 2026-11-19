@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [getStats, listTemplates]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-sendgrid'
+      operations: [getStats, listTemplates]
+      triggers: []
   codegen:
     go:
       package: sendgrid

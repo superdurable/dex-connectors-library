@@ -2,6 +2,14 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reamaze/go@v0.23.0`.
 
+The Python package is `dex-connector-reamaze==0.1.0` (`dex_connectors.reamaze`).
+It implements all six operations and no Triggers. Its
+[runnable contact lookup](python/examples/find_contact/README.md) exercises a
+real Dex Worker and Client against a local provider stand-in. The
+[Python package guide](python/README.md) covers connection setup and retry
+behavior. Live Re:amaze authorization and API behavior remain unverified for
+the Python port.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/reamaze`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Re:amaze; no live Re:amaze account was used. See

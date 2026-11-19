@@ -5,7 +5,7 @@
       "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
       "exchanges": [
         {
-          "body": "\u003cListBucketResult\u003e\u003cEncodingType\u003eurl\u003c/EncodingType\u003e\u003cIsTruncated\u003etrue\u003c/IsTruncated\u003e\u003cNextContinuationToken\u003enext-page\u003c/NextContinuationToken\u003e\u003cContents\u003e\u003cKey\u003ereports%2Fweekly.md\u003c/Key\u003e\u003cLastModified\u003e2026-10-25T09:00:00Z\u003c/LastModified\u003e\u003cETag\u003e\"abc\"\u003c/ETag\u003e\u003cSize\u003e6\u003c/Size\u003e\u003cStorageClass\u003eSTANDARD\u003c/StorageClass\u003e\u003c/Contents\u003e\u003cCommonPrefixes\u003e\u003cPrefix\u003ereports%2Farchive%2F\u003c/Prefix\u003e\u003c/CommonPrefixes\u003e\u003c/ListBucketResult\u003e",
+          "body": "\u003cListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"\u003e\u003cEncodingType\u003eurl\u003c/EncodingType\u003e\u003cIsTruncated\u003etrue\u003c/IsTruncated\u003e\u003cNextContinuationToken\u003enext-page\u003c/NextContinuationToken\u003e\u003cContents\u003e\u003cKey\u003ereports%2Fweekly.md\u003c/Key\u003e\u003cLastModified\u003e2026-10-25T09:00:00Z\u003c/LastModified\u003e\u003cETag\u003e\"abc\"\u003c/ETag\u003e\u003cSize\u003e6\u003c/Size\u003e\u003cStorageClass\u003eSTANDARD\u003c/StorageClass\u003e\u003c/Contents\u003e\u003cCommonPrefixes\u003e\u003cPrefix\u003ereports%2Farchive%2F\u003c/Prefix\u003e\u003c/CommonPrefixes\u003e\u003c/ListBucketResult\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -37,8 +37,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=5e6a0b39708e277fb6fbfab74c3288c6b314e6c3c180a7f805029b83a041e03e"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -86,7 +92,7 @@
       "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
       "exchanges": [
         {
-          "body": "\u003cListBucketResult\u003e\u003cIsTruncated\u003efalse\u003c/IsTruncated\u003e\u003c/ListBucketResult\u003e",
+          "body": "\u003cListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"\u003e\u003cIsTruncated\u003efalse\u003c/IsTruncated\u003e\u003c/ListBucketResult\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -109,8 +115,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=23a384fa54018c549ea11c355cece28c7299ae72dc2e6a694a170e8f29e36683"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -160,8 +172,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=87e7bb903ccd1310273f6283449e10c84b3e28ba8c11e46ccbdb5f508d952feb"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 403
@@ -209,8 +227,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=87e7bb903ccd1310273f6283449e10c84b3e28ba8c11e46ccbdb5f508d952feb"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -274,8 +298,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -317,8 +347,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 404
@@ -357,8 +393,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 403
@@ -399,8 +441,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -468,8 +516,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -512,8 +566,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 404
@@ -558,8 +618,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -607,8 +673,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -650,8 +722,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 403
@@ -696,8 +774,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -766,6 +850,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key;x-amz-meta-report-id, Signature=b8b357eace119dfd3a83d6427d9010a045da1b058d1bf0adaa3eec1fdfdc8fa6"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -777,6 +864,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -831,6 +921,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=9f8d15f7a0330672fe67a13dae8fa52ee97b1b79652cb6a7c86eb70091b41b1e"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -842,6 +935,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -865,8 +961,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -913,6 +1015,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=b1496aa2a45813e2145189e921b77aa663fc1e0c716b8d686c2cfe430c3f409e"
+            ],
             "Content-Md5": [
               "XUFAKrxLKna5cZ2REBfFkg=="
             ],
@@ -921,6 +1026,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -992,6 +1100,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key;x-amz-meta-report-id, Signature=b8b357eace119dfd3a83d6427d9010a045da1b058d1bf0adaa3eec1fdfdc8fa6"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -1003,6 +1114,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1030,8 +1144,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -1092,8 +1212,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=87e7bb903ccd1310273f6283449e10c84b3e28ba8c11e46ccbdb5f508d952feb"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 429
@@ -1137,8 +1263,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=87e7bb903ccd1310273f6283449e10c84b3e28ba8c11e46ccbdb5f508d952feb"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 503
@@ -1180,8 +1312,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=87e7bb903ccd1310273f6283449e10c84b3e28ba8c11e46ccbdb5f508d952feb"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "transportFailure": "before-send"
@@ -1214,8 +1352,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 429
@@ -1249,8 +1393,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 503
@@ -1282,8 +1432,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "transportFailure": "before-send"
@@ -1317,8 +1473,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 429
@@ -1352,8 +1514,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 503
@@ -1385,8 +1553,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=4af37c32acea3b95fb3263c9226d2446d4f3497e98d5af06de8e7edad0707b9d"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "transportFailure": "before-send"
@@ -1421,6 +1595,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=b1496aa2a45813e2145189e921b77aa663fc1e0c716b8d686c2cfe430c3f409e"
+            ],
             "Content-Md5": [
               "XUFAKrxLKna5cZ2REBfFkg=="
             ],
@@ -1429,6 +1606,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1469,6 +1649,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=b1496aa2a45813e2145189e921b77aa663fc1e0c716b8d686c2cfe430c3f409e"
+            ],
             "Content-Md5": [
               "XUFAKrxLKna5cZ2REBfFkg=="
             ],
@@ -1477,6 +1660,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1515,6 +1701,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=b1496aa2a45813e2145189e921b77aa663fc1e0c716b8d686c2cfe430c3f409e"
+            ],
             "Content-Md5": [
               "XUFAKrxLKna5cZ2REBfFkg=="
             ],
@@ -1523,6 +1712,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1563,6 +1755,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=9f8d15f7a0330672fe67a13dae8fa52ee97b1b79652cb6a7c86eb70091b41b1e"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -1574,6 +1769,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1591,8 +1789,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 404
@@ -1631,6 +1835,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=9f8d15f7a0330672fe67a13dae8fa52ee97b1b79652cb6a7c86eb70091b41b1e"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -1642,6 +1849,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1659,8 +1869,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 403
@@ -1705,6 +1921,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=9f8d15f7a0330672fe67a13dae8fa52ee97b1b79652cb6a7c86eb70091b41b1e"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -1716,6 +1935,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1733,8 +1955,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 503
@@ -1773,6 +2001,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=9f8d15f7a0330672fe67a13dae8fa52ee97b1b79652cb6a7c86eb70091b41b1e"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -1784,6 +2015,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1803,8 +2037,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200
@@ -1848,6 +2088,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=9f8d15f7a0330672fe67a13dae8fa52ee97b1b79652cb6a7c86eb70091b41b1e"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -1859,6 +2102,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1877,6 +2123,9 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;if-none-match;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=9f8d15f7a0330672fe67a13dae8fa52ee97b1b79652cb6a7c86eb70091b41b1e"
+            ],
             "Content-Md5": [
               "sZRqySSS0jR8YjW00mERhA=="
             ],
@@ -1888,6 +2137,9 @@
             ],
             "X-Amz-Content-Sha256": [
               "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ],
             "X-Amz-Meta-Dex-Idempotency-Key": [
               "0c58ff90-76a5-5ab6-9099-092233c989ba"
@@ -1911,8 +2163,14 @@
             "Accept-Encoding": [
               "identity"
             ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=0c34c4612c76cf6d63f8e3fa2f39664a8f6798a412ba7d64b5cb7bd848f6c7c6"
+            ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
             ]
           },
           "status": 200

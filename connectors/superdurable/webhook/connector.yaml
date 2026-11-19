@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: webhook
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-superdurable-webhook'
+      operations: [sendEvent]
+      triggers: []
   codegen:
     go:
       package: webhook

@@ -4,10 +4,12 @@
 
 import json
 import re
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass as dataclass
 from datetime import UTC, datetime
 from datetime import timedelta as timedelta
+from decimal import Decimal
 from typing import Any, TypeVar
 
 import httpx
@@ -206,7 +208,9 @@ class Client:
             except ProviderTransportError:
                 return _retry(operation, FailureKind.AVAILABILITY, "provider response was interrupted", 0)
             try:
-                value = decode(json.loads(body))
+                value = decode(json.loads(body, parse_float=Decimal, parse_int=Decimal))
+            except _UnencodableDocumentNumber as error:
+                return _failed(operation, INVALID_RESPONSE, empty, FailureKind.PROTOCOL, str(error))
             except (ValueError, TypeError, UnicodeDecodeError):
                 return _failed(
                     operation,
@@ -294,10 +298,50 @@ def _retry(operation: str, kind: FailureKind, message: str, after_seconds: float
 def _decode_file(document: Any) -> File:
     if not isinstance(document, dict):
         raise ValueError
-    file = File(_string(document, "name"), _string(document, "lastModified"), document.get("document"))
+    document_tree = document.get("document")
+    file = File(
+        _string(document, "name"),
+        _string(document, "lastModified"),
+        _encode_exact_document_numbers(document_tree, "document"),
+    )
     if not file.name or file.document is None:
         raise ValueError
     return file
+
+
+class _UnencodableDocumentNumber(ValueError):
+    """Identify a provider number that Dex JSON encoding would change."""
+
+
+def _encode_exact_document_numbers(value: Any, field: str) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _encode_exact_document_numbers(child, f"{field}.{key}")
+            for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [
+            _encode_exact_document_numbers(child, f"{field}[{index}]")
+            for index, child in enumerate(value)
+        ]
+    if isinstance(value, Decimal):
+        try:
+            if value == value.to_integral_value():
+                max_integer_digits = sys.get_int_max_str_digits()
+                if max_integer_digits and value.adjusted() >= max_integer_digits:
+                    raise ValueError
+                converted: int | float = int(value)
+            else:
+                converted = float(value)
+                if Decimal(str(converted)) != value:
+                    raise ValueError
+            json.dumps(converted, allow_nan=False)
+        except (OverflowError, ValueError):
+            raise _UnencodableDocumentNumber(
+                f"provider number at {field} cannot be encoded exactly"
+            ) from None
+        return converted
+    return value
 
 
 def _decode_file_comments(document: Any) -> FileComments:

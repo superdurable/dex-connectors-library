@@ -2,6 +2,15 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.24.0`.
 
+Install the Python package with `pip install dex-connector-notion==0.1.0`.
+The Python package implements all five operations in the table below; its
+[submission intake example](python/examples/submission_intake/README.md)
+runs them through a Dex Flow using the static `notion-submissions` connection.
+Python requests and outcomes replay 52 Go-recorded provider scenarios,
+including retry and uncertain create decisions. The example ran through a
+real local Dex Worker and Client with connector mocks and a local HTTP
+stand-in; live Notion provider behavior has not been verified.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/notion`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Notion; no live Notion workspace was used. See

@@ -2137,6 +2137,943 @@
       },
       "name": "deleteTask-transport-after-send",
       "operation": "deleteTask"
+    },
+    {
+      "callId": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/task-123",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "taskId": "task-123"
+      },
+      "name": "updateTaskContent-readback-429",
+      "operation": "updateTaskContent"
+    },
+    {
+      "callId": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/task-123",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "taskId": "task-123"
+      },
+      "name": "updateTaskContent-readback-500",
+      "operation": "updateTaskContent"
+    },
+    {
+      "callId": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/task-123",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "taskId": "task-123"
+      },
+      "name": "updateTaskContent-readback-before-send",
+      "operation": "updateTaskContent"
+    },
+    {
+      "callId": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/task-123",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "taskId": "task-123"
+      },
+      "name": "updateTaskContent-readback-after-send",
+      "operation": "updateTaskContent"
+    },
+    {
+      "attempts": 2,
+      "callId": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/task-123",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/task-123",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{ \"id\":\"task-123\",\"project_id\":\"project-456\",\"content\":\"Title\",\"description\":\"Notes\",\"checked\":false }",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "content": "Title",
+          "description": "Notes",
+          "id": "task-123",
+          "isCompleted": false,
+          "projectId": "project-456"
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "taskId": "task-123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "updateTaskContent-readback-429-then-confirmed",
+      "operation": "updateTaskContent"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-readback-429",
+      "operation": "createTask"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-readback-503",
+      "operation": "createTask"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-readback-500",
+      "operation": "createTask"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-readback-before-send",
+      "operation": "createTask"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-readback-after-send",
+      "operation": "createTask"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-readback-prior-not-sent",
+      "operation": "createTask",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+        "state": "notSent"
+      }
+    },
+    {
+      "callId": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "input": {
+        "content": "",
+        "description": "Notes",
+        "taskId": "task-123"
+      },
+      "name": "updateTaskContent-go-blank-nel",
+      "operation": "updateTaskContent"
+    },
+    {
+      "callId": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/task-123",
+          "requestBody": {
+            "content": "﻿",
+            "description": "Notes"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1c6775-8009-5c5f-ac8d-8b24a67f7b92",
+      "input": {
+        "content": "﻿",
+        "description": "Notes",
+        "taskId": "task-123"
+      },
+      "name": "updateTaskContent-go-nonblank-bom",
+      "operation": "updateTaskContent"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-go-blank-nel",
+      "operation": "createTask"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "﻿",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "﻿",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-go-nonblank-bom",
+      "operation": "createTask"
     }
   ],
   "schemaVersion": 1

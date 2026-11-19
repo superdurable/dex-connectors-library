@@ -13,7 +13,13 @@ from dex_connectors.sdk import (
     StaticCredentialProvider,
 )
 
-from dex_connectors.bamboohr import Client, Config, Credentials, GetEmployeeInput
+from dex_connectors.bamboohr import (
+    Client,
+    Config,
+    Credentials,
+    GetEmployeeInput,
+    ListTimeOffRequestsInput,
+)
 
 CONNECTION = ConnectionRef("bamboohr", "bamboohr-test")
 
@@ -108,3 +114,74 @@ async def test_reflected_key_selects_invalid_response_without_persisting_key() -
         assert result.branch == "invalidResponse"
         assert result.failure is not None and key not in result.failure.message
         assert result.value is not None and key not in repr(result.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("amount", "daily_amount", "expected_amount", "expected_daily_amount"),
+    [(2, 1, 2, 1), (2.5, 1.25, 2.5, 1.25), (2.0, 1.0, 2, 1),
+     (1e23, 1e20, 1e23, 100000000000000000000)],
+)
+async def test_time_off_amounts_match_go_json_number_types(
+    amount: float, daily_amount: float, expected_amount: float, expected_daily_amount: float
+) -> None:
+    """Go's float64 JSON encoder emits whole amounts as integer JSON numbers."""
+    body = {
+        "data": [{
+            "id": 5521, "employeeId": 123, "categoryId": 78,
+            "startDate": "2026-10-20", "endDate": "2026-10-21",
+            "amount": amount, "unit": "DAYS", "status": "APPROVED",
+            "requestedAt": "2026-09-02T15:04:05Z",
+            "dailyAmounts": [{"date": "2026-10-20", "amount": daily_amount}],
+        }],
+        "meta": {"page": 1, "pageSize": 50, "totalPages": 1, "totalItems": 1},
+    }
+
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=body))
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+        client = Client(Config("acme"), credentials, http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(CallID("472485d6-a578-50af-a4d2-124cf93b188f"), CONNECTION,
+                    OperationRef("bamboohr", "listTimeOffRequests"))
+        result = await client.list_time_off_requests().invoke(
+            call, ListTimeOffRequestsInput("2026-10-20", "2026-10-21")
+        )
+
+    assert result.branch == "listed"
+    assert result.value is not None
+    request = result.value.requests[0]
+    assert request.amount == expected_amount and type(request.amount) is type(expected_amount)
+    assert request.daily_amounts[0].amount == expected_daily_amount
+    assert type(request.daily_amounts[0].amount) is type(expected_daily_amount)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("invalid_field", "invalid_value"),
+    [("id", 1.5), ("id", 1 << 63), ("id", "5521"), ("id", True),
+     ("amount", (1 << 53) + 1)],
+)
+async def test_time_off_unrepresentable_number_selects_invalid_response(
+    invalid_field: str, invalid_value: object
+) -> None:
+    """Provider numbers outside their Go output domain must not be rounded or coerced."""
+    row: dict[str, object] = {
+        "id": 5521, "employeeId": 123, "startDate": "2026-10-20",
+        "endDate": "2026-10-21", "unit": "DAYS", "status": "APPROVED",
+        "requestedAt": "2026-09-02T15:04:05Z",
+    }
+    row[invalid_field] = invalid_value
+    body = {
+        "data": [row],
+        "meta": {"page": 1, "pageSize": 50, "totalPages": 1, "totalItems": 1},
+    }
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=body))
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+        client = Client(Config("acme"), credentials, http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(CallID("472485d6-a578-50af-a4d2-124cf93b188f"), CONNECTION,
+                    OperationRef("bamboohr", "listTimeOffRequests"))
+        result = await client.list_time_off_requests().invoke(
+            call, ListTimeOffRequestsInput("2026-10-20", "2026-10-21")
+        )
+    assert result.branch == "invalidResponse"

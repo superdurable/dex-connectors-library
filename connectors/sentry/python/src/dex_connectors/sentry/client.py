@@ -441,6 +441,8 @@ def _decode_issue(document: Any) -> Issue:
 
 
 def _decode_issue_fields(document: Any) -> Issue:
+    if document is None:
+        return Issue()
     if not isinstance(document, dict):
         raise ValueError
     return Issue(
