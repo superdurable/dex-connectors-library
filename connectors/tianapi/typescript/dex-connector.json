@@ -1,0 +1,60 @@
+{
+  "connectorId": "tianapi",
+  "releaseTag": "connectors/tianapi/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-tianapi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetHolidayStatusStep",
+      "kind": "query",
+      "operationId": "getHolidayStatus",
+      "inputType": "GetHolidayStatusInput",
+      "description": "Read one Chinese calendar date's holiday type and work/rest indicator.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetHolidayStatusInput identifies one Chinese calendar date in YYYY-MM-DD format.",
+        "properties": {
+          "date": {
+            "description": "Date is a single Gregorian calendar date in YYYY-MM-DD format.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "connectorId": "suxin",
+  "releaseTag": "connectors/suxin/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-suxin",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListOrganizationsStep",
+      "kind": "query",
+      "operationId": "listOrganizations",
+      "inputType": "ListOrganizationsInput",
+      "description": "List organizations visible to the API key's default user.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListOrganizationsInput selects the API user's accessible organizations without additional user input.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

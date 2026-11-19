@@ -9,3 +9,5 @@ The operation is based on the [current Suxin Open API documentation](https://pc.
 Obtain the `appId` and `apiKey` issued for your Suxin Open API application, as specified in [section 2.1 of the API documentation](https://pc.suxin365.com/open-api.html), and copy them into the secret connection fields. No user ID is required: the provider returns it at authentication. Leave endpoint and limits blank for defaults. The production endpoint is restricted to the documented HTTPS host. Provider 429, 408, 5xx, transport failures, and documented internal error 5000 retry; business rejection branches are optional and unwired by the sample Flow. Provider messages are never copied to Flow results.
 
 Run the [organization directory example](go/examples/organization-directory/README.md). Its synthetic mock sample is not live Suxin data. Live authorization, organization permissions, and actual provider response compatibility have not been verified with real credentials.
+
+The [TypeScript package and runnable Flow](typescript/) replay the Go provider scenarios for `listOrganizations`.

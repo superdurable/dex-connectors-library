@@ -9,3 +9,5 @@ Sign in to [TextIn](https://www.textin.com/), open **Workbench > Account Setting
 ## Go
 
 The [account balance Flow](go/examples/account-balance/) is a runnable Worker with static Dex Web connection name `textin`. `fetched` completes the Flow. Unwired optional branches fail it. HTTP 408, 429, and 5xx and provider code 500 retry safely because the operation only reads the account. The mock integration test uses synthetic sample data and a real Dex Worker and Client. No live credentials are bundled; live authorization and balance values remain unverified.
+
+The [TypeScript package and runnable Flow](typescript/) replay the Go provider scenarios for `getAccountBalance`.

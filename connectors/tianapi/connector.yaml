@@ -40,6 +40,11 @@ spec:
         - The connector sends the key in an HTTPS form POST body, never the URL. Redirects are disabled, and the key, provider message, and unrelated response fields are omitted from Flow output and failures.
         - Start GetHolidayStatus with one date formatted YYYY-MM-DD, such as 2025-01-01, from a calendar you trust. Blank is invalid. Leave timeout and maxResponseBytes blank for the displayed defaults. TianAPI lists 100 free calls per day for ordinary members; successful calls consume quota.
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-tianapi"
+      operations: [getHolidayStatus]
+      triggers: []
     python: {version: v0.1.0, operations: [getHolidayStatus], triggers: []}
   operations:
     - name: getHolidayStatus

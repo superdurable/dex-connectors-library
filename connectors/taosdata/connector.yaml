@@ -45,6 +45,11 @@ spec:
         - Enter only the HTTPS origin for Cloud URL, with no path, query, fragment, credentials, or trailing slash. Keep the Cloud Token private. A blank URL or token prevents requests.
         - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector sends only the fixed SELECT of name, ntables, and status from information_schema.ins_databases; it never accepts SQL from a Flow.
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-taosdata"
+      operations: [listDatabases]
+      triggers: []
     python: {version: v0.1.0, operations: [listDatabases], triggers: []}
   operations:
     - name: listDatabases

@@ -40,6 +40,11 @@ spec:
         - Start CheckIPReputation with one IP from an inbound access log, WAF, IPS, or firewall alert, for example {"ipAddress":"159.203.93.255"}. The connector uses the fixed HTTPS endpoint and English labels. Leave timeout and maxResponseBytes blank for displayed defaults.
         - ThreatBook requires apikey in the URL query. Redirects are disabled and no Key, raw URL, or provider message is included in results or failures. The result is a signal for triage; review business logs and false-positive tolerance before blocking traffic. Replace a compromised Key in 我的API > 我的KEY.
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-threatbook"
+      operations: [checkIPReputation]
+      triggers: []
     python: {version: v0.1.0, operations: [checkIPReputation], triggers: []}
   operations:
     - name: checkIPReputation

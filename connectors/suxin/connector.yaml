@@ -50,6 +50,11 @@ spec:
         - The connector exchanges those credentials at POST /api/v1/auth/token, uses the returned userId to request GET /api/v1/org/list, and does not ask you to transcribe a user ID. The token is kept out of Flow state and results.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults unless Suxin assigned your organization another HTTPS origin or a larger response allowance. The result contains only organization ID, name, type, and certification status.
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-suxin"
+      operations: [listOrganizations]
+      triggers: []
     python: {version: v0.1.0, operations: [listOrganizations], triggers: []}
   operations:
     - name: listOrganizations
