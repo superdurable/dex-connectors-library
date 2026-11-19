@@ -11,6 +11,7 @@ spec:
   provider: tingyun
   languages:
     python: {version: v0.1.0, operations: [listApplications], triggers: []}
+    typescript: {version: v0.1.0, operations: [listApplications], triggers: []}
   codegen:
     go:
       package: tingyun

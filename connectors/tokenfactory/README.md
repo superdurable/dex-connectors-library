@@ -9,3 +9,7 @@ The [runnable Dex Flow](go/examples/balance-check/README.md) shows connection se
 ## Python
 
 The [Python package](python/) exposes the same Query and branch contract as Go. Its [runnable example](python/examples/query/) uses static connection name `tokenfactory`. The package replays Go-recorded provider scenarios and the example verifies retry and persistence with a real Dex Worker and Client. Live provider authorization has not been verified.
+
+## TypeScript
+
+`@superdurable/connector-tokenfactory` provides the `getBalance` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.

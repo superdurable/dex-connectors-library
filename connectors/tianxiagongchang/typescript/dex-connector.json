@@ -1,0 +1,52 @@
+{
+  "connectorId": "tianxiagongchang",
+  "releaseTag": "connectors/tianxiagongchang/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-tianxiagongchang",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetAccountStatusStep",
+      "kind": "query",
+      "operationId": "getAccountStatus",
+      "inputType": "GetAccountStatusInput",
+      "description": "Read the application identity and account credit status without charge.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "retrieved",
+          "field": "retrieved",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccountStatusInput requests the account state associated with the configured key.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
