@@ -80,7 +80,7 @@ type RequestValues = Record<string, string | string[]>;
 export interface Exchange {
   method: string; path: string; keyMode: 'absent' | 'equals-call-id' | 'stable-nonempty' | 'derived';
   status?: number; headers?: Record<string, string>; body?: string; query?: RequestValues;
-  form?: RequestValues; requestBody?: unknown; requestHeaders?: RequestValues;
+  form?: Record<string, string | string[] | { $syntheticSha256: string }>; requestBody?: unknown; requestHeaders?: RequestValues;
   transportFailure?: 'before-send' | 'after-send'; derivedKey?: string;
 }
 export interface Expected {
@@ -89,7 +89,7 @@ export interface Expected {
 }
 export interface Scenario {
   name: string; operation: string; callId: string; idempotencyKey?: string; input: RecordValue;
-  exchanges: Exchange[]; expected: Expected; attempts?: number; randomSeed?: string; randomRequestFields?: string[];
+  exchanges: Exchange[]; expected: Expected; attempts?: number; randomSeed?: string; randomRequestFields?: string[]; randomFormFields?: string[];
   intermediate?: Array<{ failureKind: string; retryAfterMs: number; exchangeCount: number; heartbeat?: unknown }>;
   priorHeartbeat?: unknown;
   fixedClock?: string;
@@ -137,13 +137,15 @@ export function loadScenarios(url: URL): Scenario[] {
   if (document.schemaVersion !== 1 || typeof document.connector !== 'string' || !document.connector ||
       !Array.isArray(document.scenarios) || document.scenarios.length === 0) throw new Error('invalid scenario document');
   for (const item of document.scenarios) {
-    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat', 'fixedClock', 'randomSeed', 'randomRequestFields'], url.pathname);
+    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat', 'fixedClock', 'randomSeed', 'randomRequestFields', 'randomFormFields'], url.pathname);
     if (typeof scenario.name !== 'string' || !scenario.name || typeof scenario.operation !== 'string' || !scenario.operation ||
         typeof scenario.callId !== 'string' || !scenario.callId || !Array.isArray(scenario.exchanges)) throw new Error('invalid scenario identity or exchanges');
     if ('idempotencyKey' in scenario && typeof scenario.idempotencyKey !== 'string') throw new Error('invalid optional scenario identity');
     if ('randomSeed' in scenario && (typeof scenario.randomSeed !== 'string' || !scenario.randomSeed.startsWith('SYNTHETIC_CONFORMANCE_') || scenario.randomSeed.length > 128)) throw new Error('invalid synthetic random seed');
     if ('randomRequestFields' in scenario && (!('randomSeed' in scenario) || !Array.isArray(scenario.randomRequestFields) || !scenario.randomRequestFields.length ||
       scenario.randomRequestFields.some(field => typeof field !== 'string' || !field.startsWith('/') || field.includes('~')))) throw new Error('invalid random request fields');
+    if ('randomFormFields' in scenario && (!('randomSeed' in scenario) || !Array.isArray(scenario.randomFormFields) || !scenario.randomFormFields.length ||
+      scenario.randomFormFields.some(field => typeof field !== 'string' || !field || field.includes('/') || field.includes('~')))) throw new Error('invalid random form fields');
     if (typeof scenario.input !== 'object' || scenario.input === null || Array.isArray(scenario.input)) {
       throw new Error(`${scenario.name}: input must be an object`);
     }
@@ -161,7 +163,9 @@ export function loadScenarios(url: URL): Scenario[] {
       if (exchange.keyMode === 'derived' && !exchange.derivedKey) throw new Error('derived key is missing');
       for (const field of ['query', 'form', 'requestHeaders']) {
         if (field in exchange && (typeof exchange[field] !== 'object' || exchange[field] === null || Array.isArray(exchange[field]) ||
-            Object.values(exchange[field] as RecordValue).some(value => typeof value !== 'string' &&
+            Object.entries(exchange[field] as RecordValue).some(([name, value]) => !(field === 'form' && (scenario.randomFormFields as string[] | undefined)?.includes(name) &&
+              typeof value === 'object' && value !== null && !Array.isArray(value) && isDeepStrictEqual(Object.keys(value), ['$syntheticSha256']) &&
+              typeof (value as RecordValue).$syntheticSha256 === 'string' && /^[0-9a-f]{64}$/.test((value as RecordValue).$syntheticSha256 as string)) && typeof value !== 'string' &&
               !(Array.isArray(value) && value.length > 0 && value.every(item => typeof item === 'string'))))) throw new Error(`invalid ${field}`);
       }
       const body = exchange.requestBody;
@@ -366,7 +370,13 @@ export class ExchangeRecorder {
     for (const key of new Set(url.searchParams.keys())) if (!(key in (exchange.query ?? {}))) this.mismatches.push(`request ${index}: unasserted query ${key}=${JSON.stringify(url.searchParams.getAll(key))}`);
     const contentType = Object.entries(request.headers ?? {}).find(([name]) => name.toLowerCase() === 'content-type')?.[1];
     const form = typeof contentType === 'string' && contentType.startsWith('application/x-www-form-urlencoded') ? new URLSearchParams(bodyText) : new URLSearchParams();
-    for (const [key, value] of Object.entries(exchange.form ?? {})) this.equal(index, `form ${key}`, form.getAll(key), Array.isArray(value) ? value : [value]);
+    for (const [key, value] of Object.entries(exchange.form ?? {})) {
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        const entries = form.getAll(key);
+        const digest = entries.length === 1 && entries[0] ? createHash('sha256').update(entries[0]).digest('hex') : null;
+        this.equal(index, `form ${key} digest`, digest, value.$syntheticSha256);
+      } else this.equal(index, `form ${key}`, form.getAll(key), Array.isArray(value) ? value : [value]);
+    }
     for (const key of new Set(form.keys())) if (!(key in (exchange.form ?? {}))) this.mismatches.push(`request ${index}: unasserted form ${key}=${JSON.stringify(form.getAll(key))}`);
     if (exchange.requestBody !== undefined) {
       const expected = exchange.requestBody;
