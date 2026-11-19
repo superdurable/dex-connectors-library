@@ -814,6 +814,17 @@ func TestGmailReplyIndefiniteSourceReadCountsOnlyEarlierSends(t *testing.T) {
 	require.Len(t, stepContext.Heartbeats(), heartbeatCount, "a pre-send Retry after a possible send records nothing")
 	sends, _, _, _ := fake.counts()
 	require.Equal(t, 2, sends)
+
+	// The unrecorded attempt counts as a possible send, so attempt four only searches Sent Mail.
+	stepContext.AdvanceAttempt()
+	_, searchesBefore, _, _ := fake.counts()
+	sourceReadsBefore := fake.sourceReadCount()
+	fourth := runGmailSendAttempt(stepContext, client, true)
+	requireGmailUncertain(t, fourth)
+	sends, searches, _, _ := fake.counts()
+	require.Equal(t, 2, sends)
+	require.Greater(t, searches, searchesBefore, "attempt four searches Sent Mail")
+	require.Equal(t, sourceReadsBefore, fake.sourceReadCount(), "attempt four never rereads the source")
 }
 
 // TestGmailReplySourceRejectedOnFirstAttemptIsProviderRejected keeps a clean first rejection terminal.

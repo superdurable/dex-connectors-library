@@ -527,6 +527,20 @@ async def test_reply_indefinite_source_read_counts_only_earlier_sends(source_ans
 
 
 @pytest.mark.asyncio
+async def test_reply_after_an_unrecorded_source_retry_only_searches_sent_mail() -> None:
+    """Attempt four counts the unrecorded attempt three as a send, reaches the cap, and selects uncertain."""
+    context = HeartbeatContext(4)
+    call = _call(context, operation_id="replyToMessage")
+    context.previous = Marker(call.id, 2, State.CLAIMED, send_count=2)
+    answer = _gmail(httpx.Response(200, json={"messages": []}), httpx.Response(200, json={"id": "sent-4"}))
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.kind == "uncertain"
+    assert "POST" not in _methods(requests)
+    assert not any(request.url.path.endswith("/messages/source-1") for request in requests)
+    assert any(request.url.params.get("q") for request in requests), "attempt four searches Sent Mail"
+
+
+@pytest.mark.asyncio
 async def test_reply_source_missing_on_first_attempt_is_provider_rejected() -> None:
     """A source 404 before any send stays providerRejected."""
     attempt, _ = await _invoke(

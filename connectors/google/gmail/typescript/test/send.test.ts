@@ -580,6 +580,22 @@ describe('Gmail send and reply classification', () => {
     expect(checkpoint.value, 'a pre-send Retry after a possible send records nothing').toBe(earlier);
   });
 
+  it('only searches Sent Mail on the attempt after an unrecorded source retry and selects uncertain', async () => {
+    let posts = 0, sourceReads = 0, searches = 0;
+    const operation = sender(async request => {
+      if (request.url.includes('/source-1?')) { sourceReads++; return response(200, {}); }
+      if (request.method === 'POST') { posts++; return response(200, { id: 'sent-4', threadId: 'thread-1' }); }
+      searches++;
+      return response(200, { messages: [] });
+    });
+    // Attempt three recorded nothing, so attempt four counts it as a send and reaches the cap of three.
+    const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 2, state: 'claimed', sendCount: 2 } };
+    expect((await operation.replyToMessage(operationCall('replyToMessage', 4, checkpoint), replyInput, new Date(Date.now() + 30_000))).kind).toBe('uncertain');
+    expect(posts).toBe(0);
+    expect(sourceReads).toBe(0);
+    expect(searches).toBeGreaterThan(0);
+  });
+
   it('reads back only and selects uncertain when the application lowers the send cap to one', async () => {
     const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed' } };
     let posts = 0;
