@@ -91,6 +91,7 @@ type providerResponse struct {
 	contentType  string
 	etag         string
 	errorCode    string
+	createCallID string
 	lastModified string
 	retryAfter   time.Duration
 	err          error
@@ -178,5 +179,5 @@ func (client *Client) requestStorage(call sdkgo.Call, method, path string, body 
 	if bytes.Contains(responseBody, []byte(accountKey)) {
 		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
-	return providerResponse{body: responseBody, status: response.StatusCode, contentType: response.Header.Get("Content-Type"), etag: response.Header.Get("ETag"), errorCode: response.Header.Get("x-ms-error-code"), lastModified: response.Header.Get("Last-Modified"), retryAfter: retryAfter, err: err}
+	return providerResponse{body: responseBody, status: response.StatusCode, contentType: response.Header.Get("Content-Type"), etag: response.Header.Get("ETag"), errorCode: response.Header.Get("x-ms-error-code"), createCallID: response.Header.Get("x-ms-meta-dex_create_call_id"), lastModified: response.Header.Get("Last-Modified"), retryAfter: retryAfter, err: err}
 }

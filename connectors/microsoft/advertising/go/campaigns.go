@@ -426,7 +426,10 @@ func campaignSafeWriteResult(operation string, success, rejection, invalid, defe
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[CampaignMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "campaign write response is unreadable"), 0)
 	}
-	if response.status == http.StatusOK && len(response.body) > 0 {
+	if response.status == http.StatusOK {
+		if len(response.body) == 0 {
+			return sdkgo.NewMutationRetry[CampaignMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "campaign write response is incomplete"), 0)
+		}
 		var result struct {
 			PartialErrors []json.RawMessage `json:"PartialErrors"`
 		}
@@ -434,7 +437,7 @@ func campaignSafeWriteResult(operation string, success, rejection, invalid, defe
 			return sdkgo.NewMutationRetry[CampaignMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "campaign write response is invalid"), 0)
 		}
 		if len(result.PartialErrors) != 0 {
-			return campaignWriteBranch(operation, rejection, CampaignMutationResult{}, sdkgo.FailureProviderRejection, "Microsoft Advertising rejected the campaign item")
+			return sdkgo.NewMutationRetry[CampaignMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "campaign write response is contradictory"), 0)
 		}
 	}
 	return sdkgo.NewMutationBranch(success, CampaignMutationResult{CampaignID: campaignID}, nil, sdkgo.Receipt{})

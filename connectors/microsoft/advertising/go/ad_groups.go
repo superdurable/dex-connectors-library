@@ -357,7 +357,10 @@ func adGroupSafeWrite(operation string, success, rejection, invalid, defect sdkg
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[AdGroupMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "ad group write response is unreadable"), 0)
 	}
-	if response.status == http.StatusOK && len(response.body) > 0 {
+	if response.status == http.StatusOK {
+		if len(response.body) == 0 {
+			return sdkgo.NewMutationRetry[AdGroupMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "ad group write response is incomplete"), 0)
+		}
 		var wire struct {
 			PartialErrors []json.RawMessage `json:"PartialErrors"`
 		}
@@ -365,7 +368,7 @@ func adGroupSafeWrite(operation string, success, rejection, invalid, defect sdkg
 			return sdkgo.NewMutationRetry[AdGroupMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "ad group write response is invalid"), 0)
 		}
 		if len(wire.PartialErrors) != 0 {
-			return adGroupWriteBranch(rejection, AdGroupMutationResult{}, operation, sdkgo.FailureProviderRejection, "Microsoft Advertising rejected the ad group")
+			return sdkgo.NewMutationRetry[AdGroupMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "ad group write response is contradictory"), 0)
 		}
 	}
 	return sdkgo.NewMutationBranch(success, AdGroupMutationResult{AdGroupID: adGroupID}, nil, sdkgo.Receipt{})

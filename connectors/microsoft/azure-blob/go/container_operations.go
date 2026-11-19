@@ -174,7 +174,8 @@ func (operation CreateContainerOperation) Invoke(call sdkgo.Call, input CreateCo
 	if !validContainer(input.Container) {
 		return createContainerBranch(CreateContainerBranchDefect, sdkgo.FailureValidation, "container name is invalid")
 	}
-	response := operation.client.requestStorage(call, http.MethodPut, "/"+input.Container+"?restype=container", nil, "", nil)
+	containerPath := "/" + input.Container + "?restype=container"
+	response := operation.client.requestStorage(call, http.MethodPut, containerPath, nil, "", http.Header{"x-ms-meta-dex_create_call_id": {string(call.ID)}})
 	if errors.Is(response.err, errCredential) {
 		return createContainerBranch(CreateContainerBranchDefect, sdkgo.FailureAuthentication, "Azure Blob account key is unavailable")
 	}
@@ -182,6 +183,13 @@ func (operation CreateContainerOperation) Invoke(call sdkgo.Call, input CreateCo
 		return sdkgo.NewMutationRetry[ContainerWriteResult](storageFailure("createContainer", storageRetryKind(response), "Azure container create is temporarily unavailable"), response.retryAfter)
 	}
 	if response.status == http.StatusConflict && response.errorCode == "ContainerAlreadyExists" && response.err == nil {
+		properties := operation.client.requestStorage(call, http.MethodHead, containerPath, nil, "", nil)
+		if properties.status == http.StatusOK && properties.err == nil && properties.createCallID == string(call.ID) {
+			return sdkgo.NewMutationBranch(CreateContainerBranchCreated, ContainerWriteResult{Container: input.Container}, nil, sdkgo.Receipt{})
+		}
+		if properties.status != http.StatusOK || properties.err != nil || !isSafeResponseHeader(properties.createCallID) {
+			return sdkgo.NewMutationRetry[ContainerWriteResult](storageFailure("createContainer", storageRetryKind(properties), "Azure container ownership could not be confirmed"), properties.retryAfter)
+		}
 		return createContainerBranch(CreateContainerBranchAlreadyExists, sdkgo.FailureConflict, "Azure Blob container already exists")
 	}
 	if response.status != http.StatusCreated {

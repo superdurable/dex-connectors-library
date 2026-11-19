@@ -65,6 +65,53 @@ func TestCampaignSafeWrites(t *testing.T) {
 	}
 }
 
+func TestSafeWritesRetryContradictorySuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+		_, err := writer.Write([]byte(`{"PartialErrors":[{"Code":1}]}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := testClient(t, server.URL)
+	for _, testCase := range []struct {
+		name string
+		run  func() error
+	}{
+		{"campaign", func() error {
+			_, err := sdkgo.RunMutation(queryContext{}, client.UpdateCampaign(), testConnection, UpdateCampaignInput{AccountID: "12345", CampaignID: "98765", Status: "Paused"})
+			return err
+		}},
+		{"ad group", func() error {
+			_, err := sdkgo.RunMutation(queryContext{}, client.UpdateAdGroup(), testConnection, UpdateAdGroupInput{AccountID: "12345", CampaignID: "98765", AdGroupID: "45678", Status: "Paused"})
+			return err
+		}},
+		{"ad", func() error {
+			_, err := sdkgo.RunMutation(queryContext{}, client.UpdateAd(), testConnection, UpdateAdInput{AccountID: "12345", AdGroupID: "45678", AdID: "56789", Status: "Paused"})
+			return err
+		}},
+		{"keyword", func() error {
+			_, err := sdkgo.RunMutation(queryContext{}, client.UpdateKeyword(), testConnection, UpdateKeywordInput{AccountID: "12345", AdGroupID: "45678", KeywordID: "67890", Status: "Paused"})
+			return err
+		}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, testCase.run(), &retry)
+		})
+	}
+}
+
+func TestCampaignSafeWriteRetriesEmptySuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	client := testClient(t, server.URL)
+	_, err := sdkgo.RunMutation(queryContext{}, client.UpdateCampaign(), testConnection, UpdateCampaignInput{AccountID: "12345", CampaignID: "98765", Status: "Paused"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}
+
 func TestCreateCampaignDoesNotClaimExistingNameAfterLostResponse(t *testing.T) {
 	creates := 0
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

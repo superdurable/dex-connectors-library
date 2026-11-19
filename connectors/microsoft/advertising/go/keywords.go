@@ -372,7 +372,10 @@ func keywordSafeWrite(operation string, success, rejection, invalid, defect sdkg
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[KeywordMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "keyword write response is unreadable"), 0)
 	}
-	if response.status == http.StatusOK && len(response.body) > 0 {
+	if response.status == http.StatusOK {
+		if len(response.body) == 0 {
+			return sdkgo.NewMutationRetry[KeywordMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "keyword write response is incomplete"), 0)
+		}
 		var wire struct {
 			PartialErrors []json.RawMessage `json:"PartialErrors"`
 		}
@@ -380,7 +383,7 @@ func keywordSafeWrite(operation string, success, rejection, invalid, defect sdkg
 			return sdkgo.NewMutationRetry[KeywordMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "keyword write response is invalid"), 0)
 		}
 		if len(wire.PartialErrors) != 0 {
-			return keywordWriteBranch(rejection, KeywordMutationResult{}, operation, sdkgo.FailureProviderRejection, "Microsoft Advertising rejected the keyword")
+			return sdkgo.NewMutationRetry[KeywordMutationResult](campaignFailure(operation, sdkgo.FailureProtocol, "keyword write response is contradictory"), 0)
 		}
 	}
 	return sdkgo.NewMutationBranch(success, KeywordMutationResult{KeywordID: keywordID}, nil, sdkgo.Receipt{})

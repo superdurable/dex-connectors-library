@@ -2167,10 +2167,13 @@
           },
           "requestHeaders": {
             "Authorization": [
-              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+              "SharedKey exampleacct:XJyAh5TpnP6vUYCMTmj+SeCXZnVcoMK4QIiXhCGUCKo="
             ],
             "X-Ms-Date": [
               "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Meta-Dex_create_call_id": [
+              "9ca55015-8ff3-54f6-ba08-8874f3edff62"
             ],
             "X-Ms-Version": [
               "2023-11-03"
@@ -2215,7 +2218,34 @@
           },
           "requestHeaders": {
             "Authorization": [
-              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+              "SharedKey exampleacct:XJyAh5TpnP6vUYCMTmj+SeCXZnVcoMK4QIiXhCGUCKo="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Meta-Dex_create_call_id": [
+              "9ca55015-8ff3-54f6-ba08-8874f3edff62"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
             ],
             "X-Ms-Date": [
               "Fri, 30 Oct 2026 00:00:00 GMT"
@@ -2224,7 +2254,7 @@
               "2023-11-03"
             ]
           },
-          "status": 409
+          "status": 200
         }
       ],
       "expected": {
@@ -2233,7 +2263,7 @@
         "output": {
           "container": ""
         },
-        "requestCount": 1,
+        "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
@@ -2243,6 +2273,83 @@
         "container": "docs"
       },
       "name": "createContainer-exists",
+      "operation": "createContainer"
+    },
+    {
+      "callId": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "x-ms-error-code": "ContainerAlreadyExists"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:XJyAh5TpnP6vUYCMTmj+SeCXZnVcoMK4QIiXhCGUCKo="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Meta-Dex_create_call_id": [
+              "9ca55015-8ff3-54f6-ba08-8874f3edff62"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "",
+          "headers": {
+            "x-ms-meta-dex_create_call_id": "9ca55015-8ff3-54f6-ba08-8874f3edff62"
+          },
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/docs",
+          "query": {
+            "restype": [
+              "container"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:YIsujbIKw7lAwDqPjmFNRRCnswkosrY+joconPV7LeE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "container": "docs"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ca55015-8ff3-54f6-ba08-8874f3edff62",
+      "input": {
+        "container": "docs"
+      },
+      "name": "createContainer-recovered-after-lost-response",
       "operation": "createContainer"
     },
     {
@@ -2263,10 +2370,13 @@
           },
           "requestHeaders": {
             "Authorization": [
-              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+              "SharedKey exampleacct:XJyAh5TpnP6vUYCMTmj+SeCXZnVcoMK4QIiXhCGUCKo="
             ],
             "X-Ms-Date": [
               "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Meta-Dex_create_call_id": [
+              "9ca55015-8ff3-54f6-ba08-8874f3edff62"
             ],
             "X-Ms-Version": [
               "2023-11-03"
@@ -2330,10 +2440,13 @@
           },
           "requestHeaders": {
             "Authorization": [
-              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+              "SharedKey exampleacct:XJyAh5TpnP6vUYCMTmj+SeCXZnVcoMK4QIiXhCGUCKo="
             ],
             "X-Ms-Date": [
               "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Meta-Dex_create_call_id": [
+              "9ca55015-8ff3-54f6-ba08-8874f3edff62"
             ],
             "X-Ms-Version": [
               "2023-11-03"
@@ -2373,10 +2486,13 @@
           },
           "requestHeaders": {
             "Authorization": [
-              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+              "SharedKey exampleacct:XJyAh5TpnP6vUYCMTmj+SeCXZnVcoMK4QIiXhCGUCKo="
             ],
             "X-Ms-Date": [
               "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Meta-Dex_create_call_id": [
+              "9ca55015-8ff3-54f6-ba08-8874f3edff62"
             ],
             "X-Ms-Version": [
               "2023-11-03"
@@ -2414,10 +2530,13 @@
           },
           "requestHeaders": {
             "Authorization": [
-              "SharedKey exampleacct:URlgSg70cKOdpGwOqHCQCoH1JD6APQfi3IdUJZUMEgs="
+              "SharedKey exampleacct:XJyAh5TpnP6vUYCMTmj+SeCXZnVcoMK4QIiXhCGUCKo="
             ],
             "X-Ms-Date": [
               "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Meta-Dex_create_call_id": [
+              "9ca55015-8ff3-54f6-ba08-8874f3edff62"
             ],
             "X-Ms-Version": [
               "2023-11-03"
