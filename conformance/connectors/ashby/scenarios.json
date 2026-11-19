@@ -9748,6 +9748,333 @@
       }
     },
     {
+      "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"invalid_input\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.create",
+          "requestBody": {
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "input": {
+        "name": "Example Candidate"
+      },
+      "name": "createCandidate-refusalAfterPriorSend",
+      "operation": "createCandidate",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "input": {
+        "name": "Example Candidate"
+      },
+      "name": "createCandidate-failClosed",
+      "operation": "createCandidate",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 4,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.create",
+          "requestBody": {
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "input": {
+        "name": "Example Candidate"
+      },
+      "name": "createCandidate-conflictUnknown",
+      "operation": "createCandidate"
+    },
+    {
+      "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unsupported\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.create",
+          "requestBody": {
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "input": {
+        "name": "Example Candidate"
+      },
+      "name": "createCandidate-otherClientErrorUnknown",
+      "operation": "createCandidate"
+    },
+    {
+      "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.create",
+          "requestBody": {
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "input": {
+        "name": "Example Candidate"
+      },
+      "name": "createCandidate-emptyRefusalUnknown",
+      "operation": "createCandidate"
+    },
+    {
+      "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"errorInfo\":{\"code\":\"invalid_input\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.create",
+          "requestBody": {
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "input": {
+        "name": "Example Candidate"
+      },
+      "name": "createCandidate-contradictoryRefusalUnknown",
+      "operation": "createCandidate"
+    },
+    {
+      "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.create",
+          "requestBody": {
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+      "input": {
+        "name": "Example Candidate"
+      },
+      "name": "createCandidate-conflictAfterPriorSend",
+      "operation": "createCandidate",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
       "callId": "dbece584-dc67-513d-b770-b24f639d401a",
       "exchanges": [
         {
