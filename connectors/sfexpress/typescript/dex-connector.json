@@ -12,7 +12,7 @@
       "kind": "query",
       "operationId": "queryRoutes",
       "inputType": "QueryRoutesInput",
-      "description": "Query standard route event times and codes for one owned SF Express waybill, omitting remarks and locations.",
+      "description": "Query standard route event times and codes for one owned SF Express waybill, omitting free-text remarks and locations.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -46,7 +46,7 @@
         "description": "QueryRoutesInput identifies one SF Express waybill owned by the application.",
         "properties": {
           "waybillNumber": {
-            "description": "SF Express waybill number, 8 to 30 uppercase letters or digits.",
+            "description": "WaybillNumber is an SF Express waybill number, not a customer order number.",
             "type": "string"
           }
         },
@@ -54,8 +54,7 @@
           "waybillNumber"
         ],
         "type": "object"
-      },
-      "outputType": "RouteQueryResult"
+      }
     }
   ]
 }
