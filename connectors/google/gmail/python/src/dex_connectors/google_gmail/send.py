@@ -556,14 +556,20 @@ class SendService:
 
         Otherwise that send may still be delivered: a definite refusal proves
         only that this attempt failed, so it selects uncertain; an indefinite
-        one Retries below the send cap, so the next attempt reads back, and
-        selects uncertain at the cap.
+        one, which only the source read before any POST produces, Retries
+        while earlier sends stay below the send cap and selects uncertain at it.
         """
         if await self._is_earlier_send_possible(execution):
             failure = _failure(outcome, kind, f"{message}; an earlier send may still be delivered")
             if is_definite:
                 return MutationAttempt.uncertain(SendMessageOutput(), failure, receipt)
-            return await self._resend_or_select_uncertain(execution, failure, receipt)
+            # This attempt sent nothing, so only earlier sends count against the cap.
+            prior_send_upper_bound = 0
+            if execution.fence is not None:
+                prior_send_upper_bound = (await execution.fence.decide()).prior_send_upper_bound
+            if prior_send_upper_bound < execution.call.max_sends:
+                return MutationAttempt.retry(failure, 0)
+            return MutationAttempt.uncertain(SendMessageOutput(), failure, receipt)
         return _branch(execution, outcome, branch, kind, message, receipt)
 
     async def _reject_refused_send(

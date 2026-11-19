@@ -515,8 +515,8 @@ func resendOrSelectUncertain(
 
 // rejectUnlessEarlierSendIsUnconfirmed selects a rejection branch only when no earlier attempt may
 // have sent. Otherwise that send may still be delivered: a definite refusal proves only that this
-// attempt failed, so it selects uncertain; an indefinite one Retries below the send cap, so the next
-// attempt reads back, and selects uncertain at the cap.
+// attempt failed, so it selects uncertain; an indefinite one, which only the source read before any
+// POST produces, Retries while earlier sends stay below the send cap and selects uncertain at it.
 func rejectUnlessEarlierSendIsUnconfirmed(
 	call sdkgo.Call, decision singledispatch.Decision, isDefinite bool, branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
@@ -527,7 +527,11 @@ func rejectUnlessEarlierSendIsUnconfirmed(
 	if isDefinite {
 		return sdkgo.NewMutationUncertain(emptySendMessageOutput(), failure, receipt)
 	}
-	return resendOrSelectUncertain(call, decision, failure, 0, receipt)
+	// Only a source read before this attempt's POST is indefinite here, so only earlier sends count.
+	if decision.MaximumPriorSends < call.MaxSends() {
+		return sdkgo.NewMutationRetry[SendMessageOutput](failure, 0)
+	}
+	return sdkgo.NewMutationUncertain(emptySendMessageOutput(), failure, receipt)
 }
 
 // rejectRefusedSend classifies a definite Gmail refusal of this attempt's POST. With no earlier
