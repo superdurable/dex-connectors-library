@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: zto
+  languages:
+    typescript: {version: v0.1.0, operations: [queryWaybillTrace], triggers: []}
   codegen:
     go:
       package: zto
