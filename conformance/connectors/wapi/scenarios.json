@@ -1,0 +1,446 @@
+{
+  "connector": "wapi",
+  "scenarios": [
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\",\"retdata\":[{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":3400}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "brands": [
+            {
+              "id": "15",
+              "name": "宝马",
+              "priceFen": 3400
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-found",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\",\"retdata\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-empty",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10003\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-providerRejected",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-invalidResponse",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-defect",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-retry-429",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-retry-500",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-retry-transport",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10021\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-retry-provider",
+      "operation": "listVehicleBrands"
+    },
+    {
+      "callId": "1d59d793-9219-5949-966e-93b13cd10443",
+      "exchanges": [
+        {
+          "body": "{\"codeid\":\"10000\",\"retdata\":[{\"ppid\":\"15\",\"pp_name\":\"宝马\",\"pp_price\":-1}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pyi/170/324",
+          "query": {
+            "appid": [
+              "123"
+            ],
+            "format": [
+              "json"
+            ],
+            "sign": [
+              "cdf4f0a9fb8d9e9000b8f4e014b9e41b"
+            ],
+            "time": [
+              "1795089600"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "brands": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listVehicleBrands-bad-price",
+      "operation": "listVehicleBrands"
+    }
+  ],
+  "schemaVersion": 1
+}

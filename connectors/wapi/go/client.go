@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -30,6 +31,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	requestClock     func() time.Time
 }
 
 // New validates local settings without making a provider request.
@@ -41,7 +43,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Validate() != nil || config.Timeout <= 0 || config.MaxResponseBytes <= 0 || config.MaxResponseBytes > 16<<20 {
 		return nil, errors.New("Wapi configuration is invalid")
 	}
-	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, requestClock: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Wapi client option is required")

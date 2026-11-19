@@ -4,13 +4,13 @@
 package udesk
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -58,11 +58,11 @@ func (operation ListTicketStatusesOperation) Invoke(call sdkgo.Call, input ListT
 		return statusBranch(ListTicketStatusesBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	nonceBytes := make([]byte, 16)
-	if _, err := rand.Read(nonceBytes); err != nil {
+	if _, err := io.ReadFull(operation.client.requestRandom, nonceBytes); err != nil {
 		return statusRetry(sdkgo.FailureAvailability, "request nonce could not be generated", 0)
 	}
 	nonce := hex.EncodeToString(nonceBytes)
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.requestClock().Unix(), 10)
 	email := credentials.AdminEmail.Reveal()
 	token := credentials.APIToken.Reveal()
 	query := url.Values{"email": {email}, "timestamp": {timestamp}, "nonce": {nonce}, "sign_version": {"v2"}, "sign": {udeskSignature(email, token, timestamp, nonce)}}

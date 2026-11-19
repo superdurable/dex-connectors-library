@@ -1,0 +1,535 @@
+{
+  "connector": "tiankechat",
+  "scenarios": [
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"total\":21,\"page\":2,\"limit\":10,\"items\":[{\"id\":128,\"category\":\"物流\",\"active\":false,\"hit_count\":36}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "57e85c61f3e970c0f4a3e43492d30a5c0bb95d4cdce01c069e1c7545ce99570b"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "entries": [
+            {
+              "active": false,
+              "category": "物流",
+              "hitCount": 36,
+              "id": 128
+            }
+          ],
+          "limit": 10,
+          "page": 2,
+          "total": 21
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listKnowledgeEntries-listed",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"total\":0,\"page\":1,\"limit\":20,\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "6a78e0320083ad61810b34b2ec71708f5f4b490292368a46f14691f4d9356acb"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "entries": [],
+          "limit": 20,
+          "page": 1,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listKnowledgeEntries-empty",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "6a78e0320083ad61810b34b2ec71708f5f4b490292368a46f14691f4d9356acb"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entries": [],
+          "limit": 0,
+          "page": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listKnowledgeEntries-providerRejected",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"total\":1,\"page\":1,\"limit\":20}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "6a78e0320083ad61810b34b2ec71708f5f4b490292368a46f14691f4d9356acb"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entries": [],
+          "limit": 0,
+          "page": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listKnowledgeEntries-invalidResponse",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entries": [],
+          "limit": 0,
+          "page": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": -1
+      },
+      "name": "listKnowledgeEntries-defect",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "6a78e0320083ad61810b34b2ec71708f5f4b490292368a46f14691f4d9356acb"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listKnowledgeEntries-retry-429",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "6a78e0320083ad61810b34b2ec71708f5f4b490292368a46f14691f4d9356acb"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listKnowledgeEntries-retry-500",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "6a78e0320083ad61810b34b2ec71708f5f4b490292368a46f14691f4d9356acb"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listKnowledgeEntries-retry-transport",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "6a78e0320083ad61810b34b2ec71708f5f4b490292368a46f14691f4d9356acb"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "entries": [],
+          "limit": 0,
+          "page": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listKnowledgeEntries-forbidden",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    },
+    {
+      "callId": "b8e44c73-7872-5e87-8b6e-95a8eebc43bd",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"total\":1,\"page\":1,\"limit\":20,\"items\":[{\"id\":1,\"hit_count\":0}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/knowledge",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-App-Id": [
+              "ap_REDACTED_APP_ID"
+            ],
+            "X-Nonce": [
+              "b8f7ad1c7205ffcb253da245ae4ed2b9"
+            ],
+            "X-Signature": [
+              "6a78e0320083ad61810b34b2ec71708f5f4b490292368a46f14691f4d9356acb"
+            ],
+            "X-Timestamp": [
+              "1795089600"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entries": [],
+          "limit": 0,
+          "page": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listKnowledgeEntries-missing-active",
+      "operation": "listKnowledgeEntries",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TIANKECHAT"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -43,11 +43,11 @@ func (operation CheckUserOnlineOperation) Invoke(call sdkgo.Call, input CheckUse
 	if err != nil || credentials.Validate() != nil || !isValidCredentialValue(credentials.AppKey) || !isValidCredentialValue(credentials.AppSecret.Reveal()) {
 		return checkUserOnlineBranch(CheckUserOnlineBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
-	nonce, err := createNonce()
+	nonce, err := createNonce(operation.client.requestRandom)
 	if err != nil {
 		return checkUserOnlineBranch(CheckUserOnlineBranchDefect, sdkgo.FailureAvailability, "request nonce is unavailable")
 	}
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(operation.client.requestClock().UnixMilli(), 10)
 	form := url.Values{"userId": {input.UserID}}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, operation.client.baseURL+"/user/checkOnline.json", strings.NewReader(form.Encode()))
 	if err != nil {

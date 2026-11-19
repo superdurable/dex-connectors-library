@@ -5,11 +5,14 @@
 package quanshi
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // Option supplies a non-serializable HTTP client dependency to New.
@@ -29,6 +32,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	requestClock     func() time.Time
+	requestRandom    io.Reader
 }
 
 // New validates configuration without contacting Quanshi. Rotated credentials take effect on the next call.
@@ -51,7 +56,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Host != "openapi.quanshicloud.com" && parsed.Host != "openapi-beta.quanshicloud.com") {
 		return nil, errors.New("Quanshi base URL must be a documented HTTPS OpenAPI origin")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, requestClock: time.Now, requestRandom: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("client option is required")

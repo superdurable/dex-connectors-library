@@ -10,8 +10,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -34,6 +36,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	requestClock     func() time.Time
+	requestRandom    io.Reader
 }
 
 // New validates configuration without contacting RongCloud. Rotated credentials take effect on the next call.
@@ -52,7 +56,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("RongCloud base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, requestClock: time.Now, requestRandom: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("RongCloud client option is required")
@@ -78,9 +82,9 @@ func isValidCredentialValue(value string) bool {
 	}
 	return true
 }
-func createNonce() (string, error) {
+func createNonce(random io.Reader) (string, error) {
 	nonce := make([]byte, 9)
-	if _, err := rand.Read(nonce); err != nil {
+	if _, err := io.ReadFull(random, nonce); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(nonce), nil

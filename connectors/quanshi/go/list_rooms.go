@@ -4,7 +4,6 @@
 package quanshi
 
 import (
-	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -55,11 +54,11 @@ func (operation ListRoomsOperation) Invoke(call sdkgo.Call, _ ListRoomsInput) sd
 		return roomBranch(ListRoomsBranchDefect, sdkgo.FailureAuthentication, "Quanshi credentials are unavailable or invalid")
 	}
 	var nonceBytes [16]byte
-	if _, err := rand.Read(nonceBytes[:]); err != nil {
+	if _, err := io.ReadFull(operation.client.requestRandom, nonceBytes[:]); err != nil {
 		return roomRetry(sdkgo.FailureAvailability, "request nonce could not be generated", 0)
 	}
 	nonce := hex.EncodeToString(nonceBytes[:])
-	curTime := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	curTime := strconv.FormatInt(operation.client.requestClock().UnixMilli(), 10)
 	digest := sha1.Sum([]byte(credentials.AppSecret.Reveal() + nonce + curTime))
 	checksum := hex.EncodeToString(digest[:])
 	tokenRequest, err := http.NewRequestWithContext(call.Context, http.MethodPost, operation.client.baseURL+tokenPath, strings.NewReader("{}"))

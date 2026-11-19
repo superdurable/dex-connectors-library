@@ -1,0 +1,560 @@
+{
+  "connector": "quanshi",
+  "scenarios": [
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"token\":\"REDACTED_ACCESS_TOKEN\",\"userId\":88408809}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"status\":0,\"result\":{\"room\":[{\"roomId\":10935,\"roomName\":\"Example Room\",\"roomCapacity\":20,\"roomStatus\":1}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/confopenapi/room/list",
+          "requestBody": {
+            "userId": 88408809
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "rooms": [
+            {
+              "capacity": 20,
+              "id": 10935,
+              "name": "Example Room",
+              "status": 1
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-listed",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"token\":\"REDACTED_ACCESS_TOKEN\",\"userId\":88408809}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"status\":0,\"result\":{\"room\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/confopenapi/room/list",
+          "requestBody": {
+            "userId": 88408809
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "rooms": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-empty",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "body": "{\"code\":9004}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "rooms": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-providerRejected",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rooms": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-invalidResponse",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "rooms": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-defect",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-retry-429",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-retry-500",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-retry-transport",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"token\":\"REDACTED_ACCESS_TOKEN\",\"userId\":88408809}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/confopenapi/room/list",
+          "requestBody": {
+            "userId": 88408809
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "rooms": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-room-forbidden",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    },
+    {
+      "callId": "54d84267-9104-5a0a-a267-67a5e814779f",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"token\":\"REDACTED_ACCESS_TOKEN\",\"userId\":88408809}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/eventopenapi/token/v2/create",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "REDACTED_APP_ID"
+            ],
+            "Checksum": [
+              "a8611b0dab5d5b0118df7207489e78842c4c6f17"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1795089600000"
+            ],
+            "Nonce": [
+              "960bff7079d73df388ce4467a5069e0b"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"status\":0,\"result\":{\"room\":[{\"roomId\":1,\"roomName\":\"Room\",\"roomCapacity\":20}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/confopenapi/room/list",
+          "requestBody": {
+            "userId": 88408809
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "REDACTED_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rooms": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {},
+      "name": "listRooms-room-invalid",
+      "operation": "listRooms",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_QUANSHI"
+    }
+  ],
+  "schemaVersion": 1
+}
