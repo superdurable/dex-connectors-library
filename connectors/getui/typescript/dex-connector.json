@@ -1,0 +1,60 @@
+{
+  "connectorId": "getui",
+  "releaseTag": "connectors/getui/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-getui",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetDailyPushReportStep",
+      "kind": "query",
+      "operationId": "getDailyPushReport",
+      "inputType": "GetDailyPushReportInput",
+      "description": "Read one app's prior-day aggregate push request and delivery counts.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetDailyPushReportInput selects a historical date in YYYY-MM-DD format.",
+        "properties": {
+          "date": {
+            "description": "Date is a prior calendar date in YYYY-MM-DD format.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

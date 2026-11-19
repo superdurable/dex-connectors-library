@@ -7,3 +7,5 @@ The connector exchanges the enterprise app's AppId, APPSecret, and permanent aut
 Set up an enterprise app in [FXiaoke](https://www.fxiaoke.com/) under **管理后台 > 应用列表 > 新建企业自建应用**. Enable **开发模式**, copy the AppId, APPSecret, and 永久授权码, restrict **CRM接口查询权限设置**, and add the Dex Worker's outbound IP to **白名单ip**. Select a service employee in **CRM > 人员** and copy its **账号信息 > 员工ID**. Choose the [OpenAPI host](https://developer.fxiaoke.com/openapi_v2/start/guide/cloud.html) matching your login cloud. The [Go example](go/examples/list-object-metadata/README.md) and [Python example](python/examples/list_object_metadata/README.md) uses a static `fxiaoke` connection.
 
 Real FXiaoke authorization and Dex Web form interaction remain unverified; provider tests use a local fake.
+
+The [TypeScript package](typescript/) exposes `listObjectMetadata`, replays all Go-recorded provider scenarios, and includes a runnable real Dex Worker/Client example.

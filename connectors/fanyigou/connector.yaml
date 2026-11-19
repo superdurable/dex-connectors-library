@@ -10,6 +10,11 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-fanyigou"
+      operations: [getAccountBalance]
+      triggers: []
   provider: fanyigou
   codegen:
     go:

@@ -5,3 +5,5 @@
 At [Fanyigou Open Platform](https://open.fanyigou.com/), complete developer registration and create an application. Copy its appid from Console > Applications and privatekey from profile avatar > Overview > Developer Information > Key into a Dex Web Connection named `fanyigou`. Both are secret fields. The connector uses the documented Bearer privatekey method and generates a random nonce for each form request.
 
 The official [account API and authentication guide](https://open.fanyigou.com/filecore.html) defines the endpoint, response, and provider codes. The checked-in [Go Flow](go/examples/get-account-balance/) and [Python Flow](python/examples/get_account_balance/) use real Dex Workers with mock provider responses. Live Fanyigou authorization and balance remain unverified.
+
+The [TypeScript package](typescript/) exposes `getAccountBalance` and includes a runnable real Dex Worker/Client example and replay of all Go-recorded provider scenarios.

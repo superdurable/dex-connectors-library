@@ -10,6 +10,11 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listObjectMetadata], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-fxiaoke"
+      operations: [listObjectMetadata]
+      triggers: []
   provider: fxiaoke
   codegen:
     go:

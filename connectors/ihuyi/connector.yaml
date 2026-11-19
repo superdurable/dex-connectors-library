@@ -10,6 +10,11 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-ihuyi"
+      operations: [lookupIPLocation]
+      triggers: []
   provider: ihuyi
   codegen:
     go:

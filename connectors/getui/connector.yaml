@@ -10,6 +10,11 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [getDailyPushReport], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-getui"
+      operations: [getDailyPushReport]
+      triggers: []
   provider: getui
   codegen:
     go:
