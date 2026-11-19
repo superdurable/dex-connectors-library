@@ -1,0 +1,243 @@
+{
+  "connector": "ip138",
+  "scenarios": [
+    {
+      "callId": "c40b27b1-458c-595a-83f8-0b5db23b9012",
+      "exchanges": [
+        {
+          "body": "{\"ret\":\"ok\",\"data\":{\"reqs\":10,\"hour\":3000,\"package\":19767}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/status/",
+          "query": {
+            "token": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "currentHourRequests": 10,
+          "hourlyAllowance": 3000,
+          "packageQuota": 19767
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getTokenUsage-found",
+      "operation": "getTokenUsage"
+    },
+    {
+      "callId": "3f3cd35c-b3df-5d7b-b0c1-fff89b42ca20",
+      "exchanges": [
+        {
+          "body": "{\"ret\":\"err\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/status/",
+          "query": {
+            "token": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currentHourRequests": 0,
+          "hourlyAllowance": 0,
+          "packageQuota": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getTokenUsage-providerRejected",
+      "operation": "getTokenUsage"
+    },
+    {
+      "callId": "fb6e6852-f2f4-5088-b4b1-a12848c1c559",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/status/",
+          "query": {
+            "token": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currentHourRequests": 0,
+          "hourlyAllowance": 0,
+          "packageQuota": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getTokenUsage-invalidResponse",
+      "operation": "getTokenUsage"
+    },
+    {
+      "callId": "8a36654b-65e9-52d4-92e9-12dac0adea7f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "currentHourRequests": 0,
+          "hourlyAllowance": 0,
+          "packageQuota": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getTokenUsage-defect",
+      "operation": "getTokenUsage"
+    },
+    {
+      "callId": "d568d0bb-951e-5214-b89b-9880ab233d1f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/status/",
+          "query": {
+            "token": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getTokenUsage-rateLimit",
+      "operation": "getTokenUsage"
+    },
+    {
+      "callId": "983a54c3-3560-5782-ac64-09280442b8fe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/status/",
+          "query": {
+            "token": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getTokenUsage-serverError",
+      "operation": "getTokenUsage"
+    },
+    {
+      "callId": "5acfba9f-4bec-50f3-8ce7-d1e69330a247",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/status/",
+          "query": {
+            "token": [
+              "test-secret"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getTokenUsage-transport",
+      "operation": "getTokenUsage"
+    }
+  ],
+  "schemaVersion": 1
+}
