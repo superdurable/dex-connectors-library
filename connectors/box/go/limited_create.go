@@ -243,7 +243,7 @@ func (request boxLimitedCreate) invoke() sdkgo.MutationAttempt[CreatedBoxItem] {
 		return request.unknownOutcome(canResendUnknown, 0)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		if !hasPossibleEarlierSend && isDefiniteBoxRefusalStatus(response.status) && hasBoxRefusalCode(response.body) {
+		if !hasPossibleEarlierSend && response.err == nil && isDefiniteBoxRefusalStatus(response.status) && hasBoxRefusalCode(response.body) {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return request.retry(sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
 			}
@@ -279,8 +279,12 @@ func isDefiniteBoxRefusalStatus(status int) bool {
 }
 
 func hasBoxRefusalCode(body []byte) bool {
-	var response struct{ Code string `json:"code"` }
-	return json.Unmarshal(body, &response) == nil && response.Code != ""
+	var response struct {
+		Code string `json:"code"`
+		ID   string `json:"id"`
+		Type string `json:"type"`
+	}
+	return json.Unmarshal(body, &response) == nil && response.Code != "" && response.ID == "" && response.Type != "file" && response.Type != "folder"
 }
 
 func (request boxLimitedCreate) decodeResponse(body []byte) (CreatedBoxItem, error) {

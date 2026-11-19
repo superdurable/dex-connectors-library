@@ -4369,6 +4369,7 @@ const SendBroadcastBranchNotFound sdkgo.BranchID = "notFound"
 const SendBroadcastBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const SendBroadcastBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const SendBroadcastBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SendBroadcastBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 
 var SendBroadcastDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendBroadcast"},
@@ -4378,13 +4379,15 @@ var SendBroadcastDefinition = sdkgo.MutationDefinition{
 		{ID: SendBroadcastBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
 		{ID: SendBroadcastBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
 		{ID: SendBroadcastBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+		{ID: SendBroadcastBranchUncertain, Description: "The send may have reached Resend and cannot be attributed to this request.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendBroadcastResult = sdkgo.MutationResult[BroadcastReference]
@@ -4403,9 +4406,10 @@ type SendBroadcastStepConfig[IN any] struct {
 	ProviderRejected                  sdkgo.Target[SendBroadcastResult]                        `connector:"branch=providerRejected,optional"`
 	InvalidResponse                   sdkgo.Target[SendBroadcastResult]                        `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[SendBroadcastResult]                        `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SendBroadcastResult]                        `connector:"branch=uncertain,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[BroadcastReference]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
-	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -4421,7 +4425,7 @@ func NewSendBroadcastStep[IN any](config SendBroadcastStepConfig[IN]) sdkgo.Muta
 		Operation: config.Connection.operations.SendBroadcast(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendBroadcastResult] {
-			branches := make([]sdkgo.BranchTarget[SendBroadcastResult], 0, 5)
+			branches := make([]sdkgo.BranchTarget[SendBroadcastResult], 0, 6)
 			if config.Sent.HasStep() {
 				branches = append(branches, config.Sent.BranchTarget(SendBroadcastBranchSent))
 			}
@@ -4437,10 +4441,14 @@ func NewSendBroadcastStep[IN any](config SendBroadcastStepConfig[IN]) sdkgo.Muta
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SendBroadcastBranchDefect))
 			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendBroadcastBranchUncertain))
+			}
 			return branches
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

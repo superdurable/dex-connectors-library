@@ -478,7 +478,24 @@ func (operation SendBroadcastOperation) Invoke(call sdkgo.Call, input SendBroadc
 		}
 		body, _ = json.Marshal(map[string]string{"scheduled_at": input.ScheduledAt})
 	}
-	return runMutation(operation.client, call, "sendBroadcast", http.MethodPost, "/broadcasts/"+url.PathEscape(input.ID)+"/send", body, "", "", SendBroadcastBranchSent, SendBroadcastBranchNotFound, SendBroadcastBranchProviderRejected, SendBroadcastBranchInvalidResponse, SendBroadcastBranchDefect, decodeBroadcastReference)
+	request := resendLimitedCreate[BroadcastReference]{client: operation.client, call: call, operation: "sendBroadcast", path: "/broadcasts/" + url.PathEscape(input.ID) + "/send", body: body, timeout: SendBroadcastDefinition.StepDefaults.ExecuteMethodTimeout, created: SendBroadcastBranchSent, notFound: SendBroadcastBranchNotFound, rejected: SendBroadcastBranchProviderRejected, defect: SendBroadcastBranchDefect, decode: func(response []byte) (BroadcastReference, error) {
+		broadcast, err := decodeBroadcastReference(response)
+		if err == nil && broadcast.ID != input.ID {
+			return BroadcastReference{}, fmt.Errorf("broadcast ID differs from request")
+		}
+		return broadcast, err
+	}, readBack: func(call sdkgo.Call) (BroadcastReference, readBackState) {
+		response, state := operation.client.readBackResource(call, "/broadcasts/"+url.PathEscape(input.ID))
+		if state != readBackMatched {
+			return BroadcastReference{}, state
+		}
+		broadcast, err := decodeBroadcast(response)
+		if err != nil || broadcast.ID != input.ID {
+			return BroadcastReference{}, readBackRetry
+		}
+		return BroadcastReference{ID: broadcast.ID}, readBackMatched
+	}}
+	return request.invoke()
 }
 
 // Invoke cancels a scheduled or queued broadcast.

@@ -3340,6 +3340,11 @@ func SendBroadcastDefect(value resend.BroadcastReference, failure *sdkgo.Failure
 	return connectormock.Branch(resend.SendBroadcastBranchDefect, value, failure)
 }
 
+// SendBroadcastUncertain returns an uncertain sendBroadcast outcome.
+func SendBroadcastUncertain(value resend.BroadcastReference, failure sdkgo.Failure) connectormock.Case[resend.BroadcastReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
 // SendBroadcastRetry asks Dex to retry the sendBroadcast Step, after the delay when it is positive.
 func SendBroadcastRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.BroadcastReference] {
 	return connectormock.Retry[resend.BroadcastReference](failure, after)

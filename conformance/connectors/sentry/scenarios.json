@@ -883,7 +883,7 @@
       "callId": "d8f59549-ba9a-5ded-a22b-c1afc9d051dd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"detail\":\"Issue not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -935,7 +935,7 @@
       "callId": "d8f59549-ba9a-5ded-a22b-c1afc9d051dd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"detail\":\"Invalid status\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2952,16 +2952,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "shortId": "",
-          "status": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3004,16 +2998,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "",
-          "shortId": "",
-          "status": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3300,13 +3288,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3342,13 +3327,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3617,15 +3599,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "name": "",
-          "slug": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3668,15 +3645,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "",
-          "name": "",
-          "slug": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3959,13 +3931,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "slug": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4001,13 +3970,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "slug": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -9839,15 +9805,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "name": "",
-          "slug": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -9891,15 +9852,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "",
-          "name": "",
-          "slug": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10220,16 +10176,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "shortId": "",
-          "status": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10282,16 +10232,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "",
-          "shortId": "",
-          "status": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10661,15 +10605,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "name": "",
-          "slug": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10724,15 +10663,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "",
-          "name": "",
-          "slug": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11625,6 +11559,190 @@
       },
       "name": "getProjectEvent-transport",
       "operation": "getProjectEvent"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "id": "42",
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-empty-404-retries",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\",\"id\":\"42\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "id": "42",
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-contradictory-403-retries",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "id": "42",
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-409-retries",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "id": "42",
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-malformed-200-retries",
+      "operation": "updateIssue"
     }
   ],
   "schemaVersion": 1

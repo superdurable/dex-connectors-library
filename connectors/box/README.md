@@ -9,6 +9,10 @@ delete operations accept only decimal IDs, delete a file or empty folder,
 and return the accepted ID on Box HTTP 204. Box's enterprise settings decide
 whether deletion moves an item to trash or removes it permanently. Python and
 TypeScript remain on their declared `downloadFile` and `uploadFile` capabilities.
+For these safe deletions and the absolute updates below, a listed refusal
+status selects `notFound` or `providerRejected` only when Box returns a complete
+error body with a refusal code. Empty error bodies, HTTP 409 and other unlisted
+statuses, and malformed or contradictory success bodies return Retry.
 
 Go `updateFile` and `updateFolder` use absolute PUT fields and the `safe`
 repeat tier. Each can rename an item, move it to a parent folder, or create

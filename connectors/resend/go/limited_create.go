@@ -121,6 +121,7 @@ type resendLimitedCreate[T any] struct {
 	body      []byte
 	timeout   time.Duration
 	created   sdkgo.BranchID
+	notFound  sdkgo.BranchID
 	rejected  sdkgo.BranchID
 	defect    sdkgo.BranchID
 	decode    func([]byte) (T, error)
@@ -196,6 +197,9 @@ func (request resendLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return request.retry(sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
 			}
+			if dispatch.status == http.StatusNotFound && request.notFound != "" {
+				return mutationFailure[T](request.operation, request.notFound, sdkgo.FailureNotFound, "provider resource was not found")
+			}
 			return mutationFailure[T](request.operation, request.rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(dispatch.status))
 		}
 		return request.unknownOutcome(canResendUnknown, 0)
@@ -219,8 +223,11 @@ func (request resendLimitedCreate[T]) unknownOutcome(canResend bool, retryAfter 
 }
 
 func hasResendRefusalName(body []byte) bool {
-	var response struct{ Name string `json:"name"` }
-	return json.Unmarshal(body, &response) == nil && response.Name != ""
+	var response struct {
+		Name string `json:"name"`
+		ID   string `json:"id"`
+	}
+	return json.Unmarshal(body, &response) == nil && response.Name != "" && response.ID == ""
 }
 
 func (request resendLimitedCreate[T]) retry(kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[T] {

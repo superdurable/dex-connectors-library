@@ -922,7 +922,8 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
     - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
-    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    - {id: uncertain, goName: Uncertain, description: The send may have reached Resend and cannot be attributed to this request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
     mocks:
     - {name: sendBroadcastDefault, branch: sent, default: true, description: Resend sent the broadcast., output: {"id":"broadcast-1"}}
   - name: cancelBroadcast

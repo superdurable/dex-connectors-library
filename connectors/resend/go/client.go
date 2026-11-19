@@ -490,12 +490,14 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusConflict:
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider answered HTTP 409, so the outcome is unknown"), 0)
-	case response.StatusCode == http.StatusNotFound && notFound != "":
-		return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
-	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted && isDefiniteRefusalStatus(response.StatusCode):
-		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
 	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted:
-		// The Idempotency-Key makes a resend replay the first send, so an unknown answer, including 409, retries.
+		content, readErr := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if readErr == nil && isDefiniteRefusalStatus(response.StatusCode) && hasResendRefusalName(content) {
+			if response.StatusCode == http.StatusNotFound && notFound != "" {
+				return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
+			}
+			return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
+		}
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider answered HTTP "+strconv.Itoa(response.StatusCode)+", so the outcome is unknown"), 0)
 	}
 	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)

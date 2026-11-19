@@ -142,7 +142,11 @@ sends and paginated read-back by draft name, segment, sender, subject, topic,
 and message body. `duplicateBroadcast` also uses `limited`: Resend does not
 expose a correlation field for copies, so an unknown copy cannot be confirmed
 by read-back, and the cap selects optional `uncertain`. Reads, absolute draft
-updates, draft deletion, send by existing ID, and cancellation use `safe`.
+updates, draft deletion, and cancellation use `safe`. `sendBroadcast` uses
+`limited` with three possible sends because the send endpoint has no documented
+idempotency key. It reads the broadcast before resending but cannot attribute
+its status to this request; an unconfirmed send selects optional `uncertain` at
+the cap.
 Scheduled send input is RFC 3339; blank sends immediately. A canceled scheduled
 broadcast returns to draft, while a canceled queued broadcast stops remaining
 recipients. Recipient pages require an event `type`; `bounceType` applies
@@ -201,7 +205,7 @@ for settings and DNS setup. The [`verify-domain` Flow](go/examples/verify-domain
 exercises the generated factory through real Dex with a provider mock. Domain
 claim is dashboard-only; Resend has not published a claim API.
 
-`sendEmail` sends the stable Dex call idempotency key in `Idempotency-Key`. Resend documents 24-hour key retention; the connector's default one-hour retry budget stays within that window. Keep any per-Step retry override shorter than 24 hours. The manifest therefore declares `sendEmail` `repeatOnUnknown: safe`. Every 409 retries with the same key, including `invalid_idempotent_request`, because the conflict cannot prove that no email was sent; only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 selects `providerRejected`, and any other status or a malformed or oversized answer retries.
+`sendEmail` sends the stable Dex call idempotency key in `Idempotency-Key`. Resend documents 24-hour key retention; the connector's default one-hour retry budget stays within that window. Keep any per-Step retry override shorter than 24 hours. The manifest therefore declares `sendEmail` `repeatOnUnknown: safe`. Every 409 retries with the same key, including `invalid_idempotent_request`, because the conflict cannot prove that no email was sent; only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a complete provider error body selects `providerRejected`, and any other status or a malformed or oversized answer retries.
 
 `sendBatchEmails` sends 1–100 complete email messages in one POST with the same
 provider idempotency protection as `sendEmail`. Each message needs a verified
@@ -230,10 +234,10 @@ defaults; override the base URL only for a compatible gateway or test server.
 | Condition | Result |
 | --- | --- |
 | Successful documented response | operation's happy branch |
-| Known missing resource on a detail operation | `notFound` |
-| Other definite 4xx rejection; for `sendEmail` only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` |
+| Query HTTP 404, or Mutation HTTP 404 with a complete provider error body | `notFound` |
+| Mutation HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a complete provider error body | `providerRejected` |
 | Malformed or oversized successful JSON from `getEmail` | `invalidResponse` |
-| Any other `sendEmail` status, including every 409, or a malformed or oversized `sendEmail` answer | Retry with the same Idempotency-Key |
+| Any safe Mutation's HTTP 409, unlisted status, empty or contradictory refusal body, or malformed or oversized success answer | Retry within the Step policy |
 | Invalid local input or credentials, malformed stored credential material, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
 | HTTP 408, 429, 5xx, transport interruption, or any other credential lookup failure, such as an unavailable broker or a connection that is not configured yet | Retry until the default budget ends, then Flow failure |
 

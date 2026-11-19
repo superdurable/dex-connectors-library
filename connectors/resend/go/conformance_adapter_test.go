@@ -53,7 +53,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listBroadcasts":               newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListBroadcasts(), connection),
 		"updateBroadcast":              newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateBroadcast(), connection, scenario.CallID),
 		"deleteBroadcast":              newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteBroadcast(), connection, scenario.CallID),
-		"sendBroadcast":                newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.SendBroadcast(), connection, scenario.CallID),
+		"sendBroadcast":                newConformanceMutationInvocation(t, scenario.Input, createContext, client.SendBroadcast(), connection, scenario.CallID),
 		"cancelBroadcast":              newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.CancelBroadcast(), connection, scenario.CallID),
 		"duplicateBroadcast":           newConformanceMutationInvocation(t, scenario.Input, createContext, client.DuplicateBroadcast(), connection, scenario.CallID),
 		"listBroadcastRecipients":      newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListBroadcastRecipients(), connection),

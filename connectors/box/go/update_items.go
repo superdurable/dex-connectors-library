@@ -147,7 +147,7 @@ func runBoxUpdate(client *Client, call sdkgo.Call, operation, itemType, itemID, 
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
 	response := client.sendMetadataRequest(request, accessToken)
 	if errors.Is(response.err, errCredential) {
-		return boxUpdateFailure(operation, defect, sdkgo.FailureAuthentication, "Box credentials are invalid")
+		return sdkgo.NewMutationRetry[UpdatedBoxItem](queryFailure(operation, sdkgo.FailureAuthentication, "Box response contains credential material"), 0)
 	}
 	if errors.Is(response.err, errRequest) || errors.Is(response.err, errRefresh) {
 		return sdkgo.NewMutationRetry[UpdatedBoxItem](queryFailure(operation, sdkgo.FailureAvailability, "Box provider request failed"), 0)
@@ -159,14 +159,17 @@ func runBoxUpdate(client *Client, call sdkgo.Call, operation, itemType, itemID, 
 		}
 		return sdkgo.NewMutationRetry[UpdatedBoxItem](queryFailure(operation, kind, "Box provider is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && response.err == nil && hasBoxRefusalCode(response.body) {
 		return boxUpdateFailure(operation, notFound, sdkgo.FailureNotFound, "Box item was not found")
 	}
 	if response.status != http.StatusOK {
-		return boxUpdateFailure(operation, rejected, sdkgo.FailureProviderRejection, "Box rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteBoxRefusalStatus(response.status) && response.err == nil && hasBoxRefusalCode(response.body) {
+			return boxUpdateFailure(operation, rejected, sdkgo.FailureProviderRejection, "Box rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[UpdatedBoxItem](queryFailure(operation, sdkgo.FailureAvailability, "Box update outcome is unknown"), 0)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return boxUpdateFailure(operation, invalid, sdkgo.FailureResponseTooLarge, "Box response exceeds the configured limit")
+		return sdkgo.NewMutationRetry[UpdatedBoxItem](queryFailure(operation, sdkgo.FailureResponseTooLarge, "Box response exceeds the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[UpdatedBoxItem](queryFailure(operation, sdkgo.FailureTransport, "Box response was interrupted"), 0)
@@ -184,7 +187,7 @@ func runBoxUpdate(client *Client, call sdkgo.Call, operation, itemType, itemID, 
 		} `json:"shared_link"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.ID != itemID || wire.Type != itemType || wire.Name == "" || (name != "" && wire.Name != name) || (parentID != "" && wire.Parent.ID != parentID) || (sharedLinkAccess != "" && (wire.SharedLink.URL == "" || wire.SharedLink.Access != sharedLinkAccess)) {
-		return boxUpdateFailure(operation, invalid, sdkgo.FailureProtocol, "Box update response is incomplete or malformed")
+		return sdkgo.NewMutationRetry[UpdatedBoxItem](queryFailure(operation, sdkgo.FailureProtocol, "Box update response is incomplete or malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, UpdatedBoxItem{ID: wire.ID, Type: wire.Type, Name: wire.Name, ParentID: wire.Parent.ID}, nil, sdkgo.Receipt{})
 }

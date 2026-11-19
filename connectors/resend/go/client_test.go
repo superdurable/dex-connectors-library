@@ -49,6 +49,8 @@ func TestSendEmailHTTPAndFailure(t *testing.T) {
 		require.JSONEq(t, `{"from":"Acme <hello@example.test>","to":["reader@example.test"],"subject":"Welcome","html":"<p>Hello</p>"}`, string(requestBody))
 		if reject {
 			writer.WriteHeader(400)
+			_, err = io.WriteString(writer, `{"name":"validation_error"}`)
+			require.NoError(t, err)
 			return
 		}
 		_, err = io.WriteString(writer, `{"id":"email-1"}`)

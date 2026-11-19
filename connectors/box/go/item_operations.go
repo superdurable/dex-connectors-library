@@ -325,6 +325,9 @@ func runBoxItemQuery[T any](client *Client, call sdkgo.Call, operation, path str
 func runBoxDelete(client *Client, call sdkgo.Call, operation, path, itemID string, success, notFound, rejected, invalid, defect sdkgo.BranchID) sdkgo.MutationAttempt[DeletedBoxItem] {
 	response := client.requestBoxItem(call, http.MethodDelete, path)
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return sdkgo.NewMutationRetry[DeletedBoxItem](queryFailure(operation, sdkgo.FailureAuthentication, "Box response contains credential material"), 0)
+		}
 		return boxMutationFailure(operation, defect, sdkgo.FailureAuthentication, "Box credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRefresh) || errors.Is(response.err, errRequest) {
@@ -337,14 +340,17 @@ func runBoxDelete(client *Client, call sdkgo.Call, operation, path, itemID strin
 		}
 		return sdkgo.NewMutationRetry[DeletedBoxItem](queryFailure(operation, kind, "Box provider is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if isDefiniteBoxRefusalStatus(response.status) && response.err == nil && hasBoxRefusalCode(response.body) && response.status == http.StatusNotFound {
 		return boxMutationFailure(operation, notFound, sdkgo.FailureNotFound, "Box item was not found")
 	}
 	if response.status != http.StatusNoContent {
-		return boxMutationFailure(operation, rejected, sdkgo.FailureProviderRejection, "Box rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteBoxRefusalStatus(response.status) && response.err == nil && hasBoxRefusalCode(response.body) {
+			return boxMutationFailure(operation, rejected, sdkgo.FailureProviderRejection, "Box rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[DeletedBoxItem](queryFailure(operation, sdkgo.FailureAvailability, "Box deletion outcome is unknown"), 0)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) || len(response.body) != 0 {
-		return boxMutationFailure(operation, invalid, sdkgo.FailureProtocol, "Box returned unexpected deletion content")
+		return sdkgo.NewMutationRetry[DeletedBoxItem](queryFailure(operation, sdkgo.FailureProtocol, "Box returned unexpected deletion content"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[DeletedBoxItem](queryFailure(operation, sdkgo.FailureTransport, "Box response was interrupted"), 0)

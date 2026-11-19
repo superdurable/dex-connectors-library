@@ -201,8 +201,11 @@ func (request sentryLimitedCreate[T]) unknownOutcome(canResend bool, retryAfter 
 }
 
 func hasSentryRefusalDetail(body []byte) bool {
-	var response struct{ Detail string `json:"detail"` }
-	return json.Unmarshal(body, &response) == nil && response.Detail != ""
+	var response struct {
+		Detail string `json:"detail"`
+		ID     string `json:"id"`
+	}
+	return json.Unmarshal(body, &response) == nil && response.Detail != "" && response.ID == ""
 }
 
 func (request sentryLimitedCreate[T]) retry(kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[T] {

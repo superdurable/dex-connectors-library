@@ -63,7 +63,7 @@
       "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_api_key\"}",
           "derivedKey": "9c1ffc54-efb6-5a25-b326-2433e539f842",
           "headers": {},
           "keyMode": "derived",
@@ -2308,13 +2308,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2360,13 +2357,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2640,14 +2634,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "contact": "",
-          "deleted": false
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2682,14 +2672,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "contact": "",
-          "deleted": false
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2916,14 +2902,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2958,14 +2940,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3204,13 +3182,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3252,13 +3227,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3513,13 +3485,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3554,13 +3523,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5327,13 +5293,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5387,13 +5350,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5728,13 +5688,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5769,13 +5726,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6090,13 +6044,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "data": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7304,14 +7255,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7346,14 +7293,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8320,13 +8263,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8372,13 +8312,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -12294,14 +12231,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -12336,14 +12269,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13244,13 +13173,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13292,13 +13218,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13580,14 +13503,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "contact_id": "",
-          "segment_id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13623,14 +13542,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "contact_id": "",
-          "segment_id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13891,15 +13806,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "contact_id": "",
-          "deleted": false,
-          "segment_id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13935,15 +13845,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "contact_id": "",
-          "deleted": false,
-          "segment_id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -14942,14 +14847,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "contact_id": "",
-          "topics": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -15001,14 +14902,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "contact_id": "",
-          "topics": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -16672,14 +16569,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -16714,14 +16607,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -17662,13 +17551,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -17710,13 +17596,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -20306,13 +20189,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -20374,13 +20254,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -20761,14 +20638,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -20803,14 +20676,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -21029,6 +20898,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "068218df-d54e-5a99-9757-a341df456da3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "id": "broadcast-1"
         },
@@ -21049,7 +20924,7 @@
       "callId": "068218df-d54e-5a99-9757-a341df456da3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"not_found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -21077,6 +20952,11 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "068218df-d54e-5a99-9757-a341df456da3",
+          "state": "canResend"
+        },
         "output": {
           "id": ""
         },
@@ -21097,7 +20977,7 @@
       "callId": "068218df-d54e-5a99-9757-a341df456da3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"forbidden\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -21125,6 +21005,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "068218df-d54e-5a99-9757-a341df456da3",
+          "state": "canResend"
+        },
         "output": {
           "id": ""
         },
@@ -21173,6 +21058,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "068218df-d54e-5a99-9757-a341df456da3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "id": "broadcast-1"
         },
@@ -21243,6 +21134,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "068218df-d54e-5a99-9757-a341df456da3",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -21288,6 +21184,12 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "068218df-d54e-5a99-9757-a341df456da3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -21331,6 +21233,12 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "068218df-d54e-5a99-9757-a341df456da3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -21409,13 +21317,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -21450,13 +21355,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -24790,13 +24692,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -24868,13 +24767,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -25286,14 +25182,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -25328,14 +25220,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -25583,13 +25471,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -25624,13 +25509,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -28349,13 +28231,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "data": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -28659,14 +28538,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -28701,14 +28576,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -31299,13 +31170,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -31357,13 +31225,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -31685,14 +31550,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -31727,14 +31588,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -33857,13 +33714,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -33911,13 +33765,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -34225,14 +34076,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -34267,14 +34114,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -37789,13 +37632,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -37885,13 +37725,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -38409,14 +38246,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -38451,14 +38284,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -38707,14 +38536,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": "",
-          "status": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -38749,14 +38574,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "",
-          "status": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -40834,13 +40655,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -40884,13 +40702,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -41178,14 +40993,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -41220,14 +41031,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -42049,13 +41856,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -42097,13 +41901,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -43045,13 +42846,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -43096,13 +42894,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -43400,14 +43195,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -43443,14 +43234,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -45508,15 +45295,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "folder": "",
-          "id": "",
-          "read": false
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -45561,15 +45343,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "folder": "",
-          "id": "",
-          "read": false
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -45871,14 +45648,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -45914,14 +45687,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -46206,13 +45975,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "data": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -46259,13 +46025,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "data": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -46605,13 +46368,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "data": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -46658,13 +46418,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "data": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -46979,13 +46736,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "data": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -47022,13 +46776,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "data": []
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -48071,13 +47822,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -48140,13 +47888,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -48582,13 +48327,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -48655,13 +48397,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -49776,13 +49515,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -49851,13 +49587,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -50654,13 +50387,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -50725,13 +50455,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -51129,14 +50856,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -51172,14 +50895,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -51440,13 +51159,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -51483,13 +51199,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -52937,23 +52650,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "domain_id": "",
-          "id": "",
-          "name": "",
-          "record": {
-            "name": "",
-            "ttl": "",
-            "type": "",
-            "value": ""
-          },
-          "region": "",
-          "status": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -52988,23 +52688,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "domain_id": "",
-          "id": "",
-          "name": "",
-          "record": {
-            "name": "",
-            "ttl": "",
-            "type": "",
-            "value": ""
-          },
-          "region": "",
-          "status": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -53208,6 +52895,353 @@
       },
       "name": "verifyDomainClaim-transport",
       "operation": "verifyDomainClaim"
+    },
+    {
+      "attempts": 3,
+      "callId": "068218df-d54e-5a99-9757-a341df456da3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts/broadcast-1/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/broadcasts/broadcast-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "068218df-d54e-5a99-9757-a341df456da3",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "068218df-d54e-5a99-9757-a341df456da3",
+      "input": {
+        "id": "broadcast-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "068218df-d54e-5a99-9757-a341df456da3",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "068218df-d54e-5a99-9757-a341df456da3",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendBroadcast-uncertain-after-cap",
+      "operation": "sendBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "name": "Newsletter"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "id": "broadcast-1",
+        "name": "Newsletter"
+      },
+      "name": "updateBroadcast-empty-404-retries",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"forbidden\",\"id\":\"broadcast-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "name": "Newsletter"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "id": "broadcast-1",
+        "name": "Newsletter"
+      },
+      "name": "updateBroadcast-contradictory-403-retries",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "name": "Newsletter"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "id": "broadcast-1",
+        "name": "Newsletter"
+      },
+      "name": "updateBroadcast-409-retries",
+      "operation": "updateBroadcast"
+    },
+    {
+      "callId": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/broadcasts/broadcast-1",
+          "requestBody": {
+            "name": "Newsletter"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c3e8ccd-692a-5973-b70e-6731b66a9c61",
+      "input": {
+        "id": "broadcast-1",
+        "name": "Newsletter"
+      },
+      "name": "updateBroadcast-malformed-200-retries",
+      "operation": "updateBroadcast"
     }
   ],
   "schemaVersion": 1

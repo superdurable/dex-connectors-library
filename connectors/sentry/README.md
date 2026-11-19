@@ -137,11 +137,11 @@ defaults; override the base URL only for a compatible gateway or test server.
 | Condition | Result |
 | --- | --- |
 | Successful documented response | operation's happy branch |
-| Known missing resource on a detail operation | `notFound` |
-| Other definite 4xx rejection; for `updateIssueStatus` only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` |
+| Query HTTP 404, or Mutation HTTP 404 with a complete error body confirming non-acceptance | `notFound` |
+| Mutation HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a complete error body confirming non-acceptance | `providerRejected` |
 | Malformed or oversized successful JSON from a Query | `invalidResponse` |
 | Invalid local input or credentials, including malformed stored credential material | `defect` |
-| HTTP 408, 429, 5xx, transport interruption; for `updateIssueStatus` (declared `repeatOnUnknown: safe`) also 409, any other status, and a malformed or oversized answer | Retry until the default budget ends, then Flow failure |
+| HTTP 408, 429, 5xx, transport interruption; for safe mutations also 409, unlisted 4xx, an empty or contradictory refusal body, and a malformed or oversized success answer | Retry until the default budget ends, then Flow failure |
 
 Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and

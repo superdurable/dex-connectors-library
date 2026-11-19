@@ -3511,7 +3511,7 @@
       "callId": "eef2e6ec-da70-5d6d-bfe5-bcd6d819b6b2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3552,7 +3552,7 @@
       "callId": "eef2e6ec-da70-5d6d-bfe5-bcd6d819b6b2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"access_denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3613,13 +3613,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3808,7 +3805,7 @@
       "callId": "b2bf0df7-9d44-5d62-9015-78fe03f272cd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3849,7 +3846,7 @@
       "callId": "b2bf0df7-9d44-5d62-9015-78fe03f272cd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"access_denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3910,13 +3907,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4128,7 +4122,7 @@
       "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4191,7 +4185,7 @@
       "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"access_denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4291,15 +4285,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "type": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4579,7 +4568,7 @@
       "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4642,7 +4631,7 @@
       "callId": "74ac6bb0-1144-5e5e-995a-a4f50d1df9d7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"access_denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4742,15 +4731,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "type": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6640,7 +6624,7 @@
       "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6697,7 +6681,7 @@
       "callId": "9ca97dda-afd0-5dbf-8ee4-fe64d211960c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"access_denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6787,15 +6771,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "type": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7047,7 +7026,7 @@
       "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7104,7 +7083,7 @@
       "callId": "973ab5b8-dc81-565f-80d7-5a80bd8720ff",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"access_denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7194,15 +7173,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "type": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8421,6 +8395,182 @@
       ],
       "name": "createFolder-preexisting-name-after-5xx",
       "operation": "createFolder"
+    },
+    {
+      "callId": "eef2e6ec-da70-5d6d-bfe5-bcd6d819b6b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/files/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eef2e6ec-da70-5d6d-bfe5-bcd6d819b6b2",
+      "input": {
+        "fileId": "12345"
+      },
+      "name": "deleteFile-empty-404-retries",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "eef2e6ec-da70-5d6d-bfe5-bcd6d819b6b2",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/files/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eef2e6ec-da70-5d6d-bfe5-bcd6d819b6b2",
+      "input": {
+        "fileId": "12345"
+      },
+      "name": "deleteFile-409-retries",
+      "operation": "deleteFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt"
+      },
+      "name": "updateFile-empty-404-retries",
+      "operation": "updateFile"
+    },
+    {
+      "callId": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,parent,shared_link"
+            ]
+          },
+          "requestBody": {
+            "name": "renamed.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd2e91dc-f810-5eb2-9d66-1e6d885d3f0b",
+      "input": {
+        "fileId": "12345",
+        "name": "renamed.txt"
+      },
+      "name": "updateFile-409-retries",
+      "operation": "updateFile"
     }
   ],
   "schemaVersion": 1
