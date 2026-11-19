@@ -1,0 +1,283 @@
+{
+  "connector": "shoplazza",
+  "scenarios": [
+    {
+      "callId": "c48ff705-4d16-5ef7-b6d7-359d37e81c5c",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"0\",\"message\":\"\",\"data\":{\"id\":42,\"name\":\"Sample Shop\",\"domain\":\"sample.example\",\"currency\":\"USD\",\"email\":\"secret@example.com\",\"address1\":\"secret\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/2027-01/shop",
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "domain",
+              "currency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "test-shoplazza-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "currency": "USD",
+          "domain": "sample.example",
+          "id": 42,
+          "name": "Sample Shop"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShop-success",
+      "operation": "getShop"
+    },
+    {
+      "callId": "4a1132a5-b1ca-591c-9946-3191dbca6631",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/2027-01/shop",
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "domain",
+              "currency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "test-shoplazza-token"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currency": "",
+          "domain": "",
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShop-providerRejected",
+      "operation": "getShop"
+    },
+    {
+      "callId": "75a948c7-7a50-5aac-8f5a-8654f885565d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"0\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/2027-01/shop",
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "domain",
+              "currency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "test-shoplazza-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currency": "",
+          "domain": "",
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShop-invalidResponse",
+      "operation": "getShop"
+    },
+    {
+      "callId": "dd13a4d1-fab9-5d42-88d7-da7041fb9d89",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/2027-01/shop",
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "domain",
+              "currency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "test-shoplazza-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShop-retry429",
+      "operation": "getShop"
+    },
+    {
+      "callId": "9966706f-5933-55ec-b778-71b4d8a5826f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/2027-01/shop",
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "domain",
+              "currency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "test-shoplazza-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShop-retry503",
+      "operation": "getShop"
+    },
+    {
+      "callId": "6f0ac18e-0702-5eef-a71a-8c33c17a902f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/2027-01/shop",
+          "query": {
+            "fields": [
+              "id",
+              "name",
+              "domain",
+              "currency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "test-shoplazza-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShop-transportFailure",
+      "operation": "getShop"
+    },
+    {
+      "callId": "2c1d4aef-30c4-56b2-b96d-27aea7776075",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "currency": "",
+          "domain": "",
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getShop-defect",
+      "operation": "getShop"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -1,0 +1,275 @@
+{
+  "connector": "submail",
+  "scenarios": [
+    {
+      "callId": "f19bc53f-c741-5469-a3bd-fd2a1adfd41c",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"success\",\"balance\":\"9410\",\"transactional_balance\":\"9775\"}",
+          "form": {
+            "appid": [
+              "test-app-id"
+            ],
+            "signature": [
+              "test-app-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/balance/sms.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "generalCredits": "9410",
+          "transactionalCredits": "9775"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSMSBalance-success",
+      "operation": "getSMSBalance"
+    },
+    {
+      "callId": "bbc122b7-b952-5b06-9fe4-23a0e7ef3f63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app-id"
+            ],
+            "signature": [
+              "test-app-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/balance/sms.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "generalCredits": "",
+          "transactionalCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSMSBalance-providerRejected",
+      "operation": "getSMSBalance"
+    },
+    {
+      "callId": "b05bdb4e-12c0-5db4-9b4f-5b744f881111",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"success\"}",
+          "form": {
+            "appid": [
+              "test-app-id"
+            ],
+            "signature": [
+              "test-app-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/balance/sms.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "generalCredits": "",
+          "transactionalCredits": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSMSBalance-invalidResponse",
+      "operation": "getSMSBalance"
+    },
+    {
+      "callId": "e93caf55-b077-505d-96ef-b7db91abc76c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app-id"
+            ],
+            "signature": [
+              "test-app-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/balance/sms.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSMSBalance-retry429",
+      "operation": "getSMSBalance"
+    },
+    {
+      "callId": "faab923c-0456-584b-a960-f90fd55c2b5f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appid": [
+              "test-app-id"
+            ],
+            "signature": [
+              "test-app-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/balance/sms.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSMSBalance-retry503",
+      "operation": "getSMSBalance"
+    },
+    {
+      "callId": "debbf83f-1e52-5f48-a10b-b7d777f5dd42",
+      "exchanges": [
+        {
+          "form": {
+            "appid": [
+              "test-app-id"
+            ],
+            "signature": [
+              "test-app-key"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/balance/sms.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSMSBalance-transportFailure",
+      "operation": "getSMSBalance"
+    },
+    {
+      "callId": "2e724d9a-4953-5d0f-8f55-e1891d5895ad",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "generalCredits": "",
+          "transactionalCredits": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSMSBalance-defect",
+      "operation": "getSMSBalance"
+    }
+  ],
+  "schemaVersion": 1
+}
