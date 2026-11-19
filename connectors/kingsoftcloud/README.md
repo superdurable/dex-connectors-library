@@ -5,3 +5,5 @@ The Go connector reads one page from [IAM ListUsers](https://docs.ksyun.com/docu
 IAM requests use Kingsoft Cloud's documented simplified HMAC-SHA256 signature. The access key ID and secret access key are Dex credentials. The UTC timestamp and signature are generated for each request. The response never contains credentials or personal contact details. [Signing specification](https://docs.ksyun.com/documents/40299) and [public parameters](https://docs.ksyun.com/documents/1406) define the wire contract.
 
 Use the [runnable Dex Flow](go/examples/user-list/README.md) to configure and verify a connection. Live IAM authorization requires customer-owned credentials in Dex Web and has not been exercised by the mock tests.
+
+The [TypeScript package](typescript/README.md) implements `listUsers` and includes a [runnable Dex Flow](typescript/examples/basic/README.md). Local scenarios replay the Go provider contract; live Kingsoft Cloud IAM authorization remains unverified.

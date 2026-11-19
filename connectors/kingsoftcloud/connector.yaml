@@ -10,6 +10,8 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listUsers], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-kingsoftcloud", operations: [listUsers], triggers: []}
+
   provider: kingsoftcloud
   codegen:
     go:
