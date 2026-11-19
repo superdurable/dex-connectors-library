@@ -15,6 +15,7 @@ spec:
       package: dex-connector-esign
       operations: [getSignFlowStatus]
       triggers: []
+    typescript: {version: v0.1.0, package: "@superdurable/connector-esign", operations: [getSignFlowStatus], triggers: []}
   codegen:
     go:
       package: esign

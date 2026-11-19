@@ -1,0 +1,60 @@
+{
+  "connectorId": "esign",
+  "releaseTag": "connectors/esign/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-esign",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetSignFlowStatusStep",
+      "kind": "query",
+      "operationId": "getSignFlowStatus",
+      "inputType": "GetSignFlowStatusInput",
+      "description": "Read one existing signing flow's numeric status.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSignFlowStatusInput identifies an existing signing flow.",
+        "properties": {
+          "signFlowId": {
+            "description": "SignFlowID is the opaque flow ID returned by an existing eSign signing workflow.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signFlowId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
