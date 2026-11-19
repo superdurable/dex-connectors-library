@@ -1,6 +1,6 @@
 {
   "connectorId": "postmark",
-  "releaseTag": "connectors/postmark/go/v0.3.0",
+  "releaseTag": "connectors/postmark/go/v0.4.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-postmark",

@@ -67,7 +67,7 @@ func (operation DeleteMessageOperation) Invoke(call sdkgo.Call, input DeleteMess
 		deleteMessageRequest{QueueURL: queue.url, ReceiptHandle: input.ReceiptHandle})
 	receipt := client.receipt(call, requestID, messageObjectID(queue, input.MessageID))
 	if classified != nil {
-		return mutationAttemptForFailure(*classified, receipt, DeleteMessageBranchReceiptHandleInvalid, DeleteMessageBranchProviderRejected,
+		return mutationAttemptForFailure(call, *classified, receipt, DeleteMessageBranchReceiptHandleInvalid, DeleteMessageBranchProviderRejected,
 			DeleteMessageBranchDefect, deleted)
 	}
 	return sdkgo.NewMutationBranch(DeleteMessageBranchDeleted, deleted, nil, receipt)

@@ -36,12 +36,18 @@ def test_manifest_operations_branches_and_defaults() -> None:
     assert python["version"] == "v" + project["project"]["version"]
     assert python["triggers"] == []
     operations = {operation["name"]: operation for operation in manifest["spec"]["operations"]}
-    assert python["operations"] == list(operations)
-    for definition, kind in (
+    implemented_definitions = (
         (RECEIVE_MESSAGES_DEFINITION, "mutation"),
         (DELETE_MESSAGE_DEFINITION, "mutation"),
         (CHANGE_MESSAGE_VISIBILITY_DEFINITION, "mutation"),
-    ):
+    )
+    implemented_operation_names = {
+        definition.operation.operation_id for definition, _ in implemented_definitions
+    }
+    assert python["operations"] == [
+        operation_name for operation_name in operations if operation_name in implemented_operation_names
+    ]
+    for definition, kind in implemented_definitions:
         operation = operations[definition.operation.operation_id]
         assert operation["kind"] == kind
         assert [

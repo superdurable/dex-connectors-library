@@ -62,7 +62,11 @@ def test_manifest_operation_branches_and_defaults() -> None:
     assert manifest["spec"]["languages"]["python"]["version"] == "v" + project["project"]["version"]
     assert project["project"]["name"] == "dex-connector-google-gemini"
     assert manifest["spec"]["provider"] == "google"
-    (operation,) = manifest["spec"]["operations"]
+    (operation,) = (
+        operation
+        for operation in manifest["spec"]["operations"]
+        if operation["name"] in manifest["spec"]["languages"]["python"]["operations"]
+    )
     assert operation["name"] == GENERATE_CONTENT_DEFINITION.operation.operation_id
     assert [
         (branch["id"], branch["description"], branch.get("optional", False))
@@ -91,7 +95,11 @@ def test_manifest_operation_branches_and_defaults() -> None:
 
 def test_mocks_match_manifest() -> None:
     manifest = yaml.safe_load((CONNECTOR_DIRECTORY / "connector.yaml").read_text())
-    (operation,) = manifest["spec"]["operations"]
+    (operation,) = (
+        operation
+        for operation in manifest["spec"]["operations"]
+        if operation["name"] in manifest["spec"]["languages"]["python"]["operations"]
+    )
     cases = {
         "launchSummary": generate_content_launch_summary(),
         "outputLimitReached": generate_content_output_limit_reached(),

@@ -44,11 +44,15 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListEmployees() sdkgo.Query[ListEmployeesInput, EmployeesPage]
 	GetEmployee() sdkgo.Query[GetEmployeeInput, Employee]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListEmployees() sdkgo.Query[ListEmployeesInput, EmployeesPage] {
+	return operations.client.ListEmployees()
+}
 func (operations clientOperations) GetEmployee() sdkgo.Query[GetEmployeeInput, Employee] {
 	return operations.client.GetEmployee()
 }
@@ -260,6 +264,83 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListEmployeesBranchListed sdkgo.BranchID = "listed"
+const ListEmployeesBranchMissing sdkgo.BranchID = "missing"
+const ListEmployeesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEmployeesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEmployeesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEmployeesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEmployees"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEmployeesBranchListed, Description: "Gusto returned the requested employee page."},
+		{ID: ListEmployeesBranchMissing, Description: "The company is not visible to this connection.", Optional: true},
+		{ID: ListEmployeesBranchProviderRejected, Description: "Gusto conclusively rejected the list request.", Optional: true},
+		{ID: ListEmployeesBranchInvalidResponse, Description: "Gusto returned malformed or oversized employee data.", Optional: true},
+		{ID: ListEmployeesBranchDefect, Description: "Page settings, company UUID, or OAuth credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEmployeesResult = sdkgo.QueryResult[EmployeesPage]
+
+type ListEmployeesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=gusto"`
+	operationID                    struct{}                                         `connector:"operationId=listEmployees"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEmployeesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEmployeesResult]                `connector:"branch=listed"`
+	Missing                        sdkgo.Target[ListEmployeesResult]                `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[ListEmployeesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEmployeesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEmployeesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmployeesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListEmployeesStep[IN any](config ListEmployeesStepConfig[IN]) sdkgo.QueryStep[IN, ListEmployeesInput, EmployeesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("gusto connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEmployeesInput, EmployeesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEmployees(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEmployeesResult] {
+			branches := make([]sdkgo.BranchTarget[ListEmployeesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEmployeesBranchListed))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(ListEmployeesBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEmployeesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEmployeesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEmployeesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetEmployeeBranchFound sdkgo.BranchID = "found"

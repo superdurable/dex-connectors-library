@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: chinaz
+  languages:
+    python: {version: v0.1.0, operations: [getSiteTDK], triggers: []}
   codegen:
     go:
       package: chinaz

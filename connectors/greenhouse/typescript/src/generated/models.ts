@@ -10,9 +10,9 @@ import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk'
 export interface Config {
   /** Harvest v3 API root as an absolute HTTPS URL ending in /v3. Blank uses the displayed endpoint; override only for a trusted local test gateway. */
   baseUrl?: string;
-  /** Maximum duration of one candidate read as a positive Go duration. Blank uses the displayed default; increase only for slow reads. Runtime value in milliseconds. */
+  /** Maximum duration of one candidate request as a positive Go duration. Blank uses the displayed default; increase only for slow reads. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete candidate response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually large responses. */
+  /** Maximum complete candidate response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually large list pages. */
   maxResponseBytes?: number;
 }
 

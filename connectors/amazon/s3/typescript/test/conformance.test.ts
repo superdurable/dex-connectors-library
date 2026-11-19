@@ -2,13 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 import { it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { RetryError, runMutation, SecretString, type Call, type Mutation } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { S3Client } from '../src/client.js';
 import { GetObjectTextInputSchema, HeadObjectInputSchema, ListObjectsInputSchema, PutObjectInputSchema, type PutObjectInput, type StoredObject } from '../src/models.js';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/amazon/s3/scenarios.json', import.meta.url));
+const packageManifest = JSON.parse(readFileSync(new URL('../dex-connector.json', import.meta.url), 'utf8')) as { factories: { operationId?: string }[] };
+const supportedOperations = new Set(packageManifest.factories.map(factory => factory.operationId).filter(Boolean));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/amazon/s3/scenarios.json', import.meta.url))
+  .filter(scenario => supportedOperations.has(scenario.operation));
 const noProgress = { reportProgress: () => {}, writeText: () => {}, hasProgressStream: () => false, hasTextStream: () => false };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeS3));

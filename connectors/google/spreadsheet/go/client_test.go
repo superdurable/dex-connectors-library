@@ -143,6 +143,27 @@ func TestGetValuesRefreshesAndRetriesOnceAfterUnauthorized(t *testing.T) {
 	require.Equal(t, 1, provider.forcedRefreshes)
 }
 
+func TestCreateSpreadsheetDoesNotResendWithinOneFenceAfterUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		require.Equal(t, http.MethodPost, request.Method)
+		require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+		response.WriteHeader(http.StatusUnauthorized)
+		_, _ = response.Write([]byte(`{"error":{"code":401}}`))
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunMutation(newDexContext("create-spreadsheet-single-send"), client.CreateSpreadsheet(), sheetsConnection, spreadsheet.CreateSpreadsheetInput{Title: "Contacts"})
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.CreateSpreadsheetBranchProviderRejected, result.Branch)
+	require.Equal(t, 1, requests)
+	require.Zero(t, provider.forcedRefreshes)
+}
+
 func TestGetValuesDoesNotLoopWhenReplacementCredentialIsUnauthorized(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {

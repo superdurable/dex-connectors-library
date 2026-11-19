@@ -1,6 +1,6 @@
 {
   "connectorId": "adobe-acrobat-sign",
-  "releaseTag": "connectors/adobe/acrobat-sign/go/v0.1.0",
+  "releaseTag": "connectors/adobe/acrobat-sign/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-adobe-acrobat-sign",

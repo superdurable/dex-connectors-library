@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: amazon-dynamodb
   displayName: Amazon DynamoDB
-  description: Read one DynamoDB item with AWS Signature Version 4.
+  description: Read, scan, replace, update, and delete DynamoDB items with AWS Signature Version 4.
   company: Amazon
   categories: [databases-storage]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: amazon-dynamodb
   languages:
@@ -38,12 +38,12 @@ spec:
         goName: Timeout
         type: duration
         default: 15s
-        description: Maximum duration of one GetItem request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+        description: Maximum duration of one DynamoDB API request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
         default: 2097152
-        description: Maximum complete item response in bytes. Blank uses the displayed default; increase only for unusually large items.
+        description: Maximum complete DynamoDB response in bytes. Blank uses the displayed default; increase only for unusually large item pages.
   auth:
     type: apiKey
     connectionKind: amazon-dynamodb-access-key
@@ -65,7 +65,7 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - Open IAM > Users > Create user for Dex. Grant dynamodb:GetItem for the table ARN; do not use the root user. Find the table ARN at https://console.aws.amazon.com/dynamodb > Tables > selected table > Additional info.
+        - Open IAM > Users > Create user for Dex. Grant dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:DeleteItem, and dynamodb:Scan only for the operations used on the table ARN; do not use the root user. Find the table ARN at https://console.aws.amazon.com/dynamodb > Tables > selected table > Additional info.
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
         - Open https://console.aws.amazon.com/dynamodb > Tables, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Use the selected table's primary key attributes in getItem; each key value is a DynamoDB S, N, or B object.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
@@ -91,3 +91,83 @@ spec:
           default: true
           description: One example item exists.
           output: {exists: true, item: {pk: {S: example}}}
+    - name: putItem
+      goName: PutItem
+      inputType: PutItemInput
+      outputType: ItemWriteResult
+      kind: mutation
+      description: Create or completely replace one item by its supplied primary key attributes.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: written, goName: Written, description: DynamoDB accepted the item replacement.}
+        - {id: providerRejected, goName: ProviderRejected, description: DynamoDB conclusively rejected the write or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: DynamoDB returned malformed or oversized write JSON., optional: true}
+        - {id: defect, goName: Defect, description: The table or item is invalid., optional: true}
+      mocks:
+        - name: writtenDefault
+          branch: written
+          default: true
+          description: Example item was replaced.
+          output: {applied: true}
+    - name: updateItem
+      goName: UpdateItem
+      inputType: UpdateItemInput
+      outputType: ItemWriteResult
+      kind: mutation
+      description: Set absolute attribute values on one item without changing its key; create the item if absent.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: DynamoDB accepted the absolute attribute update.}
+        - {id: providerRejected, goName: ProviderRejected, description: DynamoDB conclusively rejected the update or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: DynamoDB returned malformed or oversized update JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The table, key, or attributes are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example item attribute was updated.
+          output: {applied: true}
+    - name: deleteItem
+      goName: DeleteItem
+      inputType: DeleteItemInput
+      outputType: ItemWriteResult
+      kind: mutation
+      description: Delete one item by complete primary key; repeating the deletion has the same final state.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: DynamoDB accepted the deletion.}
+        - {id: providerRejected, goName: ProviderRejected, description: DynamoDB conclusively rejected the deletion or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: DynamoDB returned malformed or oversized deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: The table or key is invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Example item was deleted.
+          output: {applied: true}
+    - name: scanItems
+      goName: ScanItems
+      inputType: ScanItemsInput
+      outputType: ItemPage
+      kind: query
+      description: Scan one bounded page of table items and return the continuation key.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: scanned, goName: Scanned, description: "DynamoDB returned an item page, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: DynamoDB conclusively rejected the scan or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: DynamoDB returned malformed or oversized page JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The table, limit, or continuation key is invalid.", optional: true}
+      mocks:
+        - name: scannedDefault
+          branch: scanned
+          default: true
+          description: One example item is in the page.
+          output: {items: [{pk: {S: example}}], count: 1, lastEvaluatedKey: {}}

@@ -21,6 +21,7 @@ var testConnection = sdkgo.ConnectionRef{Provider: "amazon-dynamodb", Name: "ama
 
 type queryContext struct{ dex.Context }
 
+func (queryContext) Attempt() int32              { return 1 }
 func (queryContext) FlowID() string              { return "dynamodb-provider-test" }
 func (queryContext) StepExecutionID() string     { return "get-item" }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -56,6 +57,7 @@ func withClock(now func() time.Time) Option {
 // Client executes authenticated Google Sheets requests for connector operations.
 type Client struct {
 	endpoint         *url.URL
+	driveBaseURL     string
 	httpClient       *http.Client
 	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
@@ -188,6 +190,10 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if endpoint.Scheme != "https" && endpoint.Hostname() != "localhost" && endpoint.Hostname() != "127.0.0.1" {
 		return nil, fmt.Errorf("Google Sheets endpoint must use HTTPS")
 	}
+	driveBaseURL, err := providerhttp.ValidateBaseURL(config.DriveBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Google Drive API URL: %w", err)
+	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
@@ -211,7 +217,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		return nil, fmt.Errorf("Google Sheets pollPageSize must be from 1 to %d", maxRowAddedPollPageSize)
 	}
 	return &Client{
-		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
+		endpoint: endpoint, driveBaseURL: driveBaseURL, httpClient: dependencies.httpClient, credentials: credentials,
 		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
 		maxResponseBytes: config.MaxResponseBytes, maxRows: int(config.MaxRows),
 		pollInterval: config.PollInterval, pollPageSize: int(config.PollPageSize), logger: dependencies.logger, now: dependencies.now,
@@ -364,6 +370,11 @@ func (client *Client) getValues(ctx context.Context, call sdkgo.Call, credential
 }
 
 func (client *Client) request(ctx context.Context, call sdkgo.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, Credentials, error) {
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
+	return client.requestURL(ctx, call, credential, method, target, query, payload)
+}
+
+func (client *Client) requestURL(ctx context.Context, call sdkgo.Call, credential Credentials, method, target string, query url.Values, payload any) (requestResult, Credentials, error) {
 	var encodedPayload []byte
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
@@ -372,7 +383,6 @@ func (client *Client) request(ctx context.Context, call sdkgo.Call, credential C
 		}
 		encodedPayload = encoded
 	}
-	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
 	for attempt := 0; attempt < 2; attempt++ {
 		var body io.Reader
 		if encodedPayload != nil {
@@ -417,11 +427,15 @@ func (client *Client) request(ctx context.Context, call sdkgo.Call, credential C
 }
 
 func (client *Client) writeRequest(ctx context.Context, call sdkgo.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, error) {
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
+	return client.writeRequestURL(ctx, call, credential, method, target, query, payload)
+}
+
+func (client *Client) writeRequestURL(ctx context.Context, call sdkgo.Call, credential Credentials, method, target string, query url.Values, payload any) (requestResult, error) {
 	encodedPayload, err := json.Marshal(payload)
 	if err != nil {
 		return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider write could not be encoded", undispatched: true}
 	}
-	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
 	observation := &writeDispatchObservation{}
 	requestContext := httptrace.WithClientTrace(ctx, observation.clientTrace())
 	request, err := http.NewRequestWithContext(requestContext, method, target, bytes.NewReader(encodedPayload))

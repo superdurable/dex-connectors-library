@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package insightly exposes typed Insightly metadata Queries to Dex Flows.
+// Package insightly exposes Insightly CRM Queries and Mutations to Dex Flows.
 package insightly
 
 import (

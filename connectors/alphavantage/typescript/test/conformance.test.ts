@@ -7,7 +7,8 @@ import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhtt
 import { Client, type StockInput } from '../src/index.js';
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/alphavantage/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/alphavantage/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getGlobalQuote' || scenario.operation === 'getTimeSeriesDaily');
 const connection = { provider: 'alphavantage', name: 'alphavantage' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAlphaVantage));

@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted heap connection. Script each operation through its accessor.
 type Mock struct {
-	connection        heap.Connection
-	setUserProperties *connectormock.Mutation[heap.SetUserPropertiesInput, heap.UserPropertiesResult]
+	connection           heap.Connection
+	trackEvent           *connectormock.Mutation[heap.TrackEventInput, heap.EventTracked]
+	setAccountProperties *connectormock.Mutation[heap.SetAccountPropertiesInput, heap.AccountPropertiesResult]
+	setUserProperties    *connectormock.Mutation[heap.SetUserPropertiesInput, heap.UserPropertiesResult]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +28,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		setUserProperties: connectormock.NewMutation[heap.SetUserPropertiesInput, heap.UserPropertiesResult](t, heap.SetUserPropertiesDefinition),
+		trackEvent:           connectormock.NewMutation[heap.TrackEventInput, heap.EventTracked](t, heap.TrackEventDefinition),
+		setAccountProperties: connectormock.NewMutation[heap.SetAccountPropertiesInput, heap.AccountPropertiesResult](t, heap.SetAccountPropertiesDefinition),
+		setUserProperties:    connectormock.NewMutation[heap.SetUserPropertiesInput, heap.UserPropertiesResult](t, heap.SetUserPropertiesDefinition),
 	}
+	mock.trackEvent.Default(TrackEventDefault())
+	mock.setAccountProperties.Default(SetAccountPropertiesDefault())
 	mock.setUserProperties.Default(SetUserPropertiesDefault())
 	connection, err := heap.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "heap", Name: connectionName})
 	if err != nil {
@@ -40,6 +46,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() heap.Connection { return mock.connection }
 
+// TrackEvent returns the trackEvent script.
+func (mock *Mock) TrackEvent() *connectormock.Mutation[heap.TrackEventInput, heap.EventTracked] {
+	return mock.trackEvent
+}
+
+// SetAccountProperties returns the setAccountProperties script.
+func (mock *Mock) SetAccountProperties() *connectormock.Mutation[heap.SetAccountPropertiesInput, heap.AccountPropertiesResult] {
+	return mock.setAccountProperties
+}
+
 // SetUserProperties returns the setUserProperties script.
 func (mock *Mock) SetUserProperties() *connectormock.Mutation[heap.SetUserPropertiesInput, heap.UserPropertiesResult] {
 	return mock.setUserProperties
@@ -47,8 +63,84 @@ func (mock *Mock) SetUserProperties() *connectormock.Mutation[heap.SetUserProper
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) TrackEvent() sdkgo.Mutation[heap.TrackEventInput, heap.EventTracked] {
+	return operations.mock.trackEvent
+}
+func (operations mockOperations) SetAccountProperties() sdkgo.Mutation[heap.SetAccountPropertiesInput, heap.AccountPropertiesResult] {
+	return operations.mock.setAccountProperties
+}
 func (operations mockOperations) SetUserProperties() sdkgo.Mutation[heap.SetUserPropertiesInput, heap.UserPropertiesResult] {
 	return operations.mock.setUserProperties
+}
+
+// TrackEventTracked selects the tracked branch: Heap accepted the event.
+func TrackEventTracked(value heap.EventTracked, failure *sdkgo.Failure) connectormock.Case[heap.EventTracked] {
+	return connectormock.Branch(heap.TrackEventBranchTracked, value, failure)
+}
+
+// TrackEventProviderRejected selects the providerRejected branch: Heap conclusively rejected the event.
+func TrackEventProviderRejected(value heap.EventTracked, failure *sdkgo.Failure) connectormock.Case[heap.EventTracked] {
+	return connectormock.Branch(heap.TrackEventBranchProviderRejected, value, failure)
+}
+
+// TrackEventInvalidResponse selects the invalidResponse branch: Heap returned an oversized or unreadable confirmation.
+func TrackEventInvalidResponse(value heap.EventTracked, failure *sdkgo.Failure) connectormock.Case[heap.EventTracked] {
+	return connectormock.Branch(heap.TrackEventBranchInvalidResponse, value, failure)
+}
+
+// TrackEventDefect selects the defect branch: Local event input or app ID is invalid.
+func TrackEventDefect(value heap.EventTracked, failure *sdkgo.Failure) connectormock.Case[heap.EventTracked] {
+	return connectormock.Branch(heap.TrackEventBranchDefect, value, failure)
+}
+
+// TrackEventRetry asks Dex to retry the trackEvent Step, after the delay when it is positive.
+func TrackEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[heap.EventTracked] {
+	return connectormock.Retry[heap.EventTracked](failure, after)
+}
+
+// TrackEventTrackedDefault is the manifest mock trackedDefault: One sample event was tracked.
+func TrackEventTrackedDefault() connectormock.Case[heap.EventTracked] {
+	value := connectormock.MustDecodeOutput[heap.EventTracked](`{"accepted":true}`)
+	return connectormock.Branch(heap.TrackEventBranchTracked, value, nil)
+}
+
+// TrackEventDefault is the manifest default, trackedDefault, which New installs.
+func TrackEventDefault() connectormock.Case[heap.EventTracked] { return TrackEventTrackedDefault() }
+
+// SetAccountPropertiesAccepted selects the accepted branch: Heap accepted the account properties.
+func SetAccountPropertiesAccepted(value heap.AccountPropertiesResult, failure *sdkgo.Failure) connectormock.Case[heap.AccountPropertiesResult] {
+	return connectormock.Branch(heap.SetAccountPropertiesBranchAccepted, value, failure)
+}
+
+// SetAccountPropertiesProviderRejected selects the providerRejected branch: Heap conclusively rejected the account update.
+func SetAccountPropertiesProviderRejected(value heap.AccountPropertiesResult, failure *sdkgo.Failure) connectormock.Case[heap.AccountPropertiesResult] {
+	return connectormock.Branch(heap.SetAccountPropertiesBranchProviderRejected, value, failure)
+}
+
+// SetAccountPropertiesInvalidResponse selects the invalidResponse branch: Heap returned an oversized or unreadable confirmation.
+func SetAccountPropertiesInvalidResponse(value heap.AccountPropertiesResult, failure *sdkgo.Failure) connectormock.Case[heap.AccountPropertiesResult] {
+	return connectormock.Branch(heap.SetAccountPropertiesBranchInvalidResponse, value, failure)
+}
+
+// SetAccountPropertiesDefect selects the defect branch: Local account input or app ID is invalid.
+func SetAccountPropertiesDefect(value heap.AccountPropertiesResult, failure *sdkgo.Failure) connectormock.Case[heap.AccountPropertiesResult] {
+	return connectormock.Branch(heap.SetAccountPropertiesBranchDefect, value, failure)
+}
+
+// SetAccountPropertiesRetry asks Dex to retry the setAccountProperties Step, after the delay when it is positive.
+func SetAccountPropertiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[heap.AccountPropertiesResult] {
+	return connectormock.Retry[heap.AccountPropertiesResult](failure, after)
+}
+
+// SetAccountPropertiesAcceptedDefault is the manifest mock acceptedDefault: One sample account's plan was set.
+func SetAccountPropertiesAcceptedDefault() connectormock.Case[heap.AccountPropertiesResult] {
+	value := connectormock.MustDecodeOutput[heap.AccountPropertiesResult](`{"accepted":true}`)
+	return connectormock.Branch(heap.SetAccountPropertiesBranchAccepted, value, nil)
+}
+
+// SetAccountPropertiesDefault is the manifest default, acceptedDefault, which New installs.
+func SetAccountPropertiesDefault() connectormock.Case[heap.AccountPropertiesResult] {
+	return SetAccountPropertiesAcceptedDefault()
 }
 
 // SetUserPropertiesAccepted selects the accepted branch: Heap accepted the property updates.

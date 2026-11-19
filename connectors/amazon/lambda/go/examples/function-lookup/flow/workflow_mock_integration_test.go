@@ -24,7 +24,8 @@ import (
 func TestFunctionLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := lambdamock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	updateFlow := NewUpdateFunctionDescriptionFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, updateFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestFunctionLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "example-function", output.Name)
 	require.Len(t, mock.GetFunction().Calls(), 1)
+	updateFlowID := "lambda-function-update-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, updateFlow, updateFlowID, lambda.UpdateFunctionDescriptionInput{FunctionName: "example-function", Description: "Example worker"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateResult, err := client.WaitForFlow(ctx, updateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateResult.Status, updateResult.ErrorMessage)
+	var updated lambda.FunctionDetails
+	require.NoError(t, updateResult.DecodeSingleOutput(&updated))
+	require.Equal(t, "example-function", updated.Name)
+	require.Len(t, mock.UpdateFunctionDescription().Calls(), 1)
 }

@@ -4,9 +4,10 @@
 // Package airtable connects Dex applications to Airtable bases through the
 // Airtable Web API.
 //
-// A Client exposes four operations on one table: ListRecords and GetRecord
-// read records, UpsertRecords creates or updates records matched by merge
-// fields, and UpdateRecords sets fields on records by record ID. Cell values
+// A Client exposes six operations on one table: ListRecords and GetRecord
+// read records, CreateRecord appends, UpsertRecords creates or updates records
+// matched by merge fields, UpdateRecords sets fields, and DeleteRecord removes
+// a record by ID. Cell values
 // keep Airtable's typed JSON form, such as numbers, checkboxes, and arrays of
 // linked record IDs, through CellValue.
 //
@@ -201,6 +202,16 @@ func (client *Client) UpsertRecords() UpsertRecordsOperation {
 // UpdateRecords returns the record update Mutation bound to this client.
 func (client *Client) UpdateRecords() UpdateRecordsOperation {
 	return UpdateRecordsOperation{client: client}
+}
+
+// CreateRecord returns the append-only record creation Mutation.
+func (client *Client) CreateRecord() CreateRecordOperation {
+	return CreateRecordOperation{client: client}
+}
+
+// DeleteRecord returns the convergent record deletion Mutation.
+func (client *Client) DeleteRecord() DeleteRecordOperation {
+	return DeleteRecordOperation{client: client}
 }
 
 // exchange paces, authenticates, and sends one request, then classifies any non-2xx outcome.
@@ -399,12 +410,12 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 // mutationAttemptForOutcome maps an unsuccessful write exchange to Retry or a branch. Both writes are
 // repeat-safe, so any HTTP status that does not prove a refusal, such as 409, 501, or a redirect, and
 // an oversized error body are retried.
-func mutationAttemptForOutcome[T any](outcome providerOutcome, response providerResponse, branches operationBranches) sdkgo.MutationAttempt[T] {
+func mutationAttemptForOutcome[T any](call sdkgo.Call, outcome providerOutcome, response providerResponse, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
 	isHTTPOutcome := response.statusCode != 0
-	isUnknownStatus := isHTTPOutcome && (response.statusCode < 200 || response.statusCode >= 300) && !isDefiniteRefusalStatus(response.statusCode)
+	isUnknownStatus := isHTTPOutcome && (response.statusCode < 200 || response.statusCode >= 300) && (!isDefiniteRefusalStatus(response.statusCode) || readErrorType(response.body) == "" || (call.Context != nil && call.Context.Attempt() > 1))
 	// Both writes are safe to repeat, so an oversized or unusable response retries instead of failing.
-	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse || isUnknownStatus {
+	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse || isUnknownStatus || (outcome.disposition == outcomeDefect && call.Context != nil && call.Context.Attempt() > 1) {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)

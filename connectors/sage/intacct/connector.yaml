@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: sage-intacct
   displayName: Sage Intacct
-  description: Read an accounts receivable invoice from Sage Intacct REST API.
+  description: Read Accounts Receivable invoices from Sage Intacct REST API by key or list page.
   company: Sage
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: sage-intacct
   languages:
@@ -111,3 +111,23 @@ spec:
           default: true
           description: A sample accounts receivable invoice is returned.
           output: {key: '443', id: INV-443}
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoiceList
+      kind: query
+      description: List one page of Accounts Receivable invoice keys and IDs.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Sage Intacct returned an invoice page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Sage Intacct conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Sage Intacct returned malformed or oversized list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample invoice page is returned.
+          output: {invoices: [{key: '443', id: INV-443}], next: ''}

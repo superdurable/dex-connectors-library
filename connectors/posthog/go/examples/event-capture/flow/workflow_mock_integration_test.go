@@ -30,7 +30,8 @@ import (
 func TestEventCaptureUsesMockWithRealDex(t *testing.T) {
 	mock := posthogmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	identityFlow := NewIdentityFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, identityFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -67,6 +68,13 @@ func TestEventCaptureUsesMockWithRealDex(t *testing.T) {
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "member-1", calls[0].Input.DistinctID)
+	identityFlowID := "posthog-identify-person-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, identityFlow, identityFlowID, posthog.IdentifyPersonInput{DistinctID: "member-1", Properties: map[string]string{"tier": "premium"}}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	identityResult, err := client.WaitForFlow(ctx, identityFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, identityResult.Status, identityResult.ErrorMessage)
+	require.Len(t, mock.IdentifyPerson().Calls(), 1)
 }
 
 func TestEventCaptureRetriesServiceFailureWithRealDex(t *testing.T) {

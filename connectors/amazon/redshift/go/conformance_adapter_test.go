@@ -19,5 +19,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	credentials := Credentials{AccessKeyID: sdkgo.NewSecretString("AKIAREDSHIFTCONNECTOR"), SecretAccessKey: sdkgo.NewSecretString("redshift-test-secret"), SessionToken: sdkgo.NewSecretString("")}
 	client, err := New(Config{Endpoint: endpoint, Region: "eu-west-1"}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport), signingTimeOption{now: func() time.Time { return time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC) }})
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{"getStatementResult": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetStatementResult(), reference)}}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"getStatementResult": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetStatementResult(), reference),
+		"executeStatement":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ExecuteStatement(), reference, scenario.CallID),
+		"describeStatement":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.DescribeStatement(), reference),
+		"listStatements":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListStatements(), reference),
+		"cancelStatement":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelStatement(), reference, scenario.CallID),
+	}}
 }

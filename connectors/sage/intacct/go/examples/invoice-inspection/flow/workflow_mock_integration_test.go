@@ -24,7 +24,8 @@ import (
 func TestInvoiceInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := sageintacctmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	listFlow := NewInvoiceListFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, listFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,15 @@ func TestInvoiceInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "443", output.Key)
 	require.Equal(t, "INV-443", output.ID)
 	require.Len(t, mock.GetInvoice().Calls(), 1)
+	listID := "sageintacct-invoicelist-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, listFlow, listID, sageintacct.ListInvoicesInput{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	listResult, err := client.WaitForFlow(ctx, listID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, listResult.Status, listResult.ErrorMessage)
+	var invoices sageintacct.InvoiceList
+	require.NoError(t, listResult.DecodeSingleOutput(&invoices))
+	require.Len(t, invoices.Invoices, 1)
+	require.Equal(t, "443", invoices.Invoices[0].Key)
+	require.Len(t, mock.ListInvoices().Calls(), 1)
 }

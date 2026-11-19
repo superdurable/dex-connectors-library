@@ -2,6 +2,1478 @@
   "connector": "gmail",
   "scenarios": [
     {
+      "callId": "gmail-listMessages-success",
+      "exchanges": [
+        {
+          "body": "{\"messages\":[{\"id\":\"message-1\",\"threadId\":\"thread-1\"}],\"nextPageToken\":\"page-2\",\"resultSizeEstimate\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "from:sender@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "messages": [
+            {
+              "id": "message-1",
+              "threadId": "thread-1"
+            }
+          ],
+          "nextPageToken": "page-2",
+          "resultSizeEstimate": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "from:sender@example.com"
+      },
+      "name": "listMessages-success",
+      "operation": "listMessages"
+    },
+    {
+      "callId": "gmail-listMessages-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "from:sender@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "messages": [],
+          "resultSizeEstimate": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "from:sender@example.com"
+      },
+      "name": "listMessages-rejected",
+      "operation": "listMessages"
+    },
+    {
+      "callId": "gmail-listMessages-invalid",
+      "exchanges": [
+        {
+          "body": "{\"messages\":[{\"id\":\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "from:sender@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "messages": [],
+          "resultSizeEstimate": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "from:sender@example.com"
+      },
+      "name": "listMessages-invalid",
+      "operation": "listMessages"
+    },
+    {
+      "callId": "gmail-listMessages-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "from:sender@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "from:sender@example.com"
+      },
+      "name": "listMessages-retry-429",
+      "operation": "listMessages"
+    },
+    {
+      "callId": "gmail-listMessages-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "from:sender@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "from:sender@example.com"
+      },
+      "name": "listMessages-retry-503",
+      "operation": "listMessages"
+    },
+    {
+      "callId": "gmail-listMessages-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "from:sender@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "from:sender@example.com"
+      },
+      "name": "listMessages-transport",
+      "operation": "listMessages"
+    },
+    {
+      "callId": "gmail-listThreads-success",
+      "exchanges": [
+        {
+          "body": "{\"threads\":[{\"id\":\"thread-1\",\"snippet\":\"Hello\"}],\"nextPageToken\":\"page-2\",\"resultSizeEstimate\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "subject:Question"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "page-2",
+          "resultSizeEstimate": 1,
+          "threads": [
+            {
+              "id": "thread-1",
+              "snippet": "Hello"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "subject:Question"
+      },
+      "name": "listThreads-success",
+      "operation": "listThreads"
+    },
+    {
+      "callId": "gmail-listThreads-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "subject:Question"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "resultSizeEstimate": 0,
+          "threads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "subject:Question"
+      },
+      "name": "listThreads-rejected",
+      "operation": "listThreads"
+    },
+    {
+      "callId": "gmail-listThreads-invalid",
+      "exchanges": [
+        {
+          "body": "{\"threads\":[{\"id\":\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "subject:Question"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "resultSizeEstimate": 0,
+          "threads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "subject:Question"
+      },
+      "name": "listThreads-invalid",
+      "operation": "listThreads"
+    },
+    {
+      "callId": "gmail-listThreads-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "subject:Question"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "subject:Question"
+      },
+      "name": "listThreads-retry-429",
+      "operation": "listThreads"
+    },
+    {
+      "callId": "gmail-listThreads-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "subject:Question"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "subject:Question"
+      },
+      "name": "listThreads-retry-503",
+      "operation": "listThreads"
+    },
+    {
+      "callId": "gmail-listThreads-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "labelIds": [
+              "INBOX"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "page-1"
+            ],
+            "q": [
+              "subject:Question"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "includeSpamTrash": true,
+        "labelIds": [
+          "INBOX"
+        ],
+        "maxResults": 2,
+        "pageToken": "page-1",
+        "query": "subject:Question"
+      },
+      "name": "listThreads-transport",
+      "operation": "listThreads"
+    },
+    {
+      "callId": "gmail-getThread-success",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"thread-1\",\"snippet\":\"Hello\",\"messages\":[{\"id\":\"message-1\",\"threadId\":\"thread-1\",\"internalDate\":\"1000\",\"payload\":{\"mimeType\":\"text/plain\",\"headers\":[{\"name\":\"Message-ID\",\"value\":\"\u003cmessage-1@example.com\u003e\"},{\"name\":\"From\",\"value\":\"Sender \u003csender@example.com\u003e\"},{\"name\":\"To\",\"value\":\"owner@example.com\"},{\"name\":\"Subject\",\"value\":\"Question\"}],\"body\":{\"data\":\"SGVsbG8\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads/thread-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "thread-1",
+          "messages": [
+            {
+              "from": "Sender \u003csender@example.com\u003e",
+              "messageId": "message-1",
+              "receivedAt": "1970-01-01T00:00:01Z",
+              "rfcMessageId": "\u003cmessage-1@example.com\u003e",
+              "subject": "Question",
+              "textBody": "Hello",
+              "threadId": "thread-1",
+              "to": [
+                "\u003cowner@example.com\u003e"
+              ]
+            }
+          ],
+          "snippet": "Hello"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "threadId": "thread-1"
+      },
+      "name": "getThread-success",
+      "operation": "getThread"
+    },
+    {
+      "callId": "gmail-getThread-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads/thread-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "threadId": "thread-1"
+      },
+      "name": "getThread-rejected",
+      "operation": "getThread"
+    },
+    {
+      "callId": "gmail-getThread-invalid",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads/thread-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "threadId": "thread-1"
+      },
+      "name": "getThread-invalid",
+      "operation": "getThread"
+    },
+    {
+      "callId": "gmail-getThread-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads/thread-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "threadId": "thread-1"
+      },
+      "name": "getThread-retry-429",
+      "operation": "getThread"
+    },
+    {
+      "callId": "gmail-getThread-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads/thread-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "threadId": "thread-1"
+      },
+      "name": "getThread-retry-503",
+      "operation": "getThread"
+    },
+    {
+      "callId": "gmail-getThread-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads/thread-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "threadId": "thread-1"
+      },
+      "name": "getThread-transport",
+      "operation": "getThread"
+    },
+    {
+      "callId": "gmail-listLabels-success",
+      "exchanges": [
+        {
+          "body": "{\"labels\":[{\"id\":\"INBOX\",\"name\":\"INBOX\",\"type\":\"system\"},{\"id\":\"Label_1\",\"name\":\"Customers\",\"type\":\"user\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "labels": [
+            {
+              "id": "INBOX",
+              "name": "INBOX",
+              "type": "system"
+            },
+            {
+              "id": "Label_1",
+              "name": "Customers",
+              "type": "user"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listLabels-success",
+      "operation": "listLabels"
+    },
+    {
+      "callId": "gmail-listLabels-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "labels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listLabels-rejected",
+      "operation": "listLabels"
+    },
+    {
+      "callId": "gmail-listLabels-invalid",
+      "exchanges": [
+        {
+          "body": "{\"labels\":[{\"id\":\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "labels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listLabels-invalid",
+      "operation": "listLabels"
+    },
+    {
+      "callId": "gmail-listLabels-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listLabels-retry-429",
+      "operation": "listLabels"
+    },
+    {
+      "callId": "gmail-listLabels-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listLabels-retry-503",
+      "operation": "listLabels"
+    },
+    {
+      "callId": "gmail-listLabels-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listLabels-transport",
+      "operation": "listLabels"
+    },
+    {
+      "callId": "gmail-getLabel-success",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"Label_1\",\"name\":\"Customers\",\"type\":\"user\",\"messagesTotal\":1,\"messagesUnread\":1,\"threadsTotal\":1,\"threadsUnread\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels/Label_1",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "Label_1",
+          "messagesTotal": 1,
+          "messagesUnread": 1,
+          "name": "Customers",
+          "threadsTotal": 1,
+          "threadsUnread": 1,
+          "type": "user"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labelId": "Label_1"
+      },
+      "name": "getLabel-success",
+      "operation": "getLabel"
+    },
+    {
+      "callId": "gmail-getLabel-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels/Label_1",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labelId": "Label_1"
+      },
+      "name": "getLabel-rejected",
+      "operation": "getLabel"
+    },
+    {
+      "callId": "gmail-getLabel-invalid",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels/Label_1",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labelId": "Label_1"
+      },
+      "name": "getLabel-invalid",
+      "operation": "getLabel"
+    },
+    {
+      "callId": "gmail-getLabel-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels/Label_1",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labelId": "Label_1"
+      },
+      "name": "getLabel-retry-429",
+      "operation": "getLabel"
+    },
+    {
+      "callId": "gmail-getLabel-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels/Label_1",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labelId": "Label_1"
+      },
+      "name": "getLabel-retry-503",
+      "operation": "getLabel"
+    },
+    {
+      "callId": "gmail-getLabel-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels/Label_1",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labelId": "Label_1"
+      },
+      "name": "getLabel-transport",
+      "operation": "getLabel"
+    },
+    {
+      "callId": "gmail-getThread-not-found",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/threads/thread-1",
+          "query": {
+            "format": [
+              "full"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "threadId": "thread-1"
+      },
+      "name": "getThread-not-found",
+      "operation": "getThread"
+    },
+    {
+      "callId": "gmail-getLabel-not-found",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/labels/Label_1",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labelId": "Label_1"
+      },
+      "name": "getLabel-not-found",
+      "operation": "getLabel"
+    },
+    {
+      "callId": "gmail-listMessages-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messages": [],
+          "resultSizeEstimate": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 501
+      },
+      "name": "listMessages-defect",
+      "operation": "listMessages"
+    },
+    {
+      "callId": "gmail-listThreads-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "resultSizeEstimate": 0,
+          "threads": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 501
+      },
+      "name": "listThreads-defect",
+      "operation": "listThreads"
+    },
+    {
+      "callId": "gmail-getThread-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "messages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "threadId": ""
+      },
+      "name": "getThread-defect",
+      "operation": "getThread"
+    },
+    {
+      "callId": "gmail-getLabel-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labelId": ""
+      },
+      "name": "getLabel-defect",
+      "operation": "getLabel"
+    },
+    {
       "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
       "exchanges": [
         {

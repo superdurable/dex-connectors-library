@@ -12,8 +12,10 @@ export interface Config {
   baseUrl?: string;
   /** Positive duration for one Search Console request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow approved gateway. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Positive maximum complete Search Console response in bytes. Blank uses the displayed default; increase only for an account with many properties. */
+  /** Positive maximum complete Search Console response in bytes. Blank uses the displayed default; increase for large analytics or sitemap pages. */
   maxResponseBytes?: number;
+  /** URL Inspection API HTTPS origin. Blank uses the displayed Google endpoint; override only for a trusted test gateway. */
+  inspectionBaseUrl?: string;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -21,6 +23,7 @@ export const ConfigSchema = z.object({
   "baseUrl": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "inspectionBaseUrl": z.string().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

@@ -19,6 +19,7 @@ var testConnection = sdkgo.ConnectionRef{Provider: "adyen", Name: "adyen"}
 
 type queryContext struct{ dex.Context }
 
+func (queryContext) Attempt() int32              { return 1 }
 func (queryContext) FlowID() string              { return "adyen-provider-test" }
 func (queryContext) StepExecutionID() string     { return "get-paymentLink" }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }

@@ -44,12 +44,16 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetInvoice() sdkgo.Query[GetInvoiceInput, InvoiceSummary]
+	ListInvoices() sdkgo.Query[ListInvoicesInput, InvoiceList]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetInvoice() sdkgo.Query[GetInvoiceInput, InvoiceSummary] {
 	return operations.client.GetInvoice()
+}
+func (operations clientOperations) ListInvoices() sdkgo.Query[ListInvoicesInput, InvoiceList] {
+	return operations.client.ListInvoices()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -321,6 +325,77 @@ func NewGetInvoiceStep[IN any](config GetInvoiceStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInvoicesBranchFound sdkgo.BranchID = "found"
+const ListInvoicesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInvoicesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInvoicesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInvoicesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInvoices"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInvoicesBranchFound, Description: "Sage Intacct returned an invoice page."},
+		{ID: ListInvoicesBranchProviderRejected, Description: "Sage Intacct conclusively rejected the list request.", Optional: true},
+		{ID: ListInvoicesBranchInvalidResponse, Description: "Sage Intacct returned malformed or oversized list JSON.", Optional: true},
+		{ID: ListInvoicesBranchDefect, Description: "Local connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInvoicesResult = sdkgo.QueryResult[InvoiceList]
+
+type ListInvoicesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=sage-intacct"`
+	operationID                    struct{}                                       `connector:"operationId=listInvoices"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInvoicesInput                     `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[ListInvoicesResult]               `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[ListInvoicesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInvoicesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInvoicesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InvoiceList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListInvoicesStep[IN any](config ListInvoicesStepConfig[IN]) sdkgo.QueryStep[IN, ListInvoicesInput, InvoiceList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sage-intacct connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInvoicesInput, InvoiceList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInvoices(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInvoicesResult] {
+			branches := make([]sdkgo.BranchTarget[ListInvoicesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(ListInvoicesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInvoicesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInvoicesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInvoicesBranchDefect))
 			}
 			return branches
 		}(),

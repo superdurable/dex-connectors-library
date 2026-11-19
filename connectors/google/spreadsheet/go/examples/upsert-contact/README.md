@@ -6,12 +6,16 @@ This example runs one operation-only Flow from Dex Web **Start Flow**:
 2. `UpsertContactRow` calls `spreadsheet.NewUpsertRowStep` using email as the key;
 3. `CompleteContactUpsert` persists the provider result and completes the Flow.
 
+It also registers `GoogleSheetsSpreadsheetDetail`, which reads a spreadsheet's title and tabs, and `GoogleSheetsOperations`, which routes one request to `createSheet`, `deleteSheet`, `clearValues`, `appendRow`, or `updateRow`. The mock-backed integration test runs all seven paths through a real Dex Worker and Client.
+
 Generate strict FDG 2.0 from `connectors/google/spreadsheet`:
 
 ```bash
 mkdir -p build
 dexcli visualize ./examples/upsert-contact/flow/workflow.go \
   --schema-version 2.0 --json --out ./build/upsert-contact
+dexcli visualize ./examples/upsert-contact/flow/spreadsheet_operations.go \
+  --schema-version 2.0 --json --out ./build/spreadsheet-operations
 ```
 
 Run `dexcli dev` with that build directory, configure
@@ -40,6 +44,12 @@ Start `GoogleSheetsUpsertContact` with a unique Flow ID:
 The spreadsheet must contain an `email` header. Only the `upserted` branch is
 wired; conflicts, provider rejection, invalid responses, uncertain writes, and
 local defects fail the Flow.
+
+Start `GoogleSheetsOperations` with an `operation` and its fields. For example,
+`{"operation":"appendRow","spreadsheetId":"your-spreadsheet-id","sheetName":"Contacts","values":["person@example.com","Person","active"]}`
+appends a row. Use `sheetName` for `createSheet`, `sheetId` for `deleteSheet`,
+`range` for `clearValues`, and `rowNumber` plus `values` for `updateRow`.
+These writes change the selected spreadsheet; `deleteSheet` removes its tab.
 
 The real-Dex retry test in
 [`workflow_retry_integration_test.go`](flow/workflow_retry_integration_test.go)
