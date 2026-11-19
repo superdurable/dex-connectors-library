@@ -310,7 +310,7 @@ function stepContext(attempt = 1, previous?: unknown) {
 
 interface CheckpointScenario {
   name: string; attempt: number; previousHeartbeat?: unknown; heartbeats: unknown[];
-  calls: { callId: string; maxSends: number; dispatch: boolean; providerId?: string; decision: string; maximumPriorSends: number }[];
+  calls: { callId: string; maxSends: number; dispatch: boolean; providerId?: string; decision: string; maximumPriorSends: number; decisionProviderId?: string }[];
 }
 
 describe('single-dispatch Go checkpoint scenarios', () => {
@@ -326,6 +326,7 @@ describe('single-dispatch Go checkpoint scenarios', () => {
         const decision = fence.decide();
         expect(decision.kind, scenario.name).toBe(scenarioCall.decision);
         expect(decision.priorSendUpperBound ?? 0, scenario.name).toBe(scenarioCall.maximumPriorSends);
+        expect(decision.marker?.providerId ?? '', scenario.name).toBe(scenarioCall.decisionProviderId ?? '');
         if (scenarioCall.dispatch && (decision.kind === 'sendAllowed' || decision.kind === 'readBackThenResendAllowed')) {
           await fence.dispatch(() => undefined);
           if (scenarioCall.providerId) await fence.recordProviderId(scenarioCall.providerId);

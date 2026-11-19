@@ -61,9 +61,11 @@ export interface Decision {
 /**
  * Decide whether this attempt may dispatch from the previous attempt's whole heartbeat value.
  *
- * Only this call ID's entry in the checkpoint map counts. A missing entry or an unreadable value,
- * including a single marker from an earlier release, counts as no marker: attempt one may send,
- * and a later attempt assumes each earlier attempt sent once. `maxSends` is the send cap from 1
+ * Only this call ID's entry in the checkpoint map counts. A single marker that an earlier release
+ * recorded as the whole heartbeat is this call's entry when its call ID matches, keeping its state
+ * and provider ID; a missing send count is read as its attempt for `claimed` and its attempt minus
+ * one otherwise. A missing entry, a legacy marker of another call ID, or an unreadable value counts
+ * as no marker: attempt one may send, and a later attempt assumes each earlier attempt sent once. `maxSends` is the send cap from 1
  * to 10. The default 1 disables bounded resend. An invalid call ID, attempt, or cap, a read
  * error, and an own entry with an impossible send count fail closed. The heartbeat format is
  * internal to the connector SDKs and may change.

@@ -53,10 +53,21 @@ describe('single-dispatch marker decisions', () => {
     expect(decide(2, { callId, attempt: 1, state: 'unknown' }).kind).toBe('readBackRequired');
   });
 
-  it('treats legacy, garbage, and mismatched heartbeats as no marker', () => {
+  it('reads a legacy single marker of this call with its state, provider ID, and count', () => {
+    expect(decideDispatch(callId, 3, { callId, attempt: 2, state: 'notSent', sendCount: 1 })).toEqual({
+      kind: 'sendAllowed', priorSendUpperBound: 1, marker: { callId, attempt: 2, state: 'notSent', sendCount: 1 },
+    });
+    const accepted = { callId, attempt: 2, state: 'claimed', providerId: 'object-1', sendCount: 1 };
+    expect(decideDispatch(callId, 3, accepted, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 1, marker: { providerId: 'object-1' } });
+    expect(decideDispatch(callId, 3, accepted)).toMatchObject({ kind: 'readBackRequired', marker: { providerId: 'object-1' } });
+    expect(decideDispatch(callId, 3, { callId, attempt: 2, state: 'claimed' }, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
+    expect(decideDispatch(callId, 3, { callId, attempt: 1, state: 'canResend' }, undefined, 2)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 1 });
+  });
+
+  it('treats foreign legacy, garbage, and mismatched heartbeats as no marker', () => {
     const proven = { callId, attempt: 1, state: 'notSent' };
     for (const heartbeat of [
-      proven, 'garbage', [1, 2], 3, null, { progress: 1 }, { singleDispatchMarkers: null },
+      { ...proven, callId: foreignCallId }, { ...proven, extra: true }, 'garbage', [1, 2], 3, null, { progress: 1 }, { singleDispatchMarkers: null },
       { singleDispatchMarkers: { [foreignCallId]: proven } },
       { singleDispatchMarkers: { [callId]: { ...proven, extra: true } } },
     ]) {

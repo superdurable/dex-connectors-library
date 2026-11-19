@@ -46,20 +46,30 @@ export async function recordStepCheckpoint(context: AsyncContext, checkpoint: St
   await write;
 }
 
-/** Drops unreadable or mis-keyed entries; any non-map value, legacy markers included, yields none. */
+/** Drops unreadable or mis-keyed entries; a legacy single marker becomes, and carries forward as, its call's entry. */
 export function markersFromHeartbeat(heartbeat: unknown): Map<string, Marker> {
   const markers = new Map<string, Marker>();
   if (!isPlainObject(heartbeat)) return markers;
+  if (!(CheckpointMarkersField in heartbeat)) {
+    const legacyMarker = markerFromEntry(heartbeat);
+    if (legacyMarker) markers.set(legacyMarker.callId, legacyMarker);
+    return markers;
+  }
   const entries = heartbeat[CheckpointMarkersField];
   if (!isPlainObject(entries)) return markers;
   for (const [callId, entry] of Object.entries(entries)) {
-    const parsed = MarkerSchema.safeParse(entry);
-    if (!parsed.success || parsed.data.callId !== callId) continue;
-    // A present count is exact; an absent one counts one send per attempt, excluding a notSent or canResend marker's own.
-    const marker = parsed.data;
-    markers.set(callId, { ...marker, sendCount: marker.sendCount ?? (marker.state === 'claimed' ? marker.attempt : marker.attempt - 1) });
+    const marker = markerFromEntry(entry);
+    if (marker && marker.callId === callId) markers.set(callId, marker);
   }
   return markers;
+}
+
+/** A present count is exact; an absent one counts one send per attempt, excluding a notSent or canResend marker's own. */
+function markerFromEntry(entry: unknown): Marker | undefined {
+  const parsed = MarkerSchema.safeParse(entry);
+  if (!parsed.success) return undefined;
+  const marker = parsed.data;
+  return { ...marker, sendCount: marker.sendCount ?? (marker.state === 'claimed' ? marker.attempt : marker.attempt - 1) };
 }
 
 /** Encodes the checkpoint map with call IDs in sorted order, Go's field order, and every entry's exact count. */
