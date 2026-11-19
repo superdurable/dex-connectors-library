@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/kit/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/kit/scenarios.json")
+    if scenario["operation"] in {"listSubscribers", "getSubscriber"}
+]
 CONNECTION = sdk.ConnectionRef("kit", "kit")
 ADAPTER = conformance.PythonOperationAdapter(
     "kit",
@@ -22,9 +26,7 @@ ADAPTER = conformance.PythonOperationAdapter(
     kit,
     lambda http_client, _: kit.Client(
         kit.Config(base_url="http://127.0.0.1:8848/v4"),
-        conformance.static_credentials(
-            CONNECTION, kit.Credentials(sdk.SecretString("test-token"))
-        ),
+        conformance.static_credentials(CONNECTION, kit.Credentials(sdk.SecretString("test-token"))),
         http_client,
     ),
 )

@@ -261,6 +261,15 @@ dispatch, or a 5xx, repeats as the operation's manifest
 `execution.repeatOnUnknown` tier allows. Never repeating is worse than an
 occasional duplicate message, so almost every operation repeats:
 
+A dispatched write with HTTP 409, an unlisted 4xx, or an empty or contradictory
+error body has an unknown outcome. A listed refusal status selects a refusal
+branch only when its parsed body proves non-acceptance. After a possible earlier
+send, a refusal cannot close the Flow as rejected. A malformed or oversized 2xx
+response from a safe Mutation also retries because the write may have succeeded.
+If a single-dispatch Fence fails closed, retry the Step; an exhausted retry
+budget fails the Flow. At the limited send cap, read back by a stored provider
+ID or request-unique marker before selecting `uncertain`.
+
 | Tier | Operations | Unknown outcome |
 | --- | --- | --- |
 | `safe` | Reads; an idempotency key; an absolute replacement, upsert, or delete; or a harmless repeat. | Retry within the Step retry policy. |

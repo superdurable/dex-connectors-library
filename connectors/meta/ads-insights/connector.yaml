@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: meta-ads-insights
   displayName: Meta Ads Insights
-  description: Read Meta Marketing API ad identity and delivery status.
+  description: List Meta Marketing API ads, ad sets, and campaigns; read ad identity, delivery status, and performance insights.
   company: Meta
   categories: [marketing, social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: meta-ads-insights
   languages:
@@ -55,6 +55,92 @@ spec:
         - In Ads Manager > Campaigns > Ads, select an ad and read its numeric ID from the details panel or URL. Enter that ID as adId in the Flow; it is not a secret. Store the opaque token only in Dex Connections.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Revoke or rotate the token in Meta when retired.
   operations:
+    - name: listAds
+      goName: ListAds
+      inputType: ListMarketingObjectsInput
+      outputType: MarketingObjectsPage
+      kind: query
+      description: List one page of ads in an ad account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Meta returned one ads page.}
+        - {id: notFound, goName: NotFound, description: The ad account is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One active example ad is listed.
+          output: {objects: [{id: '123456789012345', name: 'Spring campaign image', status: ACTIVE, effectiveStatus: ACTIVE}], nextCursor: ''}
+    - name: listAdSets
+      goName: ListAdSets
+      inputType: ListMarketingObjectsInput
+      outputType: MarketingObjectsPage
+      kind: query
+      description: List one page of ad sets in an ad account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Meta returned one ad sets page.}
+        - {id: notFound, goName: NotFound, description: The ad account is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One active example ad set is listed.
+          output: {objects: [{id: '223456789012345', name: 'Spring audience', status: ACTIVE, effectiveStatus: ACTIVE}], nextCursor: ''}
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListMarketingObjectsInput
+      outputType: MarketingObjectsPage
+      kind: query
+      description: List one page of campaigns in an ad account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Meta returned one campaigns page.}
+        - {id: notFound, goName: NotFound, description: The ad account is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One active example campaign is listed.
+          output: {objects: [{id: '323456789012345', name: 'Spring campaign', status: ACTIVE, effectiveStatus: ACTIVE}], nextCursor: ''}
+    - name: getInsights
+      goName: GetInsights
+      inputType: GetInsightsInput
+      outputType: InsightsPage
+      kind: query
+      description: Read a page of account, campaign, ad set, or ad performance metrics.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Meta returned one insights page.}
+        - {id: notFound, goName: NotFound, description: The ad object is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the insights lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One campaign insights row is available.
+          output:
+            rows: [{accountId: '123456789012345', campaignId: '987654321012345', dateStart: '2026-11-01', dateStop: '2026-11-07', impressions: '361324', clicks: '7346', spend: '5339.5'}]
+            nextCursor: ''
     - name: getAd
       goName: GetAd
       inputType: GetAdInput
@@ -63,7 +149,7 @@ spec:
       description: Read one ad's ID, name, configured status, and effective status.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Meta returned the ad.}
         - {id: notFound, goName: NotFound, description: The ad is missing or inaccessible., optional: true}

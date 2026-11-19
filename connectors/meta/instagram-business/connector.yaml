@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: instagram-business
   displayName: Instagram Business
-  description: Read media from a professional Instagram account linked to a Facebook Page.
+  description: Read profile and media metadata from a professional Instagram account linked to a Facebook Page.
   company: Meta
   categories: [social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: instagram-business
   languages:
@@ -55,6 +55,48 @@ spec:
         - Use GET /me/accounts?fields=instagram_business_account in Graph API Explorer to find the numeric Instagram account ID for igUserId. Store the complete opaque User access token only in Dex Connections.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Do not put the access token in Flow inputs or logs.
   operations:
+    - name: getAccount
+      goName: GetAccount
+      inputType: GetAccountInput
+      outputType: InstagramAccount
+      kind: query
+      description: Read a professional Instagram account's ID, username, and published media count.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Meta returned the account.}
+        - {id: notFound, goName: NotFound, description: The account is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A professional Instagram account is available.
+          output: {id: '17800000000000001', username: example_business, mediaCount: 1}
+    - name: getMedia
+      goName: GetMedia
+      inputType: GetMediaInput
+      outputType: InstagramMedia
+      kind: query
+      description: Read one Instagram media object's identity and display metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Meta returned the media object.}
+        - {id: notFound, goName: NotFound, description: The media is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example Instagram image is available.
+          output: {id: '17900000000000001', caption: Hello, mediaType: IMAGE, timestamp: '2026-11-08T10:00:00+0000', permalink: 'https://www.instagram.com/p/example/'}
     - name: listMedia
       goName: ListMedia
       inputType: ListMediaInput
@@ -63,7 +105,7 @@ spec:
       description: Read one cursor page of Instagram media IDs, captions, types, timestamps, and permalinks.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Meta returned one media page.}
         - {id: notFound, goName: NotFound, description: The account is missing or inaccessible., optional: true}

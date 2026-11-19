@@ -16,7 +16,123 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listChecklistItems/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistItemsPage](`{"items":[{"id":"27","checklistId":"20","name":"Step One","status":"1"}],"page":1}`)
+			return err
+		}},
+		{name: "getChecklistItem/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistItemSummary](`{"id":"27","checklistId":"20","name":"Step One","status":"1"}`)
+			return err
+		}},
+		{name: "updateChecklistItem/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistItemSummary](`{"id":"27","checklistId":"20","name":"Step One","status":"5"}`)
+			return err
+		}},
+		{name: "deleteChecklistItem/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.DeletedChecklistItem](`{"checklistItemId":"27"}`)
+			return err
+		}},
+		{name: "createChecklistItem/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistItemSummary](`{"id":"27","checklistId":"20","name":"Step One","status":"1"}`)
+			return err
+		}},
+		{name: "listTaskChecklists/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskChecklistsPage](`{"checklists":[{"id":"20","taskId":"15","name":"Steps"}],"page":1}`)
+			return err
+		}},
+		{name: "getChecklist/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistSummary](`{"id":"20","taskId":"15","name":"Steps"}`)
+			return err
+		}},
+		{name: "updateChecklist/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistSummary](`{"id":"20","taskId":"15","name":"Updated Steps"}`)
+			return err
+		}},
+		{name: "deleteChecklist/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.DeletedChecklist](`{"checklistId":"20"}`)
+			return err
+		}},
+		{name: "createTaskChecklist/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ChecklistSummary](`{"id":"20","taskId":"15","name":"Steps"}`)
+			return err
+		}},
+		{name: "listProjectLabels/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ProjectLabels](`{"labels":[{"id":"25","projectId":"123","name":"Priority"}],"projectId":"123"}`)
+			return err
+		}},
+		{name: "listTaskLabels/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskLabels](`{"labels":[{"id":"364","taskId":"15","labelId":"25"}],"taskId":"15"}`)
+			return err
+		}},
+		{name: "removeTaskLabel/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.RemovedTaskLabel](`{"taskLabelId":"364"}`)
+			return err
+		}},
+		{name: "addTaskLabel/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskLabelSummary](`{"id":"364","taskId":"15","labelId":"25"}`)
+			return err
+		}},
+		{name: "listComments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.CommentsPage](`{"comments":[{"id":"2","taskId":"15","personId":"7"}],"page":1}`)
+			return err
+		}},
+		{name: "getComment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.CommentSummary](`{"id":"2","taskId":"15","personId":"7"}`)
+			return err
+		}},
+		{name: "deleteComment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.DeletedComment](`{"commentId":"2"}`)
+			return err
+		}},
+		{name: "createComment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.CommentSummary](`{"id":"2","taskId":"15","personId":"7"}`)
+			return err
+		}},
+		{name: "listSections/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.SectionsPage](`{"sections":[{"id":"72","name":"Example Section","status":"1","projectId":"123"}],"page":1}`)
+			return err
+		}},
+		{name: "getSection/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Example Section","status":"1","projectId":"123"}`)
+			return err
+		}},
+		{name: "updateSection/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Updated Section","status":"1","projectId":"123"}`)
+			return err
+		}},
+		{name: "createSection/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.SectionSummary](`{"id":"72","name":"Example Section","status":"1","projectId":"123"}`)
+			return err
+		}},
+		{name: "listProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ProjectsPage](`{"projects":[{"id":"123","name":"Example Project","status":"1"}],"page":1}`)
+			return err
+		}},
+		{name: "getProject/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ProjectSummary](`{"id":"123","name":"Example Project","status":"1"}`)
+			return err
+		}},
+		{name: "updateProject/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ProjectSummary](`{"id":"123","name":"Updated Project","status":"1"}`)
+			return err
+		}},
+		{name: "createProject/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.ProjectSummary](`{"id":"123","name":"Example Project","status":"1"}`)
+			return err
+		}},
+		{name: "listTasks/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TasksPage](`{"tasks":[{"id":"15","status":"1","name":"Task Name"}],"page":1}`)
+			return err
+		}},
 		{name: "getTask/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskSummary](`{"id":"15","status":"1","name":"Task Name"}`)
+			return err
+		}},
+		{name: "updateTask/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[meistertask.TaskSummary](`{"id":"15","status":"1","name":"Updated Task Name"}`)
+			return err
+		}},
+		{name: "createTask/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[meistertask.TaskSummary](`{"id":"15","status":"1","name":"Task Name"}`)
 			return err
 		}},
@@ -30,7 +146,94 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListChecklistItems().Definition().Operation.OperationID != "listChecklistItems" {
+		t.Errorf("listChecklistItems mock has another definition")
+	}
+	if mock.GetChecklistItem().Definition().Operation.OperationID != "getChecklistItem" {
+		t.Errorf("getChecklistItem mock has another definition")
+	}
+	if mock.UpdateChecklistItem().Definition().Operation.OperationID != "updateChecklistItem" {
+		t.Errorf("updateChecklistItem mock has another definition")
+	}
+	if mock.DeleteChecklistItem().Definition().Operation.OperationID != "deleteChecklistItem" {
+		t.Errorf("deleteChecklistItem mock has another definition")
+	}
+	if mock.CreateChecklistItem().Definition().Operation.OperationID != "createChecklistItem" {
+		t.Errorf("createChecklistItem mock has another definition")
+	}
+	if mock.ListTaskChecklists().Definition().Operation.OperationID != "listTaskChecklists" {
+		t.Errorf("listTaskChecklists mock has another definition")
+	}
+	if mock.GetChecklist().Definition().Operation.OperationID != "getChecklist" {
+		t.Errorf("getChecklist mock has another definition")
+	}
+	if mock.UpdateChecklist().Definition().Operation.OperationID != "updateChecklist" {
+		t.Errorf("updateChecklist mock has another definition")
+	}
+	if mock.DeleteChecklist().Definition().Operation.OperationID != "deleteChecklist" {
+		t.Errorf("deleteChecklist mock has another definition")
+	}
+	if mock.CreateTaskChecklist().Definition().Operation.OperationID != "createTaskChecklist" {
+		t.Errorf("createTaskChecklist mock has another definition")
+	}
+	if mock.ListProjectLabels().Definition().Operation.OperationID != "listProjectLabels" {
+		t.Errorf("listProjectLabels mock has another definition")
+	}
+	if mock.ListTaskLabels().Definition().Operation.OperationID != "listTaskLabels" {
+		t.Errorf("listTaskLabels mock has another definition")
+	}
+	if mock.RemoveTaskLabel().Definition().Operation.OperationID != "removeTaskLabel" {
+		t.Errorf("removeTaskLabel mock has another definition")
+	}
+	if mock.AddTaskLabel().Definition().Operation.OperationID != "addTaskLabel" {
+		t.Errorf("addTaskLabel mock has another definition")
+	}
+	if mock.ListComments().Definition().Operation.OperationID != "listComments" {
+		t.Errorf("listComments mock has another definition")
+	}
+	if mock.GetComment().Definition().Operation.OperationID != "getComment" {
+		t.Errorf("getComment mock has another definition")
+	}
+	if mock.DeleteComment().Definition().Operation.OperationID != "deleteComment" {
+		t.Errorf("deleteComment mock has another definition")
+	}
+	if mock.CreateComment().Definition().Operation.OperationID != "createComment" {
+		t.Errorf("createComment mock has another definition")
+	}
+	if mock.ListSections().Definition().Operation.OperationID != "listSections" {
+		t.Errorf("listSections mock has another definition")
+	}
+	if mock.GetSection().Definition().Operation.OperationID != "getSection" {
+		t.Errorf("getSection mock has another definition")
+	}
+	if mock.UpdateSection().Definition().Operation.OperationID != "updateSection" {
+		t.Errorf("updateSection mock has another definition")
+	}
+	if mock.CreateSection().Definition().Operation.OperationID != "createSection" {
+		t.Errorf("createSection mock has another definition")
+	}
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
+		t.Errorf("listTasks mock has another definition")
+	}
 	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
 		t.Errorf("getTask mock has another definition")
+	}
+	if mock.UpdateTask().Definition().Operation.OperationID != "updateTask" {
+		t.Errorf("updateTask mock has another definition")
+	}
+	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
+		t.Errorf("createTask mock has another definition")
 	}
 }

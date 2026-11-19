@@ -10,7 +10,7 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Lucid REST API v1 root as an absolute HTTPS URL. Blank uses the displayed public endpoint; override only for a trusted local test gateway. */
   baseUrl?: string;
-  /** Maximum duration of one search request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow searches. Runtime value in milliseconds. */
+  /** Maximum duration of one document request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow requests. Runtime value in milliseconds. */
   timeoutMs?: number;
   /** Maximum complete page response in bytes as a positive integer. Blank uses the displayed default; increase for large document pages. */
   maxResponseBytes?: number;

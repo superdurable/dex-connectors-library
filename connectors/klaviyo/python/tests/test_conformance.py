@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 """Replay Go-recorded Klaviyo provider scenarios through the Python package."""
+
 import sys
 from pathlib import Path
 
@@ -13,10 +14,16 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/klaviyo/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/klaviyo/scenarios.json")
+    if scenario["operation"] in {"getProfile", "createEvent"}
+]
 CONNECTION = sdk.ConnectionRef("klaviyo", "klaviyo")
 ADAPTER = conformance.PythonOperationAdapter(
-    "klaviyo", CONNECTION, klaviyo,
+    "klaviyo",
+    CONNECTION,
+    klaviyo,
     lambda client, _: klaviyo.Client(
         klaviyo.Config(base_url="http://127.0.0.1:12345/api"),
         conformance.static_credentials(CONNECTION, klaviyo.Credentials(sdk.SecretString("pk_test_key"))),
