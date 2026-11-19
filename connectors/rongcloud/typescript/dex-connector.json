@@ -1,0 +1,60 @@
+{
+  "connectorId": "rongcloud",
+  "releaseTag": "connectors/rongcloud/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-rongcloud",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newCheckUserOnlineStep",
+      "kind": "query",
+      "operationId": "checkUserOnline",
+      "inputType": "CheckUserOnlineInput",
+      "description": "Read one RongCloud user's current online status without returning their identifier.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "checked",
+          "field": "checked",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CheckUserOnlineInput identifies one existing RongCloud IM user.",
+        "properties": {
+          "userId": {
+            "description": "UserID is the application's opaque user ID, up to 64 ASCII letters or digits.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
