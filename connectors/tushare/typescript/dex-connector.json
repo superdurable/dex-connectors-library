@@ -1,0 +1,70 @@
+{
+  "connectorId": "tushare",
+  "releaseTag": "connectors/tushare/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-tushare",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetTradingDayStep",
+      "kind": "query",
+      "operationId": "getTradingDay",
+      "inputType": "GetTradingDayInput",
+      "description": "Check whether one calendar date is open for trading on one Chinese exchange.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "noData",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTradingDayInput identifies one exchange and calendar date.",
+        "properties": {
+          "date": {
+            "description": "Date is a calendar date in YYYYMMDD format.",
+            "type": "string"
+          },
+          "exchange": {
+            "description": "Exchange is SSE, SZSE, or BSE.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "exchange"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

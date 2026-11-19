@@ -7,3 +7,5 @@ Register at [Tushare Pro](https://tushare.pro), open 个人中心 > 接口 TOKEN
 The [runnable Dex example](go/examples/get-trading-day/) uses a synthetic mock by default. It does not verify live authorization or financial data freshness.
 
 The [Python trading-day Flow](python/examples/get_trading_day/) runs against a real Dex Worker and Client with synthetic calendar data.
+
+The [TypeScript package](typescript/) implements `getTradingDay` with Go scenario replay. Its [runnable Flow](typescript/examples/basic/) persists the calendar result through a Dex Worker and Client. Live Tushare authorization remains unverified.
