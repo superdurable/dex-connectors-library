@@ -8,6 +8,8 @@ metadata:
   categories: [project-management]
   version: v0.1.0
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [listProjects], triggers: []}
   provider: worktile
   codegen:
     go:
