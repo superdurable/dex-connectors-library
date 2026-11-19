@@ -8,6 +8,12 @@ metadata:
   categories: [security-identity]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-kingsoftcloud"
+      operations: [listUsers]
+      triggers: []
   provider: kingsoftcloud
   codegen:
     go:
