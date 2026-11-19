@@ -13,3 +13,5 @@ The [runnable Dex Flow](go/examples/policy-directory/README.md) uses the static 
 ## Python
 
 The [Python package](python/README.md) implements `searchPolicies` and includes a [runnable Dex Flow](python/examples/policy_directory/README.md). Its 18 Go-recorded scenarios cover result filtering, default `topK`, provider branches, quota Retry, and local validation. No live Enlvon key has been authorized for this port.
+
+The [TypeScript policy search Flow](typescript/examples/basic/) uses the same static connection. Its package replays 18 Go-recorded scenarios and verifies retry and persistence through a real Dex Worker and Client.

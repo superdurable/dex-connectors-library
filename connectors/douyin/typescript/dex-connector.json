@@ -1,0 +1,60 @@
+{
+  "connectorId": "douyin",
+  "releaseTag": "connectors/douyin/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-douyin",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetBehaviorSummaryStep",
+      "kind": "query",
+      "operationId": "getBehaviorSummary",
+      "inputType": "GetBehaviorSummaryInput",
+      "description": "Read aggregate mini app user and opening counts for a completed reporting day.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetBehaviorSummaryInput selects one completed reporting date.",
+        "properties": {
+          "date": {
+            "description": "Date is a past date in YYYY-MM-DD format, within 90 days; yesterday is available after 10:00 China Standard Time.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
