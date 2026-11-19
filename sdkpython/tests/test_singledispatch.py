@@ -87,11 +87,35 @@ def test_only_proven_prior_attempt_can_resend() -> None:
     assert decide_dispatch(call_id, 2, invalid).kind == DecisionKind.READ_BACK_REQUIRED
 
 
+def test_legacy_own_marker_is_read() -> None:
+    """A legacy single marker of this call keeps its state, provider ID, and count."""
+    immediate = Marker(CALL_ID, 2, State.NOT_SENT, send_count=1).to_wire()
+    decision = decide_dispatch(CALL_ID, 3, immediate)
+    assert (decision.kind, decision.prior_send_upper_bound) == (DecisionKind.SEND_ALLOWED, 1)
+    accepted = Marker(CALL_ID, 2, State.CLAIMED, "object-1", 1).to_wire()
+    decision = decide_dispatch(CALL_ID, 3, accepted, max_sends=3)
+    assert decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+    assert decision.marker is not None and decision.marker.provider_id == "object-1"
+    assert decision.prior_send_upper_bound == 1
+    assert decide_dispatch(CALL_ID, 3, accepted).kind == DecisionKind.READ_BACK_REQUIRED
+    uncounted_claim = {"callId": str(CALL_ID), "attempt": 2, "state": "claimed"}
+    decision = decide_dispatch(CALL_ID, 3, uncounted_claim, max_sends=3)
+    assert (decision.kind, decision.prior_send_upper_bound) == (
+        DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 2
+    )
+    uncounted_retry = {"callId": str(CALL_ID), "attempt": 1, "state": "canResend"}
+    decision = decide_dispatch(CALL_ID, 3, uncounted_retry, max_sends=2)
+    assert (decision.kind, decision.prior_send_upper_bound) == (
+        DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 1
+    )
+
+
 def test_unreadable_or_legacy_heartbeats_count_as_no_marker() -> None:
-    """A legacy single marker, garbage, or a mismatched entry never fails closed."""
+    """A foreign legacy marker, garbage, or a mismatched entry never fails closed."""
     proven = Marker(CALL_ID, 1, State.NOT_SENT)
+    foreign = Marker(CallID("5af8fafa-06ff-5b2d-bb13-04693809fab0"), 1, State.NOT_SENT)
     for heartbeat in (
-        proven, proven.to_wire(), "garbage", [1, 2], 3, {"progress": 1},
+        proven, foreign.to_wire(), {**proven.to_wire(), "extra": True}, "garbage", [1, 2], 3, {"progress": 1},
         {"singleDispatchMarkers": None},
         {"singleDispatchMarkers": {"5af8fafa-06ff-5b2d-bb13-04693809fab0": proven.to_wire()}},
         {"singleDispatchMarkers": {str(CALL_ID): {**proven.to_wire(), "extra": True}}},
@@ -817,6 +841,8 @@ async def test_go_checkpoint_scenarios(conformance_dir: Path) -> None:
             decision = await fence.decide()
             assert _DECISION_NAMES[decision.kind] == scenario_call["decision"], scenario["name"]
             assert decision.prior_send_upper_bound == scenario_call["maximumPriorSends"], scenario["name"]
+            decision_provider_id = decision.marker.provider_id if decision.marker is not None else ""
+            assert decision_provider_id == scenario_call.get("decisionProviderId", ""), scenario["name"]
             if scenario_call["dispatch"] and decision.kind in (
                 DecisionKind.SEND_ALLOWED, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED,
             ):

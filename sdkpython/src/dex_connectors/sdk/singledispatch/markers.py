@@ -135,8 +135,12 @@ def decide_dispatch(
 
     `previous_heartbeat` is the previous attempt's whole heartbeat value, or
     `None` when it recorded none. Only this call's entry in the checkpoint
-    map counts. A missing entry or an unreadable value, including a single
-    marker from an earlier release, counts as no marker.
+    map counts. A single marker that an earlier release recorded as the
+    whole heartbeat is this call's entry when its call ID matches, keeping
+    its state and provider ID; a missing send count is read as its attempt
+    for `claimed` and its attempt minus one otherwise. A missing entry, a
+    legacy marker of another call ID, or an unreadable value counts as no
+    marker.
 
     No marker on attempt one permits the first send, as does a `notSent` or
     `canResend` entry without provider ID from the immediately prior
@@ -178,23 +182,32 @@ def validate_max_sends(max_sends: int) -> None:
 
 
 def _markers_from_heartbeat(heartbeat: object) -> dict[str, Marker]:
-    # Drops unreadable or mis-keyed entries; any non-map value, legacy markers included, yields none.
+    # Drops unreadable or mis-keyed entries; a legacy single marker becomes its call's entry.
     if not isinstance(heartbeat, dict):
         return {}
-    entries = heartbeat.get(_CHECKPOINT_MARKERS_FIELD)
+    if _CHECKPOINT_MARKERS_FIELD not in heartbeat:
+        legacy_marker = _marker_from_entry(heartbeat)
+        return {} if legacy_marker is None else {str(legacy_marker.call_id): legacy_marker}
+    entries = heartbeat[_CHECKPOINT_MARKERS_FIELD]
     if not isinstance(entries, dict):
         return {}
     markers: dict[str, Marker] = {}
     for call_id, entry in entries.items():
-        try:
-            marker = Marker.from_wire(entry)
-        except (ValueError, TypeError):
-            continue
-        if "sendCount" not in entry:
-            marker = replace(marker, send_count=_conservative_send_count(marker))
-        if isinstance(call_id, str) and str(marker.call_id) == call_id:
+        marker = _marker_from_entry(entry)
+        if marker is not None and isinstance(call_id, str) and str(marker.call_id) == call_id:
             markers[call_id] = marker
     return markers
+
+
+def _marker_from_entry(entry: object) -> Marker | None:
+    """Decode one checkpoint entry; a present sendCount is exact and an absent one is conservative."""
+    try:
+        marker = Marker.from_wire(entry)
+    except (ValueError, TypeError):
+        return None
+    if isinstance(entry, dict) and "sendCount" not in entry:
+        marker = replace(marker, send_count=_conservative_send_count(marker))
+    return marker
 
 
 def _checkpoint_heartbeat(markers: Mapping[str, Marker]) -> dict[str, object]:
