@@ -1,6 +1,6 @@
 # Shortcut story inspection Flow
 
-This runnable Flow calls `getStory` through the static `shortcut` connection. It saves the selected metadata in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable application registers `ShortcutStoryInspection` for `getStory` and `ShortcutStorySearch` for `searchStories` through the static `shortcut` connection. Each Flow saves its selected metadata in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -22,6 +22,6 @@ With the project's `DEX_PROJECT_*` environment set, run from `connectors/shortcu
 GOWORK=off go run ./examples/story-inspection
 ```
 
-Start `ShortcutStoryInspection` with a unique Flow ID and input `{"storyId":"12345"}`. Replace the sample ID with a Story ID from a Shortcut Story URL. The Worker connects to Dex Server without an inbound listener.
+Start `ShortcutStoryInspection` with a unique Flow ID and input `{"storyId":"12345"}`. Replace the sample ID with a Story ID from a Shortcut Story URL. Start `ShortcutStorySearch` with `{"query":"release","pageSize":25}` to search one page. The Worker connects to Dex Server without an inbound listener.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`.

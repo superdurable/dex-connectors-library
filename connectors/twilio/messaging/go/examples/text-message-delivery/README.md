@@ -1,5 +1,9 @@
 # Twilio text message delivery example
 
+The Worker also registers `TwilioMessageList`, a read-only Flow that uses
+`listMessages` to store a page of message metadata. Its mock-backed integration
+test runs against a local Dex Worker.
+
 This example sends one text message from a Flow started in Dex Web **Start
 Flow**, then follows it to a final delivery status:
 

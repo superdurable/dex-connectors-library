@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: tmdb
   displayName: TMDB
-  description: Read and act through the TMDB public API.
+  description: Search and retrieve TMDB movies, TV series, and people.
   company: TMDB
   categories: [data-search]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: tmdb
   languages:
@@ -146,3 +146,170 @@ spec:
         title: 'Jack Reacher: Never Go Back'
         overview: A thriller.
         release_date: '2016-10-19'
+  - name: searchTV
+    goName: SearchTV
+    inputType: SearchTVInput
+    outputType: TVPage
+    kind: query
+    description: Search TV series by title in the TMDB public catalog.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: searched
+      goName: Searched
+      description: TMDB returned a TV search page.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: TMDB definitively rejected the search.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: TMDB returned incomplete or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The search input or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: searchTVDefault
+      branch: searched
+      description: A representative TV search page.
+      default: true
+      output:
+        page: 1
+        total_pages: 1
+        total_results: 1
+        results:
+        - id: 1396
+          name: Breaking Bad
+          overview: A chemistry teacher enters the drug trade.
+          first_air_date: '2008-01-20'
+  - name: getTV
+    goName: GetTV
+    inputType: GetTVInput
+    outputType: TVSeries
+    kind: query
+    description: Get public details for one TMDB TV series.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: TMDB returned the series.
+    - id: notFound
+      goName: NotFound
+      description: The series does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: TMDB definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: TMDB returned incomplete or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The series ID or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getTVDefault
+      branch: found
+      description: A representative TV series.
+      default: true
+      output:
+        id: 1396
+        name: Breaking Bad
+        overview: A chemistry teacher enters the drug trade.
+        first_air_date: '2008-01-20'
+  - name: searchPeople
+    goName: SearchPeople
+    inputType: SearchPeopleInput
+    outputType: PeoplePage
+    kind: query
+    description: Search people by name in the TMDB public catalog.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: searched
+      goName: Searched
+      description: TMDB returned a person search page.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: TMDB definitively rejected the search.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: TMDB returned incomplete or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The search input or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: searchPeopleDefault
+      branch: searched
+      description: A representative person search page.
+      default: true
+      output:
+        page: 1
+        total_pages: 1
+        total_results: 1
+        results:
+        - id: 287
+          name: Brad Pitt
+          known_for_department: Acting
+  - name: getPerson
+    goName: GetPerson
+    inputType: GetPersonInput
+    outputType: Person
+    kind: query
+    description: Get public details for one TMDB person.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: TMDB returned the person.
+    - id: notFound
+      goName: NotFound
+      description: The person does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: TMDB definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: TMDB returned incomplete or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The person ID or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getPersonDefault
+      branch: found
+      description: A representative person.
+      default: true
+      output:
+        id: 287
+        name: Brad Pitt
+        known_for_department: Acting
+        biography: A film actor.

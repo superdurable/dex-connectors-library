@@ -39,7 +39,20 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{campaigndiscovery.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{
+		campaigndiscovery.NewFlow(connection),
+		campaigndiscovery.NewAdgroupsFlow(connection),
+		campaigndiscovery.NewAdsFlow(connection),
+		campaigndiscovery.NewCampaignStatusFlow(connection),
+		campaigndiscovery.NewAdgroupStatusFlow(connection),
+		campaigndiscovery.NewAdStatusFlow(connection),
+		campaigndiscovery.NewCreateCampaignFlow(connection),
+		campaigndiscovery.NewUpdateCampaignFlow(connection),
+		campaigndiscovery.NewCreateAdgroupFlow(connection),
+		campaigndiscovery.NewUpdateAdgroupFlow(connection),
+		campaigndiscovery.NewCreateAdFlow(connection),
+		campaigndiscovery.NewUpdateAdFlow(connection),
+	})
 	if err != nil {
 		return fmt.Errorf("register TikTok campaign discovery Flow: %w", err)
 	}

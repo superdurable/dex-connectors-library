@@ -1,10 +1,12 @@
 # Twilio Segment connector
 
-Go, Python, and TypeScript implement the `getSource` Query. It reads a Source ID, slug, and display name through Segment Public API. The result excludes Source write keys and configuration.
+Go implements `getSource`, `listSources`, `createSource`, `updateSource`, and `deleteSource`. Python and TypeScript currently implement `getSource`. Read results exclude Source write keys and configuration.
 
 ## Connect
 
-Sign in at [Segment](https://app.segment.com), select the Workspace, and open **Settings > Access Management > Tokens > Create Token**. Create a **Public API** token with Sources read access. Copy the complete secret into the Dex Web connection's `api_key`; blank is invalid. Dex sends it as a Bearer token. Revoke or rotate it on the same Tokens page. A Source write key or Config API token cannot replace this token. See [Segment authentication](https://docs.segmentapis.com/tag/Authentication/).
+Sign in at [Segment](https://app.segment.com), select the Workspace, and open **Settings > Access Management > Tokens > Create Token**. Create a **Public API** token with the Source read, list, create, update, and delete permissions needed by your Flows. Copy the complete secret into the Dex Web connection's `api_key`; blank is invalid. Dex sends it as a Bearer token. Revoke or rotate it on the same Tokens page. A Source write key or Config API token cannot replace this token. See [Segment authentication](https://docs.segmentapis.com/tag/Authentication/).
+
+The Go module release is `v0.2.0`. `listSources` and the absolute `updateSource` and `deleteSource` writes repeat safely. `createSource` uses a limited three-send fence because Segment does not document request deduplication. It accepts Source types whose catalog metadata needs no secret settings; a rejected type selects `providerRejected`. An exhausted unconfirmed create selects `uncertain`. See [Source API](https://docs.segmentapis.com/tag/Sources/).
 
 Leave `baseUrl` blank for a US Workspace. For an EU Workspace, use `https://eu1.api.segmentapis.com`. This is an HTTPS root, without `/sources` or credentials. `timeout` is a positive Go duration per request; `maxResponseBytes` is a positive byte count. Blank uses the displayed defaults. Find the non-secret Source ID in the Workspace Sources page or a [Public API Source response](https://docs.segmentapis.com/tag/Sources/); pass it as `sourceId`. The slug is a separate value. See [regional endpoints](https://docs.segmentapis.com/tag/Getting-Started/).
 

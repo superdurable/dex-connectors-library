@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Replay the Go-recorded Segment provider scenarios."""
 
+import json
+import os
 import sys
 from pathlib import Path
 
@@ -14,7 +16,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/twilio/segment/scenarios.json")
+FIXTURE_PATH = ROOT / "conformance/connectors/twilio/segment/scenarios.json"
+FIXTURE_DOCUMENT = json.loads(Path(os.environ.get("CONNECTOR_CONFORMANCE_FIXTURE", FIXTURE_PATH)).read_text())
+if any("pending" in scenario for scenario in FIXTURE_DOCUMENT["scenarios"]):
+    raise ValueError("pending conformance scenario")
+SCENARIOS = [scenario for scenario in FIXTURE_DOCUMENT["scenarios"] if scenario["operation"] == "getSource"]
 CONNECTION = sdk.ConnectionRef("segment", "segment")
 TEST_CREDENTIALS = segment.Credentials(sdk.SecretString("sample-segment-api-key"))
 ADAPTER = conformance.PythonOperationAdapter(

@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { SupabaseClient } from '../src/client.js';
 import { SelectRowsInputSchema, UpsertRowsInputSchema, type UpsertRowsInput, type UpsertRowsOutput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/supabase/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/supabase/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'selectRows' || scenario.operation === 'upsertRows');
 const connection = { provider: 'supabase', name: 'supabase' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSupabase));
 

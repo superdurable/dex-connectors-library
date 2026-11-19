@@ -15,14 +15,6 @@ import (
 // InboundMessageDirection is Twilio's direction value for a message the account received.
 const InboundMessageDirection = "inbound"
 
-const (
-	// MessageStatusReceiving means Twilio received an inbound message and is still processing it, such as
-	// fetching MMS media. The messageReceived Trigger waits for received, at most receivingHoldLimit.
-	MessageStatusReceiving MessageStatus = "receiving"
-	// MessageStatusReceived means Twilio finished processing an inbound message.
-	MessageStatusReceived MessageStatus = "received"
-)
-
 // MessageReceivedTriggerConfiguration is the messageReceived binding configuration that the
 // receivingAddressInput unit saves in Dex Web. Changing it for a binding that already polled makes its next
 // poll record a new baseline.

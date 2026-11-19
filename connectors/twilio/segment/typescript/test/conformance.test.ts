@@ -8,7 +8,8 @@ import { SegmentClient } from '../src/client.js';
 import { GetSourceInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/twilio/segment/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/twilio/segment/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getSource');
 const connection = { provider: 'segment', name: 'segment' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSegment, '/api'));
 

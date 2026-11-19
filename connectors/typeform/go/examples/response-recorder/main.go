@@ -69,7 +69,7 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...typeform
 		return err
 	}
 	flow := responserecorder.NewFlow(connection)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, responserecorder.NewWebhookAuditFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register response recorder Flow: %w", err)
 	}

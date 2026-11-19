@@ -2,6 +2,10 @@
 
 This runnable Flow calls `getSource` through the static `segment` connection. It persists the selected Source identity in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
+The Worker also registers `SegmentSourceListing`, which calls `listSources` and
+persists a page of Source identities. Its mock-backed integration test runs
+against a local Dex Worker.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/twilio/segment/go`, run:
