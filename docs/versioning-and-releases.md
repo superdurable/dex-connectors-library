@@ -54,6 +54,9 @@ must cover its declared operation branches against the Go-verified scenarios.
 The porter supplies inputs and provider responses, records complete expectations
 from Go, and commits the recording. CI verifies exact Go output, every Input
 field, and separate 5xx and 429 Retry coverage for each operation.
+Before a TypeScript package's first release, its checked-in examples import
+connector code from local `src`, because the package name is not published yet.
+`make test-typescript-connectors` checks those imports and builds the package.
 Every Python and TypeScript package must have these fixtures unless
 `conformance/exemptions.yaml` exempts its connector; replay fails a package
 without them on every event and scope.
