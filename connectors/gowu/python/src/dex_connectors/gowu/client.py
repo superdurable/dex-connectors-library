@@ -181,7 +181,9 @@ class GetAccessClientOperation:
                 return _branch(
                     "invalidResponse", FailureKind.PROTOCOL, "Gowu returned an invalid application response"
                 )
-            remark = data.get("remark") or ""
+            remark = data.get("remark")
+            if remark is None:
+                remark = ""
             if not isinstance(remark, str) or len(remark.encode()) > 256:
                 return _branch(
                     "invalidResponse", FailureKind.PROTOCOL, "Gowu returned an invalid application remark"
