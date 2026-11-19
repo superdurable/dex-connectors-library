@@ -7,3 +7,5 @@ The connection name in the example is `qiniu`. Create or select an AccessKey/Sec
 The Query retries HTTP 408, 429, and 5xx responses and transport failures under Dex's default retry budget. Other non-200 statuses select `providerRejected`; malformed or oversized responses select `invalidResponse`; missing or malformed credentials select `defect`. A successful empty array is a valid result.
 
 Install `github.com/superdurable/dex-connectors-library/connectors/qiniu/go@v0.1.0` after the first release. Provider tests run against an HTTP test server. The mock-backed example integration test requires a real `dexcli dev` stack. Live Qiniu authentication and bucket listing require a user-configured key pair and are not exercised by local provider tests.
+
+The first TypeScript package implements the same `listBuckets` Query. Its [runnable example](typescript/examples/bucket-list/README.md) persists bucket names through a static Dex connection and includes Go scenario replay and a real Dex integration test with a local provider fixture.

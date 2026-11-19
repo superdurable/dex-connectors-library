@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: qiniu
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-qiniu"
+      operations: [listBuckets]
+      triggers: []
   codegen:
     go:
       package: qiniu
