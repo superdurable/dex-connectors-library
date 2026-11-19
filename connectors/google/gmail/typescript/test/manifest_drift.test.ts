@@ -72,8 +72,9 @@ describe('connector.yaml remains the source of Gmail TypeScript definitions and 
   it('matches every operation identity, branch, and Execute default', async () => {
     const manifest = ManifestSchema.parse(parse(await readFile(new URL('../../connector.yaml', import.meta.url), 'utf8')) as unknown);
     expect(manifest.spec.languages.typescript.version).toBe('v0.5.0');
-    expect(manifest.spec.operations.map(operation => operation.name).sort()).toEqual(Object.keys(definitionByOperation).sort());
-    for (const operation of manifest.spec.operations) {
+    const typescriptOperations = manifest.spec.languages.typescript.operations;
+    expect(typescriptOperations.slice().sort()).toEqual(Object.keys(definitionByOperation).sort());
+    for (const operation of manifest.spec.operations.filter(operation => typescriptOperations.includes(operation.name))) {
       expect(operation.kind).toBe(operation.name === 'getMessage' ? 'query' : 'mutation');
       expect(operation.idempotency).toBe(operation.name === 'getMessage' ? 'none' : 'required');
       const definition = definitionByOperation[operation.name as keyof typeof definitionByOperation];
