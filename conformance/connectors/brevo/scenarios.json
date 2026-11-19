@@ -2160,8 +2160,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": 0
@@ -2884,34 +2883,14 @@
     },
     {
       "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
-      "exchanges": [
-        {
-          "body": "{\"senders\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/senders",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "output": {
           "id": 0
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -2921,7 +2900,7 @@
         "email": "sender@example.com",
         "name": "Support"
       },
-      "name": "createSender-uncertainAfterSendCap",
+      "name": "createSender-uncertainWithoutNaturalKeyLookup",
       "operation": "createSender",
       "priorHeartbeat": {
         "attempt": 3,
@@ -3018,8 +2997,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "category": "",
@@ -3804,27 +3782,7 @@
     },
     {
       "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
-      "exchanges": [
-        {
-          "body": "{\"attributes\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/contacts/attributes",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -3832,7 +3790,7 @@
           "category": "",
           "name": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -4246,8 +4204,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "2c2d5725-c297-597d-bb79-53e7752e3349",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -4606,8 +4563,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8c666627-f37f-5dba-aae1-43fa49337804",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -4836,38 +4792,18 @@
     },
     {
       "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
-      "exchanges": [
-        {
-          "body": "{\"attributes\":[{\"category\":\"normal\",\"name\":\"CUSTOMER_CODE\",\"type\":\"text\"}]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/contacts/attributes",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "category": "normal",
-          "name": "CUSTOMER_CODE"
+          "category": "",
+          "name": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "4938f15b-ddfc-5097-8205-1691fd66831d",
       "input": {
@@ -4875,14 +4811,14 @@
         "name": "CUSTOMER_CODE",
         "type": "text"
       },
-      "name": "createAttribute-readBackConfirmed",
+      "name": "createAttribute-priorNaturalKeyDoesNotConfirm",
       "operation": "createAttribute",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "value": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         }
       }
@@ -4890,25 +4826,6 @@
     {
       "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
       "exchanges": [
-        {
-          "body": "{\"attributes\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/contacts/attributes",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        },
         {
           "body": "{}",
           "headers": {},
@@ -4945,7 +4862,7 @@
           "category": "normal",
           "name": "CUSTOMER_CODE"
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
@@ -4956,7 +4873,7 @@
         "name": "CUSTOMER_CODE",
         "type": "text"
       },
-      "name": "createAttribute-readBackAbsentResend",
+      "name": "createAttribute-resendWithoutNaturalKeyConfirmation",
       "operation": "createAttribute",
       "priorHeartbeat": {
         "attempt": 1,
@@ -4970,51 +4887,31 @@
     },
     {
       "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
-      "exchanges": [
-        {
-          "body": "{\"senders\":[{\"id\":15,\"email\":\"sender@example.com\",\"name\":\"Support\",\"active\":true}]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/senders",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": 15
+          "id": 0
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
       "input": {
         "email": "sender@example.com",
         "name": "Support"
       },
-      "name": "createSender-readBackConfirmed",
+      "name": "createSender-priorNaturalKeyDoesNotConfirm",
       "operation": "createSender",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "value": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         }
       }
@@ -5022,25 +4919,6 @@
     {
       "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
       "exchanges": [
-        {
-          "body": "{\"senders\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/senders",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        },
         {
           "body": "{\"id\":15}",
           "headers": {},
@@ -5077,7 +4955,7 @@
         "output": {
           "id": 15
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
@@ -5087,7 +4965,7 @@
         "email": "sender@example.com",
         "name": "Support"
       },
-      "name": "createSender-readBackAbsentResend",
+      "name": "createSender-resendWithoutNaturalKeyConfirmation",
       "operation": "createSender",
       "priorHeartbeat": {
         "attempt": 1,
@@ -5194,8 +5072,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "created": false,
@@ -5402,27 +5279,7 @@
     },
     {
       "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/contacts/member@example.com",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 404
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -5430,7 +5287,7 @@
           "created": false,
           "email": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -5456,39 +5313,18 @@
     },
     {
       "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
-      "exchanges": [
-        {
-          "body": "{\"id\":21,\"email\":\"member@example.com\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/contacts/member@example.com",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "created": true,
-          "email": "member@example.com",
-          "id": 21
+          "created": false,
+          "email": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
       "input": {
@@ -5497,14 +5333,14 @@
         },
         "email": "member@example.com"
       },
-      "name": "createContact-readBackConfirmed",
+      "name": "createContact-priorNaturalKeyDoesNotConfirm",
       "operation": "createContact",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "value": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         }
       }
@@ -5512,25 +5348,6 @@
     {
       "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
       "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v3/contacts/member@example.com",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Key": [
-              "brevo-test-key"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 404
-        },
         {
           "body": "{\"id\":21}",
           "headers": {},
@@ -5572,7 +5389,7 @@
           "email": "member@example.com",
           "id": 21
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
@@ -5584,7 +5401,7 @@
         },
         "email": "member@example.com"
       },
-      "name": "createContact-readBackAbsentResend",
+      "name": "createContact-resendWithoutNaturalKeyConfirmation",
       "operation": "createContact",
       "priorHeartbeat": {
         "attempt": 1,

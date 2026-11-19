@@ -78,7 +78,7 @@ func (operation CreateDisputeFileEvidenceOperation) Invoke(call sdkgo.Call, inpu
 	fileBytes, contentType, err := operation.client.readDisputeEvidenceFile(input)
 	if err != nil {
 		if decision.MaximumPriorSends > 0 {
-			return braintreeMutationUncertain[DisputeEvidenceProfile](operationName, "file evidence changed after a possible send")
+			return sdkgo.NewMutationRetry[DisputeEvidenceProfile](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "braintree", Operation: operationName, Message: "earlier possible write remains unconfirmed"}, 0)
 		}
 		return braintreeMutationBranch[DisputeEvidenceProfile](operationName, CreateDisputeFileEvidenceBranchDefect, sdkgo.FailureValidation, "file evidence is unavailable or invalid")
 	}
@@ -94,6 +94,9 @@ func (operation CreateDisputeFileEvidenceOperation) Invoke(call sdkgo.Call, inpu
 		if fence.RecordCanResend() != nil {
 			return braintreeMutationRetry[DisputeEvidenceProfile](operationName, sdkgo.FailureAvailability, "file evidence resend checkpoint is unavailable", 0)
 		}
+	}
+	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+		return braintreeMutationRetry[DisputeEvidenceProfile](operationName, sdkgo.FailureAvailability, "file evidence refusal checkpoint is unavailable", 0)
 	}
 	if attempt, handled := classifyBraintreeMutationResponse[DisputeEvidenceProfile](response, operationName, CreateDisputeFileEvidenceBranchNotFound, CreateDisputeFileEvidenceBranchProviderRejected, "", CreateDisputeFileEvidenceBranchDefect, decision.MaximumPriorSends > 0); handled {
 		return attempt

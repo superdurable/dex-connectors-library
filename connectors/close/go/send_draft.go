@@ -86,7 +86,7 @@ func invokeCloseDraftSend[T interface{ EmailActivity | SMSActivity }](client *Cl
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		if decision.MaximumPriorSends > 0 {
-			return closeCreateUncertain[T](operation, sdkgo.FailureAuthentication, "earlier send may have succeeded; credentials unavailable")
+			return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "close", Operation: operation, Message: "earlier possible write remains unconfirmed"}, 0)
 		}
 		return closeMutationBranch[T](operation, defectBranch, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
@@ -142,8 +142,11 @@ func invokeCloseDraftSend[T interface{ EmailActivity | SMSActivity }](client *Cl
 		return retryOrUncertainCloseCreate[T](operation, sdkgo.FailureAvailability, "send outcome is unknown", canResendUnknown)
 	}
 	if response.StatusCode != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return closeMutationRetry[T](operation, sdkgo.FailureTransport, "send outcome is unknown", 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return closeCreateUncertain[T](operation, sdkgo.FailureProviderRejection, "earlier send may have succeeded")
+			return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "close", Operation: operation, Message: "earlier possible write remains unconfirmed"}, 0)
 		}
 		kind := sdkgo.FailureProviderRejection
 		if response.StatusCode == http.StatusUnauthorized {
@@ -152,15 +155,18 @@ func invokeCloseDraftSend[T interface{ EmailActivity | SMSActivity }](client *Cl
 		if response.StatusCode == http.StatusForbidden {
 			kind = sdkgo.FailureAuthorization
 		}
+		if fence.RecordCanResend() != nil {
+			return closeMutationRetry[T](operation, sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
+		}
 		return closeMutationBranch[T](operation, rejectedBranch, kind, "provider rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if err != nil {
-		return closeCreateUncertain[T](operation, sdkgo.FailureTransport, "send succeeded but response was incomplete")
+		return retryOrUncertainCloseCreate[T](operation, sdkgo.FailureTransport, "send response was incomplete", canResendUnknown)
 	}
 	value, err := decode(body)
 	if err != nil || !isCloseMessageSent(value) {
-		return closeCreateUncertain[T](operation, sdkgo.FailureProtocol, "send response did not confirm outbox status")
+		return retryOrUncertainCloseCreate[T](operation, sdkgo.FailureProtocol, "send response did not confirm outbox status", canResendUnknown)
 	}
 	return sdkgo.NewMutationBranch(sentBranch, value, nil, sdkgo.Receipt{})
 }

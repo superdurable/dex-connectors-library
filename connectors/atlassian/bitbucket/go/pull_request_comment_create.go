@@ -78,7 +78,7 @@ func (operation CreatePullRequestCommentOperation) Invoke(call sdkgo.Call, input
 	authorization := operation.client.authorize(call, name, request, CreatePullRequestCommentBranchDefect, CreatePullRequestCommentBranchProviderRejected, CreatePullRequestCommentBranchDefect)
 	if authorization.failure != nil {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PullRequestComment{}, *failureFor(name, sdkgo.FailureAuthentication, "an earlier comment create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureAuthentication, "an earlier comment create may have succeeded"), 0)
 		}
 		return sdkgo.NewMutationBranch(authorization.branch, PullRequestComment{}, authorization.failure, sdkgo.Receipt{})
 	}
@@ -93,7 +93,7 @@ func (operation CreatePullRequestCommentOperation) Invoke(call sdkgo.Call, input
 	}
 	if requestError != nil {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PullRequestComment{}, *failureFor(name, sdkgo.FailureTransport, "an earlier comment create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureTransport, "an earlier comment create may have succeeded"), 0)
 		}
 		return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureTransport, "comment create request failed"), 0)
 	}
@@ -112,8 +112,14 @@ func (operation CreatePullRequestCommentOperation) Invoke(call sdkgo.Call, input
 		return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureAvailability, "comment creation outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return sdkgo.NewMutationRetry[PullRequestComment](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "bitbucket", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PullRequestComment{}, *failureFor(name, sdkgo.FailureProviderRejection, "an earlier comment create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureProviderRejection, "an earlier comment create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[PullRequestComment](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "bitbucket", Operation: name, Message: "provider write outcome is unknown"}, 0)
 		}
 		return commentBranch(name, CreatePullRequestCommentBranchProviderRejected, sdkgo.FailureProviderRejection, "Bitbucket rejected comment creation with HTTP "+strconv.Itoa(response.StatusCode))
 	}

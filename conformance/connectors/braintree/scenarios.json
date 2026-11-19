@@ -11003,8 +11003,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "f116fdfd-f0f8-5a18-b678-417ed26561d3",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""

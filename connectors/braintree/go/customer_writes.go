@@ -98,6 +98,9 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 			return braintreeMutationRetry[CustomerProfile]("createCustomer", sdkgo.FailureAvailability, "customer resend checkpoint is unavailable", 0)
 		}
 	}
+	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+		return braintreeMutationRetry[CustomerProfile]("createCustomer", sdkgo.FailureAvailability, "customer refusal checkpoint is unavailable", 0)
+	}
 	return customerProfileMutationAttempt(response, "createCustomer", "createCustomer", "", CreateCustomerBranchCreated, "", CreateCustomerBranchProviderRejected, "", CreateCustomerBranchDefect, decision.MaximumPriorSends > 0)
 }
 
@@ -183,7 +186,7 @@ func customerProfileMutationAttempt(response providerResponse, operation, field,
 func classifyBraintreeMutationResponse[T any](response providerResponse, operation string, notFound, rejected, invalid, defect sdkgo.BranchID, hasPriorSend bool) (sdkgo.MutationAttempt[T], bool) {
 	if errors.Is(response.err, errCredential) {
 		if hasPriorSend {
-			return braintreeMutationUncertain[T](operation, "an earlier customer mutation may have completed"), true
+			return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "an earlier customer mutation remains unconfirmed", 0), true
 		}
 		return braintreeMutationBranch[T](operation, defect, sdkgo.FailureAuthentication, "Braintree credentials are unavailable"), true
 	}
@@ -197,8 +200,11 @@ func classifyBraintreeMutationResponse[T any](response providerResponse, operati
 		return braintreeMutationRetry[T](operation, sdkgo.FailureAvailability, "Braintree mutation outcome is unknown", response.retryAfter), true
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status) {
+			return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "Braintree mutation outcome is unknown", 0), true
+		}
 		if hasPriorSend {
-			return braintreeMutationUncertain[T](operation, "an earlier customer mutation may have completed"), true
+			return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "an earlier customer mutation remains unconfirmed", 0), true
 		}
 		return braintreeMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Braintree rejected HTTP "+strconv.Itoa(response.status)), true
 	}
@@ -226,14 +232,14 @@ func classifyBraintreeMutationResponse[T any](response providerResponse, operati
 			return braintreeMutationRetry[T](operation, sdkgo.FailureAvailability, "Braintree reported a temporary failure", response.retryAfter), true
 		case graphQLErrorNotFound:
 			if hasPriorSend {
-				return braintreeMutationUncertain[T](operation, "an earlier mutation may have completed"), true
+				return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "an earlier mutation remains unconfirmed", 0), true
 			}
 			if notFound != "" {
 				return braintreeMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "Braintree did not find the resource"), true
 			}
 		}
 		if hasPriorSend {
-			return braintreeMutationUncertain[T](operation, "an earlier customer mutation may have completed"), true
+			return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "an earlier customer mutation remains unconfirmed", 0), true
 		}
 		return braintreeMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Braintree rejected the mutation"), true
 	}

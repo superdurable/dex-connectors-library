@@ -227,7 +227,7 @@ func (operation CreateScheduleEntryOperation) Invoke(call sdkgo.Call, input Crea
 	}
 	if errors.Is(response.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return projectMutationUncertain[ScheduleEntry]("createScheduleEntry", "an earlier entry creation may have completed")
+			return projectMutationRetry[ScheduleEntry]("createScheduleEntry", sdkgo.FailureTransport, "earlier possible write remains unconfirmed", 0)
 		}
 		return projectMutationBranch[ScheduleEntry]("createScheduleEntry", CreateScheduleEntryBranchDefect, sdkgo.FailureAuthentication, "Basecamp credentials are unavailable")
 	}
@@ -235,8 +235,14 @@ func (operation CreateScheduleEntryOperation) Invoke(call sdkgo.Call, input Crea
 		return projectMutationRetry[ScheduleEntry]("createScheduleEntry", sdkgo.FailureTransport, "entry creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.status) {
+			return sdkgo.NewMutationRetry[ScheduleEntry](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createScheduleEntry", Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return projectMutationUncertain[ScheduleEntry]("createScheduleEntry", "an earlier entry creation may have completed")
+			return projectMutationRetry[ScheduleEntry]("createScheduleEntry", sdkgo.FailureTransport, "earlier possible write remains unconfirmed", 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[ScheduleEntry](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createScheduleEntry", Message: "provider write outcome is unknown"}, 0)
 		}
 		return projectMutationBranch[ScheduleEntry]("createScheduleEntry", CreateScheduleEntryBranchProviderRejected, sdkgo.FailureProviderRejection, "Basecamp rejected entry creation")
 	}

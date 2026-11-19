@@ -169,6 +169,12 @@ func invokeBrazeTargetedSend(call sdkgo.Call, client *Client, name, path string,
 		return sdkgo.NewMutationRetry[TargetedSendResult](brazeFailure(name, sdkgo.FailureTransport, "send outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return sdkgo.NewMutationRetry[TargetedSendResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "braze", Operation: "targeted_sends", Message: "provider write outcome is unknown"}, 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[TargetedSendResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "braze", Operation: "targeted_sends", Message: "provider write outcome is unknown"}, 0)
+		}
 		return brazeMutationBranch(rejected, TargetedSendResult{}, name, sdkgo.FailureProviderRejection, "Braze rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	var acknowledgment struct {

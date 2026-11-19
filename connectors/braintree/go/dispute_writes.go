@@ -133,6 +133,9 @@ func (client *Client) applyDisputeStatus(call sdkgo.Call, input GetDisputeInput,
 			return braintreeMutationRetry[DisputeProfile](operation, sdkgo.FailureAvailability, "dispute resend checkpoint is unavailable", 0)
 		}
 	}
+	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+		return braintreeMutationRetry[DisputeProfile](operation, sdkgo.FailureAvailability, "dispute refusal checkpoint is unavailable", 0)
+	}
 	if attempt, handled := classifyBraintreeMutationResponse[DisputeProfile](response, operation, notFound, rejected, "", defect, decision.MaximumPriorSends > 0); handled {
 		return attempt
 	}
@@ -208,6 +211,9 @@ func (operation CreateDisputeTextEvidenceOperation) Invoke(call sdkgo.Call, inpu
 		if fence.RecordCanResend() != nil {
 			return braintreeMutationRetry[DisputeTextEvidenceProfile]("createDisputeTextEvidence", sdkgo.FailureAvailability, "evidence resend checkpoint is unavailable", 0)
 		}
+	}
+	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+		return braintreeMutationRetry[DisputeTextEvidenceProfile]("createDisputeTextEvidence", sdkgo.FailureAvailability, "evidence refusal checkpoint is unavailable", 0)
 	}
 	if attempt, handled := classifyBraintreeMutationResponse[DisputeTextEvidenceProfile](response, "createDisputeTextEvidence", CreateDisputeTextEvidenceBranchNotFound, CreateDisputeTextEvidenceBranchProviderRejected, "", CreateDisputeTextEvidenceBranchDefect, decision.MaximumPriorSends > 0); handled {
 		return attempt

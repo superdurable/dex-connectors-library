@@ -275,7 +275,7 @@ func (client *Client) executeLimitedApplicationWrite(call sdkgo.Call, operationN
 	}
 	if errors.Is(response.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return uncertain("credential failed after an earlier possible send")
+			return sdkgo.NewMutationRetry[ApplicationSummary](failure(sdkgo.FailureTransport, "earlier possible write remains unconfirmed"), 0)
 		}
 		return applicationSafeBranch[ApplicationSummary](operationName, defectBranch, sdkgo.FailureAuthentication, "Ashby credentials are unavailable")
 	}
@@ -293,8 +293,14 @@ func (client *Client) executeLimitedApplicationWrite(call sdkgo.Call, operationN
 		return sdkgo.NewMutationRetry[ApplicationSummary](failure(sdkgo.FailureTransport, "application write outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status) {
+			return sdkgo.NewMutationRetry[ApplicationSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: operationName, Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return uncertain("an earlier application write may have succeeded")
+			return sdkgo.NewMutationRetry[ApplicationSummary](failure(sdkgo.FailureTransport, "earlier possible write remains unconfirmed"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[ApplicationSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: operationName, Message: "provider write outcome is unknown"}, 0)
 		}
 		return applicationSafeBranch[ApplicationSummary](operationName, rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected application request with HTTP "+strconv.Itoa(response.status))
 	}
@@ -304,7 +310,7 @@ func (client *Client) executeLimitedApplicationWrite(call sdkgo.Call, operationN
 	}
 	if code != "" {
 		if decision.MaximumPriorSends > 0 {
-			return uncertain("an earlier application write may have succeeded")
+			return sdkgo.NewMutationRetry[ApplicationSummary](failure(sdkgo.FailureTransport, "earlier possible write remains unconfirmed"), 0)
 		}
 		return applicationSafeBranch[ApplicationSummary](operationName, rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected the application request")
 	}

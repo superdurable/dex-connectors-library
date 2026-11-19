@@ -136,7 +136,7 @@ func (operation CreateTodoOperation) Invoke(call sdkgo.Call, input CreateTodoInp
 	}
 	if errors.Is(response.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return projectMutationUncertain[Todo]("createTodo", "an earlier to-do creation may have completed")
+			return projectMutationRetry[Todo]("createTodo", sdkgo.FailureTransport, "earlier possible write remains unconfirmed", 0)
 		}
 		return projectMutationBranch[Todo]("createTodo", CreateTodoBranchDefect, sdkgo.FailureAuthentication, "Basecamp credentials are unavailable")
 	}
@@ -144,8 +144,14 @@ func (operation CreateTodoOperation) Invoke(call sdkgo.Call, input CreateTodoInp
 		return projectMutationRetry[Todo]("createTodo", sdkgo.FailureTransport, "to-do creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.status) {
+			return sdkgo.NewMutationRetry[Todo](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createTodo", Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return projectMutationUncertain[Todo]("createTodo", "an earlier to-do creation may have completed")
+			return projectMutationRetry[Todo]("createTodo", sdkgo.FailureTransport, "earlier possible write remains unconfirmed", 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[Todo](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createTodo", Message: "provider write outcome is unknown"}, 0)
 		}
 		return projectMutationBranch[Todo]("createTodo", CreateTodoBranchProviderRejected, sdkgo.FailureProviderRejection, "Basecamp rejected to-do creation")
 	}

@@ -180,6 +180,12 @@ func invokeBrevoEmailSend(call sdkgo.Call, client *Client, name string, payload 
 		return sdkgo.NewMutationRetry[EmailSendResult](*brevoFailure(name, sdkgo.FailureTransport, "email outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return sdkgo.NewMutationRetry[EmailSendResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: "email_operations", Message: "provider write outcome is unknown"}, 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[EmailSendResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: "email_operations", Message: "provider write outcome is unknown"}, 0)
+		}
 		return brevoMutationBranch(rejected, EmailSendResult{}, name, failureKind(response.StatusCode), "Brevo rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	body, readError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)

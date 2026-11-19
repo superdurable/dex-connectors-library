@@ -247,6 +247,9 @@ func (client *Client) invokeLimitedPaymentMethod(call sdkgo.Call, definition sdk
 			return braintreeMutationRetry[PaymentMethodProfile](operation, sdkgo.FailureAvailability, "payment method resend checkpoint is unavailable", 0)
 		}
 	}
+	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+		return braintreeMutationRetry[PaymentMethodProfile](operation, sdkgo.FailureAvailability, "payment method refusal checkpoint is unavailable", 0)
+	}
 	if attempt, handled := classifyBraintreeMutationResponse[PaymentMethodProfile](response, operation, notFound, rejected, "", defect, decision.MaximumPriorSends > 0); handled {
 		return attempt
 	}

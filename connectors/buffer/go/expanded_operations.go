@@ -361,6 +361,14 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 		}
 		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureTransport, "post outcome is unknown"), 0)
 	}
+	if isDefiniteRefusalStatus(response.status) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureTransport, "earlier post outcome remains unconfirmed"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureAvailability, "post refusal checkpoint is unavailable"), 0)
+		}
+	}
 	return classifyPostMutation(response, name, "createPost", input.ChannelID, CreatePostBranchCreated, CreatePostBranchProviderRejected, CreatePostBranchProviderRejected, CreatePostBranchDefect)
 }
 
@@ -533,9 +541,13 @@ func classifyBufferMutationResponse[T any](response providerResponse, name strin
 	case response.status == http.StatusRequestTimeout || response.status >= 500:
 		attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureAvailability, "Buffer is temporarily unavailable"), response.retryAfter)
 	case response.status != http.StatusOK:
-		attempt = bufferMutationBranch(rejected, zero, name, sdkgo.FailureProviderRejection, "Buffer rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteRefusalStatus(response.status) {
+			attempt = bufferMutationBranch(rejected, zero, name, sdkgo.FailureProviderRejection, "Buffer rejected HTTP "+strconv.Itoa(response.status))
+		} else {
+			attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureTransport, "Buffer mutation outcome is unknown"), 0)
+		}
 	case errors.Is(response.err, providerhttp.ErrBodyTooLarge):
-		attempt = bufferMutationBranch(invalid, zero, name, sdkgo.FailureResponseTooLarge, "Buffer response exceeded the configured limit")
+		attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureResponseTooLarge, "Buffer response exceeded the configured limit"), 0)
 	case response.err != nil:
 		attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureTransport, "Buffer response was interrupted"), 0)
 	default:

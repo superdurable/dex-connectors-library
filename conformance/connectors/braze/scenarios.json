@@ -1950,8 +1950,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "dispatchId": ""
@@ -2327,8 +2326,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "dispatchId": ""

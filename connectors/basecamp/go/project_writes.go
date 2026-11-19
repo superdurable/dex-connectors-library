@@ -99,7 +99,7 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 	}
 	if errors.Is(response.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return projectMutationUncertain[Project]("createProject", "an earlier project creation may have completed")
+			return projectMutationRetry[Project]("createProject", sdkgo.FailureTransport, "earlier possible write remains unconfirmed", 0)
 		}
 		return projectMutationBranch[Project]("createProject", CreateProjectBranchDefect, sdkgo.FailureAuthentication, "Basecamp credentials are unavailable")
 	}
@@ -107,8 +107,14 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 		return projectMutationRetry[Project]("createProject", sdkgo.FailureTransport, "project creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.status) {
+			return sdkgo.NewMutationRetry[Project](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createProject", Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return projectMutationUncertain[Project]("createProject", "an earlier project creation may have completed")
+			return projectMutationRetry[Project]("createProject", sdkgo.FailureTransport, "earlier possible write remains unconfirmed", 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[Project](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createProject", Message: "provider write outcome is unknown"}, 0)
 		}
 		return projectMutationBranch[Project]("createProject", CreateProjectBranchProviderRejected, sdkgo.FailureProviderRejection, "Basecamp rejected project creation")
 	}

@@ -65,7 +65,7 @@ func (operation CreateJobOperation) Invoke(call sdkgo.Call, input CreateJobInput
 	}
 	if errors.Is(response.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(JobSummary{}, jobFailure("createJob", sdkgo.FailureAuthentication, "Ashby credential failed after a possible earlier job create"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[JobSummary](jobFailure("createJob", sdkgo.FailureAuthentication, "Ashby credential failed after a possible earlier job create"), 0)
 		}
 		return createJobBranch(CreateJobBranchDefect, sdkgo.FailureAuthentication, "Ashby credentials are unavailable or invalid")
 	}
@@ -83,8 +83,14 @@ func (operation CreateJobOperation) Invoke(call sdkgo.Call, input CreateJobInput
 		return sdkgo.NewMutationRetry[JobSummary](jobFailure("createJob", sdkgo.FailureTransport, "Ashby job create outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status) {
+			return sdkgo.NewMutationRetry[JobSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "job_writes", Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(JobSummary{}, jobFailure("createJob", sdkgo.FailureProviderRejection, "an earlier job create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[JobSummary](jobFailure("createJob", sdkgo.FailureProviderRejection, "an earlier job create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[JobSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "job_writes", Message: "provider write outcome is unknown"}, 0)
 		}
 		return createJobBranch(CreateJobBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected job creation with HTTP "+strconv.Itoa(response.status))
 	}
@@ -94,7 +100,7 @@ func (operation CreateJobOperation) Invoke(call sdkgo.Call, input CreateJobInput
 	}
 	if rejectionCode != "" {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(JobSummary{}, jobFailure("createJob", sdkgo.FailureProviderRejection, "an earlier job create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[JobSummary](jobFailure("createJob", sdkgo.FailureProviderRejection, "an earlier job create may have succeeded"), 0)
 		}
 		return createJobBranch(CreateJobBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected job creation")
 	}

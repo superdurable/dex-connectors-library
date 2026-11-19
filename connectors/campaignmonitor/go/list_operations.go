@@ -170,11 +170,6 @@ func (operation CreateListOperation) Invoke(call sdkgo.Call, input CreateListInp
 		return listMutationBranch(name, CreateListBranchDefect, ListIdentity{}, sdkgo.FailureLocalDefect, "list dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		if listID := operation.findCreatedList(call, input.ClientID, input.Title); listID != "" {
-			return sdkgo.NewMutationBranch(CreateListBranchCreated, ListIdentity{ID: listID, Title: input.Title}, nil, sdkgo.Receipt{})
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ListIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: name, Message: "dispatch checkpoint could not be trusted"}, 0)
 	}
@@ -210,6 +205,12 @@ func (operation CreateListOperation) Invoke(call sdkgo.Call, input CreateListInp
 		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "list outcome is unknown"), 0)
 	}
 	if status != http.StatusCreated {
+		if !isDefiniteRefusalStatus(status) {
+			return sdkgo.NewMutationRetry[ListIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[ListIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
 		return listMutationBranch(name, CreateListBranchProviderRejected, ListIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))
 	}
 	var listID string
@@ -217,30 +218,6 @@ func (operation CreateListOperation) Invoke(call sdkgo.Call, input CreateListInp
 		return sdkgo.NewMutationUncertain(ListIdentity{}, queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor created a list but its ID is unknown"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateListBranchCreated, ListIdentity{ID: listID, Title: input.Title}, nil, sdkgo.Receipt{})
-}
-
-func (operation CreateListOperation) findCreatedList(call sdkgo.Call, clientID, title string) string {
-	body, status, _, err := operation.client.get(call, "/clients/"+url.PathEscape(clientID)+"/lists.json")
-	if err != nil || status != http.StatusOK {
-		return ""
-	}
-	var rows []struct {
-		ID   string `json:"ListID"`
-		Name string `json:"Name"`
-	}
-	if json.Unmarshal(body, &rows) != nil {
-		return ""
-	}
-	var found string
-	for _, row := range rows {
-		if row.Name == title {
-			if found != "" || !validCampaignMonitorID(row.ID) {
-				return ""
-			}
-			found = row.ID
-		}
-	}
-	return found
 }
 
 // Invoke replaces list settings without suppression-list scrubbing.

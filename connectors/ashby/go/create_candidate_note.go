@@ -67,7 +67,7 @@ func (operation CreateCandidateNoteOperation) Invoke(call sdkgo.Call, input Crea
 	}
 	if errors.Is(response.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CandidateNoteSummary{}, createCandidateNoteFailure(sdkgo.FailureAuthentication, "Ashby credential failed after an earlier possible candidate note create"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CandidateNoteSummary](createCandidateNoteFailure(sdkgo.FailureAuthentication, "Ashby credential failed after an earlier possible candidate note create"), 0)
 		}
 		return createCandidateNoteBranch(CreateCandidateNoteBranchDefect, sdkgo.FailureAuthentication, "Ashby credentials are unavailable or invalid")
 	}
@@ -85,8 +85,14 @@ func (operation CreateCandidateNoteOperation) Invoke(call sdkgo.Call, input Crea
 		return sdkgo.NewMutationRetry[CandidateNoteSummary](createCandidateNoteFailure(sdkgo.FailureTransport, "Ashby candidate note create outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status) {
+			return sdkgo.NewMutationRetry[CandidateNoteSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "create_candidate_note", Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CandidateNoteSummary{}, createCandidateNoteFailure(sdkgo.FailureProviderRejection, "an earlier Ashby candidate note create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CandidateNoteSummary](createCandidateNoteFailure(sdkgo.FailureProviderRejection, "an earlier Ashby candidate note create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CandidateNoteSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "create_candidate_note", Message: "provider write outcome is unknown"}, 0)
 		}
 		return createCandidateNoteBranch(CreateCandidateNoteBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected candidate note creation with HTTP "+strconv.Itoa(response.status))
 	}
@@ -96,7 +102,7 @@ func (operation CreateCandidateNoteOperation) Invoke(call sdkgo.Call, input Crea
 	}
 	if rejectionCode != "" {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CandidateNoteSummary{}, createCandidateNoteFailure(sdkgo.FailureProviderRejection, "an earlier Ashby candidate note create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CandidateNoteSummary](createCandidateNoteFailure(sdkgo.FailureProviderRejection, "an earlier Ashby candidate note create may have succeeded"), 0)
 		}
 		return createCandidateNoteBranch(CreateCandidateNoteBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected candidate note creation")
 	}

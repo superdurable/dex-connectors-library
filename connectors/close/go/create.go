@@ -109,7 +109,7 @@ func invokeCloseCreate[T interface {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		if decision.MaximumPriorSends > 0 {
-			return closeCreateUncertain[T](operation, sdkgo.FailureAuthentication, "earlier creation may have succeeded; connection credentials unavailable")
+			return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "close", Operation: operation, Message: "earlier possible write remains unconfirmed"}, 0)
 		}
 		return closeMutationBranch[T](operation, defectBranch, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -165,8 +165,11 @@ func invokeCloseCreate[T interface {
 		return retryOrUncertainCloseCreate[T](operation, sdkgo.FailureAvailability, "creation outcome is unknown", canResendUnknown)
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return closeMutationRetry[T](operation, sdkgo.FailureTransport, "creation outcome is unknown", 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return closeCreateUncertain[T](operation, sdkgo.FailureProviderRejection, "earlier creation may have succeeded")
+			return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "close", Operation: operation, Message: "earlier possible write remains unconfirmed"}, 0)
 		}
 		kind := sdkgo.FailureProviderRejection
 		if response.StatusCode == http.StatusUnauthorized {
@@ -175,15 +178,18 @@ func invokeCloseCreate[T interface {
 		if response.StatusCode == http.StatusForbidden {
 			kind = sdkgo.FailureAuthorization
 		}
+		if fence.RecordCanResend() != nil {
+			return closeMutationRetry[T](operation, sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
+		}
 		return closeMutationBranch[T](operation, rejectedBranch, kind, "provider rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if err != nil {
-		return closeCreateUncertain[T](operation, sdkgo.FailureTransport, "creation succeeded but response was incomplete")
+		return retryOrUncertainCloseCreate[T](operation, sdkgo.FailureTransport, "creation response was incomplete", canResendUnknown)
 	}
 	value, err := decode(responseBody)
 	if err != nil {
-		return closeCreateUncertain[T](operation, sdkgo.FailureProtocol, "creation succeeded but response identity is invalid")
+		return retryOrUncertainCloseCreate[T](operation, sdkgo.FailureProtocol, "creation response identity is invalid", canResendUnknown)
 	}
 	providerID := closeCreatedID(value)
 	_ = fence.RecordProviderID(providerID)

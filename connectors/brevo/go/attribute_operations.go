@@ -146,11 +146,6 @@ func (operation CreateAttributeOperation) Invoke(call sdkgo.Call, input CreateAt
 		return brevoMutationBranch(CreateAttributeBranchDefect, AttributeChangeResult{}, name, sdkgo.FailureLocalDefect, "attribute dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		if operation.attributeExists(call, input.Category, input.Name) {
-			return sdkgo.NewMutationBranch(CreateAttributeBranchCreated, AttributeChangeResult{Category: input.Category, Name: input.Name}, nil, sdkgo.Receipt{})
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[AttributeChangeResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "dispatch checkpoint could not be trusted"}, 0)
 	}
@@ -186,38 +181,15 @@ func (operation CreateAttributeOperation) Invoke(call sdkgo.Call, input CreateAt
 		return sdkgo.NewMutationRetry[AttributeChangeResult](*brevoFailure(name, sdkgo.FailureTransport, "attribute outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return sdkgo.NewMutationRetry[AttributeChangeResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[AttributeChangeResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
 		return brevoMutationBranch(CreateAttributeBranchProviderRejected, AttributeChangeResult{}, name, failureKind(response.StatusCode), "Brevo rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	return sdkgo.NewMutationBranch(CreateAttributeBranchCreated, AttributeChangeResult{Category: input.Category, Name: input.Name}, nil, sdkgo.Receipt{})
-}
-
-func (operation CreateAttributeOperation) attributeExists(call sdkgo.Call, category, name string) bool {
-	request, failure := operation.client.newRequest(call, http.MethodGet, "/contacts/attributes", nil, "createAttribute")
-	if failure != nil {
-		return false
-	}
-	response, err := operation.client.httpClient.Do(request)
-	if err != nil {
-		return false
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return false
-	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if err != nil {
-		return false
-	}
-	var listing AttributesList
-	if json.Unmarshal(body, &listing) != nil {
-		return false
-	}
-	for _, attribute := range listing.Attributes {
-		if attribute.Category == category && attribute.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // Invoke replaces a supported attribute's choices or formula.

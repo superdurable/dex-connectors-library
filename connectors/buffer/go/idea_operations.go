@@ -169,6 +169,14 @@ func (operation CreateIdeaOperation) Invoke(call sdkgo.Call, input CreateIdeaInp
 		}
 		return sdkgo.NewMutationRetry[IdeaProfile](bufferFailure(name, sdkgo.FailureTransport, "idea outcome is unknown"), 0)
 	}
+	if isDefiniteRefusalStatus(response.status) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[IdeaProfile](bufferFailure(name, sdkgo.FailureTransport, "earlier idea outcome remains unconfirmed"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[IdeaProfile](bufferFailure(name, sdkgo.FailureAvailability, "idea refusal checkpoint is unavailable"), 0)
+		}
+	}
 	if attempt := classifyBufferMutationResponse[IdeaProfile](response, name, CreateIdeaBranchProviderRejected, CreateIdeaBranchProviderRejected, CreateIdeaBranchDefect); attempt != nil {
 		return *attempt
 	}

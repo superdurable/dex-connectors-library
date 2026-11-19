@@ -486,6 +486,12 @@ func (client *Client) invokeLimitedCampaignMutation(call sdkgo.Call, name, path 
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "campaign outcome is unknown"), 0)
 	}
 	if status != successStatus {
+		if !isDefiniteRefusalStatus(status) {
+			return sdkgo.NewMutationRetry[CampaignIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: "campaign_operations", Message: "provider write outcome is unknown"}, 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CampaignIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: "campaign_operations", Message: "provider write outcome is unknown"}, 0)
+		}
 		return campaignMutationBranch(name, rejected, CampaignIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))
 	}
 	if id := decodeID(body); id != "" {

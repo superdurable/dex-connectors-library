@@ -95,7 +95,7 @@ func (operation CreatePullRequestOperation) Invoke(call sdkgo.Call, input Create
 	authorization := operation.client.authorize(call, name, request, CreatePullRequestBranchDefect, CreatePullRequestBranchProviderRejected, CreatePullRequestBranchDefect)
 	if authorization.failure != nil {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PullRequest{}, *failureFor(name, sdkgo.FailureAuthentication, "an earlier pull request create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureAuthentication, "an earlier pull request create may have succeeded"), 0)
 		}
 		return sdkgo.NewMutationBranch(authorization.branch, PullRequest{}, authorization.failure, sdkgo.Receipt{})
 	}
@@ -110,7 +110,7 @@ func (operation CreatePullRequestOperation) Invoke(call sdkgo.Call, input Create
 	}
 	if requestError != nil {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PullRequest{}, *failureFor(name, sdkgo.FailureTransport, "an earlier pull request create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "an earlier pull request create may have succeeded"), 0)
 		}
 		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "pull request create request failed"), 0)
 	}
@@ -129,8 +129,14 @@ func (operation CreatePullRequestOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureAvailability, "pull request creation outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return sdkgo.NewMutationRetry[PullRequest](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "bitbucket", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(PullRequest{}, *failureFor(name, sdkgo.FailureProviderRejection, "an earlier pull request create may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureProviderRejection, "an earlier pull request create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[PullRequest](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "bitbucket", Operation: name, Message: "provider write outcome is unknown"}, 0)
 		}
 		return pullRequestBranch(name, CreatePullRequestBranchProviderRejected, sdkgo.FailureProviderRejection, "Bitbucket rejected pull request creation with HTTP "+strconv.Itoa(response.StatusCode))
 	}

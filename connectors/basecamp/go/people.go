@@ -284,7 +284,7 @@ func (operation EnrollPersonOperation) Invoke(call sdkgo.Call, input EnrollPerso
 	}
 	if errors.Is(response.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return projectMutationUncertain[EnrollmentResult]("enrollPerson", "an earlier enrollment may have completed")
+			return projectMutationRetry[EnrollmentResult]("enrollPerson", sdkgo.FailureTransport, "earlier possible write remains unconfirmed", 0)
 		}
 		return projectMutationBranch[EnrollmentResult]("enrollPerson", EnrollPersonBranchDefect, sdkgo.FailureAuthentication, "Basecamp credentials are unavailable")
 	}
@@ -292,8 +292,14 @@ func (operation EnrollPersonOperation) Invoke(call sdkgo.Call, input EnrollPerso
 		return projectMutationRetry[EnrollmentResult]("enrollPerson", sdkgo.FailureTransport, "enrollment outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.status) {
+			return sdkgo.NewMutationRetry[EnrollmentResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "enrollPerson", Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return projectMutationUncertain[EnrollmentResult]("enrollPerson", "an earlier enrollment may have completed")
+			return projectMutationRetry[EnrollmentResult]("enrollPerson", sdkgo.FailureTransport, "earlier possible write remains unconfirmed", 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[EnrollmentResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "enrollPerson", Message: "provider write outcome is unknown"}, 0)
 		}
 		return projectMutationBranch[EnrollmentResult]("enrollPerson", EnrollPersonBranchProviderRejected, sdkgo.FailureProviderRejection, "Basecamp rejected enrollment")
 	}

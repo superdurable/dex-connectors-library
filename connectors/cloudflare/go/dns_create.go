@@ -84,7 +84,7 @@ func (operation CreateDNSRecordOperation) invokeCreate(call sdkgo.Call, zoneID s
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
 		if decision.MaximumPriorSends > 0 {
-			return cloudflareCreateUncertain(sdkgo.FailureAuthentication, "earlier creation may have succeeded; credentials unavailable")
+			return sdkgo.NewMutationRetry[DNSRecord](*failure(sdkgo.FailureTransport, "createDNSRecord", "earlier possible write remains unconfirmed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateDNSRecordBranchDefect, DNSRecord{}, failure(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
@@ -137,10 +137,16 @@ func (operation CreateDNSRecordOperation) invokeCreate(call sdkgo.Call, zoneID s
 		return cloudflareCreateRetryOrUncertain(sdkgo.FailureAvailability, "creation outcome is unknown", canResendUnknown)
 	}
 	if response.StatusCode != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return sdkgo.NewMutationRetry[DNSRecord](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "cloudflare", Operation: operationID, Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return cloudflareCreateUncertain(sdkgo.FailureProviderRejection, "earlier creation may have succeeded")
+			return sdkgo.NewMutationRetry[DNSRecord](*failure(sdkgo.FailureTransport, "createDNSRecord", "earlier possible write remains unconfirmed"), 0)
 		}
 		providerFailure := statusFailure(response, operationID)
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[DNSRecord](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "cloudflare", Operation: operationID, Message: "provider write outcome is unknown"}, 0)
+		}
 		return sdkgo.NewMutationBranch(CreateDNSRecordBranchProviderRejected, DNSRecord{}, &providerFailure, sdkgo.Receipt{})
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
@@ -149,7 +155,7 @@ func (operation CreateDNSRecordOperation) invokeCreate(call sdkgo.Call, zoneID s
 	}
 	if isCloudflareRejection(responseBody) {
 		if decision.MaximumPriorSends > 0 {
-			return cloudflareCreateUncertain(sdkgo.FailureProviderRejection, "earlier creation may have succeeded")
+			return sdkgo.NewMutationRetry[DNSRecord](*failure(sdkgo.FailureTransport, "createDNSRecord", "earlier possible write remains unconfirmed"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateDNSRecordBranchProviderRejected, DNSRecord{}, failure(sdkgo.FailureProviderRejection, operationID, "Cloudflare rejected the request"), sdkgo.Receipt{})
 	}

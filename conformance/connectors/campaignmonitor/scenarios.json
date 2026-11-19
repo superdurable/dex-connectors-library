@@ -197,8 +197,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -1742,8 +1741,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -2241,8 +2239,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -2819,36 +2816,19 @@
     },
     {
       "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
-      "exchanges": [
-        {
-          "body": "[{\"SegmentID\":\"segment-2\",\"ListID\":\"list-1\",\"Title\":\"Campaign readers\"}]",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/lists/list-1/segments.json",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Basic dGVzdC10b2tlbjo="
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "segment-2",
-          "listId": "list-1",
-          "title": "Campaign readers"
+          "id": "",
+          "listId": "",
+          "title": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
       "input": {
@@ -2865,14 +2845,14 @@
         ],
         "title": "Campaign readers"
       },
-      "name": "createSegment-confirmedReadback",
+      "name": "createSegment-priorNaturalKeyDoesNotConfirm",
       "operation": "createSegment",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "value": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         }
       }
@@ -3594,8 +3574,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -3929,24 +3908,7 @@
     },
     {
       "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
-      "exchanges": [
-        {
-          "body": "[]",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/lists/list-1/segments.json",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Basic dGVzdC10b2tlbjo="
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -3955,7 +3917,7 @@
           "listId": "",
           "title": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -4818,35 +4780,18 @@
     },
     {
       "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
-      "exchanges": [
-        {
-          "body": "[{\"ListID\":\"list-2\",\"Name\":\"Campaign updates\"}]",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/clients/client-1/lists.json",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Basic dGVzdC10b2tlbjo="
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "list-2",
-          "title": "Campaign updates"
+          "id": "",
+          "title": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
       "input": {
@@ -4857,14 +4802,14 @@
         "unsubscribePage": "https://example.com/unsubscribed",
         "unsubscribeSetting": "AllClientLists"
       },
-      "name": "createList-confirmedReadback",
+      "name": "createList-priorNaturalKeyDoesNotConfirm",
       "operation": "createList",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "value": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         }
       }
@@ -5282,8 +5227,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -5555,24 +5499,7 @@
     },
     {
       "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
-      "exchanges": [
-        {
-          "body": "[]",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/clients/client-1/lists.json",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Basic dGVzdC10b2tlbjo="
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -5580,7 +5507,7 @@
           "id": "",
           "title": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true

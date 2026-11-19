@@ -143,5 +143,13 @@ func (client *Client) createPostWithMode(call sdkgo.Call, name, channelID, text,
 		}
 		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureTransport, "post outcome is unknown"), 0)
 	}
+	if isDefiniteRefusalStatus(response.status) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureTransport, "earlier post outcome remains unconfirmed"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureAvailability, "post refusal checkpoint is unavailable"), 0)
+		}
+	}
 	return classifyPostMutation(response, name, "createPost", channelID, created, rejected, rejected, defect)
 }

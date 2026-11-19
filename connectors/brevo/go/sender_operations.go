@@ -102,11 +102,6 @@ func (operation CreateSenderOperation) Invoke(call sdkgo.Call, input CreateSende
 		return brevoMutationBranch(CreateSenderBranchDefect, SenderChangeResult{}, name, sdkgo.FailureLocalDefect, "sender dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		if senderID := operation.findCreatedSender(call, input.Email, input.Name); senderID > 0 {
-			return sdkgo.NewMutationBranch(CreateSenderBranchCreated, SenderChangeResult{ID: senderID}, nil, sdkgo.Receipt{})
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[SenderChangeResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "dispatch checkpoint could not be trusted"}, 0)
 	}
@@ -141,6 +136,12 @@ func (operation CreateSenderOperation) Invoke(call sdkgo.Call, input CreateSende
 		return sdkgo.NewMutationRetry[SenderChangeResult](*brevoFailure(name, sdkgo.FailureTransport, "sender outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return sdkgo.NewMutationRetry[SenderChangeResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[SenderChangeResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
 		return brevoMutationBranch(CreateSenderBranchProviderRejected, SenderChangeResult{}, name, failureKind(response.StatusCode), "Brevo rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	body, readError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
@@ -149,35 +150,6 @@ func (operation CreateSenderOperation) Invoke(call sdkgo.Call, input CreateSende
 		return sdkgo.NewMutationUncertain(SenderChangeResult{}, *brevoFailure(name, sdkgo.FailureProtocol, "Brevo created a sender but its ID could not be confirmed"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateSenderBranchCreated, result, nil, sdkgo.Receipt{})
-}
-
-func (operation CreateSenderOperation) findCreatedSender(call sdkgo.Call, email, name string) int64 {
-	request, failure := operation.client.newRequest(call, http.MethodGet, "/senders", nil, "createSender")
-	if failure != nil {
-		return 0
-	}
-	response, err := operation.client.httpClient.Do(request)
-	if err != nil {
-		return 0
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return 0
-	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if err != nil {
-		return 0
-	}
-	var listing SendersList
-	if json.Unmarshal(body, &listing) != nil {
-		return 0
-	}
-	for _, sender := range listing.Senders {
-		if sender.ID > 0 && sender.Email == email && sender.Name == name {
-			return sender.ID
-		}
-	}
-	return 0
 }
 
 // Invoke sets the sender's display name to an absolute value.

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -64,11 +63,6 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return brevoMutationBranch(CreateContactBranchDefect, ContactWriteResult{}, name, sdkgo.FailureLocalDefect, "contact dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		if contactID := operation.findCreatedContact(call, input.Email); contactID > 0 {
-			return sdkgo.NewMutationBranch(CreateContactBranchCreated, ContactWriteResult{ID: contactID, Email: input.Email, Created: true}, nil, sdkgo.Receipt{})
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ContactWriteResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "dispatch checkpoint could not be trusted"}, 0)
 	}
@@ -103,6 +97,12 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureTransport, "contact outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			return sdkgo.NewMutationRetry[ContactWriteResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[ContactWriteResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
 		return brevoMutationBranch(CreateContactBranchProviderRejected, ContactWriteResult{}, name, failureKind(response.StatusCode), "Brevo rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	body, readError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
@@ -113,28 +113,4 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationUncertain(ContactWriteResult{}, *brevoFailure(name, sdkgo.FailureProtocol, "Brevo created a contact but its ID could not be confirmed"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateContactBranchCreated, ContactWriteResult{ID: created.ID, Email: input.Email, Created: true}, nil, sdkgo.Receipt{})
-}
-
-func (operation CreateContactOperation) findCreatedContact(call sdkgo.Call, email string) int64 {
-	request, failure := operation.client.newRequest(call, http.MethodGet, "/contacts/"+url.PathEscape(email), nil, "createContact")
-	if failure != nil {
-		return 0
-	}
-	response, err := operation.client.httpClient.Do(request)
-	if err != nil {
-		return 0
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return 0
-	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if err != nil {
-		return 0
-	}
-	var found Contact
-	if json.Unmarshal(body, &found) != nil || found.Email != email || found.ID <= 0 {
-		return 0
-	}
-	return found.ID
 }

@@ -82,7 +82,7 @@ func (operation RequestApplicationFeedbackOperation) Invoke(call sdkgo.Call, inp
 	}
 	if errors.Is(response.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(FeedbackRequestReceipt{}, failure(sdkgo.FailureAuthentication, "credential failed after an earlier possible send"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[FeedbackRequestReceipt](failure(sdkgo.FailureAuthentication, "credential failed after an earlier possible send"), 0)
 		}
 		return feedbackRequestBranch(RequestApplicationFeedbackBranchDefect, sdkgo.FailureAuthentication, "Ashby credentials are unavailable")
 	}
@@ -100,8 +100,14 @@ func (operation RequestApplicationFeedbackOperation) Invoke(call sdkgo.Call, inp
 		return sdkgo.NewMutationRetry[FeedbackRequestReceipt](failure(sdkgo.FailureTransport, "feedback request outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status) {
+			return sdkgo.NewMutationRetry[FeedbackRequestReceipt](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "feedback_writes", Message: "provider write outcome is unknown"}, 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(FeedbackRequestReceipt{}, failure(sdkgo.FailureProviderRejection, "an earlier feedback request may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[FeedbackRequestReceipt](failure(sdkgo.FailureProviderRejection, "an earlier feedback request may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[FeedbackRequestReceipt](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "feedback_writes", Message: "provider write outcome is unknown"}, 0)
 		}
 		return feedbackRequestBranch(RequestApplicationFeedbackBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected feedback request with HTTP "+strconv.Itoa(response.status))
 	}
@@ -111,7 +117,7 @@ func (operation RequestApplicationFeedbackOperation) Invoke(call sdkgo.Call, inp
 	}
 	if code != "" {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(FeedbackRequestReceipt{}, failure(sdkgo.FailureProviderRejection, "an earlier feedback request may have succeeded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[FeedbackRequestReceipt](failure(sdkgo.FailureProviderRejection, "an earlier feedback request may have succeeded"), 0)
 		}
 		return feedbackRequestBranch(RequestApplicationFeedbackBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected feedback request")
 	}

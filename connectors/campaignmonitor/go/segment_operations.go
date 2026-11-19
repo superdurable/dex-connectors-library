@@ -237,11 +237,6 @@ func (operation CreateSegmentOperation) Invoke(call sdkgo.Call, input CreateSegm
 		return segmentMutationBranch(name, CreateSegmentBranchDefect, SegmentIdentity{}, sdkgo.FailureLocalDefect, "segment dispatch fence could not be constructed")
 	}
 	decision := fence.Decide()
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		if segmentID := operation.findCreatedSegment(call, input.ListID, input.Title); segmentID != "" {
-			return sdkgo.NewMutationBranch(CreateSegmentBranchCreated, SegmentIdentity{ID: segmentID, ListID: input.ListID, Title: input.Title}, nil, sdkgo.Receipt{})
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[SegmentIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: name, Message: "dispatch checkpoint could not be trusted"}, 0)
 	}
@@ -277,6 +272,12 @@ func (operation CreateSegmentOperation) Invoke(call sdkgo.Call, input CreateSegm
 		return sdkgo.NewMutationRetry[SegmentIdentity](queryFailure(name, sdkgo.FailureTransport, "segment outcome is unknown"), 0)
 	}
 	if status != http.StatusCreated {
+		if !isDefiniteRefusalStatus(status) {
+			return sdkgo.NewMutationRetry[SegmentIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[SegmentIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: name, Message: "provider write outcome is unknown"}, 0)
+		}
 		return segmentMutationBranch(name, CreateSegmentBranchProviderRejected, SegmentIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))
 	}
 	var segmentID string
@@ -284,31 +285,6 @@ func (operation CreateSegmentOperation) Invoke(call sdkgo.Call, input CreateSegm
 		return sdkgo.NewMutationUncertain(SegmentIdentity{}, queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor created a segment but its ID is unknown"), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(CreateSegmentBranchCreated, SegmentIdentity{ID: segmentID, ListID: input.ListID, Title: input.Title}, nil, sdkgo.Receipt{})
-}
-
-func (operation CreateSegmentOperation) findCreatedSegment(call sdkgo.Call, listID, title string) string {
-	body, status, _, err := operation.client.get(call, "/lists/"+url.PathEscape(listID)+"/segments.json")
-	if err != nil || status != http.StatusOK {
-		return ""
-	}
-	var rows []struct {
-		ID     string `json:"SegmentID"`
-		ListID string `json:"ListID"`
-		Title  string `json:"Title"`
-	}
-	if json.Unmarshal(body, &rows) != nil {
-		return ""
-	}
-	var found string
-	for _, row := range rows {
-		if row.ListID == listID && row.Title == title {
-			if found != "" || !validCampaignMonitorID(row.ID) {
-				return ""
-			}
-			found = row.ID
-		}
-	}
-	return found
 }
 
 // Invoke replaces the title and, when provided, all rule groups.
