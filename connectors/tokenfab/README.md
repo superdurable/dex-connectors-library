@@ -5,3 +5,7 @@
 Sign in at the [TokenFab Console](https://www.tokenfab.cn/console), open 控制台 > API 密钥, create a `tk-` prefixed secret key, and copy it once into Dex Web Connections. The provider announced that its old `.com` API domain was retired; this connector uses `api.tokenfab.cn`. Leave timeout and maxResponseBytes blank for their displayed defaults.
 
 The [runnable Dex example](go/examples/list-models/) uses a synthetic mock. Live account authorization and current model visibility have not been verified without a user-controlled provider key.
+
+## TypeScript
+
+`@superdurable/connector-tokenfab` provides the `listModels` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
