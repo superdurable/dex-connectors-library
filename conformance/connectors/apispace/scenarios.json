@@ -1,0 +1,425 @@
+{
+  "connector": "apispace",
+  "scenarios": [
+    {
+      "callId": "15c50312-164f-421b-8a13-1c7f8ae4700a",
+      "exchanges": [
+        {
+          "body": "{\"status\":0,\"result\":{\"location\":{\"name\":\"北京\"},\"realtime\":{\"text\":\"多云\",\"temp\":18.5,\"rh\":38},\"last_update\":\"2026-11-13 12:00:00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/456456/weather/v001/now",
+          "query": {
+            "areacode": [
+              "101010100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization-Type": [
+              "apikey"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apispace-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "北京",
+          "condition": "多云",
+          "humidityPercent": 38,
+          "temperatureCelsius": 18.5,
+          "updatedAtBeijing": "2026-11-13 12:00:00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": "101010100"
+      },
+      "name": "getCurrentWeather-found",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "bc69abdb-bc6f-49a0-b3c4-cfc7ff9054b1",
+      "exchanges": [
+        {
+          "body": "{\"status\":10001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/456456/weather/v001/now",
+          "query": {
+            "areacode": [
+              "101010100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization-Type": [
+              "apikey"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apispace-Token": [
+              "test-token"
+            ]
+          },
+          "status": 416
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "city": "",
+          "condition": "",
+          "humidityPercent": 0,
+          "temperatureCelsius": 0,
+          "updatedAtBeijing": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": "101010100"
+      },
+      "name": "getCurrentWeather-providerRejected",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5d12d0e0-347f-4b3a-a054-4db1125ee032",
+      "exchanges": [
+        {
+          "body": "{\"status\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/456456/weather/v001/now",
+          "query": {
+            "areacode": [
+              "101010100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization-Type": [
+              "apikey"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apispace-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "condition": "",
+          "humidityPercent": 0,
+          "temperatureCelsius": 0,
+          "updatedAtBeijing": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": "101010100"
+      },
+      "name": "getCurrentWeather-providerStatus",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "d62e47ae-15d8-4639-bd6d-7ddb3b5b1ecf",
+      "exchanges": [
+        {
+          "body": "{\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/456456/weather/v001/now",
+          "query": {
+            "areacode": [
+              "101010100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization-Type": [
+              "apikey"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apispace-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "condition": "",
+          "humidityPercent": 0,
+          "temperatureCelsius": 0,
+          "updatedAtBeijing": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": "101010100"
+      },
+      "name": "getCurrentWeather-invalidResponse",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "fceba705-087e-41bd-9746-ccda8b69020c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "condition": "",
+          "humidityPercent": 0,
+          "temperatureCelsius": 0,
+          "updatedAtBeijing": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": ""
+      },
+      "name": "getCurrentWeather-defect",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "2c263185-3d62-4592-8335-8329f5730c33",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/456456/weather/v001/now",
+          "query": {
+            "areacode": [
+              "101010100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization-Type": [
+              "apikey"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apispace-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": "101010100"
+      },
+      "name": "getCurrentWeather-rateLimit429",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "38b9a593-ba7a-4db8-a49b-dfde340f51e1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/456456/weather/v001/now",
+          "query": {
+            "areacode": [
+              "101010100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization-Type": [
+              "apikey"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apispace-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": "101010100"
+      },
+      "name": "getCurrentWeather-availability503",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "64312080-8c37-4483-8753-8969d7f4b241",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/456456/weather/v001/now",
+          "query": {
+            "areacode": [
+              "101010100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization-Type": [
+              "apikey"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apispace-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": "101010100"
+      },
+      "name": "getCurrentWeather-transportFailure",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "52cde92f-49d0-45b3-8eb5-8778fd502daa",
+      "exchanges": [
+        {
+          "body": "{\"status\":0,\"result\":{\"location\":{\"name\":\"北京\"},\"realtime\":{\"text\":\"多云\",\"temp\":18.5,\"rh\":38},\"last_update\":\"2026-11-13 12:00:00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/456456/weather/v001/now",
+          "query": {
+            "areacode": [
+              "101010100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization-Type": [
+              "apikey"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apispace-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "city": "",
+          "condition": "",
+          "humidityPercent": 0,
+          "temperatureCelsius": 0,
+          "updatedAtBeijing": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areaCode": "101010100"
+      },
+      "name": "getCurrentWeather-oversized",
+      "operation": "getCurrentWeather"
+    }
+  ],
+  "schemaVersion": 1
+}
