@@ -5,3 +5,7 @@ The Go connector reads a snapshot of a TokenFactory account's general balance in
 Sign in to the [TokenFactory console](https://console.tokenfactory.cn/), complete real-name verification, and open **API Keys** to create or reveal a Key. Enter it in the secret Dex Web `api_key` field without `Bearer`. The connector sends `GET https://api.tokenfactory.cn/v1/user/balance` with the Key in an Authorization header. See the [official quick start](https://docs.tokenfactory.cn/guide/quickstart) and [key management guide](https://docs.tokenfactory.cn/enterprise/security). TokenFactory is operated by [无锡伟瑞达科技有限公司](https://docs.tokenfactory.cn/legal/about).
 
 The [runnable Dex Flow](go/examples/balance-check/README.md) shows connection setup and output. The logo is the unmodified [official website SVG](https://tokenfactory.cn/favicon.svg). No live account authorization has been verified.
+
+## TypeScript
+
+`@superdurable/connector-tokenfactory` provides the `getBalance` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
