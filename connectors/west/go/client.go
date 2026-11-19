@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -16,10 +17,13 @@ import (
 // Option supplies a non-serializable client dependency to New.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ httpClient *http.Client }
+type clockOption struct{ now func() time.Time }
 
 func (option httpClientOption) applyClientOption(client *Client) {
 	client.httpClient = option.httpClient
 }
+
+func (option clockOption) applyClientOption(client *Client) { client.now = option.now }
 
 // WithHTTPClient supplies an HTTP client for a proxy or provider test. Redirects are disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -30,6 +34,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // New validates configuration without contacting West. Rotated credentials take effect on the next call.
@@ -52,12 +57,15 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsed.Path != "" {
 		return nil, errors.New("West base URL must be an HTTPS origin without a path")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("West client option is required")
 		}
 		option.applyClientOption(client)
+	}
+	if client.now == nil {
+		return nil, errors.New("West clock is required")
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil

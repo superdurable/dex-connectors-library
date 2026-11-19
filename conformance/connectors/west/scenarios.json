@@ -1,0 +1,541 @@
+{
+  "connector": "west",
+  "scenarios": [
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "body": "{\"result\":200,\"data\":{\"items\":[{\"domain\":\"example.cn\",\"expdate\":\"2030-01-01\"}],\"pageno\":2,\"totalpages\":3,\"total\":21}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "domains": [
+            {
+              "expiresAt": "2030-01-01",
+              "name": "example.cn"
+            }
+          ],
+          "page": 2,
+          "total": 21,
+          "totalPages": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-listed",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "body": "{\"result\":200,\"data\":{\"items\":[],\"pageno\":2,\"totalpages\":2,\"total\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "domains": [],
+          "page": 2,
+          "total": 0,
+          "totalPages": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-empty",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "body": "{\"result\":403,\"msg\":\"rejected\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "domains": [],
+          "page": 0,
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-providerRejected",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "body": "{\"result\":200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "domains": [],
+          "page": 0,
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-invalidResponse",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "domains": [],
+          "page": 0,
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": -1
+      },
+      "name": "listDomains-defect",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-retry-429",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-retry-500",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-retry-503",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-retry-transport",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "e3df774e-4f35-5a30-a6b5-85e8dc9b8f38",
+      "exchanges": [
+        {
+          "body": "{\"result\":200,\"data\":{\"items\":[{\"domain\":\"example.cn\",\"expdate\":\"2030-01-01\"}],\"pageno\":2,\"totalpages\":3,\"total\":21}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/domain/",
+          "query": {
+            "act": [
+              "getdomains"
+            ],
+            "limit": [
+              "10"
+            ],
+            "page": [
+              "2"
+            ],
+            "time": [
+              "1794571200000"
+            ],
+            "token": [
+              "347b8fe7d0263156f4cf84b21bb720f4"
+            ],
+            "username": [
+              "zhangsan"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "domains": [],
+          "page": 0,
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T12:00:00Z",
+      "input": {
+        "limit": 10,
+        "page": 2
+      },
+      "name": "listDomains-oversized",
+      "operation": "listDomains"
+    }
+  ],
+  "schemaVersion": 1
+}
