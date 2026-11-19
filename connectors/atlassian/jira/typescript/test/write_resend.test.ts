@@ -241,18 +241,51 @@ async function runTransition(client: JiraClient, context: AttemptContext, input:
   catch (error) { if (error instanceof RetryError) return error; throw error; }
 }
 
-describe('Jira transition behind the single-dispatch fence', () => {
-  it('never transitions again after an unknown outcome', async () => {
+const recordedStopProgress = { callId, attempt: 1, transitionId: '21', transitionName: 'Stop Progress', sourceStatusId: '3', destinationStatusId: '1' };
+const doneIssue = '{"id":"10042","key":"OPS-42","fields":{"status":{"id":"5","name":"Done","statusCategory":{"key":"done"}}},"transitions":[{"id":"51","name":"Reopen","to":{"id":"1","name":"To Do","statusCategory":{"key":"new"}}}]}';
+const postedTransitionIds = (requests: ProviderRequest[]) => requests.filter(request => request.method === 'POST').map(request => (JSON.parse(Buffer.from(request.body ?? '').toString()) as { transition: { id: string } }).transition.id);
+
+describe('Jira transition with a recorded checkpoint', () => {
+  it('records its checkpoint before sending', async () => {
+    const { client } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgressIssue } : { status: 502, body: '{}' });
+    const context = new AttemptContext();
+    expect(branchOf(await runTransition(client, context))).toBe('retry');
+    expect(context.marker).toEqual(recordedStopProgress);
+    const unreadable = newStallingClient(() => ({ status: 204, body: '' }));
+    expect(branchOf(await runTransition(unreadable.client, new AttemptContext(2, undefined, true)))).toBe('retry');
+    expect(unreadable.requests, 'an unreadable checkpoint never falls back to selecting again').toEqual([]);
+  });
+
+  it('sends nothing when a retry finds the recorded destination', async () => {
     const issue = { body: inProgressIssue };
     const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: issue.body } : { status: 502, body: '{}' });
     const context = new AttemptContext();
     expect(branchOf(await runTransition(client, context))).toBe('retry');
     // Jira applied the toggle late; a resend would move the issue back.
     issue.body = toDoIssue;
-    for (const attempt of [2, 3]) {
-      context.attempt = attempt;
-      expect(branchOf(await runTransition(client, context))).toBe('retry');
-    }
+    context.attempt = 2;
+    expect(branchOf(await runTransition(client, context))).toBe('transitioned');
+    expect(posts(requests, '/transitions')).toBe(1);
+  });
+
+  it('resends the recorded transition while the issue is still in its source status', async () => {
+    // A second Stop Progress would make selecting by name again ambiguous.
+    const ambiguous = inProgressIssue.replace('"transitions":[', '"transitions":[{"id":"22","name":"Stop Progress","to":{"id":"5","name":"Done","statusCategory":{"key":"done"}}},');
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: ambiguous } : { status: 204, body: '' });
+    expect(branchOf(await runTransition(client, new AttemptContext(2, recordedStopProgress)))).toBe('transitioned');
+    expect(postedTransitionIds(requests)).toEqual(['21']);
+  });
+
+  it('selects transitionUnavailable without sending when someone else moved the issue', async () => {
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: doneIssue } : { status: 204, body: '' });
+    expect(branchOf(await runTransition(client, new AttemptContext(2, recordedStopProgress)))).toBe('transitionUnavailable');
+    expect(posts(requests, '/transitions')).toBe(0);
+  });
+
+  it('keeps a refused resend definite', async () => {
+    const refusal = '{"errorMessages":[],"errors":{"resolution":"Resolution is required."}}';
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgressIssue } : { status: 400, body: refusal });
+    expect(branchOf(await runTransition(client, new AttemptContext(2, recordedStopProgress)))).toBe('providerRejected');
     expect(posts(requests, '/transitions')).toBe(1);
   });
 
@@ -268,9 +301,9 @@ describe('Jira transition behind the single-dispatch fence', () => {
     expect(posts(requests, '/transitions')).toBe(1);
   });
 
-  it.each([[404, '{}'], [200, '{"id":"x"}'], [403, '{}']])('never selects a failure branch after a possible send (HTTP %i)', async (status, body) => {
-    const { client, requests } = newStallingClient(() => ({ status, body }));
-    expect(branchOf(await runTransition(client, new AttemptContext(2)))).toBe('retry');
+  it.each([[500, 'retry'], [404, 'notFound']])('retries a transient read and keeps a definite read after a recorded send (HTTP %i)', async (status, branch) => {
+    const { client, requests } = newStallingClient(() => ({ status, body: '{}' }));
+    expect(branchOf(await runTransition(client, new AttemptContext(2, recordedStopProgress)))).toBe(branch);
     expect(requests).toHaveLength(1);
   });
 
@@ -279,7 +312,7 @@ describe('Jira transition behind the single-dispatch fence', () => {
     const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgressIssue } : { status: statuses.shift()!, body: '' });
     const context = new AttemptContext();
     expect(branchOf(await runTransition(client, context))).toBe('retry');
-    expect(JSON.stringify(context.marker)).toContain('"state":"canResend"');
+    expect(context.marker).toEqual(recordedStopProgress);
     context.attempt = 2;
     expect(branchOf(await runTransition(client, context))).toBe('transitioned');
     expect(posts(requests, '/transitions')).toBe(2);
@@ -327,11 +360,21 @@ describe('Jira transition behind the single-dispatch fence', () => {
     };
     const { client, requests } = newStallingClient(() => ({ status: 204, body: '' }), { resolve, resolveWithRefresh: resolve });
     expect(branchOf(await runTransition(client, new AttemptContext()))).toBe('defect');
-    expect(branchOf(await runTransition(client, new AttemptContext(2)))).toBe('retry');
+    expect(branchOf(await runTransition(client, new AttemptContext(2, recordedStopProgress)))).toBe('retry');
     mode = 'transient';
     const context = new AttemptContext();
     expect(branchOf(await runTransition(client, context))).toBe('retry');
-    expect(JSON.stringify(context.marker)).toContain('"state":"notSent"');
+    expect(context.marker, 'a transient failure before any send records notSent').toEqual({ callId, attempt: 1, state: 'notSent' });
     expect(requests).toEqual([]);
+  });
+
+  it('never selects again after a lost checkpoint', async () => {
+    // Dex lost the checkpoint after a possible send; selecting Stop Progress again would undo the move.
+    const lost = newStallingClient(request => request.method === 'GET' ? { status: 200, body: toDoIssue } : { status: 204, body: '' });
+    expect(branchOf(await runTransition(lost.client, new AttemptContext(2)))).toBe('retry');
+    expect(posts(lost.requests, '/transitions')).toBe(0);
+    const notSent = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgressIssue } : { status: 204, body: '' });
+    expect(branchOf(await runTransition(notSent.client, new AttemptContext(2, { callId, attempt: 1, state: 'notSent' })))).toBe('transitioned');
+    expect(posts(notSent.requests, '/transitions')).toBe(1);
   });
 });

@@ -115,7 +115,7 @@ export const TransitionIssueBranch = {
 export const TransitionIssueBranchTransitioned = TransitionIssueBranch.Transitioned;
 /** The issue does not exist or the connection cannot browse it. */
 export const TransitionIssueBranchNotFound = TransitionIssueBranch.NotFound;
-/** No available transition from the issue's current status matches the request, or several do; the Value lists the current status and the available transitions. */
+/** No available transition from the issue's current status matches the request, or several do, or on a retry the issue is in neither the recorded source nor destination status; the Value lists the current status and the available transitions. */
 export const TransitionIssueBranchTransitionUnavailable = TransitionIssueBranch.TransitionUnavailable;
 /** Jira conclusively rejected the transition, such as a required transition screen field or missing permission. */
 export const TransitionIssueBranchProviderRejected = TransitionIssueBranch.ProviderRejected;
@@ -129,7 +129,7 @@ export const TransitionIssueDefinition: MutationDefinition = {
   branches: [
     { id: "transitioned", description: "The issue is in the transition's destination status, including when it already was." },
     { id: "notFound", description: "The issue does not exist or the connection cannot browse it.", optional: true },
-    { id: "transitionUnavailable", description: "No available transition from the issue's current status matches the request, or several do; the Value lists the current status and the available transitions.", optional: true },
+    { id: "transitionUnavailable", description: "No available transition from the issue's current status matches the request, or several do, or on a retry the issue is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.", optional: true },
     { id: "providerRejected", description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", optional: true },
     { id: "invalidResponse", description: "Jira returned an invalid or oversized issue or transition list.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },

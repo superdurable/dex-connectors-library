@@ -89,7 +89,7 @@ TRANSITION_ISSUE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(TRANSITIONED, "The issue is in the transition's destination status, including when it already was.", False),
         BranchDefinition(NOT_FOUND, "The issue does not exist or the connection cannot browse it.", True),
-        BranchDefinition(TRANSITION_UNAVAILABLE, "No available transition from the issue's current status matches the request, or several do; the Value lists the current status and the available transitions.", True),
+        BranchDefinition(TRANSITION_UNAVAILABLE, "No available transition from the issue's current status matches the request, or several do, or on a retry the issue is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.", True),
         BranchDefinition(PROVIDER_REJECTED, "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", True),
         BranchDefinition(INVALID_RESPONSE, "Jira returned an invalid or oversized issue or transition list.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),

@@ -252,7 +252,7 @@ func TransitionIssueNotFound(value jira.TransitionIssueOutput, failure *sdkgo.Fa
 	return connectormock.Branch(jira.TransitionIssueBranchNotFound, value, failure)
 }
 
-// TransitionIssueTransitionUnavailable selects the transitionUnavailable branch: No available transition from the issue's current status matches the request, or several do; the Value lists the current status and the available transitions.
+// TransitionIssueTransitionUnavailable selects the transitionUnavailable branch: No available transition from the issue's current status matches the request, or several do, or on a retry the issue is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.
 func TransitionIssueTransitionUnavailable(value jira.TransitionIssueOutput, failure *sdkgo.Failure) connectormock.Case[jira.TransitionIssueOutput] {
 	return connectormock.Branch(jira.TransitionIssueBranchTransitionUnavailable, value, failure)
 }

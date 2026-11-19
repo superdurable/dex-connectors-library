@@ -347,7 +347,7 @@ func MapToAddCommentInput(request CommentRequest) jira.AddCommentInput {
 	return jira.AddCommentInput{IssueIDOrKey: request.IssueKey, Body: request.Body}
 }
 
-// MapToTransitionIssueInput moves the issue by destination status, so a retried Step recognizes a move.
+// MapToTransitionIssueInput moves the issue by destination status, so an issue already there needs no move.
 func MapToTransitionIssueInput(request StatusChangeRequest) jira.TransitionIssueInput {
 	return jira.TransitionIssueInput{IssueIDOrKey: request.IssueKey, DestinationStatusName: request.DestinationStatusName}
 }
