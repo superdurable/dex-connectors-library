@@ -1,0 +1,65 @@
+{
+  "connectorId": "shengshu",
+  "releaseTag": "connectors/shengshu/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-shengshu",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_task_status_step",
+      "kind": "query",
+      "operationId": "getTaskStatus",
+      "inputType": "GetTaskStatusInput",
+      "description": "Read the state and safe metadata of one existing Vidu task.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskStatusInput identifies an existing Vidu generation task.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the ID returned as task_id by a task-creation API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
