@@ -11,3 +11,6 @@ The company logo comes from [ShowAPI's official site](https://www.showapi.com/nu
 ## Python
 
 The `python/` package provides the `lookupAreaCodes` Query. Run its checked-in example from `python/examples/`.
+## TypeScript
+
+`@superdurable/connector-showapi` provides the `lookupAreaCodes` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.

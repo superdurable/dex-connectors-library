@@ -13,6 +13,7 @@ spec:
       version: v0.1.0
       operations: [lookupAreaCodes]
       triggers: []
+    typescript: {version: v0.1.0, operations: [lookupAreaCodes], triggers: []}
   provider: showapi
   codegen:
     go:
