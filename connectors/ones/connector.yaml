@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listTeams], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-ones", operations: [listTeams], triggers: []}
   provider: ones
   codegen:
     go:

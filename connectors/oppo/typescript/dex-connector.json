@@ -1,0 +1,52 @@
+{
+  "connectorId": "oppo",
+  "releaseTag": "connectors/oppo/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-oppo",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetPushQuotaStep",
+      "kind": "query",
+      "operationId": "getPushQuota",
+      "inputType": "GetPushQuotaInput",
+      "description": "Read today's total, sent, and remaining OPPO Push message counts.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPushQuotaInput needs no operation-specific values.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

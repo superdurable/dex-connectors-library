@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [getChargeStatus], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-pingpp", operations: [getChargeStatus], triggers: []}
   provider: pingpp
   codegen:
     go:
