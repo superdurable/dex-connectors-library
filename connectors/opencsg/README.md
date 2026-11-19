@@ -9,3 +9,7 @@ Sign in to [OpenCSG](https://hub.opencsg.com), then open account settings > API 
 ## Example
 
 The [runnable Flow](go/examples/list-gateway-models/) starts with `{}` and completes with a typed `ListGatewayModelsOutput`. Its default mock returns one model. Run the same Flow with a user-controlled Dex Web Connection for live authorization. Live OpenCSG authorization, model visibility, and provider response variation have not been verified in this change.
+
+## Python
+
+The first Python package implements the read-only operation and all Go-recorded provider branches. See [Python package](python/README.md) and its [runnable Flow](python/examples/gateway_models/README.md). Live provider authorization and responses are unverified.
