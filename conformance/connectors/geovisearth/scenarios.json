@@ -1,0 +1,299 @@
+{
+  "connector": "geovisearth",
+  "scenarios": [
+    {
+      "callId": "54682450-2110-59af-8ca5-8d9b77fa170e",
+      "exchanges": [
+        {
+          "body": "{\"date\":{\"timeZone\":\"Asia/Shanghai\",\"time\":\"20240911135031\"},\"result\":{\"wd_desc\":\"东北风\",\"prs\":986.7,\"rh\":95,\"ws_desc\":\"3级\",\"wp\":\"阴\",\"tem\":26.7,\"wp_code\":\"02\"},\"location\":{\"path\":\"广西壮族自治区,崇左市,崇左\",\"areaCode\":\"WTX_CH101300201\"},\"version\":\"v1\",\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "areaCode": "WTX_CH101300201",
+          "observedAt": "20240911135031",
+          "relativeHumidityPercent": 95,
+          "surfacePressureHpa": 986.7,
+          "temperatureCelsius": 26.7,
+          "weather": "阴",
+          "weatherCode": "02",
+          "windDirection": "东北风",
+          "windForce": "3级"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-fetched",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b4c6dd5e-0e1a-5726-82ee-e0ad45faea10",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-providerRejected",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "838f05e1-05eb-5d88-9054-bd299cd451a1",
+      "exchanges": [
+        {
+          "body": "{\"status\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-invalidResponse",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "e83f24a5-8c44-5218-beb8-aca591ade5c8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "areaCode": "",
+          "observedAt": "",
+          "relativeHumidityPercent": 0,
+          "surfacePressureHpa": 0,
+          "temperatureCelsius": 0,
+          "weather": "",
+          "weatherCode": "",
+          "windDirection": "",
+          "windForce": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "bad"
+      },
+      "name": "getCurrentWeather-defect",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "cb9e5261-c449-58ee-8ce9-7ed703a49b54",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-rateLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "33e8d8bc-1b36-5cb6-bdc6-34effb28913c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-serverError",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5c68ccb8-072d-5475-a12e-66112a93df65",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/cn/area/basic",
+          "query": {
+            "location": [
+              "WTX_CH101300201"
+            ],
+            "token": [
+              "private-test-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "WTX_CH101300201"
+      },
+      "name": "getCurrentWeather-transport",
+      "operation": "getCurrentWeather"
+    }
+  ],
+  "schemaVersion": 1
+}
