@@ -11,3 +11,5 @@
 ## Example
 
 The [contract status Flow](go/examples/contract-status/) is a runnable Worker with static Dex connection name `qiyuesuo`. Its local mock uses synthetic contract IDs and is verified with a real Dex Worker and Client. Live authorization, permission setup, and provider pagination remain unverified until connected to an approved Qiyuesuo application.
+
+The [TypeScript package](typescript/) implements signed `listContracts` and replays Go provider scenarios. Its [runnable Dex Flow](typescript/examples/basic/) persists a bounded contract-status page through a Worker and Client. Live Qiyuesuo authorization remains unverified.
