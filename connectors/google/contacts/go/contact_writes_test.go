@@ -34,6 +34,8 @@ func TestContactRevisionUpdateAndDelete(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			} else {
 				w.WriteHeader(http.StatusNotFound)
+				_, err := w.Write([]byte(`{"error":{"code":404,"message":"Contact not found","status":"NOT_FOUND"}}`))
+				require.NoError(t, err)
 			}
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -68,9 +70,45 @@ func TestContactUpdateDetectsStaleRevision(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("contact-stale-flow", "update-step"), client.UpdateContact(), testConnection, UpdateContactInput{ResourceName: "people/c123", Etag: "etag-1", GivenName: "Ada"})
-	require.NoError(t, err)
-	require.Equal(t, UpdateContactBranchStaleRevision, result.Branch)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("contact-stale-flow", "update-step"), client.UpdateContact(), testConnection, UpdateContactInput{ResourceName: "people/c123", Etag: "etag-1", GivenName: "Ada"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}
+
+func TestDeleteContactRetriesUnconfirmedResponses(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "empty 404", status: http.StatusNotFound},
+		{name: "contradictory 200", status: http.StatusOK, body: `{"error":"not deleted"}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(testCase.status)
+				_, err := w.Write([]byte(testCase.body))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			client := newTestClient(t, server.URL)
+			_, err := sdkgo.RunMutation(singledispatchtest.NewContext("contact-unconfirmed-flow", "delete-step"), client.DeleteContact(), testConnection, DeleteContactInput{ResourceName: "people/c123"})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
+}
+
+func TestUpdateContactRetriesCredentialBearingResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte(testAccessToken))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("contact-secret-flow", "update-step"), client.UpdateContact(), testConnection, UpdateContactInput{ResourceName: "people/c123", Etag: "etag-1", GivenName: "Ada"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
 }
 
 func TestContactWriteBranchesAndRetries(t *testing.T) {

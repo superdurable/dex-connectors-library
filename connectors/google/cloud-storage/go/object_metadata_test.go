@@ -22,7 +22,7 @@ func TestObjectMetadataUpdateAndDeletion(t *testing.T) {
 		switch r.Method {
 		case http.MethodPatch:
 			require.Equal(t, "application/json", r.Header.Get("Content-Type"))
-			_, err := w.Write([]byte(`{"name":"reports/a.txt","generation":"123"}`))
+			_, err := w.Write([]byte(`{"name":"reports/a.txt","generation":"123","contentType":"text/plain","metadata":{"department":"reports"}}`))
 			require.NoError(t, err)
 		case http.MethodDelete:
 			require.Equal(t, "123", r.URL.Query().Get("generation"))
@@ -30,6 +30,8 @@ func TestObjectMetadataUpdateAndDeletion(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			} else {
 				w.WriteHeader(http.StatusNotFound)
+				_, err := w.Write([]byte(`{"error":{"code":404,"message":"Object not found"}}`))
+				require.NoError(t, err)
 			}
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -45,6 +47,18 @@ func TestObjectMetadataUpdateAndDeletion(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, DeleteObjectBranchDeleted, deleted.Branch)
 	}
+}
+
+func TestObjectMetadataUpdateRetriesContradictoryResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte(`{"name":"reports/a.txt","generation":"123","contentType":"application/json","metadata":{"department":"reports"}}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("object-metadata-mismatch-flow", "update-step"), client.UpdateObjectMetadata(), testConnection, UpdateObjectMetadataInput{Bucket: "example-bucket", Name: "reports/a.txt", ContentType: "text/plain", Metadata: map[string]string{"department": "reports"}})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
 }
 
 func TestObjectMetadataBranchesAndRetries(t *testing.T) {

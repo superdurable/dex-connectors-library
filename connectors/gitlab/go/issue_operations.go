@@ -149,7 +149,16 @@ func (operation EditIssueOperation) Invoke(call sdkgo.Call, input EditIssueInput
 		form.Set("state_event", input.StateEvent)
 	}
 	spec := requestSpec{method: http.MethodPut, path: path, body: []byte(form.Encode()), contentType: "application/x-www-form-urlencoded"}
-	return executeMutation(operation.client, call, "editIssue", spec, EditIssueBranchUpdated, EditIssueBranchNotFound, EditIssueBranchProviderRejected, EditIssueBranchInvalidResponse, EditIssueBranchDefect, decodeIssue)
+	return executeMutation(operation.client, call, "editIssue", spec, EditIssueBranchUpdated, EditIssueBranchNotFound, EditIssueBranchProviderRejected, EditIssueBranchInvalidResponse, EditIssueBranchDefect, func(body []byte) (Issue, error) {
+		issue, err := decodeIssue(body)
+		if err != nil {
+			return Issue{}, err
+		}
+		if issue.IID != input.IssueIID || (input.Title != nil && issue.Title != *input.Title) {
+			return Issue{}, fmt.Errorf("GitLab returned a different issue update")
+		}
+		return issue, nil
+	})
 }
 
 // Invoke locks discussion on an issue.
@@ -158,7 +167,22 @@ func (operation LockIssueOperation) Invoke(call sdkgo.Call, input GetIssueInput)
 	if err != nil {
 		return sdkgo.NewMutationBranch(LockIssueBranchDefect, Issue{}, failure(sdkgo.FailureValidation, "lockIssue", err.Error()), sdkgo.Receipt{})
 	}
-	return executeMutation(operation.client, call, "lockIssue", requestSpec{method: http.MethodPut, path: path, body: []byte("discussion_locked=true"), contentType: "application/x-www-form-urlencoded"}, LockIssueBranchLocked, LockIssueBranchNotFound, LockIssueBranchProviderRejected, LockIssueBranchInvalidResponse, LockIssueBranchDefect, decodeIssue)
+	return executeMutation(operation.client, call, "lockIssue", requestSpec{method: http.MethodPut, path: path, body: []byte("discussion_locked=true"), contentType: "application/x-www-form-urlencoded"}, LockIssueBranchLocked, LockIssueBranchNotFound, LockIssueBranchProviderRejected, LockIssueBranchInvalidResponse, LockIssueBranchDefect, func(body []byte) (Issue, error) {
+		issue, err := decodeIssue(body)
+		if err != nil {
+			return Issue{}, err
+		}
+		if issue.IID != input.IssueIID {
+			return Issue{}, fmt.Errorf("GitLab returned a different locked issue")
+		}
+		var confirmation struct {
+			DiscussionLocked *bool `json:"discussion_locked"`
+		}
+		if json.Unmarshal(body, &confirmation) != nil || confirmation.DiscussionLocked == nil || !*confirmation.DiscussionLocked {
+			return Issue{}, fmt.Errorf("GitLab did not confirm the discussion lock")
+		}
+		return issue, nil
+	})
 }
 
 // Invoke deletes an issue by IID.

@@ -584,7 +584,7 @@ var UpdateContactDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateContactBranchUpdated, Description: "Google updated the contact."},
 		{ID: UpdateContactBranchNotFound, Description: "The contact no longer exists.", Optional: true},
-		{ID: UpdateContactBranchStaleRevision, Description: "The contact changed after its etag was read.", Optional: true},
+		{ID: UpdateContactBranchStaleRevision, Description: "Reserved for compatibility; an unconfirmed revision now retries.", Optional: true},
 		{ID: UpdateContactBranchProviderRejected, Description: "Google definitively rejected the update.", Optional: true},
 		{ID: UpdateContactBranchDefect, Description: "Local contact input or connection credentials are invalid.", Optional: true},
 	},

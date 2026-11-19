@@ -4521,14 +4521,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "deleted": true,
-          "eventId": "67890"
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

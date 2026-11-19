@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -250,6 +251,12 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket creation was not dispatched", 0)
 	}
 	if errors.Is(err, errCredential) {
+		if decision.MaximumPriorSends > 0 || response.status != 0 {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return bucketCreateUncertain("bucket creation cannot be confirmed after credentials became unavailable")
+			}
+			return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket creation cannot be confirmed after credentials became unavailable", 0)
+		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 			return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "credential failure could not be checkpointed", 0)
 		}
@@ -298,11 +305,17 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		}
 		return bucketMutationBranch("createBucket", "providerRejected", Bucket{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
 	}
-	var bucket Bucket
-	if err := json.Unmarshal(response.body, &bucket); err != nil || bucket.Name != input.Name || bucket.ProjectNumber != input.ProjectNumber {
+	var createdBucket struct {
+		Bucket
+		Labels map[string]string `json:"labels"`
+	}
+	if err := json.Unmarshal(response.body, &createdBucket); err != nil || createdBucket.Name != input.Name || createdBucket.ProjectNumber != input.ProjectNumber || createdBucket.Labels["dex_request_id"] != bucketCreationMarker(call) {
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return bucketCreateUncertain("bucket creation response cannot be confirmed after the send cap")
+		}
 		return bucketMutationRetry("createBucket", sdkgo.FailureProtocol, "Google returned invalid bucket creation metadata", 0)
 	}
-	return sdkgo.NewMutationBranch(CreateBucketBranchCreated, bucket, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationBranch(CreateBucketBranchCreated, createdBucket.Bucket, nil, sdkgo.Receipt{})
 }
 
 func isDefiniteBucketNameConflict(body []byte) bool {
@@ -390,6 +403,9 @@ func (operation UpdateBucketLabelsOperation) Invoke(call sdkgo.Call, input Updat
 	}
 	response := operation.client.requestWithBody(call, call.Context, http.MethodPatch, "/storage/v1/b/"+url.PathEscape(input.Name), requestBody, false)
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return bucketMutationRetry("updateBucketLabels", sdkgo.FailureAvailability, "bucket label update response cannot be confirmed", 0)
+		}
 		return bucketMutationBranch("updateBucketLabels", "defect", Bucket{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if response.status == http.StatusNotFound && response.err == nil && isDefiniteGoogleStorageRefusal(response.status, response.body) {
@@ -404,11 +420,14 @@ func (operation UpdateBucketLabelsOperation) Invoke(call sdkgo.Call, input Updat
 		}
 		return bucketMutationBranch("updateBucketLabels", "providerRejected", Bucket{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
 	}
-	var bucket Bucket
-	if err := json.Unmarshal(response.body, &bucket); err != nil || bucket.Name != input.Name {
+	var updatedBucket struct {
+		Bucket
+		Labels map[string]string `json:"labels"`
+	}
+	if err := json.Unmarshal(response.body, &updatedBucket); err != nil || updatedBucket.Name != input.Name || updatedBucket.Location == "" || !maps.Equal(updatedBucket.Labels, input.Labels) {
 		return bucketMutationRetry("updateBucketLabels", sdkgo.FailureProtocol, "Google returned invalid bucket metadata", 0)
 	}
-	return sdkgo.NewMutationBranch(UpdateBucketLabelsBranchUpdated, bucket, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationBranch(UpdateBucketLabelsBranchUpdated, updatedBucket.Bucket, nil, sdkgo.Receipt{})
 }
 
 func bucketMutationBranch(operation string, branch sdkgo.BranchID, value Bucket, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Bucket] {
@@ -428,13 +447,21 @@ func (operation DeleteBucketOperation) Invoke(call sdkgo.Call, input DeleteBucke
 	}
 	response := operation.client.requestMethod(call, http.MethodDelete, "/storage/v1/b/"+url.PathEscape(input.Name), false)
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return bucketDeleteRetry(sdkgo.FailureAvailability, "bucket deletion response cannot be confirmed", 0)
+		}
 		return bucketDeleteBranch(DeleteBucketBranchDefect, DeletedBucket{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if response.err != nil {
 		return bucketDeleteRetry(sdkgo.FailureTransport, "Google Cloud Storage deletion failed", 0)
 	}
 	switch response.status {
-	case http.StatusNoContent, http.StatusNotFound:
+	case http.StatusNoContent:
+		return sdkgo.NewMutationBranch(DeleteBucketBranchDeleted, DeletedBucket{Name: input.Name}, nil, sdkgo.Receipt{})
+	case http.StatusNotFound:
+		if !isDefiniteGoogleStorageRefusal(response.status, response.body) {
+			return bucketDeleteRetry(sdkgo.FailureAvailability, "bucket deletion response does not prove absence", response.retryAfter)
+		}
 		return sdkgo.NewMutationBranch(DeleteBucketBranchDeleted, DeletedBucket{Name: input.Name}, nil, sdkgo.Receipt{})
 	case http.StatusTooManyRequests:
 		return bucketDeleteRetry(sdkgo.FailureRateLimit, "Google rate limited the deletion", response.retryAfter)

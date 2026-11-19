@@ -2782,7 +2782,7 @@
       "callId": "dc648e51-5f13-5531-938d-d2ae54f393bd",
       "exchanges": [
         {
-          "body": "{\"id\":123,\"iid\":7,\"title\":\"Review release notes\",\"labels\":[\"review\"],\"web_url\":\"https://gitlab.com/meridian/web/-/issues/7\"}",
+          "body": "{\"id\":123,\"iid\":7,\"title\":\"Review release notes\",\"labels\":[\"review\"],\"web_url\":\"https://gitlab.com/meridian/web/-/issues/7\",\"discussion_locked\":true}",
           "form": {
             "discussion_locked": [
               "true"

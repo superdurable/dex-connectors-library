@@ -184,7 +184,7 @@ spec:
       branches:
         - {id: updated, goName: Updated, description: Google updated the contact.}
         - {id: notFound, goName: NotFound, description: The contact no longer exists., optional: true}
-        - {id: staleRevision, goName: StaleRevision, description: The contact changed after its etag was read., optional: true}
+        - {id: staleRevision, goName: StaleRevision, description: Reserved for compatibility; an unconfirmed revision now retries., optional: true, retired: true, retiredReason: A prior update may have succeeded even when a later etag is stale.}
         - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the update., optional: true}
         - {id: defect, goName: Defect, description: Local contact input or connection credentials are invalid., optional: true}
       mocks:

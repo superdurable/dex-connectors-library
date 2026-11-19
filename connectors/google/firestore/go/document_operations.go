@@ -290,8 +290,11 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input WriteDocu
 		return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureAvailability, "create was not dispatched", 0)
 	}
 	if errors.Is(err, errCredential) {
-		if decision.MaximumPriorSends > 0 {
-			return uncertainDocumentCreate()
+		if decision.MaximumPriorSends > 0 || response.status != 0 {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return uncertainDocumentCreate()
+			}
+			return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureAvailability, "document creation cannot be confirmed after credentials became unavailable", 0)
 		}
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 			return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureAvailability, "credential checkpoint is unavailable", 0)
@@ -452,6 +455,9 @@ func (operation DeleteDocumentOperation) Invoke(call sdkgo.Call, input GetDocume
 		return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), FirestoreDocument{Name: name}, nil, sdkgo.Receipt{})
 	}
 	if response.status == http.StatusNotFound && response.err == nil {
+		if !isDefiniteFirestoreRefusal(response.status, response.body) {
+			return firestoreMutationRetry[FirestoreDocument]("deleteDocument", sdkgo.FailureAvailability, "document deletion response does not prove absence", response.retryAfter)
+		}
 		return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), FirestoreDocument{Name: name}, nil, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK && response.err == nil && !isDefiniteFirestoreRefusal(response.status, response.body) {
@@ -459,6 +465,10 @@ func (operation DeleteDocumentOperation) Invoke(call sdkgo.Call, input GetDocume
 	}
 	if failure, done := classifyFirestoreResponse(response, "deleteDocument", http.StatusOK); done {
 		return firestoreMutationDecision[FirestoreDocument](failure)
+	}
+	var confirmation map[string]json.RawMessage
+	if json.Unmarshal(response.body, &confirmation) != nil || len(confirmation) != 0 {
+		return firestoreMutationRetry[FirestoreDocument]("deleteDocument", sdkgo.FailureProtocol, "Firestore returned an unconfirmed deletion response", 0)
 	}
 	return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), FirestoreDocument{Name: name}, nil, sdkgo.Receipt{})
 }
@@ -608,6 +618,9 @@ type firestoreFailureDecision struct {
 
 func classifyFirestoreResponse(response providerResponse, operation string, successStatus int) (firestoreFailureDecision, bool) {
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return firestoreFailureDecision{operation, "", sdkgo.FailureAvailability, "Firestore write response cannot be confirmed", true, 0}, true
+		}
 		return firestoreFailureDecision{operation, "defect", sdkgo.FailureAuthentication, "connection credentials are unavailable", false, 0}, true
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {

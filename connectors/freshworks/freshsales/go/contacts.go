@@ -166,7 +166,12 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 		return deletedContactRetry(sdkgo.FailureRateLimit, "Freshsales rate limited deletion", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		return deletedContactRetry(sdkgo.FailureAvailability, "contact deletion outcome unconfirmed", delay)
-	case status == http.StatusNotFound || status == http.StatusNoContent:
+	case status == http.StatusNoContent:
+		return deletedContactSuccess(call, input.ContactID)
+	case status == http.StatusNotFound:
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			return deletedContactRetry(sdkgo.FailureAvailability, "contact deletion response does not prove absence", delay)
+		}
 		return deletedContactSuccess(call, input.ContactID)
 	case status != http.StatusOK:
 		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {

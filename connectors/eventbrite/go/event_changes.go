@@ -245,7 +245,12 @@ func (operation DeleteEventOperation) Invoke(call sdkgo.Call, input DeleteEventI
 		return deleteEventRetry(sdkgo.FailureRateLimit, "Eventbrite rate limited deletion", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		return deleteEventRetry(sdkgo.FailureAvailability, "Eventbrite deletion outcome is not yet confirmed", delay)
-	case status == http.StatusNotFound, status == http.StatusNoContent:
+	case status == http.StatusNoContent:
+		return deleteEventSuccess(call, input.EventID)
+	case status == http.StatusNotFound:
+		if err != nil || !isDefiniteEventbriteRefusal(status, body) {
+			return deleteEventRetry(sdkgo.FailureAvailability, "event deletion response does not prove absence", delay)
+		}
 		return deleteEventSuccess(call, input.EventID)
 	case status != http.StatusOK:
 		if err != nil || !isDefiniteEventbriteRefusal(status, body) {

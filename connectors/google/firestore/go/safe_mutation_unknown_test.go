@@ -25,3 +25,29 @@ func TestPutDocumentRetriesMalformedSuccess(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 }
+
+func TestDeleteDocumentRetriesContradictorySuccess(t *testing.T) {
+	provider := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, err := response.Write([]byte(`{"error":{"message":"not deleted"}}`))
+		require.NoError(t, err)
+	}))
+	defer provider.Close()
+	client := newTestClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(queryContext{}, client.DeleteDocument(), testConnection,
+		GetDocumentInput{ProjectID: "sample-project", CollectionID: "events", DocumentID: "sample-event"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}
+
+func TestPutDocumentRetriesCredentialBearingResponse(t *testing.T) {
+	provider := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, err := response.Write([]byte(testAccessToken))
+		require.NoError(t, err)
+	}))
+	defer provider.Close()
+	client := newTestClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(queryContext{}, client.PutDocument(), testConnection,
+		WriteDocumentInput{ProjectID: "sample-project", CollectionID: "events", DocumentID: "sample-event", FieldsJSON: `{"title":{"stringValue":"Hello"}}`})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}

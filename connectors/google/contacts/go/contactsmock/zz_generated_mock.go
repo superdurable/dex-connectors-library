@@ -268,7 +268,7 @@ func UpdateContactNotFound(value contacts.Contact, failure *sdkgo.Failure) conne
 	return connectormock.Branch(contacts.UpdateContactBranchNotFound, value, failure)
 }
 
-// UpdateContactStaleRevision selects the staleRevision branch: The contact changed after its etag was read.
+// UpdateContactStaleRevision selects the staleRevision branch: Reserved for compatibility; an unconfirmed revision now retries.
 func UpdateContactStaleRevision(value contacts.Contact, failure *sdkgo.Failure) connectormock.Case[contacts.Contact] {
 	return connectormock.Branch(contacts.UpdateContactBranchStaleRevision, value, failure)
 }

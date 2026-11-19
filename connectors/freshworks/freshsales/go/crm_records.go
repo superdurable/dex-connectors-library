@@ -102,7 +102,12 @@ func invokeNamedDelete(client *Client, call sdkgo.Call, operation, path string, 
 		return deletedNamedRetry(operation, sdkgo.FailureRateLimit, "Freshsales rate limited deletion", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		return deletedNamedRetry(operation, sdkgo.FailureAvailability, "deletion outcome unconfirmed", delay)
-	case status == http.StatusNotFound || status == http.StatusNoContent:
+	case status == http.StatusNoContent:
+		return sdkgo.NewMutationBranch(success, DeletedCRMRecord{ID: id, Deleted: true}, nil, createReceipt(call, strconv.FormatInt(id, 10)))
+	case status == http.StatusNotFound:
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			return deletedNamedRetry(operation, sdkgo.FailureAvailability, "deletion response does not prove absence", delay)
+		}
 		return sdkgo.NewMutationBranch(success, DeletedCRMRecord{ID: id, Deleted: true}, nil, createReceipt(call, strconv.FormatInt(id, 10)))
 	case status != http.StatusOK:
 		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {

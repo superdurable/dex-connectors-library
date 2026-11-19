@@ -2371,15 +2371,10 @@
         }
       ],
       "expected": {
-        "branch": "staleRevision",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "displayName": "",
-          "emailAddress": "",
-          "resourceName": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

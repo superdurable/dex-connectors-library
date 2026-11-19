@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -37,6 +38,43 @@ func testClient(t *testing.T, endpoint string) *Client {
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {AccessToken: sdkgo.NewSecretString("test-accesstoken")}})
 	require.NoError(t, err)
 	return client
+}
+
+func TestSafeWriteRetriesContradictorySuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/releases/"):
+			_, err := fmt.Fprint(w, `{"tag_name":"other-tag","name":"Release 1.2 revised","description":"New notes"}`)
+			require.NoError(t, err)
+		default:
+			_, err := fmt.Fprint(w, `{"id":123,"iid":8,"title":"Revised release notes"}`)
+			require.NoError(t, err)
+		}
+	}))
+	defer server.Close()
+	client := testClient(t, server.URL)
+	title := "Revised release notes"
+	_, err := sdkgo.RunMutation(testContext{}, client.EditIssue(), testConnection, EditIssueInput{ProjectID: "meridian/web", IssueIID: 7, Title: &title})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	_, err = sdkgo.RunMutation(testContext{}, client.LockIssue(), testConnection, GetIssueInput{ProjectID: "meridian/web", IssueIID: 7})
+	require.ErrorAs(t, err, &retry)
+	name := "Release 1.2 revised"
+	description := "New notes"
+	_, err = sdkgo.RunMutation(testContext{}, client.UpdateRelease(), testConnection, UpdateReleaseInput{ProjectID: "meridian/web", TagName: "v1.2.0", Name: &name, Description: &description})
+	require.ErrorAs(t, err, &retry)
+}
+
+func TestLockIssueRequiresConfirmation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := fmt.Fprint(w, `{"id":123,"iid":7,"title":"Review release notes","discussion_locked":false}`)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := testClient(t, server.URL)
+	_, err := sdkgo.RunMutation(testContext{}, client.LockIssue(), testConnection, GetIssueInput{ProjectID: "meridian/web", IssueIID: 7})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
 }
 
 func TestDeleteReleaseReadsBackAfterDamagedSuccess(t *testing.T) {

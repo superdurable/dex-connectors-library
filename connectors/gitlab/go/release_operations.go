@@ -144,7 +144,16 @@ func (operation UpdateReleaseOperation) Invoke(call sdkgo.Call, input UpdateRele
 	if err != nil {
 		return sdkgo.NewMutationBranch(UpdateReleaseBranchDefect, Release{}, failure(sdkgo.FailureLocalDefect, "updateRelease", "release update cannot be encoded"), sdkgo.Receipt{})
 	}
-	return executeMutation(operation.client, call, "updateRelease", requestSpec{method: http.MethodPut, path: path, body: body, contentType: "application/json"}, UpdateReleaseBranchUpdated, UpdateReleaseBranchNotFound, UpdateReleaseBranchProviderRejected, UpdateReleaseBranchInvalidResponse, UpdateReleaseBranchDefect, decodeRelease)
+	return executeMutation(operation.client, call, "updateRelease", requestSpec{method: http.MethodPut, path: path, body: body, contentType: "application/json"}, UpdateReleaseBranchUpdated, UpdateReleaseBranchNotFound, UpdateReleaseBranchProviderRejected, UpdateReleaseBranchInvalidResponse, UpdateReleaseBranchDefect, func(body []byte) (Release, error) {
+		release, err := decodeRelease(body)
+		if err != nil {
+			return Release{}, err
+		}
+		if release.TagName != input.TagName || (input.Name != nil && release.Name != *input.Name) || (input.Description != nil && release.Description != *input.Description) {
+			return Release{}, fmt.Errorf("GitLab returned a different release update")
+		}
+		return release, nil
+	})
 }
 
 // Invoke removes a release while leaving its Git tag untouched.

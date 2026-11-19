@@ -115,6 +115,9 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 	path := "/v1/" + input.ResourceName + ":updateContact?" + query.Encode()
 	response := operation.client.requestWithBody(call, call.Context, http.MethodPatch, path, requestBody)
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return contactUpdateRetry(sdkgo.FailureAvailability, "contact update response cannot be confirmed", 0)
+		}
 		return contactUpdateBranch("defect", Contact{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if response.status == http.StatusNotFound && response.err == nil && isDefiniteContactsWriteRefusal(response.status, response.body) {
@@ -150,7 +153,7 @@ func (operation UpdateContactOperation) confirmUpdatedContact(call sdkgo.Call, i
 		return contactUpdateRetry(sdkgo.FailureAvailability, "contact revision could not be confirmed", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return contactUpdateBranch("staleRevision", Contact{}, sdkgo.FailureProviderRejection, "contact revision changed before update")
+		return contactUpdateRetry(sdkgo.FailureAvailability, "contact revision could not be confirmed", response.retryAfter)
 	}
 	var person personWire
 	if err := json.Unmarshal(response.body, &person); err != nil {
@@ -163,7 +166,7 @@ func (operation UpdateContactOperation) confirmUpdatedContact(call sdkgo.Call, i
 	if len(person.Names) > 0 && person.Names[0].GivenName == input.GivenName && person.Names[0].FamilyName == input.FamilyName && contact.EmailAddress == input.EmailAddress {
 		return sdkgo.NewMutationBranch(sdkgo.BranchID("updated"), contact, nil, sdkgo.Receipt{})
 	}
-	return contactUpdateBranch("staleRevision", Contact{}, sdkgo.FailureProviderRejection, "contact changed after its revision was read")
+	return contactUpdateRetry(sdkgo.FailureAvailability, "contact update could not be confirmed", 0)
 }
 
 // Invoke deletes a contact and treats an already absent contact as complete.
@@ -173,13 +176,27 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 	}
 	response := operation.client.requestWithBody(call, call.Context, http.MethodDelete, "/v1/"+input.ResourceName+":deleteContact", nil)
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return contactDeleteRetry(sdkgo.FailureAvailability, "contact deletion response cannot be confirmed", 0)
+		}
 		return contactDeleteBranch("defect", DeletedContact{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if response.err != nil {
 		return contactDeleteRetry(sdkgo.FailureTransport, "contact deletion response failed", 0)
 	}
 	switch response.status {
-	case http.StatusOK, http.StatusNoContent, http.StatusNotFound:
+	case http.StatusNoContent:
+		return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), DeletedContact{ResourceName: input.ResourceName}, nil, sdkgo.Receipt{})
+	case http.StatusOK:
+		var confirmation map[string]json.RawMessage
+		if json.Unmarshal(response.body, &confirmation) != nil || len(confirmation) != 0 {
+			return contactDeleteRetry(sdkgo.FailureProtocol, "Google returned an unconfirmed deletion response", 0)
+		}
+		return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), DeletedContact{ResourceName: input.ResourceName}, nil, sdkgo.Receipt{})
+	case http.StatusNotFound:
+		if !isDefiniteContactsWriteRefusal(response.status, response.body) {
+			return contactDeleteRetry(sdkgo.FailureAvailability, "contact deletion response does not prove absence", response.retryAfter)
+		}
 		return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), DeletedContact{ResourceName: input.ResourceName}, nil, sdkgo.Receipt{})
 	case http.StatusTooManyRequests:
 		return contactDeleteRetry(sdkgo.FailureRateLimit, "Google rate limited the deletion", response.retryAfter)

@@ -131,8 +131,11 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 		return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure("createCampaign", sdkgo.FailureAvailability, "campaign write was not dispatched"), 0)
 	}
 	if errors.Is(response.err, errCredential) {
-		if decision.MaximumPriorSends > 0 {
-			return uncertainCampaign(call, "a previous create may have succeeded")
+		if decision.MaximumPriorSends > 0 || response.status != 0 {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return uncertainCampaign(call, "campaign creation cannot be confirmed after credentials became unavailable")
+			}
+			return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure("createCampaign", sdkgo.FailureAvailability, "campaign creation cannot be confirmed after credentials became unavailable"), 0)
 		}
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure("createCampaign", sdkgo.FailureAvailability, "credential checkpoint is unavailable"), 0)
@@ -247,6 +250,9 @@ func decodeCampaignMutation(body []byte) (CampaignMutationResult, error) {
 
 func safeCampaignMutation(response providerResponse, call sdkgo.Call, operation string, success, rejected, invalid, defect sdkgo.BranchID) sdkgo.MutationAttempt[CampaignMutationResult] {
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure(operation, sdkgo.FailureAvailability, "campaign write response cannot be confirmed"), 0)
+		}
 		return campaignMutationBranch(defect, operation, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {

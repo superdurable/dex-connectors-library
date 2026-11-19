@@ -4,6 +4,7 @@
 package cloudstorage
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -15,6 +16,19 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
+
+type expiringBucketCredentials struct{ resolutions atomic.Int32 }
+
+func (provider *expiringBucketCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	if provider.resolutions.Add(1) >= 3 {
+		return Credentials{}, sdkgo.ErrReauthorizationRequired
+	}
+	return Credentials{OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token")}, nil
+}
+
+func (provider *expiringBucketCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
+	return provider.Resolve(call)
+}
 
 func TestBucketReadsAndDeletion(t *testing.T) {
 	var deleted atomic.Bool
@@ -34,6 +48,8 @@ func TestBucketReadsAndDeletion(t *testing.T) {
 		case r.Method == http.MethodDelete && r.URL.Path == "/storage/v1/b/report-bucket":
 			if deleted.Swap(true) {
 				w.WriteHeader(http.StatusNotFound)
+				_, err := w.Write([]byte(`{"error":{"code":404,"message":"Bucket not found"}}`))
+				require.NoError(t, err)
 			} else {
 				w.WriteHeader(http.StatusNoContent)
 			}
@@ -63,11 +79,15 @@ func TestBucketCreationAndLabelUpdate(t *testing.T) {
 		case http.MethodPost:
 			require.Equal(t, "/storage/v1/b", r.URL.Path)
 			require.Equal(t, "123456789", r.URL.Query().Get("project"))
-			_, err := w.Write([]byte(`{"name":"report-bucket","location":"US","projectNumber":"123456789"}`))
+			var request struct {
+				Labels map[string]string `json:"labels"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+			_, err := w.Write([]byte(`{"name":"report-bucket","location":"US","projectNumber":"123456789","labels":{"dex_request_id":"` + request.Labels["dex_request_id"] + `"}}`))
 			require.NoError(t, err)
 		case http.MethodPatch:
 			require.Equal(t, "/storage/v1/b/report-bucket", r.URL.Path)
-			_, err := w.Write([]byte(`{"name":"report-bucket","location":"US"}`))
+			_, err := w.Write([]byte(`{"name":"report-bucket","location":"US","labels":{"team":"reports"}}`))
 			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -82,6 +102,71 @@ func TestBucketCreationAndLabelUpdate(t *testing.T) {
 	updated, err := sdkgo.RunMutation(singledispatchtest.NewContext("bucket-label-flow", "update-step"), client.UpdateBucketLabels(), testConnection, UpdateBucketLabelsInput{Name: "report-bucket", Labels: map[string]string{"team": "reports"}})
 	require.NoError(t, err)
 	require.Equal(t, UpdateBucketLabelsBranchUpdated, updated.Branch)
+}
+
+func TestBucketCreationDoesNotDefectAfterPriorUnknownSend(t *testing.T) {
+	var sends atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		sends.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	credentials := &expiringBucketCredentials{}
+	client, err := New(Config{BaseURL: server.URL}, credentials)
+	require.NoError(t, err)
+	context := singledispatchtest.NewContext("bucket-credential-flow", "create-step")
+	input := CreateBucketInput{ProjectNumber: "123456789", Name: "report-bucket", Location: "US"}
+	_, err = sdkgo.RunMutation(context, client.CreateBucket(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	context.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(context, client.CreateBucket(), testConnection, input)
+	require.ErrorAs(t, err, &retry)
+	require.EqualValues(t, 1, sends.Load())
+}
+
+func TestBucketCreationRequiresResponseRequestMarker(t *testing.T) {
+	for _, marker := range []string{"", "different-request"} {
+		t.Run(marker, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, err := w.Write([]byte(`{"name":"report-bucket","location":"US","projectNumber":"123456789","labels":{"dex_request_id":"` + marker + `"}}`))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			client := newTestClient(t, server.URL)
+			_, err := sdkgo.RunMutation(singledispatchtest.NewContext("bucket-response-flow", "create-step"), client.CreateBucket(), testConnection, CreateBucketInput{ProjectNumber: "123456789", Name: "report-bucket", Location: "US"})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
+}
+
+func TestBucketLabelUpdateRetriesCredentialBearingResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte(testAccessToken))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("bucket-label-secret-flow", "update-step"), client.UpdateBucketLabels(), testConnection, UpdateBucketLabelsInput{Name: "report-bucket", Labels: map[string]string{"team": "reports"}})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}
+
+func TestBucketLabelUpdateRetriesContradictoryResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte(`{"name":"report-bucket","location":"US","labels":{"team":"different"}}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("bucket-label-mismatch-flow", "update-step"), client.UpdateBucketLabels(), testConnection, UpdateBucketLabelsInput{Name: "report-bucket", Labels: map[string]string{"team": "reports"}})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
 }
 
 func TestBucketCreationLimitsUnknownSends(t *testing.T) {

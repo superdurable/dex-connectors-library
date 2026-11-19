@@ -6,6 +6,7 @@ package cloudstorage
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"mime"
 	"net/http"
 	"net/url"
@@ -103,6 +104,9 @@ func (operation UpdateObjectMetadataOperation) Invoke(call sdkgo.Call, input Upd
 	path := "/storage/v1/b/" + url.PathEscape(input.Bucket) + "/o/" + url.PathEscape(input.Name)
 	response := operation.client.requestWithBody(call, call.Context, http.MethodPatch, path, requestBody, false)
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return objectMutationRetry("updateObjectMetadata", sdkgo.FailureAvailability, "object metadata update response cannot be confirmed", 0)
+		}
 		return objectMutationBranch("updateObjectMetadata", "defect", Object{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if response.status == http.StatusNotFound && response.err == nil && isDefiniteGoogleStorageRefusal(response.status, response.body) {
@@ -117,11 +121,16 @@ func (operation UpdateObjectMetadataOperation) Invoke(call sdkgo.Call, input Upd
 		}
 		return objectMutationBranch("updateObjectMetadata", "providerRejected", Object{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
 	}
-	var object Object
-	if err := json.Unmarshal(response.body, &object); err != nil || object.Name != input.Name || !generationPattern.MatchString(object.Generation) {
+	var updatedObject struct {
+		Object
+		ContentType string            `json:"contentType"`
+		Metadata    map[string]string `json:"metadata"`
+	}
+	if err := json.Unmarshal(response.body, &updatedObject); err != nil || updatedObject.Name != input.Name || !generationPattern.MatchString(updatedObject.Generation) ||
+		(input.ContentType != "" && updatedObject.ContentType != input.ContentType) || (input.Metadata != nil && !maps.Equal(updatedObject.Metadata, input.Metadata)) {
 		return objectMutationRetry("updateObjectMetadata", sdkgo.FailureProtocol, "Google returned invalid object metadata", 0)
 	}
-	return sdkgo.NewMutationBranch(sdkgo.BranchID("updated"), object, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationBranch(sdkgo.BranchID("updated"), updatedObject.Object, nil, sdkgo.Receipt{})
 }
 
 // Invoke deletes an object and accepts an already absent object as complete.
@@ -135,13 +144,21 @@ func (operation DeleteObjectOperation) Invoke(call sdkgo.Call, input DeleteObjec
 	}
 	response := operation.client.requestMethod(call, http.MethodDelete, path, false)
 	if errors.Is(response.err, errCredential) {
+		if response.status != 0 {
+			return objectDeleteRetry(sdkgo.FailureAvailability, "object deletion response cannot be confirmed", 0)
+		}
 		return objectDeleteBranch("defect", DeletedObject{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if response.err != nil {
 		return objectDeleteRetry(sdkgo.FailureTransport, "object deletion response failed", 0)
 	}
 	switch response.status {
-	case http.StatusNoContent, http.StatusNotFound:
+	case http.StatusNoContent:
+		return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), DeletedObject{Bucket: input.Bucket, Name: input.Name}, nil, sdkgo.Receipt{})
+	case http.StatusNotFound:
+		if !isDefiniteGoogleStorageRefusal(response.status, response.body) {
+			return objectDeleteRetry(sdkgo.FailureAvailability, "object deletion response does not prove absence", response.retryAfter)
+		}
 		return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), DeletedObject{Bucket: input.Bucket, Name: input.Name}, nil, sdkgo.Receipt{})
 	case http.StatusTooManyRequests:
 		return objectDeleteRetry(sdkgo.FailureRateLimit, "Google rate limited the deletion", response.retryAfter)
