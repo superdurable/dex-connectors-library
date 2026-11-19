@@ -14,6 +14,7 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     CredentialProvider,
+    FailureKind,
     IdempotencyKey,
     MutationResult,
     OperationRef,
@@ -53,11 +54,21 @@ class AttemptContext:
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
         self.heartbeat_value: object = None
         self.read_error: Exception | None = None
+        self.write_error: Exception | None = None
 
     @property
     def marker(self) -> Marker | None:
-        """Return the last recorded single-dispatch marker."""
-        return self.heartbeat_value if isinstance(self.heartbeat_value, Marker) else None
+        """Return the last recorded single-dispatch marker.
+
+        SDK 0.12 records one Marker; later releases key wire entries by call ID.
+        """
+        if isinstance(self.heartbeat_value, Marker):
+            return self.heartbeat_value
+        if isinstance(self.heartbeat_value, dict):
+            entries = self.heartbeat_value.get("singleDispatchMarkers")
+            if isinstance(entries, dict) and str(CALL_ID) in entries:
+                return Marker.from_wire(entries[str(CALL_ID)])
+        return None
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether an earlier attempt recorded a heartbeat."""
@@ -71,6 +82,8 @@ class AttemptContext:
 
     async def heartbeat(self, value: object = None) -> None:
         """Record the heartbeat exactly as the SDK wrote it."""
+        if self.write_error is not None:
+            raise self.write_error
         self.heartbeat_value = value
 
 
@@ -94,6 +107,13 @@ class StalledBodyStream(httpx.AsyncByteStream):
         yield b"null}"
 
 
+class RawBody:
+    """A response body sent byte for byte instead of as JSON."""
+
+    def __init__(self, content: bytes) -> None:
+        self.content = content
+
+
 Answer = Callable[[httpx.Request], tuple[int, object]]
 
 
@@ -113,6 +133,8 @@ async def create(
         status, body = answer(request)
         if isinstance(body, httpx.AsyncByteStream):
             return httpx.Response(status, stream=body)
+        if isinstance(body, RawBody):
+            return httpx.Response(status, content=body.content)
         return httpx.Response(status, json=body)
 
     if credentials is None:
@@ -160,7 +182,7 @@ def is_branch(result: object, branch: str) -> bool:
 
 @pytest.mark.parametrize(
     "first_answer",
-    [(500, {"code": 0}), (502, {}), (408, {}), (409, {}), (425, {}), (200, {"id": "x"}), (403, CREATED_BODY)],
+    [(500, {"code": 0}), (502, {}), (408, {}), (409, {}), (425, {}), (403, CREATED_BODY)],
 )
 async def test_unknown_outcome_resends_the_same_nonce_below_the_cap(first_answer: tuple[int, object]) -> None:
     requests: list[httpx.Request] = []
@@ -239,38 +261,130 @@ async def test_unreadable_checkpoint_retries_without_sending() -> None:
     assert requests == []
 
 
-async def test_oversized_confirmation_resends_below_the_cap_and_is_uncertain_at_it() -> None:
+async def test_oversized_confirmation_selects_uncertain_without_resending() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
     answer: Answer = lambda _: (200, CREATED_BODY | {"content": "x" * 2000})  # noqa: E731
-    assert isinstance(
-        await create(answer, context, requests, max_sends=2, max_response_bytes=512), RetryError
-    )
-    context.attempt = 2
-    result = await create(answer, context, requests, max_sends=2, max_response_bytes=512)
-    assert is_branch(result, "uncertain")
-    assert len(requests) == 2
-
-
-async def test_write_window_cutting_an_accepted_body_resends_with_the_same_nonce() -> None:
-    requests: list[httpx.Request] = []
-    context = AttemptContext()
-    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
-    assert isinstance(await create(lambda _: (200, StalledBodyStream()), context, requests), RetryError)
-    assert context.marker is not None and context.marker.state == "claimed"
-    context.attempt = 2
-    context.deadline = datetime.now(UTC) + timedelta(seconds=30)
-    assert is_branch(await create(lambda _: (200, CREATED_BODY), context, requests), "created")
-    assert_same_enforced_nonce(requests)
-
-
-async def test_write_window_cutting_an_accepted_body_at_the_cap_selects_uncertain() -> None:
-    requests: list[httpx.Request] = []
-    context = AttemptContext()
-    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
-    result = await create(lambda _: (200, StalledBodyStream()), context, requests, max_sends=1)
-    assert is_branch(result, "uncertain")
+    result = await create(answer, context, requests, max_response_bytes=512)
+    assert is_branch(result, "uncertain"), "a 2xx proves Discord created the message"
     assert len(requests) == 1
+
+
+async def test_write_window_cutting_an_accepted_body_selects_uncertain_without_resending() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await create(lambda _: (200, StalledBodyStream()), context, requests)
+    assert is_branch(result, "uncertain"), "the 2xx status arrived before the write window ended"
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    "body",
+    [b"{", {"id": "x"}, {"channel_id": CHANNEL_ID}, {"id": int(MESSAGE_ID)}, {"ID": MESSAGE_ID}],
+)
+async def test_accepted_answer_without_a_message_id_selects_uncertain_without_resending(body: object) -> None:
+    requests: list[httpx.Request] = []
+    answer: Answer = lambda _: (200, RawBody(body) if isinstance(body, bytes) else body)  # noqa: E731
+    result = await create(answer, AttemptContext(), requests)
+    assert is_branch(result, "uncertain")
+    assert isinstance(result, MutationResult) and result.failure is not None
+    assert result.failure.kind == FailureKind.PROTOCOL
+    assert len(requests) == 1
+
+
+INCOMPLETE_ACCEPTED_BODY = {"id": MESSAGE_ID, "channel_id": CHANNEL_ID}
+READ_BACK_PATH = f"/channels/{CHANNEL_ID}/messages/{MESSAGE_ID}"
+
+
+def read_back(*answers: tuple[int, object], on_post: Callable[[], None] | None = None) -> Answer:
+    """Answer the POST with an incomplete accepted message and each GET with the next answer."""
+    next_read_back = sequence(*answers)
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        if request.method == "POST":
+            if on_post is not None:
+                on_post()
+            return 200, INCOMPLETE_ACCEPTED_BODY
+        return next_read_back(request)
+
+    return answer
+
+
+def assert_one_post_then_read_backs(requests: list[httpx.Request], read_back_count: int) -> None:
+    assert len(requests) == 1 + read_back_count
+    assert requests[0].method == "POST"
+    for request in requests[1:]:
+        assert request.method == "GET", "an accepted message is never resent"
+        assert request.url.path == READ_BACK_PATH
+
+
+async def test_accepted_answer_with_a_message_id_reads_the_message_back() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await create(read_back((200, CREATED_BODY)), context, requests)
+    assert is_branch(result, "created")
+    assert isinstance(result, MutationResult) and result.value.id == MESSAGE_ID
+    assert context.marker is not None and context.marker.provider_id == MESSAGE_ID
+    assert_one_post_then_read_backs(requests, 1)
+
+
+@pytest.mark.parametrize("max_sends", [3, 1])
+async def test_unknown_read_back_retries_with_the_saved_message_id_and_never_resends(max_sends: int) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer = read_back((503, {"code": 0}), (500, {"code": 0}), (200, CREATED_BODY))
+    for attempt in (1, 2):
+        context.attempt = attempt
+        assert isinstance(await create(answer, context, requests, max_sends=max_sends), RetryError)
+        assert context.marker is not None and context.marker.provider_id == MESSAGE_ID
+    context.attempt = 3
+    result = await create(answer, context, requests, max_sends=max_sends)
+    assert is_branch(result, "created")
+    assert_one_post_then_read_backs(requests, 3)
+
+
+@pytest.mark.parametrize("answer", [(404, {"code": 10008}), (403, {"code": 50001})])
+async def test_definite_read_back_refusal_selects_uncertain(answer: tuple[int, object]) -> None:
+    requests: list[httpx.Request] = []
+    result = await create(read_back(answer), AttemptContext(), requests)
+    assert is_branch(result, "uncertain")
+    assert isinstance(result, MutationResult) and result.receipt.provider_object_id == MESSAGE_ID
+    assert_one_post_then_read_backs(requests, 1)
+
+
+async def test_contradicting_read_back_retries_with_the_saved_message_id() -> None:
+    requests: list[httpx.Request] = []
+    answer = read_back((200, CREATED_BODY | {"id": "998877665544332212"}))
+    assert isinstance(await create(answer, AttemptContext(), requests), RetryError)
+    assert_one_post_then_read_backs(requests, 1)
+
+
+async def test_unknown_read_back_without_a_saved_message_id_selects_uncertain() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def fail_later_heartbeats() -> None:
+        # The claim is already persisted, so only the message ID checkpoint fails.
+        context.write_error = RuntimeError("heartbeat unavailable")
+
+    answer = read_back((503, {"code": 0}), on_post=fail_later_heartbeats)
+    assert is_branch(await create(answer, context, requests), "uncertain")
+    assert_one_post_then_read_backs(requests, 1)
+
+
+async def test_saved_message_id_with_a_credential_failure_never_resends() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer = read_back((503, {"code": 0}))
+    assert isinstance(await create(answer, context, requests), RetryError)
+    context.attempt = 2
+    unavailable = FailingCredentialProvider(RuntimeError("broker timeout"))
+    assert isinstance(await create(answer, context, requests, credentials=unavailable), RetryError)
+    context.attempt = 3
+    revoked = FailingCredentialProvider(ReauthorizationRequiredError("revoked"))
+    assert is_branch(await create(answer, context, requests, credentials=revoked), "uncertain")
+    assert_one_post_then_read_backs(requests, 1)
 
 
 async def test_terminal_credential_failure_after_a_possible_send_selects_uncertain() -> None:
@@ -296,8 +410,10 @@ async def test_transient_credential_failure_retries_without_sending() -> None:
     assert requests == []
 
 
-async def test_message_timestamp_without_timezone_is_an_unknown_outcome() -> None:
-    """Reject a provider timestamp that Go's RFC3339 decoder rejects; the nonce makes a resend safe."""
+async def test_message_timestamp_without_timezone_reads_the_message_back() -> None:
+    """Reject a provider timestamp that Go's RFC3339 decoder rejects, then read the message back by its ID."""
     requests: list[httpx.Request] = []
     body = CREATED_BODY | {"timestamp": "2026-10-13T20:00:00"}
-    assert isinstance(await create(lambda _: (200, body), AttemptContext(), requests), RetryError)
+    answer: Answer = lambda request: (200, body if request.method == "POST" else CREATED_BODY)  # noqa: E731
+    assert is_branch(await create(answer, AttemptContext(), requests), "created")
+    assert [request.method for request in requests] == ["POST", "GET"]

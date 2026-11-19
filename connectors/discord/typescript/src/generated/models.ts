@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Discord HTTP API base URL including the API version path; leave blank for Discord's public v10 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server. */
   endpoint?: string;
-  /** Maximum complete Discord API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of messages carries many embeds. Oversized responses select invalidResponse. */
+  /** Maximum complete Discord API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of messages carries many embeds. An oversized response selects invalidResponse for getChannel and listChannelMessages, retries addReaction, and selects uncertain for createMessage without a resend. */
   maxResponseBytes?: number;
 }
 

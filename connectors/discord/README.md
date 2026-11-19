@@ -69,18 +69,26 @@ supplies a transport.
 
 ## Execution contract
 
-Every operation uses a 30-second Execute timeout. `createMessage` uses sync durability so its single-dispatch fence survives retries and Worker loss, and keeps five attempts within two minutes; the other operations use async durability and the one-hour default retry budget. Each attempt makes one HTTP request. Redirects are not followed.
+Every operation uses a 30-second Execute timeout. `createMessage` uses sync durability so its single-dispatch fence survives retries and Worker loss, and keeps five attempts within two minutes; the other operations use async durability and the one-hour default retry budget. Each attempt makes one HTTP request, except that a `createMessage` attempt may read an accepted message back with one more GET. Redirects are not followed.
 
 `createMessage` sends a 25-character `nonce` derived with SHA-256 from the
 Step's idempotency key, with `enforce_nonce: true`. Retries and Worker restarts
 of one Step execution send the same nonce, and inside its nonce window Discord
 returns the message the earlier attempt created instead of posting another.
-Discord offers no other read-back, so that resend is the read-back. The
+Without a known message ID, that resend is the read-back. The
 operation is `repeatOnUnknown: limited` with `maxSends: 3`: an unknown outcome
-after dispatch, such as a lost connection, a 5xx other than 503, a 408, an
-unlisted status, or a 2xx whose body is broken, malformed, or oversized,
-resends while possible sends stay below the cap and selects `uncertain` at the
-cap. A 429, a 503, or a request that never left the process retries and never
+after dispatch, such as a lost connection, a 5xx other than 503, a 408, or an
+unlisted status, resends while possible sends stay below the cap and selects
+`uncertain` at the cap. A 2xx proves Discord created the message, so it is
+never resent. A 2xx whose body is broken, oversized, or cut by the write window
+selects `uncertain`. A 2xx whose body parses but is not a valid message selects
+`uncertain` unless it carries a valid snowflake `id`. With such an ID, the
+operation checkpoints it and reads the message back with
+`GET /channels/{channel}/messages/{id}`. A matching message selects `created`.
+An unknown read-back result retries, and the next attempt reads back the saved ID
+again without sending. If the ID could not be checkpointed, that result selects
+`uncertain` instead. A read-back refusal, such as 404 Unknown Message or a
+missing Read Message History permission, selects `uncertain`. A 429, a 503, or a request that never left the process retries and never
 selects `uncertain` on its own. A definite refusal of the first send selects `notFound` or
 `providerRejected` and is never resent; the same refusal after an earlier
 possible send selects `uncertain`. An application sets the cap, from 1 to 10,
@@ -103,14 +111,21 @@ repeating the PUT converges.
 | transport failure, interrupted body | Retry; for `createMessage` after dispatch, `uncertain` at the send cap | `TRANSPORT` |
 | other 404, 411, 414, 415, or 422 | `providerRejected` | `PROVIDER_REJECTION` |
 | 3xx or any other status | Retry; for `createMessage`, `uncertain` at the send cap | `AVAILABILITY` |
-| malformed JSON, a different channel, more messages than the limit, an oversized body | `invalidResponse` for a Query; Retry for `addReaction`; for `createMessage`, Retry below the send cap and `uncertain` at it | `PROTOCOL`, `RESPONSE_TOO_LARGE`, or `TRANSPORT` |
+| malformed JSON, a different channel, more messages than the limit, an oversized body | `invalidResponse` for a Query; Retry for `addReaction`; for `createMessage`, a read-back by a valid message ID, otherwise `uncertain` without a resend | `PROTOCOL`, `RESPONSE_TOO_LARGE`, or `TRANSPORT` |
 
 For `createMessage`, a refusal status counts as definite only when its body is
-readable and does not describe a message; an oversized or contradictory error
-body is an unknown outcome. `invalidResponse` stays declared for compatibility
+readable and does not describe a message. An error body over 64 KiB, or one that
+is contradictory, is an unknown outcome. `invalidResponse` stays declared for compatibility
 and is no longer selected by either write. `addReaction` is declared
-`repeatOnUnknown: safe` and repeats an idempotent PUT. Malformed stored
-credential material selects `defect`.
+`repeatOnUnknown: safe` and repeats an idempotent PUT.
+
+Stored credential material that does not decode, such as a token whose stored
+form is corrupt, is handled differently by language. In Python and TypeScript it
+selects `defect` before any request. In Go the SDK does not yet expose the
+decoder error type, so the operation retries without a request until the retry
+budget ends. A decoded token that is blank or unsafe in a header selects `defect`
+in every language. After an earlier possible send, `createMessage` selects
+`uncertain` instead of `defect`.
 
 A Failure names only a documented numeric Discord error code, never Discord's
 message text. An unwired optional branch fails the Flow. The connector has no
@@ -149,8 +164,9 @@ require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 The bot token is a `secretString` credential resolved for every call, so a
 reset token applies without restarting the Worker. A reauthorization-required
 connection selects `providerRejected`; a missing or unselected connection, a
-credential broker rejection, or a malformed token selects `defect`; every other
-credential failure, such as an unavailable broker, retries without a request.
+credential broker rejection, or a blank or header-unsafe token selects `defect`;
+undecodable stored material follows the language rule in the execution contract;
+every other credential failure, such as an unavailable broker, retries without a request.
 The token travels only in the
 `Authorization: Bot <token>` header and never in a URL, Result, Failure,
 receipt, or log. Create it under **Bot > Reset Token** at
@@ -172,11 +188,13 @@ The provider tests run every operation against an `httptest` fake Discord API.
 They cover the `Bot` authorization and `DiscordBot` User-Agent headers, the
 stable enforced nonce across resends of one Step execution and a new nonce for
 a new execution, `uncertain` at the send cap, refusals that are never resent,
+read-back by message ID after an accepted but invalid answer,
 disabled mentions, reply references, emoji path escaping,
 page bounds and cursors, every error class, fractional rate-limit delays,
 malformed and oversized responses, input and credential validation, and
 secret-safe Failures. The example's real Dex suite covers the complete
-announcement, a post whose first response was lost, an unwired `notFound`, and
+announcement, a post whose first response was lost, an accepted post read back
+by message ID, an unwired `notFound`, and
 invalid start input.
 
 No test runs against the real Discord API yet.

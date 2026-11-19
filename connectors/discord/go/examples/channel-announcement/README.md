@@ -107,5 +107,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 
 The real Dex suite runs the Flow against a stateful fake Discord that enforces
 message nonces. It covers the complete announcement, a post that Discord
-applied but answered with 502, which the resend resolves to one message, an
-unknown channel, and invalid start input.
+applied but answered with 502, which the resend resolves to one message, a
+post accepted with an incomplete answer, which the connector reads back by
+message ID after one failed read-back without resending, an unknown channel,
+and invalid start input.

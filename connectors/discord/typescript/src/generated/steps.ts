@@ -81,9 +81,9 @@ export interface CreateMessageStepConfig<StepInput, OperationInput = CreateMessa
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Kept for compatibility and no longer selected: an invalid or oversized answer is an unknown outcome that resends with the same nonce or selects uncertain at the send cap. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** Discord may have created the message, and the send cap was reached before it could be confirmed; check the channel before sending again. */
+  /** Discord may have created the message, or accepted it but could not confirm it by read-back, and no further send is allowed; check the channel before sending again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

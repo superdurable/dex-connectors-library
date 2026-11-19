@@ -203,7 +203,7 @@ func CreateMessageProviderRejected(value discord.Message, failure *sdkgo.Failure
 	return connectormock.Branch(discord.CreateMessageBranchProviderRejected, value, failure)
 }
 
-// CreateMessageInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized answer is an unknown outcome that resends with the same nonce or selects uncertain at the send cap.
+// CreateMessageInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain.
 func CreateMessageInvalidResponse(value discord.Message, failure *sdkgo.Failure) connectormock.Case[discord.Message] {
 	return connectormock.Branch(discord.CreateMessageBranchInvalidResponse, value, failure)
 }

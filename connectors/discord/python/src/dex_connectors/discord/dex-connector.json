@@ -132,7 +132,7 @@
       "kind": "mutation",
       "operationId": "createMessage",
       "inputType": "CreateMessageInput",
-      "description": "Send one bot text message to a channel with every mention disabled. Every send carries the same enforced Discord nonce derived from the idempotency key, an unknown outcome resends up to the send cap, and synchronous durability preserves the single-dispatch fence after retry or Worker loss.",
+      "description": "Send one bot text message to a channel with every mention disabled. Every send carries the same enforced Discord nonce derived from the idempotency key, an unknown outcome resends up to the send cap, an accepted 2xx is never resent and is read back by its message ID, and synchronous durability preserves the single-dispatch fence after retry or Worker loss.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

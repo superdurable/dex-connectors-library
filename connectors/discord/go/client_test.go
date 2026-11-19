@@ -301,7 +301,6 @@ func TestCreateMessageRetriesUnknownAnswers(t *testing.T) {
 		"redirect":        {status: http.StatusFound, body: `{}`},
 		"unlisted":        {status: http.StatusTooEarly, body: `{}`},
 		"not implemented": {status: http.StatusNotImplemented, body: `{}`},
-		"malformed 2xx":   {status: http.StatusOK, body: `{"id":"x"}`},
 		"definite 422":    {status: http.StatusUnprocessableEntity, body: `{"code":50035}`, isRejected: true},
 	} {
 		provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {

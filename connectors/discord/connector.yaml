@@ -33,7 +33,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Discord API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of messages carries many embeds. Oversized responses select invalidResponse.
+        description: Maximum complete Discord API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of messages carries many embeds. An oversized response selects invalidResponse for getChannel and listChannelMessages, retries addReaction, and selects uncertain for createMessage without a resend.
         required: false
         default: 4194304
   auth:
@@ -126,15 +126,15 @@ spec:
       inputType: CreateMessageInput
       outputType: Message
       kind: mutation
-      description: Send one bot text message to a channel with every mention disabled. Every send carries the same enforced Discord nonce derived from the idempotency key, an unknown outcome resends up to the send cap, and synchronous durability preserves the single-dispatch fence after retry or Worker loss.
+      description: Send one bot text message to a channel with every mention disabled. Every send carries the same enforced Discord nonce derived from the idempotency key, an unknown outcome resends up to the send cap, an accepted 2xx is never resent and is read back by its message ID, and synchronous durability preserves the single-dispatch fence after retry or Worker loss.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: "Discord created the message, or returned the message an earlier attempt created with the same nonce."}
         - {id: notFound, goName: NotFound, description: Discord knows no channel with the ID., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized answer is an unknown outcome that resends with the same nonce or selects uncertain at the send cap.", optional: true, retired: true, retiredReason: "An invalid or oversized answer may follow a created message, so createMessage resends with the same nonce below the send cap and selects uncertain at it instead of invalidResponse."}
-        - {id: uncertain, goName: Uncertain, description: "Discord may have created the message, and the send cap was reached before it could be confirmed; check the channel before sending again.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain.", optional: true, retired: true, retiredReason: "An invalid or oversized 2xx answer follows a created message, so createMessage reads it back by a valid message ID or selects uncertain instead of invalidResponse, and never resends it."}
+        - {id: uncertain, goName: Uncertain, description: "Discord may have created the message, or accepted it but could not confirm it by read-back, and no further send is allowed; check the channel before sending again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

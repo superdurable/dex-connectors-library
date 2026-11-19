@@ -96,10 +96,21 @@ export class DiscordClient {
    * nothing was sent. A status that arrived before the body failed is kept.
    */
   async sendFenced(path: string, token: string, body: Uint8Array, signal: AbortSignal): Promise<FencedExchange> {
+    return this.sendOnce('POST', path, token, body, signal);
+  }
+
+  /** Read one accepted message by its path once, with the same evidence as a fenced send. */
+  async readAcceptedMessage(path: string, token: string, signal: AbortSignal): Promise<FencedExchange> {
+    return this.sendOnce('GET', path, token, undefined, signal);
+  }
+
+  private async sendOnce(method: string, path: string, token: string, body: Uint8Array | undefined, signal: AbortSignal): Promise<FencedExchange> {
     try {
-      const response = await this.send({ url: this.endpoint + path, method: 'POST', headers: this.headers(token, true), body,
+      const response = await this.send({ url: this.endpoint + path, method, headers: this.headers(token, body !== undefined), ...(body ? { body } : {}),
         maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes), addressPolicy: this.addressPolicy(), timeoutMs: 25_000, signal });
-      if (response.status >= 200 && response.status < 300 && response.body.length > this.maxResponseBytes)
+      const isSuccess = response.status >= 200 && response.status < 300;
+      // Go and Python cut an error body at 64 KiB, so a longer one cannot prove a refusal.
+      if (response.body.length > (isSuccess ? this.maxResponseBytes : MaxErrorBodyBytes))
         return { status: response.status, headers: response.headers, body: new Uint8Array(), error: 'tooLarge', requestSent: true };
       return { status: response.status, headers: response.headers, body: response.body, requestSent: true };
     } catch (error) {
