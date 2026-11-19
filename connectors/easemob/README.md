@@ -9,3 +9,7 @@ At the [Easemob Console](https://console.easemob.com), open **Application Manage
 The Query selects optional `defect` for invalid local inputs, `providerRejected` for definite provider errors, and `invalidResponse` for malformed or oversized JSON. HTTP 429, HTTP 5xx and transport failures retry. The example leaves optional branches unwired, so those outcomes fail the Flow.
 
 See the runnable [`go/examples/user-read`](go/examples/user-read). Tests use a local HTTP provider and a real Dex server with the generated mock. Live Easemob authorization and user retrieval remain unverified.
+
+## Python
+
+The [Python package](python/README.md) implements `getUserDetail` and includes a [runnable Dex Flow](python/examples/user_read/README.md). Its 16 Go-recorded scenarios cover App Token acquisition, 401 refresh, provider branches, Retry, and private push token removal. No live Easemob account has been authorized for this port.

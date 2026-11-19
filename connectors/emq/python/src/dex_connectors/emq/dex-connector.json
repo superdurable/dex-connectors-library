@@ -1,0 +1,52 @@
+{
+  "connectorId": "emq",
+  "releaseTag": "connectors/emq/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-emq",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_deployments_step",
+      "kind": "query",
+      "operationId": "listDeployments",
+      "inputType": "ListDeploymentsInput",
+      "description": "List deployments within the Platform API key's selected project scope.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDeploymentsInput has no operation parameters; the key's project scope selects deployments.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

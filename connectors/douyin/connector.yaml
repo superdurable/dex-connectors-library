@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: douyin
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-douyin
+      operations: [getBehaviorSummary]
+      triggers: []
   codegen:
     go:
       package: douyin
