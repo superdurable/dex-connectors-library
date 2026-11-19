@@ -8,11 +8,10 @@ metadata:
   categories: [data-search]
   version: v0.1.0
 spec:
-  languages:
-    typescript: {version: v0.1.0, operations: [getCompanyProfile], triggers: []}
   provider: tianyancha
   languages:
     python: {version: v0.1.0, operations: [getCompanyProfile], triggers: []}
+    typescript: {version: v0.1.0, operations: [getCompanyProfile], triggers: []}
   codegen:
     go:
       package: tianyancha
