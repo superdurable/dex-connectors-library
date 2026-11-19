@@ -1,0 +1,61 @@
+{
+  "connectorId": "volcengine",
+  "releaseTag": "connectors/volcengine/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-volcengine",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newDescribeRegionsStep",
+      "kind": "query",
+      "operationId": "describeRegions",
+      "inputType": "DescribeRegionsInput",
+      "description": "List one bounded page of ECS region IDs, with an optional NextToken for pagination.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DescribeRegionsInput selects one ECS region page. MaxResults zero uses the provider default of 10.",
+        "properties": {
+          "maxResults": {
+            "description": "MaxResults is the requested page size from 1 to 20; zero uses 10.",
+            "type": "integer"
+          },
+          "nextToken": {
+            "description": "NextToken is the opaque pagination token from a previous response; empty starts at the first page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}
