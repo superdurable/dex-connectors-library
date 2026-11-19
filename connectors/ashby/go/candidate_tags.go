@@ -79,6 +79,9 @@ func (client *Client) mutateCandidateTag(call sdkgo.Call, input CandidateTagInpu
 	}
 	response := client.postOperation(call, operationPath, input)
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[CandidateProfile](failure(sdkgo.FailureTransport, "an earlier candidate tag write remains unconfirmed"), 0)
+		}
 		return branch(defectBranch, sdkgo.FailureAuthentication, "Ashby credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {
@@ -91,19 +94,25 @@ func (client *Client) mutateCandidateTag(call sdkgo.Call, input CandidateTagInpu
 		return sdkgo.NewMutationRetry[CandidateProfile](failure(sdkgo.FailureAvailability, "Ashby candidate tags are unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status, response.body) || call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[CandidateProfile](failure(sdkgo.FailureTransport, "candidate tag outcome is unknown"), 0)
+		}
 		return branch(rejectedBranch, sdkgo.FailureProviderRejection, "Ashby rejected candidate tag request with HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return branch(invalidBranch, sdkgo.FailureResponseTooLarge, "Ashby candidate tag response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[CandidateProfile](failure(sdkgo.FailureResponseTooLarge, "Ashby candidate tag response exceeded the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[CandidateProfile](failure(sdkgo.FailureTransport, "Ashby candidate tag response was interrupted"), 0)
 	}
 	profile, rejectionCode, err := decodeCandidate(response.body, input.CandidateID)
 	if err != nil {
-		return branch(invalidBranch, sdkgo.FailureProtocol, "Ashby returned invalid tagged candidate JSON")
+		return sdkgo.NewMutationRetry[CandidateProfile](failure(sdkgo.FailureProtocol, "Ashby returned invalid tagged candidate JSON"), 0)
 	}
 	if rejectionCode != "" {
+		if call.Context.Attempt() > 1 || !isDefiniteAshbyBusinessRefusal(response.body) {
+			return sdkgo.NewMutationRetry[CandidateProfile](failure(sdkgo.FailureTransport, "an earlier candidate tag write remains unconfirmed"), 0)
+		}
 		return branch(rejectedBranch, sdkgo.FailureProviderRejection, "Ashby rejected candidate tag request")
 	}
 	return sdkgo.NewMutationBranch(successBranch, profile, nil, sdkgo.Receipt{})

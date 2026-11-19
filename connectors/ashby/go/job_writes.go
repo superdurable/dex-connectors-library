@@ -181,6 +181,9 @@ type jobWriteBranches struct{ success, rejected, invalid, defect sdkgo.BranchID 
 func (client *Client) executeSafeJobWrite(call sdkgo.Call, operationName string, operationPath string, input any, branches jobWriteBranches, matches func(JobSummary) bool) sdkgo.MutationAttempt[JobSummary] {
 	response := client.postOperation(call, operationPath, input)
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureTransport, "an earlier job write remains unconfirmed"), 0)
+		}
 		return jobWriteBranch(operationName, branches.defect, sdkgo.FailureAuthentication, "Ashby credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {
@@ -193,7 +196,7 @@ func (client *Client) executeSafeJobWrite(call sdkgo.Call, operationName string,
 		return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureAvailability, "Ashby job write is unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status, response.body) {
+		if !isDefiniteRefusalStatus(response.status, response.body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureTransport, "Ashby job write outcome is unknown"), response.retryAfter)
 		}
 		return jobWriteBranch(operationName, branches.rejected, sdkgo.FailureProviderRejection, "Ashby rejected the job write with HTTP "+strconv.Itoa(response.status))
@@ -209,6 +212,9 @@ func (client *Client) executeSafeJobWrite(call sdkgo.Call, operationName string,
 		return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureProtocol, "Ashby returned an invalid updated job"), 0)
 	}
 	if rejectionCode != "" {
+		if call.Context.Attempt() > 1 || !isDefiniteAshbyBusinessRefusal(response.body) {
+			return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureTransport, "an earlier job write remains unconfirmed"), 0)
+		}
 		return jobWriteBranch(operationName, branches.rejected, sdkgo.FailureProviderRejection, "Ashby rejected the job write")
 	}
 	return sdkgo.NewMutationBranch(branches.success, job, nil, sdkgo.Receipt{})

@@ -53,7 +53,7 @@
       "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
       "exchanges": [
         {
-          "body": "not found",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -101,7 +101,7 @@
       "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
       "exchanges": [
         {
-          "body": "secret SENTINEL",
+          "body": "{\"error\":\"secret SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -173,14 +173,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -389,7 +385,7 @@
       "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
       "exchanges": [
         {
-          "body": "not found",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -427,7 +423,7 @@
       "callId": "cdade215-8c22-557a-9d89-9a17cd06405b",
       "exchanges": [
         {
-          "body": "secret SENTINEL",
+          "body": "{\"error\":\"secret SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -482,13 +478,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "leadId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1275,7 +1268,7 @@
       "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
       "exchanges": [
         {
-          "body": "not found",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1324,7 +1317,7 @@
       "callId": "9d00a774-21e4-5b87-b8be-b600822b8074",
       "exchanges": [
         {
-          "body": "secret SENTINEL",
+          "body": "{\"error\":\"secret SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1397,15 +1390,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "leadId": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1615,7 +1603,7 @@
       "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
       "exchanges": [
         {
-          "body": "not found",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1653,7 +1641,7 @@
       "callId": "809980dd-a297-58d9-9e8d-d4abe0c93aa5",
       "exchanges": [
         {
-          "body": "secret SENTINEL",
+          "body": "{\"error\":\"secret SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1708,13 +1696,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4477,7 +4462,7 @@
       "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4527,7 +4512,7 @@
       "callId": "72634bd0-436f-5532-8ab9-70584a29bc08",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4601,16 +4586,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "leadId": "",
-          "statusId": "",
-          "valueCents": null
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4821,7 +4800,7 @@
       "callId": "1775d1e3-6c9b-5b22-9d33-2772e252a107",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4876,13 +4855,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "opportunityId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6244,7 +6220,7 @@
       "callId": "a489c038-dc05-54ab-8681-d7234831c843",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6298,7 +6274,7 @@
       "callId": "a489c038-dc05-54ab-8681-d7234831c843",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6378,16 +6354,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "isComplete": false,
-          "leadId": "",
-          "text": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6614,7 +6584,7 @@
       "callId": "2b63cc5f-32bc-548d-a32e-e45ec1eb12aa",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -6669,13 +6639,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "taskId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7969,7 +7936,7 @@
       "callId": "e06c75d6-6e68-5b66-b460-be34d8a0b022",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8022,7 +7989,7 @@
       "callId": "e06c75d6-6e68-5b66-b460-be34d8a0b022",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8100,17 +8067,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "leadId": "",
-          "note": "",
-          "pinned": false,
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8330,7 +8290,7 @@
       "callId": "0f0e7c53-fd85-5615-af5b-6978f4d67268",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -8385,13 +8345,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "noteId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -9707,7 +9664,7 @@
       "callId": "387648f1-a660-538e-9f18-b63bdd2779bf",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -9830,18 +9787,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "direction": "",
-          "durationSeconds": null,
-          "id": "",
-          "leadId": "",
-          "note": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10008,7 +9957,7 @@
       "callId": "3d744219-7c0a-5183-8a33-8a684e9fb980",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -10025,13 +9974,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "callId": "acti_call_meridian1"
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10063,13 +10009,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "callId": "acti_call_meridian1"
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11567,7 +11510,7 @@
       "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -11697,19 +11640,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "bodyText": "",
-          "id": "",
-          "leadId": "",
-          "sender": "",
-          "status": "",
-          "subject": "",
-          "to": []
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11884,7 +11818,7 @@
       "callId": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -11901,13 +11835,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "emailId": "acti_email_meridian1"
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11939,13 +11870,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "emailId": "acti_email_meridian1"
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13363,7 +13291,7 @@
       "callId": "8471c5d7-889b-52b4-b04c-7dcd46412a79",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -13486,18 +13414,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "leadId": "",
-          "localPhone": "",
-          "remotePhone": "",
-          "status": "",
-          "text": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13664,7 +13584,7 @@
       "callId": "b6967b8f-2e52-5bae-b44d-8ca8e7f416a8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -13681,13 +13601,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "smsId": "acti_sms_meridian1"
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13719,13 +13636,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "smsId": "acti_sms_meridian1"
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -14576,7 +14490,7 @@
       "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -14706,19 +14620,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "endsAt": "",
-          "id": "",
-          "leadId": "",
-          "startsAt": "",
-          "status": "",
-          "title": "",
-          "userNoteHTML": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -14893,7 +14798,7 @@
       "callId": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -14910,13 +14815,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "meetingId": "acti_meeting_meridian1"
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -14948,13 +14850,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "meetingId": "acti_meeting_meridian1"
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

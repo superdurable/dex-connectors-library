@@ -210,7 +210,7 @@ func (operation DeletePaymentMethodFromVaultOperation) Invoke(call sdkgo.Call, i
 	}
 	requestInput := map[string]any{"clientMutationId": string(call.ID), "paymentMethodId": input.PaymentMethodID}
 	response := operation.client.graphQL(call, call.Context, deletePaymentMethodFromVaultGraphQL, map[string]any{"input": requestInput})
-	if attempt, handled := classifyBraintreeMutationResponse[PaymentMethodDeleteResult](response, "deletePaymentMethodFromVault", DeletePaymentMethodFromVaultBranchNotFound, DeletePaymentMethodFromVaultBranchProviderRejected, DeletePaymentMethodFromVaultBranchInvalidResponse, DeletePaymentMethodFromVaultBranchDefect, false); handled {
+	if attempt, handled := classifyBraintreeMutationResponse[PaymentMethodDeleteResult](response, "deletePaymentMethodFromVault", DeletePaymentMethodFromVaultBranchNotFound, DeletePaymentMethodFromVaultBranchProviderRejected, DeletePaymentMethodFromVaultBranchInvalidResponse, DeletePaymentMethodFromVaultBranchDefect, call.Context.Attempt() > 1); handled {
 		return attempt
 	}
 	var wire struct {

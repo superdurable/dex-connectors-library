@@ -127,7 +127,7 @@ func (operation UpdateCustomerOperation) Invoke(call sdkgo.Call, input UpdateCus
 	}
 	requestInput := map[string]any{"clientMutationId": string(call.ID), "customerId": input.CustomerID, "customer": map[string]any{"firstName": input.FirstName, "lastName": input.LastName, "email": input.Email}}
 	response := operation.client.graphQL(call, call.Context, updateCustomerGraphQL, map[string]any{"input": requestInput})
-	return customerProfileMutationAttempt(response, "updateCustomer", "updateCustomer", input.CustomerID, UpdateCustomerBranchUpdated, UpdateCustomerBranchNotFound, UpdateCustomerBranchProviderRejected, UpdateCustomerBranchInvalidResponse, UpdateCustomerBranchDefect, false)
+	return customerProfileMutationAttempt(response, "updateCustomer", "updateCustomer", input.CustomerID, UpdateCustomerBranchUpdated, UpdateCustomerBranchNotFound, UpdateCustomerBranchProviderRejected, UpdateCustomerBranchInvalidResponse, UpdateCustomerBranchDefect, call.Context.Attempt() > 1)
 }
 
 // DeleteCustomerOperation deletes a customer with no vaulted payment methods.
@@ -153,7 +153,7 @@ func (operation DeleteCustomerOperation) Invoke(call sdkgo.Call, input GetCustom
 	}
 	requestInput := map[string]any{"clientMutationId": string(call.ID), "customerId": input.CustomerID}
 	response := operation.client.graphQL(call, call.Context, deleteCustomerGraphQL, map[string]any{"input": requestInput})
-	if attempt, handled := classifyBraintreeMutationResponse[CustomerDeleteResult](response, "deleteCustomer", DeleteCustomerBranchNotFound, DeleteCustomerBranchProviderRejected, DeleteCustomerBranchInvalidResponse, DeleteCustomerBranchDefect, false); handled {
+	if attempt, handled := classifyBraintreeMutationResponse[CustomerDeleteResult](response, "deleteCustomer", DeleteCustomerBranchNotFound, DeleteCustomerBranchProviderRejected, DeleteCustomerBranchInvalidResponse, DeleteCustomerBranchDefect, call.Context.Attempt() > 1); handled {
 		return attempt
 	}
 	var wire struct {
@@ -216,7 +216,10 @@ func classifyBraintreeMutationResponse[T any](response providerResponse, operati
 		return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree mutation response is uncertain", 0), true
 	}
 	if len(wire.Errors) > 0 {
-		switch classifyGraphQLErrors(wire.Errors) {
+		if len(wire.Data) > 0 && string(wire.Data) != "null" {
+			return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree mutation response is uncertain", 0), true
+		}
+		switch classifyBraintreeWriteGraphQLErrors(wire.Errors) {
 		case graphQLErrorRateLimited:
 			return braintreeMutationRetry[T](operation, sdkgo.FailureRateLimit, "Braintree reported a resource limit", response.retryAfter), true
 		case graphQLErrorUnavailable:
@@ -229,7 +232,7 @@ func classifyBraintreeMutationResponse[T any](response providerResponse, operati
 				return braintreeMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "Braintree did not find the resource"), true
 			}
 		}
-		if hasPriorSend {
+		if hasPriorSend || classifyBraintreeWriteGraphQLErrors(wire.Errors) != graphQLErrorRejected {
 			return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "an earlier customer mutation remains unconfirmed", 0), true
 		}
 		return braintreeMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Braintree rejected the mutation"), true

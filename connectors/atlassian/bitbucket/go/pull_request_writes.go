@@ -97,7 +97,7 @@ func (operation CreatePullRequestOperation) Invoke(call sdkgo.Call, input Create
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureAuthentication, "an earlier pull request create may have succeeded"), 0)
 		}
-		return sdkgo.NewMutationBranch(authorization.branch, PullRequest{}, authorization.failure, sdkgo.Receipt{})
+		return mutationAuthorizationAttempt[PullRequest](call, name, authorization)
 	}
 	var response *http.Response
 	var requestError error
@@ -215,7 +215,7 @@ func (client *Client) executePullRequestAction(call sdkgo.Call, input PullReques
 	request.Header.Set("Accept", "application/json")
 	authorization := client.authorize(call, name, request, defectBranch, rejectedBranch, invalidBranch)
 	if authorization.failure != nil {
-		return sdkgo.NewMutationBranch(authorization.branch, PullRequest{}, authorization.failure, sdkgo.Receipt{})
+		return mutationAuthorizationAttempt[PullRequest](call, name, authorization)
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -230,17 +230,17 @@ func (client *Client) executePullRequestAction(call sdkgo.Call, input PullReques
 	case response.StatusCode == http.StatusConflict:
 		return client.confirmPullRequestState(call, name, path, input.PullRequestID, expectedState, successBranch, rejectedBranch, invalidBranch)
 	case response.StatusCode == http.StatusNotFound:
-		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "pull request action outcome is unknown"), 0)
 		}
 		return pullRequestBranch(name, notFoundBranch, sdkgo.FailureNotFound, "pull request was not found")
 	case response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden:
-		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "pull request action outcome is unknown"), 0)
 		}
 		return pullRequestBranch(name, rejectedBranch, sdkgo.FailureAuthorization, "Bitbucket denied pull request action")
 	case response.StatusCode != http.StatusOK:
-		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "pull request action outcome is unknown"), 0)
 		}
 		return pullRequestBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket rejected pull request action with HTTP "+strconv.Itoa(response.StatusCode))
@@ -260,7 +260,7 @@ func (client *Client) confirmPullRequestState(call sdkgo.Call, name, path string
 	request.Header.Set("Accept", "application/json")
 	authorization := client.authorize(call, name, request, invalidBranch, rejectedBranch, invalidBranch)
 	if authorization.failure != nil {
-		return sdkgo.NewMutationBranch(authorization.branch, PullRequest{}, authorization.failure, sdkgo.Receipt{})
+		return mutationAuthorizationAttempt[PullRequest](call, name, authorization)
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {

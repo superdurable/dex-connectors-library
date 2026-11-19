@@ -23,6 +23,7 @@ var testConnection = sdkgo.ConnectionRef{Provider: "campaignmonitor", Name: "cam
 
 type queryContext struct{ dex.Context }
 
+func (queryContext) Attempt() int32              { return 1 }
 func (queryContext) FlowID() string              { return "campaignmonitor-provider-test" }
 func (queryContext) StepExecutionID() string     { return "query" }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }

@@ -10,15 +10,17 @@ import (
 
 func TestDefiniteRefusalRequiresParsedProviderError(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		status int
-		body string
-		want bool
+		body   string
+		want   bool
 	}{
 		{"documented refusal", http.StatusBadRequest, `{"error":"invalid request"}`, true},
 		{"empty body", http.StatusBadRequest, "", false},
 		{"empty object", http.StatusUnprocessableEntity, "{}", false},
 		{"contradictory acceptance", http.StatusBadRequest, `{"success":true,"error":"invalid request"}`, false},
+		{"contradictory data", http.StatusBadRequest, `{"error":"invalid request","data":{"id":"created"}}`, false},
+		{"spaced acceptance", http.StatusBadRequest, `{"success": true, "error":"invalid request"}`, false},
 		{"malformed body", http.StatusBadRequest, "not-json", false},
 		{"conflict", http.StatusConflict, `{"error":"conflict"}`, false},
 		{"other client error", http.StatusMethodNotAllowed, `{"error":"invalid request"}`, false},
@@ -30,5 +32,14 @@ func TestDefiniteRefusalRequiresParsedProviderError(t *testing.T) {
 				t.Fatalf("isDefiniteRefusalStatus(%d, %q) = %t, want %t", scenario.status, scenario.body, got, scenario.want)
 			}
 		})
+	}
+}
+
+func TestAshbyBusinessRefusalExcludesContradictoryResults(t *testing.T) {
+	if !isDefiniteAshbyBusinessRefusal([]byte(`{"success":false,"errorInfo":{"code":"missing_endpoint_permission"}}`)) {
+		t.Fatal("explicit business rejection must be definite")
+	}
+	if isDefiniteAshbyBusinessRefusal([]byte(`{"success":false,"errorInfo":{"code":"missing_endpoint_permission"},"results":{"id":"created"}}`)) {
+		t.Fatal("a result and an error leave the write outcome unknown")
 	}
 }

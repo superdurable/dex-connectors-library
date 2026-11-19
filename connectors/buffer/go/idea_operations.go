@@ -177,7 +177,7 @@ func (operation CreateIdeaOperation) Invoke(call sdkgo.Call, input CreateIdeaInp
 			return sdkgo.NewMutationRetry[IdeaProfile](bufferFailure(name, sdkgo.FailureAvailability, "idea refusal checkpoint is unavailable"), 0)
 		}
 	}
-	if attempt := classifyBufferMutationResponse[IdeaProfile](response, name, CreateIdeaBranchProviderRejected, CreateIdeaBranchProviderRejected, CreateIdeaBranchDefect); attempt != nil {
+	if attempt := classifyBufferMutationResponse[IdeaProfile](call, response, name, CreateIdeaBranchProviderRejected, CreateIdeaBranchProviderRejected, CreateIdeaBranchDefect); attempt != nil {
 		return *attempt
 	}
 	var wire struct {

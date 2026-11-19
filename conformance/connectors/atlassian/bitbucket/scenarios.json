@@ -5697,14 +5697,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "repository": "api",
-          "workspace": "meridian"
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

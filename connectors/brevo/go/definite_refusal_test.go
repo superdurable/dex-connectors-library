@@ -10,14 +10,15 @@ import (
 
 func TestDefiniteRefusalRequiresParsedProviderError(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		status int
-		body string
-		want bool
+		body   string
+		want   bool
 	}{
 		{"rejection", http.StatusBadRequest, `{"code":"invalid_parameter","message":"invalid request"}`, true},
 		{"empty body", http.StatusBadRequest, "", false},
 		{"contradictory acceptance", http.StatusBadRequest, `{"success":true,"error":"invalid request"}`, false},
+		{"contradictory data", http.StatusBadRequest, `{"error":"invalid request","data":{"id":1}}`, false},
 		{"conflict", http.StatusConflict, `{"code":"conflict"}`, false},
 		{"other client error", http.StatusMethodNotAllowed, `{"code":"unsupported"}`, false},
 		{"server error", http.StatusInternalServerError, `{"code":"failure"}`, false},

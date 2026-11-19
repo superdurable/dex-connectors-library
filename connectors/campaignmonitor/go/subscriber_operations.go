@@ -287,7 +287,7 @@ func validSubscriberEmail(email string) bool {
 }
 
 type subscriberWriteOptions struct {
-	emptyResponse            bool
+	emptyResponse           bool
 	confirmUnsubscribedPath string
 }
 
@@ -296,6 +296,9 @@ func invokeSubscriberWrite(call sdkgo.Call, client *Client, name, method, path s
 	body, status, retryAfter, err := client.request(call, method, path, payload)
 	switch {
 	case errors.Is(err, errCredential):
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "an earlier subscriber write remains unconfirmed"), 0)
+		}
 		return campaignMonitorMutationBranch(name, "defect", zero, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	case errors.Is(err, errRequest):
 		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor request failed"), 0)
@@ -304,27 +307,33 @@ func invokeSubscriberWrite(call sdkgo.Call, client *Client, name, method, path s
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor is temporarily unavailable"), retryAfter)
 	case status == http.StatusNotFound && notFound != "":
+		if !isDefiniteRefusalStatus(status, body) || call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "subscriber write outcome is unknown"), 0)
+		}
 		return campaignMonitorMutationBranch(name, notFound, zero, sdkgo.FailureNotFound, "subscriber was not found")
 	case status == http.StatusBadRequest && options.confirmUnsubscribedPath != "" && isSubscriberNotInList(body):
 		return confirmSubscriberUnsubscribed(call, client, name, options.confirmUnsubscribedPath, email)
 	case status != successStatus && !(method == http.MethodDelete && status == http.StatusNoContent):
+		if !isDefiniteRefusalStatus(status, body) || call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "subscriber write outcome is unknown"), 0)
+		}
 		return campaignMonitorMutationBranch(name, "providerRejected", zero, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
-		return campaignMonitorMutationBranch(name, "invalidResponse", zero, sdkgo.FailureResponseTooLarge, "Campaign Monitor response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureResponseTooLarge, "Campaign Monitor response exceeded the configured limit"), 0)
 	case err != nil:
 		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor response was interrupted"), time.Duration(0))
 	}
 	if options.emptyResponse {
 		if len(body) != 0 {
-			return campaignMonitorMutationBranch(name, "invalidResponse", zero, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected unsubscribe body")
+			return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected unsubscribe body"), 0)
 		}
 	} else if method != http.MethodDelete {
 		var returnedEmail string
 		if json.Unmarshal(body, &returnedEmail) != nil || !strings.EqualFold(returnedEmail, email) {
-			return campaignMonitorMutationBranch(name, "invalidResponse", zero, sdkgo.FailureProtocol, "Campaign Monitor returned invalid subscriber identity")
+			return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor returned invalid subscriber identity"), 0)
 		}
 	} else if len(body) != 0 {
-		return campaignMonitorMutationBranch(name, "invalidResponse", zero, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected deletion body")
+		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected deletion body"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, SubscriberIdentity{Email: email}, nil, sdkgo.Receipt{})
 }
@@ -337,11 +346,10 @@ func isSubscriberNotInList(body []byte) bool {
 }
 
 func confirmSubscriberUnsubscribed(call sdkgo.Call, client *Client, name, path, email string) sdkgo.MutationAttempt[SubscriberIdentity] {
-	zero := SubscriberIdentity{}
 	body, status, retryAfter, err := client.request(call, http.MethodGet, path, nil)
 	switch {
 	case errors.Is(err, errCredential):
-		return campaignMonitorMutationBranch(name, "defect", zero, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "unsubscribe confirmation is unavailable"), 0)
 	case errors.Is(err, errRequest):
 		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor status read failed"), 0)
 	case status == http.StatusTooManyRequests:
@@ -349,9 +357,9 @@ func confirmSubscriberUnsubscribed(call sdkgo.Call, client *Client, name, path, 
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor status is temporarily unavailable"), retryAfter)
 	case status != http.StatusOK:
-		return campaignMonitorMutationBranch(name, "providerRejected", zero, sdkgo.FailureProviderRejection, "Campaign Monitor did not confirm the unsubscribe")
+		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "unsubscribe remains unconfirmed"), 0)
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
-		return campaignMonitorMutationBranch(name, "invalidResponse", zero, sdkgo.FailureResponseTooLarge, "Campaign Monitor status response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureResponseTooLarge, "Campaign Monitor status response exceeded the configured limit"), 0)
 	case err != nil:
 		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor status response was interrupted"), 0)
 	}
@@ -360,10 +368,10 @@ func confirmSubscriberUnsubscribed(call sdkgo.Call, client *Client, name, path, 
 		State string `json:"State"`
 	}
 	if json.Unmarshal(body, &profile) != nil || !strings.EqualFold(profile.Email, email) || profile.State == "" {
-		return campaignMonitorMutationBranch(name, "invalidResponse", zero, sdkgo.FailureProtocol, "Campaign Monitor returned invalid subscriber status")
+		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor returned invalid subscriber status"), 0)
 	}
 	if profile.State != "Unsubscribed" {
-		return campaignMonitorMutationBranch(name, "providerRejected", zero, sdkgo.FailureProviderRejection, "Campaign Monitor did not confirm the unsubscribe")
+		return sdkgo.NewMutationRetry[SubscriberIdentity](queryFailure(name, sdkgo.FailureTransport, "unsubscribe remains unconfirmed"), 0)
 	}
 	return sdkgo.NewMutationBranch[SubscriberIdentity]("unsubscribed", SubscriberIdentity{Email: email}, nil, sdkgo.Receipt{})
 }

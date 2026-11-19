@@ -245,7 +245,7 @@ func (operation UpdateMessageOperation) Invoke(call sdkgo.Call, input UpdateMess
 		Subject string `json:"subject"`
 		Content string `json:"content"`
 	}{input.Subject, input.Content})
-	if attempt, done := projectMutationResponse[Message](response, "updateMessage", http.StatusOK, UpdateMessageBranchNotFound, UpdateMessageBranchProviderRejected, UpdateMessageBranchDefect, UpdateMessageBranchInvalidResponse); done {
+	if attempt, done := projectMutationResponse[Message](call, response, "updateMessage", http.StatusOK, UpdateMessageBranchNotFound, UpdateMessageBranchProviderRejected, UpdateMessageBranchDefect, UpdateMessageBranchInvalidResponse); done {
 		return attempt
 	}
 	message, err := decodeMessage(response.body, input.MessageID)
@@ -279,7 +279,7 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input GetMessag
 	response := operation.client.accountMutation(call, call.Context, http.MethodPut, input.AccountID, "/messages/"+input.MessageID+".json", struct {
 		Status string `json:"status"`
 	}{"active"})
-	if attempt, done := projectMutationResponse[Message](response, "publishMessage", http.StatusOK, PublishMessageBranchNotFound, PublishMessageBranchProviderRejected, PublishMessageBranchDefect, PublishMessageBranchInvalidResponse); done {
+	if attempt, done := projectMutationResponse[Message](call, response, "publishMessage", http.StatusOK, PublishMessageBranchNotFound, PublishMessageBranchProviderRejected, PublishMessageBranchDefect, PublishMessageBranchInvalidResponse); done {
 		return attempt
 	}
 	message, err := decodeMessage(response.body, input.MessageID)
@@ -351,7 +351,7 @@ func (client *Client) changeMessageState(call sdkgo.Call, input GetMessageInput,
 		return projectMutationBranch[MessageActionResult](operation, defect, sdkgo.FailureValidation, "message IDs are invalid")
 	}
 	response := client.accountMutation(call, call.Context, method, input.AccountID, prefix+input.MessageID+suffix, nil)
-	if attempt, done := projectMutationResponse[MessageActionResult](response, operation, http.StatusNoContent, notFound, rejected, defect, rejected); done {
+	if attempt, done := projectMutationResponse[MessageActionResult](call, response, operation, http.StatusNoContent, notFound, rejected, defect, rejected); done {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(success, MessageActionResult{MessageID: input.MessageID, Status: status}, nil, sdkgo.Receipt{})

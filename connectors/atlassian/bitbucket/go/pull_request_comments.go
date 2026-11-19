@@ -102,6 +102,9 @@ func (operation GetPullRequestCommentOperation) Invoke(call sdkgo.Call, input Pu
 }
 
 func decodePullRequestComment(body []byte) (PullRequestComment, error) {
+	if hasBitbucketContradictoryData(body) {
+		return PullRequestComment{}, errors.New("comment response contains an error")
+	}
 	var comment PullRequestComment
 	if err := json.Unmarshal(body, &comment); err != nil {
 		return PullRequestComment{}, err

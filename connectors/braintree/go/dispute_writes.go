@@ -258,7 +258,7 @@ func (operation DeleteDisputeEvidenceOperation) Invoke(call sdkgo.Call, input De
 	}
 	requestInput := map[string]any{"clientMutationId": string(call.ID), "disputeId": input.DisputeID, "evidenceId": input.EvidenceID}
 	response := operation.client.graphQL(call, call.Context, deleteDisputeEvidenceGraphQL, map[string]any{"input": requestInput})
-	if attempt, handled := classifyBraintreeMutationResponse[DisputeEvidenceDeleteResult](response, "deleteDisputeEvidence", DeleteDisputeEvidenceBranchNotFound, DeleteDisputeEvidenceBranchProviderRejected, DeleteDisputeEvidenceBranchInvalidResponse, DeleteDisputeEvidenceBranchDefect, false); handled {
+	if attempt, handled := classifyBraintreeMutationResponse[DisputeEvidenceDeleteResult](response, "deleteDisputeEvidence", DeleteDisputeEvidenceBranchNotFound, DeleteDisputeEvidenceBranchProviderRejected, DeleteDisputeEvidenceBranchInvalidResponse, DeleteDisputeEvidenceBranchDefect, call.Context.Attempt() > 1); handled {
 		return attempt
 	}
 	var wire struct {

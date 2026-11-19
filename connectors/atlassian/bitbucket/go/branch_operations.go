@@ -144,7 +144,7 @@ func (operation CreateBranchOperation) Invoke(call sdkgo.Call, input CreateBranc
 	request.Header.Set("Content-Type", "application/json")
 	authorization := operation.client.authorize(call, name, request, CreateBranchBranchDefect, CreateBranchBranchProviderRejected, CreateBranchBranchInvalidResponse)
 	if authorization.failure != nil {
-		return sdkgo.NewMutationBranch(authorization.branch, Branch{}, authorization.failure, sdkgo.Receipt{})
+		return mutationAuthorizationAttempt[Branch](call, name, authorization)
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
@@ -159,12 +159,12 @@ func (operation CreateBranchOperation) Invoke(call sdkgo.Call, input CreateBranc
 	case response.StatusCode == http.StatusConflict:
 		return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureTransport, "branch creation outcome is unknown"), 0)
 	case response.StatusCode == http.StatusNotFound:
-		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureTransport, "branch creation outcome is unknown"), 0)
 		}
 		return branchWriteBranch(name, CreateBranchBranchNotFound, sdkgo.FailureNotFound, "repository or target commit was not found")
 	case response.StatusCode != http.StatusCreated:
-		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureTransport, "branch creation outcome is unknown"), 0)
 		}
 		return branchWriteBranch(name, CreateBranchBranchProviderRejected, sdkgo.FailureProviderRejection, "Bitbucket rejected branch creation with HTTP "+strconv.Itoa(response.StatusCode))
@@ -213,7 +213,7 @@ func (operation DeleteBranchOperation) Invoke(call sdkgo.Call, input BranchRefIn
 	request.Header.Set("Accept", "application/json")
 	authorization := operation.client.authorize(call, name, request, DeleteBranchBranchDefect, DeleteBranchBranchProviderRejected, DeleteBranchBranchDefect)
 	if authorization.failure != nil {
-		return sdkgo.NewMutationBranch(authorization.branch, DeletedBranch{}, authorization.failure, sdkgo.Receipt{})
+		return mutationAuthorizationAttempt[DeletedBranch](call, name, authorization)
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
@@ -226,20 +226,27 @@ func (operation DeleteBranchOperation) Invoke(call sdkgo.Call, input BranchRefIn
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[DeletedBranch](*failureFor(name, sdkgo.FailureAvailability, "branch deletion is unavailable"), 0)
 	case response.StatusCode == http.StatusNotFound:
-		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[DeletedBranch](*failureFor(name, sdkgo.FailureTransport, "branch deletion outcome is unknown"), 0)
 		}
 		return deletedBranchBranch(DeleteBranchBranchNotFound, sdkgo.FailureNotFound, "branch was not found")
 	case response.StatusCode != http.StatusNoContent:
-		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[DeletedBranch](*failureFor(name, sdkgo.FailureTransport, "branch deletion outcome is unknown"), 0)
 		}
 		return deletedBranchBranch(DeleteBranchBranchProviderRejected, sdkgo.FailureProviderRejection, "Bitbucket rejected branch deletion with HTTP "+strconv.Itoa(response.StatusCode))
+	}
+	acknowledgmentBody, readError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	if readError != nil || len(acknowledgmentBody) != 0 {
+		return sdkgo.NewMutationRetry[DeletedBranch](*failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned an invalid branch deletion acknowledgment"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteBranchBranchDeleted, DeletedBranch{Workspace: input.Workspace, Repository: input.Repository, Name: input.Name}, nil, sdkgo.Receipt{})
 }
 
 func decodeBranch(body []byte) (Branch, error) {
+	if hasBitbucketContradictoryData(body) {
+		return Branch{}, errors.New("branch response contains an error")
+	}
 	var branch Branch
 	if err := json.Unmarshal(body, &branch); err != nil {
 		return Branch{}, err

@@ -192,6 +192,9 @@ func (operation RefundTransactionOperation) Invoke(call sdkgo.Call, input Refund
 
 func financialMutationAttempt[T any](call sdkgo.Call, response providerResponse, operation, resource, expectedID string, success, notFound, rejected, defect sdkgo.BranchID) sdkgo.MutationAttempt[T] {
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "an earlier financial mutation remains unconfirmed", 0)
+		}
 		return braintreeMutationBranch[T](operation, defect, sdkgo.FailureAuthentication, "Braintree credentials are unavailable")
 	}
 	if errors.Is(response.err, errRequest) || response.err != nil && !errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
@@ -204,8 +207,8 @@ func financialMutationAttempt[T any](call sdkgo.Call, response providerResponse,
 		return braintreeMutationRetry[T](operation, sdkgo.FailureAvailability, "Braintree financial mutation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if call.Context.Attempt() > 1 && response.status == http.StatusBadRequest {
-			return braintreeMutationRetry[T](operation, sdkgo.FailureAvailability, "Braintree idempotency request may still be in flight", response.retryAfter)
+		if !isDefiniteRefusalStatus(response.status, response.body) || call.Context.Attempt() > 1 {
+			return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "Braintree financial mutation outcome is unknown", response.retryAfter)
 		}
 		return braintreeMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Braintree rejected HTTP "+strconv.Itoa(response.status))
 	}
@@ -220,18 +223,20 @@ func financialMutationAttempt[T any](call sdkgo.Call, response providerResponse,
 		return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree financial mutation response is uncertain", 0)
 	}
 	if len(wire.Errors) > 0 {
-		switch classifyGraphQLErrors(wire.Errors) {
+		if len(wire.Data) > 0 || call.Context.Attempt() > 1 {
+			return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree financial mutation response is uncertain", 0)
+		}
+		switch classifyBraintreeWriteGraphQLErrors(wire.Errors) {
 		case graphQLErrorNotFound:
 			return braintreeMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "Braintree did not find the payment resource")
 		case graphQLErrorRateLimited:
 			return braintreeMutationRetry[T](operation, sdkgo.FailureRateLimit, "Braintree reported a resource limit", response.retryAfter)
 		case graphQLErrorUnavailable:
 			return braintreeMutationRetry[T](operation, sdkgo.FailureAvailability, "Braintree reported a temporary failure", response.retryAfter)
-		default:
-			if call.Context.Attempt() > 1 && hasGraphQLErrorClass(wire.Errors, "VALIDATION") {
-				return braintreeMutationRetry[T](operation, sdkgo.FailureAvailability, "Braintree idempotency request may still be in flight", 0)
-			}
+		case graphQLErrorRejected:
 			return braintreeMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Braintree rejected the mutation")
+		default:
+			return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree financial mutation response is uncertain", 0)
 		}
 	}
 	var identity struct {
@@ -249,18 +254,37 @@ func financialMutationAttempt[T any](call sdkgo.Call, response providerResponse,
 	return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
 }
 
-func hasGraphQLErrorClass(rawErrors []json.RawMessage, class string) bool {
+func classifyBraintreeWriteGraphQLErrors(rawErrors []json.RawMessage) graphQLErrorOutcome {
+	outcome := graphQLErrorNone
 	for _, rawError := range rawErrors {
 		var value struct {
+			Message    string `json:"message"`
 			Extensions struct {
 				ErrorClass string `json:"errorClass"`
 			} `json:"extensions"`
 		}
-		if json.Unmarshal(rawError, &value) == nil && value.Extensions.ErrorClass == class {
-			return true
+		if json.Unmarshal(rawError, &value) != nil || strings.TrimSpace(value.Message) == "" {
+			return graphQLErrorNone
 		}
+		var current graphQLErrorOutcome
+		switch value.Extensions.ErrorClass {
+		case "NOT_FOUND":
+			current = graphQLErrorNotFound
+		case "VALIDATION", "AUTHORIZATION":
+			current = graphQLErrorRejected
+		case "RESOURCE_LIMIT":
+			current = graphQLErrorRateLimited
+		case "INTERNAL", "SERVICE_AVAILABILITY":
+			current = graphQLErrorUnavailable
+		default:
+			return graphQLErrorNone
+		}
+		if outcome != graphQLErrorNone && outcome != current {
+			return graphQLErrorNone
+		}
+		outcome = current
 	}
-	return false
+	return outcome
 }
 
 func validBraintreeAmount(value string) bool {

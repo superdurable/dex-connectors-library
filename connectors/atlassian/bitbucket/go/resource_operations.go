@@ -44,6 +44,9 @@ func (operation GetRepositoryOperation) Invoke(call sdkgo.Call, input GetReposit
 }
 
 func decodeRepository(body []byte) (Repository, error) {
+	if hasBitbucketContradictoryData(body) {
+		return Repository{}, errors.New("repository response contains an error")
+	}
 	var repository Repository
 	if err := json.Unmarshal(body, &repository); err != nil {
 		return Repository{}, err
@@ -85,6 +88,9 @@ func (operation GetPullRequestOperation) Invoke(call sdkgo.Call, input GetPullRe
 }
 
 func decodePullRequest(body []byte) (PullRequest, error) {
+	if hasBitbucketContradictoryData(body) {
+		return PullRequest{}, errors.New("pull request response contains an error")
+	}
 	var pullRequest PullRequest
 	if err := json.Unmarshal(body, &pullRequest); err != nil {
 		return PullRequest{}, err
@@ -145,7 +151,7 @@ func (operation UpdatePullRequestTitleOperation) Invoke(call sdkgo.Call, input U
 	request.Header.Set("Content-Type", "application/json")
 	authorization := operation.client.authorize(call, name, request, UpdatePullRequestTitleBranchDefect, UpdatePullRequestTitleBranchProviderRejected, UpdatePullRequestTitleBranchInvalidResponse)
 	if authorization.failure != nil {
-		return sdkgo.NewMutationBranch(authorization.branch, PullRequest{}, authorization.failure, sdkgo.Receipt{})
+		return mutationAuthorizationAttempt[PullRequest](call, name, authorization)
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
@@ -158,22 +164,22 @@ func (operation UpdatePullRequestTitleOperation) Invoke(call sdkgo.Call, input U
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureAvailability, "Bitbucket pull request update is unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusNotFound:
-		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "title update outcome is unknown"), 0)
 		}
 		return updateTitleBranch(UpdatePullRequestTitleBranchNotFound, sdkgo.FailureNotFound, "pull request was not found")
 	case response.StatusCode == http.StatusUnauthorized:
-		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "title update outcome is unknown"), 0)
 		}
 		return updateTitleBranch(UpdatePullRequestTitleBranchProviderRejected, sdkgo.FailureAuthentication, "Bitbucket rejected credentials")
 	case response.StatusCode == http.StatusForbidden:
-		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "title update outcome is unknown"), 0)
 		}
 		return updateTitleBranch(UpdatePullRequestTitleBranchProviderRejected, sdkgo.FailureAuthorization, "Bitbucket denied the title update")
 	case response.StatusCode != http.StatusOK:
-		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes, call.Context.Attempt()) {
 			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "title update outcome is unknown"), 0)
 		}
 		return updateTitleBranch(UpdatePullRequestTitleBranchProviderRejected, sdkgo.FailureProviderRejection, "Bitbucket rejected title update with HTTP "+strconv.Itoa(response.StatusCode))

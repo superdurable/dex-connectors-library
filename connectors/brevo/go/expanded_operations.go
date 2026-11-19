@@ -279,6 +279,9 @@ func invokeBrevoNoContentMutation[T any](call sdkgo.Call, client *Client, operat
 	var zero T
 	request, failure := client.newRequest(call, method, path, payload, operationName)
 	if failure != nil {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[T](*brevoFailure(operationName, sdkgo.FailureTransport, "an earlier Brevo write remains unconfirmed"), 0)
+		}
 		return sdkgo.NewMutationBranch(defect, zero, failure, sdkgo.Receipt{})
 	}
 	response, err := client.httpClient.Do(request)
@@ -294,17 +297,21 @@ func invokeBrevoNoContentMutation[T any](call sdkgo.Call, client *Client, operat
 	}
 	if response.StatusCode == http.StatusNotFound {
 		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) {
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[T](*brevoFailure(operationName, sdkgo.FailureTransport, "Brevo write outcome is unknown"), 0)
 		}
 		return brevoMutationBranch(notFound, zero, operationName, sdkgo.FailureNotFound, "Brevo did not find the contact")
 	}
 	if response.StatusCode != http.StatusNoContent {
 		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) {
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[T](*brevoFailure(operationName, sdkgo.FailureTransport, "Brevo write outcome is unknown"), 0)
 		}
 		return brevoMutationBranch(rejected, zero, operationName, failureKind(response.StatusCode), "Brevo rejected HTTP "+strconv.Itoa(response.StatusCode))
+	}
+	acknowledgmentBody, readError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if readError != nil || len(acknowledgmentBody) != 0 {
+		return sdkgo.NewMutationRetry[T](*brevoFailure(operationName, sdkgo.FailureProtocol, "Brevo returned an invalid write acknowledgment"), 0)
 	}
 	return sdkgo.NewMutationBranch(saved, value, nil, sdkgo.Receipt{})
 }

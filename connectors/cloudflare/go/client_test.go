@@ -19,6 +19,7 @@ import (
 
 type testContext struct{ dex.Context }
 
+func (testContext) Attempt() int32              { return 1 }
 func (testContext) FlowID() string              { return "provider-test" }
 func (testContext) StepExecutionID() string     { return "test" }
 func (testContext) Deadline() (time.Time, bool) { return time.Time{}, false }

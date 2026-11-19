@@ -10,10 +10,10 @@ import (
 
 func TestDefiniteRefusalRequiresCloudflareRejection(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		status int
-		body string
-		want bool
+		body   string
+		want   bool
 	}{
 		{"rejection", http.StatusBadRequest, `{"success":false,"errors":[{"code":1000}]}`, true},
 		{"empty body", http.StatusBadRequest, "", false},

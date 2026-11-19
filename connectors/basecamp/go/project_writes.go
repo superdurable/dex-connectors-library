@@ -4,7 +4,9 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -148,7 +150,7 @@ func (operation UpdateProjectOperation) Invoke(call sdkgo.Call, input UpdateProj
 		Name        string `json:"name"`
 		Description string `json:"description"`
 	}{input.Name, input.Description})
-	if attempt, done := projectMutationResponse[Project](response, "updateProject", http.StatusOK, UpdateProjectBranchNotFound, UpdateProjectBranchProviderRejected, UpdateProjectBranchDefect, UpdateProjectBranchInvalidResponse); done {
+	if attempt, done := projectMutationResponse[Project](call, response, "updateProject", http.StatusOK, UpdateProjectBranchNotFound, UpdateProjectBranchProviderRejected, UpdateProjectBranchDefect, UpdateProjectBranchInvalidResponse); done {
 		return attempt
 	}
 	project, err := decodeProject(response.body, input.ProjectID)
@@ -226,14 +228,17 @@ func (client *Client) setProjectStatus(call sdkgo.Call, input GetProjectInput, m
 		return projectMutationBranch[ProjectActionResult](operation, defect, sdkgo.FailureValidation, "project IDs are invalid")
 	}
 	response := client.accountMutation(call, call.Context, method, input.AccountID, "/projects/"+input.ProjectID+suffix, nil)
-	if attempt, done := projectMutationResponse[ProjectActionResult](response, operation, http.StatusNoContent, notFound, rejected, defect, rejected); done {
+	if attempt, done := projectMutationResponse[ProjectActionResult](call, response, operation, http.StatusNoContent, notFound, rejected, defect, rejected); done {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(success, ProjectActionResult{ProjectID: input.ProjectID, Status: status}, nil, sdkgo.Receipt{})
 }
 
-func projectMutationResponse[T any](response providerResponse, operation string, successStatus int, notFound, rejected, defect, invalid sdkgo.BranchID) (sdkgo.MutationAttempt[T], bool) {
+func projectMutationResponse[T any](call sdkgo.Call, response providerResponse, operation string, successStatus int, notFound, rejected, defect, invalid sdkgo.BranchID) (sdkgo.MutationAttempt[T], bool) {
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return projectMutationRetry[T](operation, sdkgo.FailureTransport, "an earlier Basecamp write remains unconfirmed", 0), true
+		}
 		return projectMutationBranch[T](operation, defect, sdkgo.FailureAuthentication, "Basecamp credentials are unavailable"), true
 	}
 	if errors.Is(response.err, errRequest) {
@@ -252,18 +257,38 @@ func projectMutationResponse[T any](response providerResponse, operation string,
 		return projectMutationRetry[T](operation, sdkgo.FailureTransport, "Basecamp response was interrupted", 0), true
 	}
 	if response.status == http.StatusNotFound {
-		if !isDefiniteRefusalStatus(response.status, response.body) {
+		if !isDefiniteRefusalStatus(response.status, response.body) || call.Context.Attempt() > 1 {
 			return projectMutationRetry[T](operation, sdkgo.FailureTransport, "Basecamp write outcome is unknown", 0), true
 		}
 		return projectMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "Basecamp project does not exist"), true
 	}
 	if response.status != successStatus {
-		if !isDefiniteRefusalStatus(response.status, response.body) {
+		if !isDefiniteRefusalStatus(response.status, response.body) || call.Context.Attempt() > 1 {
 			return projectMutationRetry[T](operation, sdkgo.FailureTransport, "Basecamp write outcome is unknown", 0), true
 		}
 		return projectMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Basecamp rejected HTTP "+strconv.Itoa(response.status)), true
 	}
+	if successStatus == http.StatusNoContent && len(response.body) != 0 {
+		return projectMutationRetry[T](operation, sdkgo.FailureProtocol, "Basecamp returned an unexpected write response body", 0), true
+	}
+	if successStatus == http.StatusOK && hasBasecampWriteError(response.body) {
+		return projectMutationRetry[T](operation, sdkgo.FailureProtocol, "Basecamp write response is contradictory", 0), true
+	}
 	return sdkgo.MutationAttempt[T]{}, false
+}
+
+func hasBasecampWriteError(body []byte) bool {
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(body, &envelope) != nil {
+		return false
+	}
+	for _, field := range []string{"error", "errors"} {
+		value := bytes.TrimSpace(envelope[field])
+		if len(value) > 0 && !bytes.Equal(value, []byte("null")) && !bytes.Equal(value, []byte("[]")) && !bytes.Equal(value, []byte("{}")) {
+			return true
+		}
+	}
+	return bytes.Equal(bytes.TrimSpace(envelope["success"]), []byte("false"))
 }
 
 func projectMutationBranch[T any](operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[T] {

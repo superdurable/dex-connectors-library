@@ -104,6 +104,9 @@ func validLeadID(leadID string) bool {
 func invokeCloseWrite[T any](client *Client, call sdkgo.Call, operation, method, path string, body []byte, successBranch, notFoundBranch sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.MutationAttempt[T] {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
+		if call.Context.Attempt() > 1 {
+			return closeMutationRetry[T](operation, sdkgo.FailureTransport, "an earlier write remains unconfirmed", 0)
+		}
 		return closeMutationBranch[T](operation, "defect", sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(body))
@@ -126,17 +129,21 @@ func invokeCloseWrite[T any](client *Client, call sdkgo.Call, operation, method,
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusConflict || response.StatusCode >= 500 {
 		return closeMutationRetry[T](operation, sdkgo.FailureAvailability, "provider temporarily unavailable", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
-	if response.StatusCode == http.StatusNotFound && notFoundBranch != "" {
-		if notFoundBranch == successBranch {
-			value, err := decode([]byte("{}"))
-			if err != nil {
-				return closeMutationBranch[T](operation, "defect", sdkgo.FailureLocalDefect, "deletion result could not be built")
-			}
-			return sdkgo.NewMutationBranch(successBranch, value, nil, sdkgo.Receipt{})
-		}
-		return closeMutationBranch[T](operation, notFoundBranch, sdkgo.FailureNotFound, "provider resource was not found")
-	}
 	if response.StatusCode != http.StatusOK {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) || call.Context.Attempt() > 1 {
+			return closeMutationRetry[T](operation, sdkgo.FailureTransport, "provider write outcome is unknown", 0)
+		}
+		if response.StatusCode == http.StatusNotFound && notFoundBranch != "" {
+			if notFoundBranch == successBranch {
+				value, err := decode([]byte("{}"))
+				if err != nil {
+					return closeMutationRetry[T](operation, sdkgo.FailureProtocol, "deletion result could not be built", 0)
+				}
+				return sdkgo.NewMutationBranch(successBranch, value, nil, sdkgo.Receipt{})
+			}
+			return closeMutationBranch[T](operation, notFoundBranch, sdkgo.FailureNotFound, "provider resource was not found")
+		}
 		kind := sdkgo.FailureProviderRejection
 		if response.StatusCode == http.StatusUnauthorized {
 			kind = sdkgo.FailureAuthentication
@@ -148,16 +155,33 @@ func invokeCloseWrite[T any](client *Client, call sdkgo.Call, operation, method,
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return closeMutationBranch[T](operation, "invalidResponse", sdkgo.FailureResponseTooLarge, "provider response exceeded configured limit")
+		return closeMutationRetry[T](operation, sdkgo.FailureResponseTooLarge, "provider response exceeded configured limit", 0)
 	}
 	if err != nil {
 		return closeMutationRetry[T](operation, sdkgo.FailureTransport, "provider response was interrupted", 0)
 	}
+	if hasCloseWriteError(responseBody) {
+		return closeMutationRetry[T](operation, sdkgo.FailureProtocol, "provider write response is contradictory", 0)
+	}
 	value, err := decode(responseBody)
 	if err != nil {
-		return closeMutationBranch[T](operation, "invalidResponse", sdkgo.FailureProtocol, "provider returned unusable JSON")
+		return closeMutationRetry[T](operation, sdkgo.FailureProtocol, "provider returned unusable JSON", 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, value, nil, sdkgo.Receipt{})
+}
+
+func hasCloseWriteError(body []byte) bool {
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(body, &envelope) != nil {
+		return false
+	}
+	for _, field := range []string{"error", "errors"} {
+		value := bytes.TrimSpace(envelope[field])
+		if len(value) > 0 && !bytes.Equal(value, []byte("null")) && !bytes.Equal(value, []byte("[]")) && !bytes.Equal(value, []byte("{}")) {
+			return true
+		}
+	}
+	return bytes.Equal(bytes.TrimSpace(envelope["success"]), []byte("false"))
 }
 
 func closeMutationBranch[T any](operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[T] {

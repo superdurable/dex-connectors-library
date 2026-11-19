@@ -369,7 +369,7 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 			return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureAvailability, "post refusal checkpoint is unavailable"), 0)
 		}
 	}
-	return classifyPostMutation(response, name, "createPost", input.ChannelID, CreatePostBranchCreated, CreatePostBranchProviderRejected, CreatePostBranchProviderRejected, CreatePostBranchDefect)
+	return classifyPostMutation(call, response, name, "createPost", input.ChannelID, CreatePostBranchCreated, CreatePostBranchProviderRejected, CreatePostBranchProviderRejected, CreatePostBranchDefect)
 }
 
 func hasUnconfirmedCreatePostResponse(response providerResponse) bool {
@@ -415,7 +415,7 @@ func (operation EditPostOperation) Invoke(call sdkgo.Call, input EditPostInput) 
 		postInput["assets"] = mediaInputs
 	}
 	response := operation.client.executeGraphQL(call, editPostGraphQL, map[string]any{"input": postInput})
-	return classifyPostMutation(response, name, "editPost", "", EditPostBranchUpdated, EditPostBranchProviderRejected, sdkgo.BranchID("invalidResponse"), EditPostBranchDefect)
+	return classifyPostMutation(call, response, name, "editPost", "", EditPostBranchUpdated, EditPostBranchProviderRejected, sdkgo.BranchID("invalidResponse"), EditPostBranchDefect)
 }
 
 // Invoke deletes one post from Buffer; a published network post remains online.
@@ -425,7 +425,7 @@ func (operation DeletePostOperation) Invoke(call sdkgo.Call, input DeletePostInp
 		return bufferMutationBranch(DeletePostBranchDefect, PostDeleteResult{}, name, sdkgo.FailureValidation, "post ID is invalid")
 	}
 	response := operation.client.executeGraphQL(call, deletePostGraphQL, map[string]any{"input": map[string]any{"id": input.PostID}})
-	if attempt := classifyBufferMutationResponse[PostDeleteResult](response, name, DeletePostBranchProviderRejected, sdkgo.BranchID("invalidResponse"), DeletePostBranchDefect); attempt != nil {
+	if attempt := classifyBufferMutationResponse[PostDeleteResult](call, response, name, DeletePostBranchProviderRejected, sdkgo.BranchID("invalidResponse"), DeletePostBranchDefect); attempt != nil {
 		return *attempt
 	}
 	var wire struct {
@@ -440,7 +440,7 @@ func (operation DeletePostOperation) Invoke(call sdkgo.Call, input DeletePostInp
 		return sdkgo.NewMutationRetry[PostDeleteResult](bufferFailure(name, sdkgo.FailureProtocol, "Buffer returned invalid delete JSON"), 0)
 	}
 	if len(wire.Errors) != 0 || wire.Data.DeletePost.TypeName != "DeletePostSuccess" {
-		return bufferMutationBranch(DeletePostBranchProviderRejected, PostDeleteResult{}, name, sdkgo.FailureProviderRejection, "Buffer rejected post deletion")
+		return sdkgo.NewMutationRetry[PostDeleteResult](bufferFailure(name, sdkgo.FailureProtocol, "Buffer post deletion outcome is unknown"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeletePostBranchDeleted, PostDeleteResult{ID: input.PostID}, nil, sdkgo.Receipt{})
 }
@@ -498,8 +498,8 @@ func invokeBufferQuery[T any](call sdkgo.Call, client *Client, name, query strin
 	return sdkgo.NewQueryBranch(found, value, nil, sdkgo.Receipt{})
 }
 
-func classifyPostMutation(response providerResponse, name, field, channelID string, success, rejected, invalid, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostProfile] {
-	if attempt := classifyBufferMutationResponse[PostProfile](response, name, rejected, invalid, defect); attempt != nil {
+func classifyPostMutation(call sdkgo.Call, response providerResponse, name, field, channelID string, success, rejected, invalid, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostProfile] {
+	if attempt := classifyBufferMutationResponse[PostProfile](call, response, name, rejected, invalid, defect); attempt != nil {
 		return *attempt
 	}
 	var wire struct {
@@ -510,7 +510,7 @@ func classifyPostMutation(response providerResponse, name, field, channelID stri
 		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureProtocol, "Buffer returned invalid post JSON"), 0)
 	}
 	if len(wire.Errors) != 0 {
-		return bufferMutationBranch(rejected, PostProfile{}, name, sdkgo.FailureProviderRejection, "Buffer rejected the GraphQL mutation")
+		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureProtocol, "Buffer post outcome is unknown"), 0)
 	}
 	var payload struct {
 		TypeName string      `json:"__typename"`
@@ -520,7 +520,7 @@ func classifyPostMutation(response providerResponse, name, field, channelID stri
 		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureProtocol, "Buffer returned invalid post payload"), 0)
 	}
 	if payload.TypeName != "PostActionSuccess" {
-		return bufferMutationBranch(rejected, PostProfile{}, name, sdkgo.FailureProviderRejection, "Buffer rejected the post")
+		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureProtocol, "Buffer post outcome is unknown"), 0)
 	}
 	if payload.Post.ID == "" || payload.Post.ChannelID == "" || channelID != "" && payload.Post.ChannelID != channelID {
 		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureProtocol, "Buffer returned an invalid post identity"), 0)
@@ -528,12 +528,16 @@ func classifyPostMutation(response providerResponse, name, field, channelID stri
 	return sdkgo.NewMutationBranch(success, payload.Post, nil, sdkgo.Receipt{})
 }
 
-func classifyBufferMutationResponse[T any](response providerResponse, name string, rejected, invalid, defect sdkgo.BranchID) *sdkgo.MutationAttempt[T] {
+func classifyBufferMutationResponse[T any](call sdkgo.Call, response providerResponse, name string, rejected, invalid, defect sdkgo.BranchID) *sdkgo.MutationAttempt[T] {
 	var zero T
 	var attempt sdkgo.MutationAttempt[T]
 	switch {
 	case errors.Is(response.err, errCredential):
-		attempt = bufferMutationBranch(defect, zero, name, sdkgo.FailureAuthentication, "Buffer credentials are unavailable or invalid")
+		if call.Context.Attempt() > 1 {
+			attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureTransport, "an earlier Buffer write remains unconfirmed"), 0)
+		} else {
+			attempt = bufferMutationBranch(defect, zero, name, sdkgo.FailureAuthentication, "Buffer credentials are unavailable or invalid")
+		}
 	case errors.Is(response.err, errRequest):
 		attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureTransport, "Buffer request failed"), 0)
 	case response.status == http.StatusTooManyRequests:
@@ -541,7 +545,7 @@ func classifyBufferMutationResponse[T any](response providerResponse, name strin
 	case response.status == http.StatusRequestTimeout || response.status >= 500:
 		attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureAvailability, "Buffer is temporarily unavailable"), response.retryAfter)
 	case response.status != http.StatusOK:
-		if isDefiniteRefusalStatus(response.status, response.body) {
+		if isDefiniteRefusalStatus(response.status, response.body) && call.Context.Attempt() == 1 {
 			attempt = bufferMutationBranch(rejected, zero, name, sdkgo.FailureProviderRejection, "Buffer rejected HTTP "+strconv.Itoa(response.status))
 		} else {
 			attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureTransport, "Buffer mutation outcome is unknown"), 0)

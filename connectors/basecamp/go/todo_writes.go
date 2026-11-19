@@ -183,7 +183,7 @@ func (operation UpdateTodoOperation) Invoke(call sdkgo.Call, input UpdateTodoInp
 		return projectMutationBranch[Todo]("updateTodo", UpdateTodoBranchDefect, sdkgo.FailureValidation, "complete to-do state is required")
 	}
 	response := operation.client.accountMutation(call, call.Context, http.MethodPut, input.AccountID, "/todos/"+input.TodoID+".json", fields)
-	if attempt, done := projectMutationResponse[Todo](response, "updateTodo", http.StatusOK, UpdateTodoBranchNotFound, UpdateTodoBranchProviderRejected, UpdateTodoBranchDefect, UpdateTodoBranchInvalidResponse); done {
+	if attempt, done := projectMutationResponse[Todo](call, response, "updateTodo", http.StatusOK, UpdateTodoBranchNotFound, UpdateTodoBranchProviderRejected, UpdateTodoBranchDefect, UpdateTodoBranchInvalidResponse); done {
 		return attempt
 	}
 	todo, err := decodeTodo(response.body, input.TodoID)
@@ -282,7 +282,7 @@ func (operation RepositionTodoOperation) Invoke(call sdkgo.Call, input Repositio
 		request.ParentID = &parentID
 	}
 	response := operation.client.accountMutation(call, call.Context, http.MethodPut, input.AccountID, "/todos/"+input.TodoID+"/position.json", request)
-	if attempt, done := projectMutationResponse[TodoActionResult](response, "repositionTodo", http.StatusNoContent, RepositionTodoBranchNotFound, RepositionTodoBranchProviderRejected, RepositionTodoBranchDefect, RepositionTodoBranchProviderRejected); done {
+	if attempt, done := projectMutationResponse[TodoActionResult](call, response, "repositionTodo", http.StatusNoContent, RepositionTodoBranchNotFound, RepositionTodoBranchProviderRejected, RepositionTodoBranchDefect, RepositionTodoBranchProviderRejected); done {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(RepositionTodoBranchRepositioned, TodoActionResult{TodoID: input.TodoID, Status: "repositioned"}, nil, sdkgo.Receipt{})
@@ -293,7 +293,7 @@ func (client *Client) changeTodoState(call sdkgo.Call, input GetTodoInput, metho
 		return projectMutationBranch[TodoActionResult](operation, defect, sdkgo.FailureValidation, "to-do IDs are invalid")
 	}
 	response := client.accountMutation(call, call.Context, method, input.AccountID, prefix+input.TodoID+suffix, nil)
-	if attempt, done := projectMutationResponse[TodoActionResult](response, operation, http.StatusNoContent, notFound, rejected, defect, rejected); done {
+	if attempt, done := projectMutationResponse[TodoActionResult](call, response, operation, http.StatusNoContent, notFound, rejected, defect, rejected); done {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(success, TodoActionResult{TodoID: input.TodoID, Status: status}, nil, sdkgo.Receipt{})

@@ -248,6 +248,9 @@ func invokeListWrite(call sdkgo.Call, client *Client, name, method, path string,
 	body, status, retryAfter, err := client.request(call, method, path, payload)
 	switch {
 	case errors.Is(err, errCredential):
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "an earlier list write remains unconfirmed"), 0)
+		}
 		return listMutationBranch(name, defect, ListIdentity{}, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	case errors.Is(err, errRequest):
 		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor request failed"), 0)
@@ -256,12 +259,12 @@ func invokeListWrite(call sdkgo.Call, client *Client, name, method, path string,
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor is temporarily unavailable"), retryAfter)
 	case status == http.StatusNotFound && notFound != "":
-		if !isDefiniteRefusalStatus(status, body) {
+		if !isDefiniteRefusalStatus(status, body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "list write outcome is unknown"), 0)
 		}
 		return listMutationBranch(name, notFound, ListIdentity{}, sdkgo.FailureNotFound, "list was not found")
 	case status != http.StatusOK && status != http.StatusNoContent:
-		if !isDefiniteRefusalStatus(status, body) {
+		if !isDefiniteRefusalStatus(status, body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "list write outcome is unknown"), 0)
 		}
 		return listMutationBranch(name, rejected, ListIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))

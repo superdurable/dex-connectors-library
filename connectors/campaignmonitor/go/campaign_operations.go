@@ -534,6 +534,9 @@ func (operation UnscheduleCampaignOperation) Invoke(call sdkgo.Call, input Unsch
 	body, status, retryAfter, err := operation.client.request(call, http.MethodPost, campaignPath(input.CampaignID)+"/unschedule.json", nil)
 	switch {
 	case errors.Is(err, errCredential):
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "an earlier campaign write remains unconfirmed"), 0)
+		}
 		return campaignMutationBranch(name, UnscheduleCampaignBranchDefect, CampaignIdentity{}, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	case errors.Is(err, errRequest):
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor request failed"), 0)
@@ -542,7 +545,7 @@ func (operation UnscheduleCampaignOperation) Invoke(call sdkgo.Call, input Unsch
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor is temporarily unavailable"), retryAfter)
 	case status != http.StatusOK && status != http.StatusNoContent:
-		if !isDefiniteRefusalStatus(status, body) {
+		if !isDefiniteRefusalStatus(status, body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "campaign write outcome is unknown"), 0)
 		}
 		return campaignMutationBranch(name, UnscheduleCampaignBranchProviderRejected, CampaignIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))
@@ -565,6 +568,9 @@ func (operation DeleteCampaignOperation) Invoke(call sdkgo.Call, input DeleteCam
 	body, status, retryAfter, err := operation.client.request(call, http.MethodDelete, campaignPath(input.CampaignID)+".json", nil)
 	switch {
 	case errors.Is(err, errCredential):
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "an earlier campaign write remains unconfirmed"), 0)
+		}
 		return campaignMutationBranch(name, DeleteCampaignBranchDefect, CampaignIdentity{}, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	case errors.Is(err, errRequest):
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor request failed"), 0)
@@ -573,7 +579,7 @@ func (operation DeleteCampaignOperation) Invoke(call sdkgo.Call, input DeleteCam
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor is temporarily unavailable"), retryAfter)
 	case status != http.StatusOK && status != http.StatusNoContent:
-		if !isDefiniteRefusalStatus(status, body) {
+		if !isDefiniteRefusalStatus(status, body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "campaign write outcome is unknown"), 0)
 		}
 		return campaignMutationBranch(name, DeleteCampaignBranchProviderRejected, CampaignIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))

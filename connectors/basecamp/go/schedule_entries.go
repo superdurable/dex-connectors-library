@@ -293,7 +293,7 @@ func (operation UpdateScheduleEntryOperation) Invoke(call sdkgo.Call, input Upda
 		requestBody.ParticipantIDs = &participants
 	}
 	response := operation.client.accountMutation(call, call.Context, http.MethodPut, input.AccountID, "/schedule_entries/"+input.EntryID+".json", requestBody)
-	if attempt, done := projectMutationResponse[ScheduleEntry](response, "updateScheduleEntry", http.StatusOK, UpdateScheduleEntryBranchNotFound, UpdateScheduleEntryBranchProviderRejected, UpdateScheduleEntryBranchDefect, UpdateScheduleEntryBranchInvalidResponse); done {
+	if attempt, done := projectMutationResponse[ScheduleEntry](call, response, "updateScheduleEntry", http.StatusOK, UpdateScheduleEntryBranchNotFound, UpdateScheduleEntryBranchProviderRejected, UpdateScheduleEntryBranchDefect, UpdateScheduleEntryBranchInvalidResponse); done {
 		return attempt
 	}
 	entry, err := decodeScheduleEntry(response.body, input.EntryID)
@@ -327,7 +327,7 @@ func (operation TrashScheduleEntryOperation) Invoke(call sdkgo.Call, input GetSc
 		return projectMutationBranch[ScheduleEntryActionResult]("trashScheduleEntry", TrashScheduleEntryBranchDefect, sdkgo.FailureValidation, "entry IDs are invalid")
 	}
 	response := operation.client.accountMutation(call, call.Context, http.MethodPut, input.AccountID, "/recordings/"+input.EntryID+"/status/trashed.json", nil)
-	if attempt, done := projectMutationResponse[ScheduleEntryActionResult](response, "trashScheduleEntry", http.StatusNoContent, TrashScheduleEntryBranchNotFound, TrashScheduleEntryBranchProviderRejected, TrashScheduleEntryBranchDefect, TrashScheduleEntryBranchProviderRejected); done {
+	if attempt, done := projectMutationResponse[ScheduleEntryActionResult](call, response, "trashScheduleEntry", http.StatusNoContent, TrashScheduleEntryBranchNotFound, TrashScheduleEntryBranchProviderRejected, TrashScheduleEntryBranchDefect, TrashScheduleEntryBranchProviderRejected); done {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(TrashScheduleEntryBranchTrashed, ScheduleEntryActionResult{EntryID: input.EntryID, Status: "trashed"}, nil, sdkgo.Receipt{})

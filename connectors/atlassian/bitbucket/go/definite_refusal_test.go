@@ -12,14 +12,15 @@ import (
 
 func TestDefiniteRefusalRequiresBitbucketError(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		status int
-		body string
-		want bool
+		body   string
+		want   bool
 	}{
 		{"rejection", http.StatusBadRequest, `{"type":"error","error":{"message":"invalid request"}}`, true},
 		{"empty body", http.StatusBadRequest, "", false},
 		{"contradictory success", http.StatusBadRequest, `{"type":"repository","error":{"message":"invalid request"}}`, false},
+		{"contradictory data", http.StatusBadRequest, `{"type":"error","error":{"message":"invalid request"},"data":{"id":1}}`, false},
 		{"conflict", http.StatusConflict, `{"type":"error","error":{"message":"conflict"}}`, false},
 		{"other client error", http.StatusMethodNotAllowed, `{"type":"error","error":{"message":"unsupported"}}`, false},
 		{"server error", http.StatusInternalServerError, `{"type":"error","error":{"message":"failure"}}`, false},

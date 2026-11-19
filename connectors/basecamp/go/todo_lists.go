@@ -232,7 +232,7 @@ func (operation UpdateTodoListOperation) Invoke(call sdkgo.Call, input UpdateTod
 		Name        string `json:"name"`
 		Description string `json:"description,omitempty"`
 	}{input.Name, input.Description})
-	if attempt, done := projectMutationResponse[TodoList](response, "updateTodoList", http.StatusOK, UpdateTodoListBranchNotFound, UpdateTodoListBranchProviderRejected, UpdateTodoListBranchDefect, UpdateTodoListBranchInvalidResponse); done {
+	if attempt, done := projectMutationResponse[TodoList](call, response, "updateTodoList", http.StatusOK, UpdateTodoListBranchNotFound, UpdateTodoListBranchProviderRejected, UpdateTodoListBranchDefect, UpdateTodoListBranchInvalidResponse); done {
 		return attempt
 	}
 	list, err := decodeTodoList(response.body, input.TodoListID)
@@ -268,7 +268,7 @@ func (operation RepositionTodoListOperation) Invoke(call sdkgo.Call, input Repos
 	response := operation.client.accountMutation(call, call.Context, http.MethodPut, input.AccountID, "/todosets/todolists/"+input.TodoListID+"/position.json", struct {
 		Position int `json:"position"`
 	}{input.Position})
-	if attempt, done := projectMutationResponse[TodoListActionResult](response, "repositionTodoList", http.StatusNoContent, RepositionTodoListBranchNotFound, RepositionTodoListBranchProviderRejected, RepositionTodoListBranchDefect, RepositionTodoListBranchProviderRejected); done {
+	if attempt, done := projectMutationResponse[TodoListActionResult](call, response, "repositionTodoList", http.StatusNoContent, RepositionTodoListBranchNotFound, RepositionTodoListBranchProviderRejected, RepositionTodoListBranchDefect, RepositionTodoListBranchProviderRejected); done {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(RepositionTodoListBranchRepositioned, TodoListActionResult{TodoListID: input.TodoListID, Status: "repositioned"}, nil, sdkgo.Receipt{})
@@ -294,7 +294,7 @@ func (operation TrashTodoListOperation) Invoke(call sdkgo.Call, input GetTodoLis
 		return projectMutationBranch[TodoListActionResult]("trashTodoList", TrashTodoListBranchDefect, sdkgo.FailureValidation, "to-do list IDs are invalid")
 	}
 	response := operation.client.accountMutation(call, call.Context, http.MethodPut, input.AccountID, "/recordings/"+input.TodoListID+"/status/trashed.json", nil)
-	if attempt, done := projectMutationResponse[TodoListActionResult](response, "trashTodoList", http.StatusNoContent, TrashTodoListBranchNotFound, TrashTodoListBranchProviderRejected, TrashTodoListBranchDefect, TrashTodoListBranchProviderRejected); done {
+	if attempt, done := projectMutationResponse[TodoListActionResult](call, response, "trashTodoList", http.StatusNoContent, TrashTodoListBranchNotFound, TrashTodoListBranchProviderRejected, TrashTodoListBranchDefect, TrashTodoListBranchProviderRejected); done {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(TrashTodoListBranchTrashed, TodoListActionResult{TodoListID: input.TodoListID, Status: "trashed"}, nil, sdkgo.Receipt{})

@@ -312,6 +312,9 @@ func invokeSegmentWrite(call sdkgo.Call, client *Client, name, method, path stri
 	body, status, retryAfter, err := client.request(call, method, path, payload)
 	switch {
 	case errors.Is(err, errCredential):
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[SegmentIdentity](queryFailure(name, sdkgo.FailureTransport, "an earlier segment write remains unconfirmed"), 0)
+		}
 		return segmentMutationBranch(name, defect, SegmentIdentity{}, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	case errors.Is(err, errRequest):
 		return sdkgo.NewMutationRetry[SegmentIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor request failed"), 0)
@@ -320,12 +323,12 @@ func invokeSegmentWrite(call sdkgo.Call, client *Client, name, method, path stri
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[SegmentIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor is temporarily unavailable"), retryAfter)
 	case status == http.StatusNotFound && notFound != "":
-		if !isDefiniteRefusalStatus(status, body) {
+		if !isDefiniteRefusalStatus(status, body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[SegmentIdentity](queryFailure(name, sdkgo.FailureTransport, "segment write outcome is unknown"), 0)
 		}
 		return segmentMutationBranch(name, notFound, SegmentIdentity{}, sdkgo.FailureNotFound, "segment was not found")
 	case status != http.StatusOK && status != http.StatusNoContent:
-		if !isDefiniteRefusalStatus(status, body) {
+		if !isDefiniteRefusalStatus(status, body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[SegmentIdentity](queryFailure(name, sdkgo.FailureTransport, "segment write outcome is unknown"), 0)
 		}
 		return segmentMutationBranch(name, rejected, SegmentIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))

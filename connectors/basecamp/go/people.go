@@ -207,7 +207,7 @@ func (client *Client) changeProjectAccess(call sdkgo.Call, input ProjectPersonAc
 	}
 	personID, _ := strconv.ParseInt(input.PersonID, 10, 64)
 	response := client.accountMutation(call, call.Context, http.MethodPut, input.AccountID, "/projects/"+input.ProjectID+"/people/users.json", map[string][]int64{field: {personID}})
-	if attempt, done := projectMutationResponse[ProjectPersonAccessResult](response, operation, http.StatusOK, notFound, rejected, defect, rejected); done {
+	if attempt, done := projectMutationResponse[ProjectPersonAccessResult](call, response, operation, http.StatusOK, notFound, rejected, defect, rejected); done {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(success, ProjectPersonAccessResult{ProjectID: input.ProjectID, PersonID: input.PersonID, Access: access}, nil, sdkgo.Receipt{})

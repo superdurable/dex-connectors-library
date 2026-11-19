@@ -151,6 +151,9 @@ func (operation UpdateCandidateOperation) Invoke(call sdkgo.Call, input UpdateCa
 	}
 	response := operation.client.postOperation(call, "/candidate.update", input)
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureTransport, "an earlier candidate update remains unconfirmed"), 0)
+		}
 		return updateCandidateBranch(UpdateCandidateBranchDefect, sdkgo.FailureAuthentication, "Ashby credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {
@@ -163,13 +166,13 @@ func (operation UpdateCandidateOperation) Invoke(call sdkgo.Call, input UpdateCa
 		return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureAvailability, "Ashby candidate updating is unavailable"), response.retryAfter)
 	}
 	if response.status == http.StatusNotFound {
-		if !isDefiniteRefusalStatus(response.status, response.body) {
+		if !isDefiniteRefusalStatus(response.status, response.body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureTransport, "candidate update outcome is unknown"), 0)
 		}
 		return updateCandidateBranch(UpdateCandidateBranchNotFound, sdkgo.FailureNotFound, "Ashby did not expose the candidate")
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status, response.body) {
+		if !isDefiniteRefusalStatus(response.status, response.body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureTransport, "candidate update outcome is unknown"), 0)
 		}
 		return updateCandidateBranch(UpdateCandidateBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected candidate updating with HTTP "+strconv.Itoa(response.status))
@@ -185,9 +188,15 @@ func (operation UpdateCandidateOperation) Invoke(call sdkgo.Call, input UpdateCa
 		return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureProtocol, "Ashby returned invalid updated candidate JSON"), 0)
 	}
 	if rejectionCode == "candidate_not_found" {
+		if call.Context.Attempt() > 1 || !isDefiniteAshbyBusinessRefusal(response.body) {
+			return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureTransport, "an earlier candidate update remains unconfirmed"), 0)
+		}
 		return updateCandidateBranch(UpdateCandidateBranchNotFound, sdkgo.FailureNotFound, "Ashby did not expose the candidate")
 	}
 	if rejectionCode != "" {
+		if call.Context.Attempt() > 1 || !isDefiniteAshbyBusinessRefusal(response.body) {
+			return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureTransport, "an earlier candidate update remains unconfirmed"), 0)
+		}
 		return updateCandidateBranch(UpdateCandidateBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected candidate updating")
 	}
 	if profile.Name != input.Name {

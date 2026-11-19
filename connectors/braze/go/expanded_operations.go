@@ -199,7 +199,7 @@ func (operation UpdateUserProfileOperation) Invoke(call sdkgo.Call, input Update
 		return brazeMutationBranch(UpdateUserProfileBranchDefect, UserWriteResult{}, operationName, sdkgo.FailureValidation, "profile update is invalid or too large")
 	}
 	response := operation.client.post(call, "/users/track", payload)
-	if attempt := classifyBrazeMutationResponse[UserWriteResult](response, operationName, UpdateUserProfileBranchProviderRejected, UpdateUserProfileBranchInvalidResponse, UpdateUserProfileBranchDefect, http.StatusCreated); attempt != nil {
+	if attempt := classifyBrazeMutationResponse[UserWriteResult](call, response, operationName, UpdateUserProfileBranchProviderRejected, UpdateUserProfileBranchInvalidResponse, UpdateUserProfileBranchDefect, http.StatusCreated); attempt != nil {
 		return *attempt
 	}
 	var wire struct {
@@ -225,7 +225,7 @@ func (operation DeleteUserProfileOperation) Invoke(call sdkgo.Call, input Delete
 		return brazeMutationBranch(DeleteUserProfileBranchDefect, UserDeleteResult{}, operationName, sdkgo.FailureLocalDefect, "deletion request could not be encoded")
 	}
 	response := operation.client.post(call, "/users/delete", payload)
-	if attempt := classifyBrazeMutationResponse[UserDeleteResult](response, operationName, DeleteUserProfileBranchProviderRejected, DeleteUserProfileBranchInvalidResponse, DeleteUserProfileBranchDefect, http.StatusCreated); attempt != nil {
+	if attempt := classifyBrazeMutationResponse[UserDeleteResult](call, response, operationName, DeleteUserProfileBranchProviderRejected, DeleteUserProfileBranchInvalidResponse, DeleteUserProfileBranchDefect, http.StatusCreated); attempt != nil {
 		return *attempt
 	}
 	var wire struct {
@@ -347,12 +347,16 @@ func invokeBrazeList[T any](call sdkgo.Call, client *Client, operationName, endp
 	return sdkgo.NewQueryBranch(listed, value, nil, sdkgo.Receipt{})
 }
 
-func classifyBrazeMutationResponse[T any](response providerResponse, operationName string, rejected, invalid, defect sdkgo.BranchID, expectedStatus int) *sdkgo.MutationAttempt[T] {
+func classifyBrazeMutationResponse[T any](call sdkgo.Call, response providerResponse, operationName string, rejected, invalid, defect sdkgo.BranchID, expectedStatus int) *sdkgo.MutationAttempt[T] {
 	var zero T
 	var attempt sdkgo.MutationAttempt[T]
 	switch {
 	case errors.Is(response.err, errCredential):
-		attempt = brazeMutationBranch(defect, zero, operationName, sdkgo.FailureAuthentication, "Braze credentials are unavailable or invalid")
+		if call.Context.Attempt() > 1 {
+			attempt = sdkgo.NewMutationRetry[T](brazeFailure(operationName, sdkgo.FailureTransport, "an earlier Braze write remains unconfirmed"), 0)
+		} else {
+			attempt = brazeMutationBranch(defect, zero, operationName, sdkgo.FailureAuthentication, "Braze credentials are unavailable or invalid")
+		}
 	case errors.Is(response.err, errRequest):
 		attempt = sdkgo.NewMutationRetry[T](brazeFailure(operationName, sdkgo.FailureTransport, "Braze response is unavailable"), 0)
 	case response.status == http.StatusTooManyRequests:
@@ -360,7 +364,7 @@ func classifyBrazeMutationResponse[T any](response providerResponse, operationNa
 	case response.status == http.StatusRequestTimeout || response.status >= 500:
 		attempt = sdkgo.NewMutationRetry[T](brazeFailure(operationName, sdkgo.FailureAvailability, "Braze is temporarily unavailable"), response.retryAfter)
 	case response.status != expectedStatus:
-		if isDefiniteRefusalStatus(response.status, response.body) {
+		if isDefiniteRefusalStatus(response.status, response.body) && call.Context.Attempt() == 1 {
 			attempt = brazeMutationBranch(rejected, zero, operationName, sdkgo.FailureProviderRejection, "Braze rejected HTTP "+strconv.Itoa(response.status))
 		} else {
 			attempt = sdkgo.NewMutationRetry[T](brazeFailure(operationName, sdkgo.FailureTransport, "Braze write outcome is unknown"), 0)

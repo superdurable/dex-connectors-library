@@ -190,6 +190,9 @@ func executeAshbySafeWrite[OUT any](client *Client, call sdkgo.Call, operationNa
 		return sdkgo.NewMutationBranch(branch, zero, &f, sdkgo.Receipt{})
 	}
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "an earlier Ashby write remains unconfirmed"), 0)
+		}
 		return branch(defectBranch, sdkgo.FailureAuthentication, "Ashby credentials are unavailable")
 	}
 	if errors.Is(response.err, errRequest) {
@@ -202,7 +205,7 @@ func executeAshbySafeWrite[OUT any](client *Client, call sdkgo.Call, operationNa
 		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureAvailability, "Ashby write endpoint is unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status, response.body) {
+		if !isDefiniteRefusalStatus(response.status, response.body) || call.Context.Attempt() > 1 {
 			return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "Ashby write outcome is unknown"), response.retryAfter)
 		}
 		return branch(rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected the write with HTTP "+strconv.Itoa(response.status))
@@ -218,6 +221,9 @@ func executeAshbySafeWrite[OUT any](client *Client, call sdkgo.Call, operationNa
 		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureProtocol, "Ashby returned an invalid write result"), 0)
 	}
 	if code != "" {
+		if call.Context.Attempt() > 1 || !isDefiniteAshbyBusinessRefusal(response.body) {
+			return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "an earlier Ashby write remains unconfirmed"), 0)
+		}
 		return branch(rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected the write")
 	}
 	return sdkgo.NewMutationBranch(successBranch, output, nil, sdkgo.Receipt{})

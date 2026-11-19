@@ -7407,7 +7407,7 @@
       "callId": "1fa4b8c9-7d7f-52b1-8634-18fc64bc3836",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"Code\":100,\"Message\":\"Invalid subscriber\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7482,13 +7482,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7741,7 +7738,7 @@
       "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"Code\":100,\"Message\":\"Invalid subscriber\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7826,13 +7823,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8051,7 +8045,7 @@
       "callId": "f31de6ce-5716-5402-927b-af57f3da1c9f",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"Code\":203,\"Message\":\"Subscriber not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8149,7 +8143,7 @@
       "callId": "b7e8578a-4254-5dbb-b670-90506ae7e96c",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"Code\":100,\"Message\":\"Invalid subscriber\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -8215,13 +8209,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8444,7 +8435,7 @@
       "callId": "433f766a-ed85-5a1a-ac22-c604dd59f3c7",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"Code\":100,\"Message\":\"Invalid subscriber\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -8512,13 +8503,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
