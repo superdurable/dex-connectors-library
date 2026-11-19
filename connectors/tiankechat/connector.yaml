@@ -49,6 +49,11 @@ spec:
         - Sign in to https://chat.open-code.cn/ or your private deployment, open 系统 > 开放平台 > 应用, create an app, and copy its ap_ production or sb_ sandbox app_id and one-time-shown tks_ app_secret.
         - This connector uses v3 HMAC-SHA256 signatures, so the secret never travels in a request header. For an old v2-only app, coordinate a secret reset in 开放平台 > 应用 before switching; reset revokes its old credentials. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
         - The Query reads one page of knowledge entry IDs, categories, enabled flags, and hit counts. It omits customer questions, answers, and attachments.
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listKnowledgeEntries]
+      triggers: []
   operations:
     - name: listKnowledgeEntries
       goName: ListKnowledgeEntries
