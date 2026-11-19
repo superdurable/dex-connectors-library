@@ -149,7 +149,17 @@ func (client *Client) exchangeConversation(call sdkgo.Call, ctx context.Context,
 	if err == nil && int64(len(body)) > client.maxResponseBytes {
 		err = errors.New("response too large")
 	}
+	if method != http.MethodGet && response.StatusCode >= 200 && response.StatusCode < 300 && err == nil && hasOpenAIWriteError(body) {
+		err = errors.New("provider returned a contradictory write response")
+	}
 	return conversationExchange{status: response.StatusCode, body: body, header: response.Header, requestID: response.Header.Get("X-Request-Id"), err: err}
+}
+
+func hasOpenAIWriteError(body []byte) bool {
+	var envelope struct {
+		Error json.RawMessage `json:"error"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && len(envelope.Error) > 0 && string(envelope.Error) != "null"
 }
 
 func validConversationMetadata(metadata map[string]string) bool {

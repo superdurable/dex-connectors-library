@@ -3926,6 +3926,93 @@
       },
       "name": "listTransactions-invalidHour",
       "operation": "listTransactions"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"batch_header\":{\"payout_batch_id\":\"BATCH101\",\"batch_status\":\"PENDING\"},\"error\":{\"message\":\"write failed\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts",
+          "requestBody": {
+            "items": [
+              {
+                "amount": {
+                  "currency": "USD",
+                  "value": "10.00"
+                },
+                "receiver": "recipient@example.com",
+                "recipient_type": "EMAIL",
+                "sender_item_id": "ITEM-REF-101"
+              }
+            ],
+            "sender_batch_header": {
+              "email_subject": "Payment",
+              "sender_batch_id": "d548249e-df43-5925-b1c7-82791a60e4fd"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-contradictory-success-retry",
+      "operation": "createPayoutBatch"
     }
   ],
   "schemaVersion": 1

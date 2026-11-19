@@ -269,6 +269,13 @@ func (operation UpsertVectorsOperation) Invoke(call sdkgo.Call, input UpsertVect
 	if !hasResponseShape(response.body, "upsertedCount") {
 		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*failure("upsertVectors", sdkgo.FailureProtocol, "provider returned an incomplete response"), 0)
 	}
+	var receiptFields struct {
+		Error   json.RawMessage `json:"error"`
+		Message string          `json:"message"`
+	}
+	if json.Unmarshal(response.body, &receiptFields) != nil || len(receiptFields.Error) > 0 && string(receiptFields.Error) != "null" || receiptFields.Message != "" {
+		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*failure("upsertVectors", sdkgo.FailureProtocol, "provider returned a contradictory upsert receipt"), 0)
+	}
 	var output UpsertVectorsOutput
 	if err := json.Unmarshal(response.body, &output); err != nil || output.UpsertedCount < 0 || output.UpsertedCount > len(input.Vectors) {
 		return sdkgo.NewMutationRetry[UpsertVectorsOutput](*failure("upsertVectors", sdkgo.FailureProtocol, "provider returned an invalid count"), 0)

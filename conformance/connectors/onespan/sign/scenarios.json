@@ -1108,14 +1108,10 @@
         }
       ],
       "expected": {
-        "branch": "updated",
-        "failureKind": "",
-        "output": {
-          "id": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
-          "name": "Example agreement"
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1771,13 +1767,10 @@
         }
       ],
       "expected": {
-        "branch": "trashed",
-        "failureKind": "",
-        "output": {
-          "id": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2065,13 +2058,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "id": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2208,24 +2198,7 @@
     },
     {
       "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=\",\"name\":\"Example agreement\",\"status\":\"DRAFT\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Basic sample-onespan-sign-api-key"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -2233,7 +2206,7 @@
           "id": "",
           "status": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -5437,6 +5410,214 @@
           }
         }
       }
+    },
+    {
+      "callId": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "updateSigner-malformed-success-retry",
+      "operation": "updateSigner"
+    },
+    {
+      "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/status",
+          "requestBody": {
+            "status": "SENT"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "6b631a37-50a9-57b1-bd1f-97cb001028cb": {
+              "attempt": 1,
+              "callId": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b631a37-50a9-57b1-bd1f-97cb001028cb",
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "sendPackage-malformed-success-retry",
+      "operation": "sendPackage"
+    },
+    {
+      "callId": "327ac424-c447-5173-926b-eb96d1755d47",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=\",\"name\":\"Example agreement\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestBody": {
+            "name": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "name": "Example agreement"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "327ac424-c447-5173-926b-eb96d1755d47",
+      "input": {
+        "name": "Example agreement",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "updatePackageName-valid-200",
+      "operation": "updatePackageName"
+    },
+    {
+      "callId": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"Signer1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=/roles/Signer1",
+          "requestBody": {
+            "id": "Signer1",
+            "name": "Signer1",
+            "signers": [
+              {
+                "email": "ada@example.com",
+                "firstName": "Ada",
+                "lastName": "Lovelace"
+              }
+            ],
+            "type": "SIGNER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "roleId": "Signer1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10bafa63-7e71-5018-ae09-4fe8992eb5a8",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+        "roleId": "Signer1"
+      },
+      "name": "updateSigner-valid-200",
+      "operation": "updateSigner"
     }
   ],
   "schemaVersion": 1

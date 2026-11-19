@@ -151,6 +151,8 @@ type paddleExchange struct {
 	err        error
 }
 
+var errContradictoryWriteResponse = errors.New("Paddle returned a contradictory write response")
+
 func (client *Client) exchange(call sdkgo.Call, ctx context.Context, method, path string, payload any) paddleExchange {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
@@ -185,6 +187,14 @@ func (client *Client) exchange(call sdkgo.Call, ctx context.Context, method, pat
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if bytes.Contains(body, []byte(apiKey)) {
 		return paddleExchange{err: errCredential}
+	}
+	if method != http.MethodGet && response.StatusCode >= 200 && response.StatusCode < 300 && err == nil {
+		var envelope struct {
+			Error json.RawMessage `json:"error"`
+		}
+		if json.Unmarshal(body, &envelope) == nil && len(envelope.Error) > 0 && string(envelope.Error) != "null" {
+			err = errContradictoryWriteResponse
+		}
 	}
 	return paddleExchange{status: response.StatusCode, body: body, retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), err: err}
 }
@@ -359,27 +369,35 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
 	}
-	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
 	if decision.Kind != singledispatch.SendAllowed {
 		query := url.Values{"email": {input.Email}, "per_page": {"1"}}
-		readBack := operation.client.exchange(call, call.Context, http.MethodGet, "/customers?"+query.Encode(), nil)
-		if readBack.status == http.StatusOK && readBack.err == nil {
+		seenCursors := map[string]bool{}
+		for {
+			readBack := operation.client.exchange(call, call.Context, http.MethodGet, "/customers?"+query.Encode(), nil)
+			if readBack.status != http.StatusOK || readBack.err != nil {
+				if paddleRetryable(readBack) {
+					if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
+						return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "customer read-back could not confirm creation"), sdkgo.Receipt{})
+					}
+					return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer read-back is unavailable"), readBack.retryAfter)
+				}
+				break
+			}
 			page, ok := decodeCustomerPage(readBack.body)
 			if !ok {
+				if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
+					return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "customer read-back could not confirm creation"), sdkgo.Receipt{})
+				}
 				return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureProtocol, "customer read-back is invalid"), 0)
 			}
 			if len(page.Items) == 1 && page.Items[0].Email == input.Email && page.Items[0].Name == input.Name && readBackContainsCallID(readBack.body, call.ID) {
 				return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, page.Items[0], nil, sdkgo.Receipt{ProviderObjectID: page.Items[0].ID})
 			}
-			if len(page.Items) != 0 {
-				return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureProtocol, "customer read-back disagreed with request"), 0)
+			if !page.HasMore || seenCursors[page.NextCursor] {
+				break
 			}
-		} else if paddleRetryable(readBack) {
-			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureAvailability, "customer read-back is unavailable"), readBack.retryAfter)
-		} else if decision.Kind == singledispatch.ReadBackRequired || !canResend {
-			return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "customer read-back was rejected"), sdkgo.Receipt{})
-		} else {
-			return sdkgo.NewMutationRetry[PaddleCustomer](*customerFailure(name, sdkgo.FailureTransport, "customer read-back was rejected"), 0)
+			seenCursors[page.NextCursor] = true
+			query.Set("after", page.NextCursor)
 		}
 		if decision.Kind == singledispatch.ReadBackRequired || decision.MaximumPriorSends >= call.MaxSends() {
 			return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureTransport, "customer creation reached its send cap"), sdkgo.Receipt{})

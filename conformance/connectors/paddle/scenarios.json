@@ -10932,9 +10932,109 @@
       "operation": "setNextBillingDate"
     },
     {
-      "attempts": 2,
+      "attempts": 4,
       "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
       "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\",\"custom_data\":{\"dex_connector_call_id\":\"other-call-id\"}}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\",\"custom_data\":{\"dex_connector_call_id\":\"other-call-id\"}}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        },
         {
           "body": "{}",
           "headers": {},
@@ -10987,12 +11087,18 @@
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "PROTOCOL",
-        "requestCount": 2,
-        "retry": true,
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 6,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
       "input": {
@@ -11009,6 +11115,36 @@
                 "attempt": 1,
                 "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
                 "sendCount": 1,
+                "state": "claimed"
+              }
+            }
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "singleDispatchMarkers": {
+              "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+                "attempt": 2,
+                "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+                "sendCount": 2,
+                "state": "claimed"
+              }
+            }
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "singleDispatchMarkers": {
+              "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+                "attempt": 3,
+                "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+                "sendCount": 3,
                 "state": "claimed"
               }
             }
@@ -14688,6 +14824,171 @@
           }
         }
       }
+    },
+    {
+      "attempts": 2,
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp8\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\",\"custom_data\":{\"dex_connector_call_id\":\"other-call-id\"}}],\"meta\":{\"pagination\":{\"has_more\":true,\"next\":\"/customers?after=ctm_01hv8wptq8987qeep44cyrewp8\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\",\"custom_data\":{\"dex_connector_call_id\":\"7ef41e77-93fc-5668-b5d6-df58922f1b71\"}}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "after": [
+              "ctm_01hv8wptq8987qeep44cyrewp8"
+            ],
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "email": "customer@example.com",
+          "id": "ctm_01hv8wptq8987qeep44cyrewp9",
+          "name": "Sample Customer",
+          "status": "active"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "singleDispatchMarkers": {
+              "7ef41e77-93fc-5668-b5d6-df58922f1b71": {
+                "attempt": 1,
+                "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCustomer-read-back-second-page",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\"},\"error\":{\"detail\":\"write failed\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/customers/ctm_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19b7a499-c9f6-5841-b445-f897d46681aa",
+      "input": {
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "name": "updateCustomer-contradictory-success-retry",
+      "operation": "updateCustomer"
     }
   ],
   "schemaVersion": 1

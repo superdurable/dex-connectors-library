@@ -1946,6 +1946,41 @@
       },
       "name": "cancelDeploy-malformed-success-retry",
       "operation": "cancelDeploy"
+    },
+    {
+      "callId": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"write failed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sites/site-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0840cb2d-2e3e-5c50-9208-daa6f931a622",
+      "input": {
+        "siteId": "site-meridian"
+      },
+      "name": "deleteSite-contradictory-success-retry",
+      "operation": "deleteSite"
     }
   ],
   "schemaVersion": 1

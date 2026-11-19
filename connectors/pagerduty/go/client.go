@@ -426,6 +426,12 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 	if bodyError != nil {
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider response was interrupted"), 0)
 	}
+	var successEnvelope struct {
+		Error json.RawMessage `json:"error"`
+	}
+	if json.Unmarshal(content, &successEnvelope) == nil && len(successEnvelope.Error) > 0 && string(successEnvelope.Error) != "null" {
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureProtocol, "provider returned a contradictory write response"), 0)
+	}
 	value, err := decode(content)
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureProtocol, "provider response is incomplete or malformed"), 0)

@@ -173,6 +173,12 @@ func decodeDeploy(body []byte) (Deploy, error) {
 	if err := json.Unmarshal(body, &deploy); err != nil {
 		return Deploy{}, err
 	}
+	var envelope struct {
+		Error json.RawMessage `json:"error"`
+	}
+	if json.Unmarshal(body, &envelope) != nil || len(envelope.Error) > 0 && string(envelope.Error) != "null" {
+		return Deploy{}, fmt.Errorf("contradictory deploy response")
+	}
 	if deploy.ID == "" {
 		return Deploy{}, fmt.Errorf("missing deploy ID")
 	}
@@ -223,6 +229,10 @@ func (operation DeleteSiteOperation) Invoke(call sdkgo.Call, input DeleteSiteInp
 		return sdkgo.NewMutationRetry[DeletedSite](retry, after)
 	}
 	if response.StatusCode == http.StatusNoContent {
+		body, bodyError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		if bodyError != nil || len(body) != 0 {
+			return sdkgo.NewMutationRetry[DeletedSite](sdkgo.Failure{Kind: sdkgo.FailureProtocol, Provider: "netlify", Operation: "deleteSite", Message: "site deletion receipt is contradictory"}, 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteSiteBranchDeleted, DeletedSite{SiteID: input.SiteID}, nil, sdkgo.Receipt{})
 	}
 	body, bodyError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)

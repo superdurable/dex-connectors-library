@@ -224,6 +224,15 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 	return runLimitedDocumentMutation(operation.client, call, "createDocument", "/documents", body, CreateDocumentBranchCreated, "", CreateDocumentBranchProviderRejected, CreateDocumentBranchDefect, func(response providerResponse) (DocumentStatus, error) {
 		var document DocumentStatus
 		err := json.Unmarshal(response.body, &document)
+		var envelope struct {
+			Error json.RawMessage `json:"error"`
+		}
+		if err == nil {
+			err = json.Unmarshal(response.body, &envelope)
+		}
+		if err == nil && len(envelope.Error) > 0 && string(envelope.Error) != "null" {
+			err = fmt.Errorf("document response is contradictory")
+		}
 		if err == nil && document.ID == "" {
 			err = fmt.Errorf("document ID missing")
 		}
@@ -242,9 +251,12 @@ func (operation SendDocumentOperation) Invoke(call sdkgo.Call, input SendDocumen
 	if err != nil {
 		return mutationDocumentFailure[DocumentAction]("sendDocument", SendDocumentBranchDefect, sdkgo.FailureLocalDefect, "send request could not be encoded")
 	}
-	return runLimitedDocumentMutation(operation.client, call, "sendDocument", "/documents/"+url.PathEscape(input.DocumentID)+"/send", body, SendDocumentBranchSent, SendDocumentBranchNotFound, SendDocumentBranchProviderRejected, SendDocumentBranchDefect, func(providerResponse) (DocumentAction, error) {
+	return runLimitedDocumentMutation(operation.client, call, "sendDocument", "/documents/"+url.PathEscape(input.DocumentID)+"/send", body, SendDocumentBranchSent, SendDocumentBranchNotFound, SendDocumentBranchProviderRejected, SendDocumentBranchDefect, func(response providerResponse) (DocumentAction, error) {
+		if response.status != http.StatusNoContent || len(response.body) != 0 {
+			return DocumentAction{}, fmt.Errorf("send receipt is unconfirmed")
+		}
 		return DocumentAction{DocumentID: input.DocumentID}, nil
-	}, func() (DocumentAction, bool) { return operation.client.readBackSentDocument(call, input.DocumentID) })
+	}, nil)
 }
 
 func classifyDocumentQuery[T any](response providerResponse, operation string, rejected, invalid, defect sdkgo.BranchID) (sdkgo.QueryAttempt[T], bool) {
@@ -326,6 +338,9 @@ func runSafeDocumentMutation(client *Client, call sdkgo.Call, operation, method,
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[DocumentAction](documentOperationFailure(operation, sdkgo.FailureProtocol, "document response is unreadable"), 0)
 	}
+	if len(response.body) != 0 {
+		return sdkgo.NewMutationRetry[DocumentAction](documentOperationFailure(operation, sdkgo.FailureProtocol, "document action receipt is contradictory"), 0)
+	}
 	return sdkgo.NewMutationBranch(success, DocumentAction{DocumentID: documentID}, nil, sdkgo.Receipt{})
 }
 
@@ -342,23 +357,6 @@ func (client *Client) readBackCreatedDocument(call sdkgo.Call, key string) (Docu
 	return page.Results[0], true
 }
 
-func (client *Client) readBackSentDocument(call sdkgo.Call, documentID string) (DocumentAction, bool) {
-	response := client.get(call, "/documents/"+url.PathEscape(documentID))
-	if response.status != http.StatusOK || response.err != nil {
-		return DocumentAction{}, false
-	}
-	document, err := decodeDocument(response.body, documentID)
-	if err != nil {
-		return DocumentAction{}, false
-	}
-	switch document.Status {
-	case "document.sent", "document.viewed", "document.completed", "document.waiting_approval", "document.approved", "document.waiting_pay", "document.paid", "document.declined", "document.voided":
-		return DocumentAction{DocumentID: documentID}, true
-	default:
-		return DocumentAction{}, false
-	}
-}
-
 func runLimitedDocumentMutation[T any](client *Client, call sdkgo.Call, operation, path string, body []byte, success, notFound, rejected, defect sdkgo.BranchID, decode func(providerResponse) (T, error), readBack func() (T, bool)) sdkgo.MutationAttempt[T] {
 	fence, err := singledispatch.NewFence(call, 30*time.Second, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
@@ -369,8 +367,10 @@ func runLimitedDocumentMutation[T any](client *Client, call sdkgo.Call, operatio
 		return sdkgo.NewMutationRetry[T](documentOperationFailure(operation, sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		if value, found := readBack(); found {
-			return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
+		if readBack != nil {
+			if value, found := readBack(); found {
+				return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
+			}
 		}
 		if decision.Kind == singledispatch.ReadBackRequired {
 			return uncertainDocumentMutation[T](operation)

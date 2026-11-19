@@ -85,6 +85,9 @@ func (operation DeleteResponseOperation) Invoke(call sdkgo.Call, input DeleteRes
 		}
 		return sdkgo.NewMutationRetry[DeletedResponse](openAIFailure(sdkgo.FailureTransport, "deleteResponse", "provider outcome is unknown"), retryAfterHeader(response.Header))
 	}
+	if hasOpenAIWriteError(body) {
+		return sdkgo.NewMutationRetry[DeletedResponse](openAIFailure(sdkgo.FailureProtocol, "deleteResponse", "provider returned a contradictory deletion receipt"), 0)
+	}
 	var result DeletedResponse
 	if json.Unmarshal(body, &result) != nil || result.ID != input.ResponseID || !result.Deleted {
 		return sdkgo.NewMutationRetry[DeletedResponse](openAIFailure(sdkgo.FailureProtocol, "deleteResponse", "provider returned an invalid deletion receipt"), 0)

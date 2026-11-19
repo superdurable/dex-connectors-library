@@ -4736,6 +4736,58 @@
           }
         }
       }
+    },
+    {
+      "callId": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "exchanges": [
+        {
+          "body": "{\"incident\":{\"id\":\"P123456\",\"title\":\"API latency\",\"status\":\"acknowledged\"},\"error\":{\"message\":\"write failed\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/incidents/P123456",
+          "requestBody": {
+            "incident": {
+              "status": "acknowledged",
+              "type": "incident_reference"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "From": [
+              "responder@example.com"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0426e550-68b6-56e0-b895-c9cfba748e11",
+      "input": {
+        "fromUserEmail": "responder@example.com",
+        "id": "P123456",
+        "status": "acknowledged"
+      },
+      "name": "updateIncident-contradictory-success-retry",
+      "operation": "updateIncident"
     }
   ],
   "schemaVersion": 1

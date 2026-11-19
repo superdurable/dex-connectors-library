@@ -270,6 +270,14 @@ func executePayoutWrite[T any](client *Client, call sdkgo.Call, operation, metho
 	if bodyError != nil {
 		return sdkgo.NewMutationRetry[T](*failureFor(operation, sdkgo.FailureProtocol, "provider payout response was invalid"), 0)
 	}
+	var successEnvelope struct {
+		Error   json.RawMessage `json:"error"`
+		Name    string          `json:"name"`
+		Message string          `json:"message"`
+	}
+	if json.Unmarshal(content, &successEnvelope) == nil && (len(successEnvelope.Error) > 0 && string(successEnvelope.Error) != "null" || successEnvelope.Name != "" && successEnvelope.Message != "") {
+		return sdkgo.NewMutationRetry[T](*failureFor(operation, sdkgo.FailureProtocol, "provider payout response was contradictory"), 0)
+	}
 	value, err := decode(content)
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](*failureFor(operation, sdkgo.FailureProtocol, "provider payout response was invalid"), 0)

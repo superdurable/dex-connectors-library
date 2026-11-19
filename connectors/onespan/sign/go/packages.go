@@ -312,15 +312,18 @@ func (operation CreateDraftPackageOperation) Invoke(call sdkgo.Call, input Creat
 		}
 		return packageMutationBranch[CreatedPackage]("createDraftPackage", CreateDraftPackageBranchProviderRejected, sdkgo.FailureProviderRejection, "provider rejected draft creation")
 	}
-	var created CreatedPackage
-	if json.Unmarshal(response.body, &created) != nil || !validPackageID(created.ID) {
+	var created struct {
+		ID    string          `json:"id"`
+		Error json.RawMessage `json:"error"`
+	}
+	if json.Unmarshal(response.body, &created) != nil || !validPackageID(created.ID) || len(created.Error) > 0 && string(created.Error) != "null" {
 		failure := packageOperationFailure("createDraftPackage", sdkgo.FailureProtocol, "provider accepted draft without a valid ID")
 		if canResend {
 			return sdkgo.NewMutationRetry[CreatedPackage](failure, 0)
 		}
 		return sdkgo.NewMutationUncertain(CreatedPackage{}, failure, sdkgo.Receipt{})
 	}
-	return sdkgo.NewMutationBranch(CreateDraftPackageBranchCreated, created, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationBranch(CreateDraftPackageBranchCreated, CreatedPackage{ID: created.ID}, nil, sdkgo.Receipt{})
 }
 
 func invokePackageWrite[T any](call sdkgo.Call, client *Client, operation, method, path string, body []byte, success, notFound, rejected, invalid, defect sdkgo.BranchID, result T) sdkgo.MutationAttempt[T] {
@@ -340,7 +343,13 @@ func invokePackageWrite[T any](call sdkgo.Call, client *Client, operation, metho
 	if response.status == http.StatusNotFound && isDefiniteOneSpanRefusal(response.status, response.body) {
 		return packageMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "package was not found")
 	}
-	if response.status != http.StatusOK && response.status != http.StatusNoContent {
+	if response.status == http.StatusOK {
+		if response.err != nil || !confirmedPackageWriteResponse(response.body, any(result)) {
+			return sdkgo.NewMutationRetry[T](packageOperationFailure(operation, sdkgo.FailureProtocol, "provider returned an unconfirmed write receipt"), 0)
+		}
+		return sdkgo.NewMutationBranch(success, result, nil, sdkgo.Receipt{})
+	}
+	if response.status != http.StatusNoContent {
 		if isDefiniteOneSpanRefusal(response.status, response.body) {
 			return packageMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, fmt.Sprintf("provider rejected HTTP %d", response.status))
 		}
@@ -352,7 +361,35 @@ func invokePackageWrite[T any](call sdkgo.Call, client *Client, operation, metho
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[T](packageOperationFailure(operation, sdkgo.FailureTransport, "provider response was interrupted"), 0)
 	}
+	if len(response.body) != 0 {
+		return sdkgo.NewMutationRetry[T](packageOperationFailure(operation, sdkgo.FailureProtocol, "provider returned a contradictory write receipt"), 0)
+	}
 	return sdkgo.NewMutationBranch(success, result, nil, sdkgo.Receipt{})
+}
+
+func confirmedPackageWriteResponse(body []byte, result any) bool {
+	var receipt struct {
+		ID      string          `json:"id"`
+		Name    string          `json:"name"`
+		Status  string          `json:"status"`
+		Trashed *bool           `json:"trashed"`
+		Error   json.RawMessage `json:"error"`
+	}
+	if json.Unmarshal(body, &receipt) != nil || len(receipt.Error) > 0 && string(receipt.Error) != "null" {
+		return false
+	}
+	switch expected := result.(type) {
+	case UpdatedPackage:
+		return receipt.ID == expected.ID && receipt.Name == expected.Name
+	case TrashedPackage:
+		return receipt.ID == expected.ID && (receipt.Trashed != nil && *receipt.Trashed || receipt.Status == "TRASH")
+	case DeletedPackage:
+		return receipt.ID == expected.ID
+	case SignerRoleID:
+		return receipt.ID == expected.RoleID
+	default:
+		return false
+	}
 }
 
 // UpdatePackageNameOperation changes a draft's title.
@@ -406,21 +443,11 @@ func (operation SendPackageOperation) Invoke(call sdkgo.Call, input SendPackageI
 		return packageMutationBranch[SentPackage]("sendPackage", SendPackageBranchDefect, sdkgo.FailureLocalDefect, "dispatch checkpoint is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
-		response := operation.client.requestPackage(call, call.Context, http.MethodGet, "/packages/"+url.PathEscape(input.PackageID), nil)
-		if response.status == http.StatusOK && response.err == nil {
-			status, parseError := decodePackage(response.body, input.PackageID)
-			if parseError == nil && (status.Status == "SENT" || status.Status == "COMPLETED" || status.Status == "ARCHIVED") {
-				return sdkgo.NewMutationBranch(SendPackageBranchSent, SentPackage{ID: input.PackageID, Status: status.Status}, nil, sdkgo.Receipt{})
-			}
-		} else if response.err != nil || response.status >= 500 {
-			return sdkgo.NewMutationRetry[SentPackage](packageOperationFailure("sendPackage", sdkgo.FailureAvailability, "send read-back is unavailable"), response.retryAfter)
-		}
-	}
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[SentPackage](packageOperationFailure("sendPackage", sdkgo.FailureAvailability, "dispatch checkpoint is unreadable"), 0)
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
+		// Package status cannot identify which send changed it.
 		return sdkgo.NewMutationUncertain(SentPackage{}, packageOperationFailure("sendPackage", sdkgo.FailureTransport, "delivery may have succeeded"), sdkgo.Receipt{})
 	}
 	canResend := decision.MaximumPriorSends+1 < call.MaxSends()
@@ -458,7 +485,7 @@ func (operation SendPackageOperation) Invoke(call sdkgo.Call, input SendPackageI
 		}
 		return sdkgo.NewMutationUncertain(SentPackage{}, failure, sdkgo.Receipt{})
 	}
-	if response.status != http.StatusOK && response.status != http.StatusNoContent {
+	if response.status != http.StatusNoContent {
 		if !isDefiniteOneSpanRefusal(response.status, response.body) {
 			failure := packageOperationFailure("sendPackage", sdkgo.FailureTransport, "delivery outcome is unknown")
 			if canResend {
@@ -480,6 +507,13 @@ func (operation SendPackageOperation) Invoke(call sdkgo.Call, input SendPackageI
 			return packageMutationBranch[SentPackage]("sendPackage", SendPackageBranchNotFound, sdkgo.FailureNotFound, "package was not found")
 		}
 		return packageMutationBranch[SentPackage]("sendPackage", SendPackageBranchProviderRejected, sdkgo.FailureProviderRejection, "provider rejected the send")
+	}
+	if len(response.body) != 0 {
+		failure := packageOperationFailure("sendPackage", sdkgo.FailureProtocol, "provider returned a contradictory send receipt")
+		if canResend {
+			return sdkgo.NewMutationRetry[SentPackage](failure, 0)
+		}
+		return sdkgo.NewMutationUncertain(SentPackage{}, failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(SendPackageBranchSent, SentPackage{ID: input.PackageID, Status: "SENT"}, nil, sdkgo.Receipt{})
 }

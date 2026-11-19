@@ -5194,6 +5194,168 @@
           }
         }
       }
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"write failed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestBody": {
+            "entityId": "CUST108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "107",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-contradictory-success-retry",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"write failed\"}",
+          "headers": {
+            "Location": "/services/rest/record/v1/customer/107"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "588a9cf7-7906-5c37-8962-c41adce89c75": {
+              "attempt": 1,
+              "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "name": "createCustomer-contradictory-success-retry",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "d6186920-244f-5dca-a548-4889492cff18",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"write failed\"}",
+          "headers": {
+            "Location": "/services/rest/record/v1/vendor/107"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/vendor",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "VEND107",
+            "externalId": "dex-d6186920-244f-5dca-a548-4889492cff18",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "d6186920-244f-5dca-a548-4889492cff18": {
+              "attempt": 1,
+              "callId": "d6186920-244f-5dca-a548-4889492cff18",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d6186920-244f-5dca-a548-4889492cff18",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "VEND107",
+        "subsidiaryId": "1"
+      },
+      "name": "createVendor-contradictory-success-retry",
+      "operation": "createVendor"
     }
   ],
   "schemaVersion": 1

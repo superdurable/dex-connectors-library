@@ -290,7 +290,7 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 		}
 		return sdkgo.NewMutationBranch(CreateCustomerBranchProviderRejected, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected customer creation"), sdkgo.Receipt{})
 	}
-	if result.err != nil {
+	if result.err != nil || len(result.body) != 0 {
 		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureProtocol, "customer response is unreadable"), 0)
 	}
 	locationURL, parseErr := url.Parse(result.location)
@@ -330,6 +330,9 @@ func (operation UpdateCustomerOperation) Invoke(call sdkgo.Call, input UpdateCus
 		}
 		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureTransport, "NetSuite write outcome is unknown"), result.retryAfter)
 	}
+	if len(result.body) != 0 {
+		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite returned a contradictory update receipt"), 0)
+	}
 	return sdkgo.NewMutationBranch(UpdateCustomerBranchUpdated, CustomerSummary{ID: input.CustomerID, EntityID: input.EntityID}, nil, sdkgo.Receipt{ProviderObjectID: input.CustomerID})
 }
 
@@ -357,6 +360,9 @@ func (operation DeleteCustomerOperation) Invoke(call sdkgo.Call, input GetCustom
 			return sdkgo.NewMutationBranch(DeleteCustomerBranchProviderRejected, CustomerSummary{}, customerOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected customer deletion"), sdkgo.Receipt{})
 		}
 		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureTransport, "NetSuite write outcome is unknown"), result.retryAfter)
+	}
+	if len(result.body) != 0 {
+		return sdkgo.NewMutationRetry[CustomerSummary](*customerOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite returned a contradictory deletion receipt"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteCustomerBranchDeleted, CustomerSummary{ID: input.CustomerID}, nil, sdkgo.Receipt{ProviderObjectID: input.CustomerID})
 }

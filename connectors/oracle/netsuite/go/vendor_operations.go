@@ -309,7 +309,7 @@ func (operation CreateVendorOperation) Invoke(call sdkgo.Call, input CreateVendo
 		}
 		return sdkgo.NewMutationBranch(CreateVendorBranchProviderRejected, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected vendor creation"), sdkgo.Receipt{})
 	}
-	if result.err != nil {
+	if result.err != nil || len(result.body) != 0 {
 		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureProtocol, "vendor response is unreadable"), 0)
 	}
 	locationURL, parseErr := url.Parse(result.location)
@@ -349,6 +349,9 @@ func (operation UpdateVendorOperation) Invoke(call sdkgo.Call, input UpdateVendo
 		}
 		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureTransport, "NetSuite write outcome is unknown"), result.retryAfter)
 	}
+	if len(result.body) != 0 {
+		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite returned a contradictory update receipt"), 0)
+	}
 	return sdkgo.NewMutationBranch(UpdateVendorBranchUpdated, VendorSummary{ID: input.VendorID, EntityID: input.EntityID}, nil, sdkgo.Receipt{ProviderObjectID: input.VendorID})
 }
 
@@ -376,6 +379,9 @@ func (operation DeleteVendorOperation) Invoke(call sdkgo.Call, input GetVendorIn
 			return sdkgo.NewMutationBranch(DeleteVendorBranchProviderRejected, VendorSummary{}, vendorOperationFailure(operationName, sdkgo.FailureProviderRejection, "NetSuite rejected vendor deletion"), sdkgo.Receipt{})
 		}
 		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureTransport, "NetSuite write outcome is unknown"), result.retryAfter)
+	}
+	if len(result.body) != 0 {
+		return sdkgo.NewMutationRetry[VendorSummary](*vendorOperationFailure(operationName, sdkgo.FailureProtocol, "NetSuite returned a contradictory deletion receipt"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteVendorBranchDeleted, VendorSummary{ID: input.VendorID}, nil, sdkgo.Receipt{ProviderObjectID: input.VendorID})
 }

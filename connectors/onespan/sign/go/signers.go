@@ -308,9 +308,10 @@ func (operation AddSignerOperation) Invoke(call sdkgo.Call, input AddSignerInput
 		return packageMutationBranch[SignerRoleID]("addSigner", AddSignerBranchProviderRejected, sdkgo.FailureProviderRejection, "provider rejected the signer")
 	}
 	var created struct {
-		ID string `json:"id"`
+		ID    string          `json:"id"`
+		Error json.RawMessage `json:"error"`
 	}
-	if json.Unmarshal(response.body, &created) != nil || created.ID != input.RoleID {
+	if json.Unmarshal(response.body, &created) != nil || created.ID != input.RoleID || len(created.Error) > 0 && string(created.Error) != "null" {
 		failure := packageOperationFailure("addSigner", sdkgo.FailureProtocol, "provider accepted signer without the requested role ID")
 		if canResend {
 			return sdkgo.NewMutationRetry[SignerRoleID](failure, 0)

@@ -6483,6 +6483,82 @@
           }
         }
       }
+    },
+    {
+      "callId": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc"
+      },
+      "name": "deleteContact-malformed-success-retry",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "730e97c2-1210-5d90-9cd5-77327106aa6f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/notes/5049fb849b85f669e40000dd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "730e97c2-1210-5d90-9cd5-77327106aa6f",
+      "input": {
+        "noteId": "5049fb849b85f669e40000dd"
+      },
+      "name": "deleteContactNote-malformed-success-retry",
+      "operation": "deleteContactNote"
     }
   ],
   "schemaVersion": 1

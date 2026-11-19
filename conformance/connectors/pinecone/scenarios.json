@@ -3872,6 +3872,69 @@
       },
       "name": "updateVector-malformed-success-retry",
       "operation": "updateVector"
+    },
+    {
+      "callId": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"write failed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/vectors/update",
+          "requestBody": {
+            "id": "vec-meridian",
+            "namespace": "example",
+            "setMetadata": {
+              "region": "west"
+            },
+            "values": [
+              1,
+              2
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "pinecone-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-pinecone/0.1"
+            ],
+            "X-Pinecone-Api-Version": [
+              "2025-04"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f450de3-b610-5da8-85df-9fdd0128e3e5",
+      "input": {
+        "id": "vec-meridian",
+        "namespace": "example",
+        "setMetadata": {
+          "region": "west"
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      "name": "updateVector-contradictory-success-retry",
+      "operation": "updateVector"
     }
   ],
   "schemaVersion": 1

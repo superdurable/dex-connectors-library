@@ -285,6 +285,9 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 		}
 		return sdkgo.NewMutationRetry[DeletedContact](queryFailure("deleteContact", sdkgo.FailureTransport, "Nimble deletion outcome is unknown"), response.retryAfter)
 	}
+	if len(response.body) != 0 {
+		return sdkgo.NewMutationRetry[DeletedContact](queryFailure("deleteContact", sdkgo.FailureProtocol, "Nimble returned a contradictory deletion receipt"), 0)
+	}
 	return sdkgo.NewMutationBranch(DeleteContactBranchDeleted, DeletedContact{ContactID: input.ContactID}, nil, sdkgo.Receipt{})
 }
 
@@ -363,9 +366,13 @@ func decodeWrittenContact(body []byte) (ContactMetadata, error) {
 	var wire struct {
 		ID     string                         `json:"id"`
 		Fields map[string][]ContactFieldValue `json:"fields"`
+		Error  json.RawMessage                `json:"error"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
 		return ContactMetadata{}, err
+	}
+	if len(wire.Error) > 0 && string(wire.Error) != "null" {
+		return ContactMetadata{}, fmt.Errorf("contradictory contact response")
 	}
 	if !isContactID(wire.ID) {
 		return ContactMetadata{}, fmt.Errorf("contact ID missing")

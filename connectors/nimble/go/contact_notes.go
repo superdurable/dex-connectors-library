@@ -132,12 +132,16 @@ func (operation GetContactNoteOperation) Invoke(call sdkgo.Call, input GetContac
 
 func decodeContactNote(body []byte) (ContactNote, error) {
 	var wire struct {
-		ID          string `json:"id"`
-		Note        string `json:"note"`
-		NotePreview string `json:"note_preview"`
+		ID          string          `json:"id"`
+		Note        string          `json:"note"`
+		NotePreview string          `json:"note_preview"`
+		Error       json.RawMessage `json:"error"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
 		return ContactNote{}, err
+	}
+	if len(wire.Error) > 0 && string(wire.Error) != "null" {
+		return ContactNote{}, fmt.Errorf("contradictory contact note response")
 	}
 	if !isContactID(wire.ID) {
 		return ContactNote{}, fmt.Errorf("note ID is invalid")
@@ -432,6 +436,14 @@ func (operation DeleteContactNoteOperation) Invoke(call sdkgo.Call, input Delete
 			return mutationBranch(DeleteContactNoteBranchProviderRejected, "deleteContactNote", DeletedContactNote{}, sdkgo.FailureProviderRejection, "Nimble rejected the note deletion")
 		}
 		return sdkgo.NewMutationRetry[DeletedContactNote](queryFailure("deleteContactNote", sdkgo.FailureTransport, "note deletion outcome is unknown"), response.retryAfter)
+	}
+	var receipt struct {
+		ID      string          `json:"id"`
+		Error   json.RawMessage `json:"error"`
+		Success *bool           `json:"success"`
+	}
+	if json.Unmarshal(response.body, &receipt) != nil || receipt.ID != input.NoteID || len(receipt.Error) > 0 && string(receipt.Error) != "null" || receipt.Success != nil && !*receipt.Success {
+		return sdkgo.NewMutationRetry[DeletedContactNote](queryFailure("deleteContactNote", sdkgo.FailureProtocol, "Nimble returned an invalid deletion receipt"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteContactNoteBranchDeleted, DeletedContactNote{NoteID: input.NoteID}, nil, sdkgo.Receipt{})
 }
