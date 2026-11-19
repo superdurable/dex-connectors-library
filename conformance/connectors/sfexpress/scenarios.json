@@ -1,0 +1,372 @@
+{
+  "connector": "sfexpress",
+  "scenarios": [
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"apiResultCode\":\"A1000\",\"apiResultData\":\"{\\\"success\\\":true,\\\"errorCode\\\":\\\"S0000\\\",\\\"msgData\\\":{\\\"routeResps\\\":[{\\\"mailNo\\\":\\\"SF1234567890123\\\",\\\"routes\\\":[{\\\"acceptTime\\\":\\\"2026-11-13 09:30:00\\\",\\\"acceptAddress\\\":\\\"private address\\\",\\\"remark\\\":\\\"Collected\\\",\\\"opcode\\\":\\\"50\\\"}]}]}}\"}",
+          "form": {
+            "msgData": [
+              "{\"language\":\"0\",\"trackingType\":\"1\",\"trackingNumber\":[\"SF1234567890123\"],\"methodType\":\"1\"}"
+            ],
+            "msgDigest": [
+              "hgnD7Bs5U44e/1qyOKrenw=="
+            ],
+            "partnerID": [
+              "customer-1"
+            ],
+            "requestID": [
+              "d3202f5e-04ba-445f-b592-7e1adf1bd1cb"
+            ],
+            "serviceCode": [
+              "EXP_RECE_SEARCH_ROUTES"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/std/service",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "routes": [
+            {
+              "occurredAt": "2026-11-13 09:30:00",
+              "opcode": "50"
+            }
+          ],
+          "waybillNumber": "SF1234567890123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNumber": "SF1234567890123"
+      },
+      "name": "queryRoutes-found",
+      "operation": "queryRoutes",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_sfexpress_found"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"apiResultCode\":\"A1004\"}",
+          "form": {
+            "msgData": [
+              "{\"language\":\"0\",\"trackingType\":\"1\",\"trackingNumber\":[\"SF1234567890123\"],\"methodType\":\"1\"}"
+            ],
+            "msgDigest": [
+              "hgnD7Bs5U44e/1qyOKrenw=="
+            ],
+            "partnerID": [
+              "customer-1"
+            ],
+            "requestID": [
+              "4c457a55-2f32-4d5d-b287-1878fb5431f4"
+            ],
+            "serviceCode": [
+              "EXP_RECE_SEARCH_ROUTES"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/std/service",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "routes": [],
+          "waybillNumber": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNumber": "SF1234567890123"
+      },
+      "name": "queryRoutes-providerRejected",
+      "operation": "queryRoutes",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_sfexpress_providerRejected"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"apiResultCode\":\"A1000\",\"apiResultData\":\"{\"success\":true,\"msgData\":{}}\"}",
+          "form": {
+            "msgData": [
+              "{\"language\":\"0\",\"trackingType\":\"1\",\"trackingNumber\":[\"SF1234567890123\"],\"methodType\":\"1\"}"
+            ],
+            "msgDigest": [
+              "hgnD7Bs5U44e/1qyOKrenw=="
+            ],
+            "partnerID": [
+              "customer-1"
+            ],
+            "requestID": [
+              "6bf73583-cf3a-4124-a7d7-758cf2018971"
+            ],
+            "serviceCode": [
+              "EXP_RECE_SEARCH_ROUTES"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/std/service",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "routes": [],
+          "waybillNumber": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNumber": "SF1234567890123"
+      },
+      "name": "queryRoutes-invalidResponse",
+      "operation": "queryRoutes",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_sfexpress_invalidResponse"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "routes": [],
+          "waybillNumber": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNumber": "SF1234567890123"
+      },
+      "name": "queryRoutes-defect",
+      "operation": "queryRoutes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "msgData": [
+              "{\"language\":\"0\",\"trackingType\":\"1\",\"trackingNumber\":[\"SF1234567890123\"],\"methodType\":\"1\"}"
+            ],
+            "msgDigest": [
+              "hgnD7Bs5U44e/1qyOKrenw=="
+            ],
+            "partnerID": [
+              "customer-1"
+            ],
+            "requestID": [
+              "ef76bf09-1ef9-4441-94df-a51b32f949ee"
+            ],
+            "serviceCode": [
+              "EXP_RECE_SEARCH_ROUTES"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/std/service",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNumber": "SF1234567890123"
+      },
+      "name": "queryRoutes-retry429",
+      "operation": "queryRoutes",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_sfexpress_retry429"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "msgData": [
+              "{\"language\":\"0\",\"trackingType\":\"1\",\"trackingNumber\":[\"SF1234567890123\"],\"methodType\":\"1\"}"
+            ],
+            "msgDigest": [
+              "hgnD7Bs5U44e/1qyOKrenw=="
+            ],
+            "partnerID": [
+              "customer-1"
+            ],
+            "requestID": [
+              "1dd5a1c7-9640-4721-a5ca-25128e48cff8"
+            ],
+            "serviceCode": [
+              "EXP_RECE_SEARCH_ROUTES"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/std/service",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNumber": "SF1234567890123"
+      },
+      "name": "queryRoutes-retry503",
+      "operation": "queryRoutes",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_sfexpress_retry503"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "form": {
+            "msgData": [
+              "{\"language\":\"0\",\"trackingType\":\"1\",\"trackingNumber\":[\"SF1234567890123\"],\"methodType\":\"1\"}"
+            ],
+            "msgDigest": [
+              "hgnD7Bs5U44e/1qyOKrenw=="
+            ],
+            "partnerID": [
+              "customer-1"
+            ],
+            "requestID": [
+              "f3a06e1f-f11c-4b1a-a5ac-2e6e3b031a3f"
+            ],
+            "serviceCode": [
+              "EXP_RECE_SEARCH_ROUTES"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/std/service",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=UTF-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNumber": "SF1234567890123"
+      },
+      "name": "queryRoutes-transport",
+      "operation": "queryRoutes",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_sfexpress_transport"
+    }
+  ],
+  "schemaVersion": 1
+}
