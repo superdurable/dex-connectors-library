@@ -73,7 +73,7 @@ func (operation ListShopsOperation) Invoke(call sdkgo.Call, input ListShopsInput
 	if input.Page < 0 || input.Page > 1000000 || pageSize < 1 || pageSize > 100 {
 		return shopBranch(ListShopsBranchDefect, sdkgo.FailureValidation, "page or pageSize is outside the supported range")
 	}
-	params := map[string]string{"sid": credentials.SID.Reveal(), "appkey": credentials.AppKey.Reveal(), "timestamp": strconv.FormatInt(time.Now().Unix(), 10), "page_no": strconv.Itoa(input.Page), "page_size": strconv.Itoa(pageSize)}
+	params := map[string]string{"sid": credentials.SID.Reveal(), "appkey": credentials.AppKey.Reveal(), "timestamp": strconv.FormatInt(operation.client.now().Unix(), 10), "page_no": strconv.Itoa(input.Page), "page_size": strconv.Itoa(pageSize)}
 	signature := signShopParams(params, credentials.AppSecret.Reveal())
 	form := url.Values{}
 	for key, value := range params {
