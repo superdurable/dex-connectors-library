@@ -7,3 +7,5 @@ Create a matched AccessKey ID (PublicKey) and AccessKey Secret (PrivateKey) in [
 The Query retries HTTP 408, 429, 5xx, transport failures, and UCloud RetCode 110, 130, 150, and 153 under Dex's default retry budget. Other nonzero RetCodes select `providerRejected`, with authentication and authorization kinds where documented. Malformed or oversized responses select `invalidResponse`; missing or malformed credentials select `defect`. A success response without `Regions` yields an empty list, as the field is optional in UCloud's contract.
 
 Install `github.com/superdurable/dex-connectors-library/connectors/ucloud/go@v0.1.0` after release. Provider tests use an HTTP test server. The mock-backed example integration test uses a real Dex Worker and Client. Live key-pair authorization and actual region visibility remain unverified without a user-configured account.
+
+The [TypeScript package](typescript/) implements the signed `getRegion` Query and replays Go provider scenarios. Its [runnable Dex Flow](typescript/examples/basic/) persists region data through a Worker and Client. Live UCloud authorization remains unverified.
