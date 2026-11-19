@@ -167,12 +167,21 @@ func (operation DeleteRepositoryOperation) Invoke(call sdkgo.Call, input DeleteR
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[DeletedRepository](*failureFor(name, sdkgo.FailureAvailability, "repository deletion is unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusNotFound:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[DeletedRepository](*failureFor(name, sdkgo.FailureTransport, "repository deletion outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteRepositoryBranchNotFound, DeletedRepository{}, failureFor(name, sdkgo.FailureNotFound, "repository was not found"), sdkgo.Receipt{})
 	case response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[DeletedRepository](*failureFor(name, sdkgo.FailureTransport, "repository deletion outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteRepositoryBranchProviderRejected, DeletedRepository{}, failureFor(name, sdkgo.FailureAuthorization, "Bitbucket denied deletion"), sdkgo.Receipt{})
 	case response.StatusCode == http.StatusOK:
-		return sdkgo.NewMutationBranch(DeleteRepositoryBranchInvalidResponse, DeletedRepository{}, failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned an unexpected deletion response"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[DeletedRepository](*failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned an unexpected deletion response"), 0)
 	case response.StatusCode != http.StatusNoContent:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[DeletedRepository](*failureFor(name, sdkgo.FailureTransport, "repository deletion outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteRepositoryBranchProviderRejected, DeletedRepository{}, failureFor(name, sdkgo.FailureProviderRejection, "Bitbucket rejected deletion with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(DeleteRepositoryBranchDeleted, DeletedRepository{Workspace: input.Workspace, Repository: input.Repository}, nil, sdkgo.Receipt{})
@@ -204,53 +213,33 @@ func executeRepositoryWrite(client *Client, call sdkgo.Call, name, method, path 
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureAvailability, "repository write is unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case reconcileConflict && response.StatusCode == http.StatusConflict:
-		return client.reconcileRepositoryConflict(call, name, path, successBranch, rejectedBranch, invalidBranch, matches)
+		return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureTransport, "repository write outcome is unknown"), 0)
 	case response.StatusCode == http.StatusNotFound:
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureTransport, "repository write outcome is unknown"), 0)
+		}
 		return repositoryBranch(name, notFoundBranch, sdkgo.FailureNotFound, "repository was not found")
 	case response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden:
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureTransport, "repository write outcome is unknown"), 0)
+		}
 		return repositoryBranch(name, rejectedBranch, sdkgo.FailureAuthorization, "Bitbucket denied repository write")
 	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated:
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureTransport, "repository write outcome is unknown"), 0)
+		}
 		return repositoryBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket rejected repository write with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return repositoryBranch(name, invalidBranch, sdkgo.FailureResponseTooLarge, "repository response exceeded configured limit")
+		return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureResponseTooLarge, "repository response exceeded configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureTransport, "repository response was interrupted"), 0)
 	}
 	repository, err := decodeRepository(responseBody)
 	if err != nil || !matches(repository) {
-		return repositoryBranch(name, invalidBranch, sdkgo.FailureProtocol, "Bitbucket returned a different repository state")
-	}
-	return sdkgo.NewMutationBranch(successBranch, repository, nil, sdkgo.Receipt{})
-}
-
-func (client *Client) reconcileRepositoryConflict(call sdkgo.Call, name, path string, successBranch, rejectedBranch, invalidBranch sdkgo.BranchID, matches func(Repository) bool) sdkgo.MutationAttempt[Repository] {
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
-	if err != nil {
-		return repositoryBranch(name, invalidBranch, sdkgo.FailureLocalDefect, "repository readback could not be built")
-	}
-	request.Header.Set("Accept", "application/json")
-	authorization := client.authorize(call, name, request, invalidBranch, rejectedBranch, invalidBranch)
-	if authorization.failure != nil {
-		return sdkgo.NewMutationBranch(authorization.branch, Repository{}, authorization.failure, sdkgo.Receipt{})
-	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureTransport, "repository readback failed"), 0)
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return repositoryBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "repository exists but could not be confirmed")
-	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if err != nil {
-		return repositoryBranch(name, invalidBranch, sdkgo.FailureProtocol, "repository readback response is invalid")
-	}
-	repository, err := decodeRepository(body)
-	if err != nil || !matches(repository) {
-		return repositoryBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "repository slug belongs to a different resource")
+		return sdkgo.NewMutationRetry[Repository](*failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned a different repository state"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, repository, nil, sdkgo.Receipt{})
 }

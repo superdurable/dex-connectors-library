@@ -115,8 +115,14 @@ func (operation DeletePullRequestCommentOperation) Invoke(call sdkgo.Call, input
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[DeletedPullRequestComment](*failureFor(name, sdkgo.FailureAvailability, "comment deletion is unavailable"), 0)
 	case response.StatusCode == http.StatusNotFound:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[DeletedPullRequestComment](*failureFor(name, sdkgo.FailureTransport, "comment deletion outcome is unknown"), 0)
+		}
 		return deletedCommentBranch(DeletePullRequestCommentBranchNotFound, sdkgo.FailureNotFound, "comment was not found")
 	case response.StatusCode != http.StatusNoContent:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[DeletedPullRequestComment](*failureFor(name, sdkgo.FailureTransport, "comment deletion outcome is unknown"), 0)
+		}
 		return deletedCommentBranch(DeletePullRequestCommentBranchProviderRejected, sdkgo.FailureProviderRejection, "Bitbucket rejected comment deletion with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	return sdkgo.NewMutationBranch(DeletePullRequestCommentBranchDeleted, DeletedPullRequestComment{Workspace: input.Workspace, Repository: input.Repository, PullRequestID: input.PullRequestID, CommentID: input.CommentID}, nil, sdkgo.Receipt{})
@@ -215,13 +221,19 @@ func (client *Client) executeCommentWrite(call sdkgo.Call, name, method, path st
 		commentPath := strings.TrimSuffix(path, "/resolve")
 		return client.confirmCommentState(call, name, commentPath, successBranch, rejectedBranch, invalidBranch, matches)
 	case response.StatusCode == http.StatusNotFound:
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureTransport, "comment write outcome is unknown"), 0)
+		}
 		return commentBranch(name, notFoundBranch, sdkgo.FailureNotFound, "comment was not found")
 	case response.StatusCode != http.StatusOK:
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureTransport, "comment write outcome is unknown"), 0)
+		}
 		return commentBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket rejected comment write with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	output, err := decodePullRequestCommentResponse(response, client.maxResponseBytes)
 	if err != nil || !matches(output) {
-		return commentBranch(name, invalidBranch, sdkgo.FailureProtocol, "Bitbucket returned a different comment state")
+		return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned a different comment state"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, output, nil, sdkgo.Receipt{})
 }
@@ -245,14 +257,14 @@ func (client *Client) confirmCommentState(call sdkgo.Call, name, path string, su
 		return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureAvailability, "comment confirmation is unavailable"), 0)
 	}
 	if response.StatusCode != http.StatusOK {
-		return commentBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket did not confirm comment state")
+		return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureTransport, "Bitbucket did not confirm comment state"), 0)
 	}
 	output, err := decodePullRequestCommentResponse(response, client.maxResponseBytes)
 	if err != nil {
-		return commentBranch(name, invalidBranch, sdkgo.FailureProtocol, "Bitbucket returned an invalid comment confirmation")
+		return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned an invalid comment confirmation"), 0)
 	}
 	if !matches(output) {
-		return commentBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket rejected the comment action")
+		return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureTransport, "Bitbucket comment action remains unconfirmed"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, output, nil, sdkgo.Receipt{})
 }

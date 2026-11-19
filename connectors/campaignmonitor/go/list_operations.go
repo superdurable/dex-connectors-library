@@ -205,7 +205,7 @@ func (operation CreateListOperation) Invoke(call sdkgo.Call, input CreateListInp
 		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "list outcome is unknown"), 0)
 	}
 	if status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(status) {
+		if !isDefiniteRefusalStatus(status, body) || decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[ListIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: name, Message: "provider write outcome is unknown"}, 0)
 		}
 		if fence.RecordCanResend() != nil {
@@ -215,7 +215,10 @@ func (operation CreateListOperation) Invoke(call sdkgo.Call, input CreateListInp
 	}
 	var listID string
 	if json.Unmarshal(body, &listID) != nil || !validCampaignMonitorID(listID) {
-		return sdkgo.NewMutationUncertain(ListIdentity{}, queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor created a list but its ID is unknown"), sdkgo.Receipt{})
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return sdkgo.NewMutationUncertain(ListIdentity{}, queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor created a list but its ID is unknown"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor created a list but its ID is unknown"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateListBranchCreated, ListIdentity{ID: listID, Title: input.Title}, nil, sdkgo.Receipt{})
 }
@@ -253,15 +256,21 @@ func invokeListWrite(call sdkgo.Call, client *Client, name, method, path string,
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor is temporarily unavailable"), retryAfter)
 	case status == http.StatusNotFound && notFound != "":
+		if !isDefiniteRefusalStatus(status, body) {
+			return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "list write outcome is unknown"), 0)
+		}
 		return listMutationBranch(name, notFound, ListIdentity{}, sdkgo.FailureNotFound, "list was not found")
 	case status != http.StatusOK && status != http.StatusNoContent:
+		if !isDefiniteRefusalStatus(status, body) {
+			return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "list write outcome is unknown"), 0)
+		}
 		return listMutationBranch(name, rejected, ListIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
-		return listMutationBranch(name, invalid, ListIdentity{}, sdkgo.FailureResponseTooLarge, "Campaign Monitor response exceeded the limit")
+		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureResponseTooLarge, "Campaign Monitor response exceeded the limit"), 0)
 	case err != nil:
 		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor response was interrupted"), 0)
 	case len(body) != 0:
-		return listMutationBranch(name, invalid, ListIdentity{}, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected response body")
+		return sdkgo.NewMutationRetry[ListIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected response body"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, identity, nil, sdkgo.Receipt{})
 }

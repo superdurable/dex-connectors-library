@@ -520,13 +520,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "externalId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -835,14 +832,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": 0,
-          "externalId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1916,7 +1909,7 @@
       "callId": "0deb905b-6733-5742-9485-1f19fa759b63",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2293,7 +2286,7 @@
       "callId": "1dbedb90-9efe-5c23-99b7-1a5e04f97811",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

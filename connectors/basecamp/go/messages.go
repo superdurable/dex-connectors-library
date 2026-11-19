@@ -204,7 +204,7 @@ func (operation CreateMessageOperation) Invoke(call sdkgo.Call, input CreateMess
 		return projectMutationRetry[Message]("createMessage", sdkgo.FailureTransport, "message creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[Message](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createMessage", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -250,7 +250,7 @@ func (operation UpdateMessageOperation) Invoke(call sdkgo.Call, input UpdateMess
 	}
 	message, err := decodeMessage(response.body, input.MessageID)
 	if err != nil || message.Subject != input.Subject {
-		return projectMutationBranch[Message]("updateMessage", UpdateMessageBranchInvalidResponse, sdkgo.FailureProtocol, "Basecamp returned invalid updated message JSON")
+		return projectMutationRetry[Message]("updateMessage", sdkgo.FailureProtocol, "Basecamp returned invalid updated message JSON", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateMessageBranchUpdated, message, nil, sdkgo.Receipt{})
 }
@@ -284,7 +284,7 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input GetMessag
 	}
 	message, err := decodeMessage(response.body, input.MessageID)
 	if err != nil || message.Status != "active" {
-		return projectMutationBranch[Message]("publishMessage", PublishMessageBranchInvalidResponse, sdkgo.FailureProtocol, "Basecamp returned invalid published message JSON")
+		return projectMutationRetry[Message]("publishMessage", sdkgo.FailureProtocol, "Basecamp returned invalid published message JSON", 0)
 	}
 	return sdkgo.NewMutationBranch(PublishMessageBranchPublished, message, nil, sdkgo.Receipt{})
 }

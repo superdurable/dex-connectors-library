@@ -83,7 +83,7 @@ func (operation CreateCandidateOperation) Invoke(call sdkgo.Call, input CreateCa
 		return sdkgo.NewMutationRetry[CandidateProfile](createCandidateFailure(sdkgo.FailureTransport, "Ashby candidate create outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[CandidateProfile](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "create_candidate", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -101,6 +101,9 @@ func (operation CreateCandidateOperation) Invoke(call sdkgo.Call, input CreateCa
 	if rejectionCode != "" {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[CandidateProfile](createCandidateFailure(sdkgo.FailureProviderRejection, "an earlier Ashby candidate create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CandidateProfile](createCandidateFailure(sdkgo.FailureTransport, "refusal checkpoint unavailable"), 0)
 		}
 		return createCandidateBranch(CreateCandidateBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected candidate creation")
 	}

@@ -133,7 +133,7 @@ func (client *Client) applyDisputeStatus(call sdkgo.Call, input GetDisputeInput,
 			return braintreeMutationRetry[DisputeProfile](operation, sdkgo.FailureAvailability, "dispute resend checkpoint is unavailable", 0)
 		}
 	}
-	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+	if isDefiniteRefusalStatus(response.status, response.body) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
 		return braintreeMutationRetry[DisputeProfile](operation, sdkgo.FailureAvailability, "dispute refusal checkpoint is unavailable", 0)
 	}
 	if attempt, handled := classifyBraintreeMutationResponse[DisputeProfile](response, operation, notFound, rejected, "", defect, decision.MaximumPriorSends > 0); handled {
@@ -212,7 +212,7 @@ func (operation CreateDisputeTextEvidenceOperation) Invoke(call sdkgo.Call, inpu
 			return braintreeMutationRetry[DisputeTextEvidenceProfile]("createDisputeTextEvidence", sdkgo.FailureAvailability, "evidence resend checkpoint is unavailable", 0)
 		}
 	}
-	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+	if isDefiniteRefusalStatus(response.status, response.body) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
 		return braintreeMutationRetry[DisputeTextEvidenceProfile]("createDisputeTextEvidence", sdkgo.FailureAvailability, "evidence refusal checkpoint is unavailable", 0)
 	}
 	if attempt, handled := classifyBraintreeMutationResponse[DisputeTextEvidenceProfile](response, "createDisputeTextEvidence", CreateDisputeTextEvidenceBranchNotFound, CreateDisputeTextEvidenceBranchProviderRejected, "", CreateDisputeTextEvidenceBranchDefect, decision.MaximumPriorSends > 0); handled {
@@ -265,7 +265,7 @@ func (operation DeleteDisputeEvidenceOperation) Invoke(call sdkgo.Call, input De
 		Data map[string]json.RawMessage `json:"data"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || len(wire.Data["deleteDisputeEvidence"]) == 0 || string(wire.Data["deleteDisputeEvidence"]) == "null" {
-		return braintreeMutationBranch[DisputeEvidenceDeleteResult]("deleteDisputeEvidence", DeleteDisputeEvidenceBranchInvalidResponse, sdkgo.FailureProtocol, "Braintree evidence deletion payload is missing")
+		return braintreeMutationRetry[DisputeEvidenceDeleteResult]("deleteDisputeEvidence", sdkgo.FailureProtocol, "Braintree evidence deletion payload is missing", 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteDisputeEvidenceBranchDeleted, DisputeEvidenceDeleteResult{DisputeID: input.DisputeID, EvidenceID: input.EvidenceID, Deleted: true}, nil, sdkgo.Receipt{})
 }

@@ -181,7 +181,8 @@ func (operation CreateAttributeOperation) Invoke(call sdkgo.Call, input CreateAt
 		return sdkgo.NewMutationRetry[AttributeChangeResult](*brevoFailure(name, sdkgo.FailureTransport, "attribute outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) || decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[AttributeChangeResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "provider write outcome is unknown"}, 0)
 		}
 		if fence.RecordCanResend() != nil {

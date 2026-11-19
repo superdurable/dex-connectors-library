@@ -107,7 +107,7 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 		return projectMutationRetry[Project]("createProject", sdkgo.FailureTransport, "project creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[Project](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createProject", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -153,7 +153,7 @@ func (operation UpdateProjectOperation) Invoke(call sdkgo.Call, input UpdateProj
 	}
 	project, err := decodeProject(response.body, input.ProjectID)
 	if err != nil || project.Name != input.Name {
-		return projectMutationBranch[Project]("updateProject", UpdateProjectBranchInvalidResponse, sdkgo.FailureProtocol, "Basecamp returned invalid updated project JSON")
+		return projectMutationRetry[Project]("updateProject", sdkgo.FailureProtocol, "Basecamp returned invalid updated project JSON", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateProjectBranchUpdated, project, nil, sdkgo.Receipt{})
 }
@@ -246,15 +246,21 @@ func projectMutationResponse[T any](response providerResponse, operation string,
 		return projectMutationRetry[T](operation, sdkgo.FailureAvailability, "Basecamp is temporarily unavailable", response.retryAfter), true
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return projectMutationBranch[T](operation, invalid, sdkgo.FailureResponseTooLarge, "Basecamp response exceeded the configured limit"), true
+		return projectMutationRetry[T](operation, sdkgo.FailureResponseTooLarge, "Basecamp response exceeded the configured limit", 0), true
 	}
 	if response.err != nil {
 		return projectMutationRetry[T](operation, sdkgo.FailureTransport, "Basecamp response was interrupted", 0), true
 	}
 	if response.status == http.StatusNotFound {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
+			return projectMutationRetry[T](operation, sdkgo.FailureTransport, "Basecamp write outcome is unknown", 0), true
+		}
 		return projectMutationBranch[T](operation, notFound, sdkgo.FailureNotFound, "Basecamp project does not exist"), true
 	}
 	if response.status != successStatus {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
+			return projectMutationRetry[T](operation, sdkgo.FailureTransport, "Basecamp write outcome is unknown", 0), true
+		}
 		return projectMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Basecamp rejected HTTP "+strconv.Itoa(response.status)), true
 	}
 	return sdkgo.MutationAttempt[T]{}, false

@@ -235,7 +235,7 @@ func (operation CreateScheduleEntryOperation) Invoke(call sdkgo.Call, input Crea
 		return projectMutationRetry[ScheduleEntry]("createScheduleEntry", sdkgo.FailureTransport, "entry creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[ScheduleEntry](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createScheduleEntry", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -298,7 +298,7 @@ func (operation UpdateScheduleEntryOperation) Invoke(call sdkgo.Call, input Upda
 	}
 	entry, err := decodeScheduleEntry(response.body, input.EntryID)
 	if err != nil || entry.Summary != input.Summary {
-		return projectMutationBranch[ScheduleEntry]("updateScheduleEntry", UpdateScheduleEntryBranchInvalidResponse, sdkgo.FailureProtocol, "Basecamp returned invalid updated entry JSON")
+		return projectMutationRetry[ScheduleEntry]("updateScheduleEntry", sdkgo.FailureProtocol, "Basecamp returned invalid updated entry JSON", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateScheduleEntryBranchUpdated, entry, nil, sdkgo.Receipt{})
 }

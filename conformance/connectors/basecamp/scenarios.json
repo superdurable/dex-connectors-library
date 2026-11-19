@@ -1670,7 +1670,7 @@
       "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2043,7 +2043,7 @@
       "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2095,7 +2095,7 @@
       "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2174,14 +2174,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2409,7 +2405,7 @@
       "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2452,7 +2448,7 @@
       "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2676,7 +2672,7 @@
       "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2719,7 +2715,7 @@
       "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2943,7 +2939,7 @@
       "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2986,7 +2982,7 @@
       "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3242,7 +3238,7 @@
       "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3738,7 +3734,7 @@
       "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3807,7 +3803,7 @@
       "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3911,15 +3907,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "completed": false,
-          "content": "",
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4210,7 +4201,7 @@
       "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4253,7 +4244,7 @@
       "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4477,7 +4468,7 @@
       "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4520,7 +4511,7 @@
       "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4744,7 +4735,7 @@
       "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4787,7 +4778,7 @@
       "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5020,7 +5011,7 @@
       "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5072,7 +5063,7 @@
       "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5912,7 +5903,7 @@
       "callId": "bc20f13d-0a18-5337-b2f7-0775a92cdcb5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -6292,7 +6283,7 @@
       "callId": "b2e3a950-28bc-5b12-97b0-4f868387d73b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6344,7 +6335,7 @@
       "callId": "b2e3a950-28bc-5b12-97b0-4f868387d73b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6423,14 +6414,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6665,7 +6652,7 @@
       "callId": "4077cf9d-261e-5d83-8bf7-4103963cdbcf",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6715,7 +6702,7 @@
       "callId": "4077cf9d-261e-5d83-8bf7-4103963cdbcf",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6968,7 +6955,7 @@
       "callId": "373bde4f-5001-59d4-afec-d02838bfd539",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7011,7 +6998,7 @@
       "callId": "373bde4f-5001-59d4-afec-d02838bfd539",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8108,7 +8095,7 @@
       "callId": "1e03c266-df93-58f4-a165-eb01943c0196",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8161,7 +8148,7 @@
       "callId": "1e03c266-df93-58f4-a165-eb01943c0196",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8434,7 +8421,7 @@
       "callId": "fa35b5ee-291b-5191-affd-7f1396b14e22",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8487,7 +8474,7 @@
       "callId": "fa35b5ee-291b-5191-affd-7f1396b14e22",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8780,7 +8767,7 @@
       "callId": "37577922-0b33-5de3-b541-529cad22f60a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -9816,7 +9803,7 @@
       "callId": "92ff01aa-f53f-5400-833f-02003fa3b4f8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -10249,7 +10236,7 @@
       "callId": "ded4807c-af4d-5b83-945d-6811e4ef1e43",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -10302,7 +10289,7 @@
       "callId": "ded4807c-af4d-5b83-945d-6811e4ef1e43",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -10382,15 +10369,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "status": "",
-          "subject": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10626,7 +10608,7 @@
       "callId": "a7afff7a-3376-5ff5-a03d-4cac292d37c4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -10676,7 +10658,7 @@
       "callId": "a7afff7a-3376-5ff5-a03d-4cac292d37c4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -10752,15 +10734,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "status": "",
-          "subject": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10976,7 +10953,7 @@
       "callId": "dcfc91d7-541f-5793-87c4-4778eaedf26d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -11019,7 +10996,7 @@
       "callId": "dcfc91d7-541f-5793-87c4-4778eaedf26d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -11243,7 +11220,7 @@
       "callId": "f3eb46e9-a8ea-50a3-a3cb-65eb80e381d7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -11286,7 +11263,7 @@
       "callId": "f3eb46e9-a8ea-50a3-a3cb-65eb80e381d7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -11510,7 +11487,7 @@
       "callId": "1b30b553-3bb5-5b56-9395-3ead46172fbf",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -11553,7 +11530,7 @@
       "callId": "1b30b553-3bb5-5b56-9395-3ead46172fbf",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -12430,7 +12407,7 @@
       "callId": "4130d541-0982-5187-9978-0354d88e58ba",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -12904,7 +12881,7 @@
       "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -12972,7 +12949,7 @@
       "callId": "31b3a077-f4b8-5221-9be7-501d58225a02",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -13074,16 +13051,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "endsAt": "",
-          "id": "",
-          "startsAt": "",
-          "summary": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13369,7 +13340,7 @@
       "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -13412,7 +13383,7 @@
       "callId": "7c60c1bd-08d6-587f-abe6-5c052b4cdc5b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",

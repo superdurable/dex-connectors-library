@@ -207,7 +207,7 @@ func (operation UpdateUserProfileOperation) Invoke(call sdkgo.Call, input Update
 		Errors  []json.RawMessage `json:"errors"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.Message != "success" || len(wire.Errors) != 0 {
-		return brazeMutationBranch(UpdateUserProfileBranchInvalidResponse, UserWriteResult{}, operationName, sdkgo.FailureProtocol, "Braze returned an invalid update acknowledgment")
+		return sdkgo.NewMutationRetry[UserWriteResult](brazeFailure(operationName, sdkgo.FailureProtocol, "Braze returned an invalid update acknowledgment"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateUserProfileBranchAccepted, UserWriteResult{ExternalID: input.ExternalID}, nil, sdkgo.Receipt{})
 }
@@ -233,7 +233,7 @@ func (operation DeleteUserProfileOperation) Invoke(call sdkgo.Call, input Delete
 		Deleted *int   `json:"deleted"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.Message != "success" || wire.Deleted == nil || *wire.Deleted < 0 || *wire.Deleted > 1 {
-		return brazeMutationBranch(DeleteUserProfileBranchInvalidResponse, UserDeleteResult{}, operationName, sdkgo.FailureProtocol, "Braze returned an invalid deletion acknowledgment")
+		return sdkgo.NewMutationRetry[UserDeleteResult](brazeFailure(operationName, sdkgo.FailureProtocol, "Braze returned an invalid deletion acknowledgment"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteUserProfileBranchDeleted, UserDeleteResult{ExternalID: input.ExternalID, Deleted: *wire.Deleted}, nil, sdkgo.Receipt{})
 }
@@ -360,9 +360,13 @@ func classifyBrazeMutationResponse[T any](response providerResponse, operationNa
 	case response.status == http.StatusRequestTimeout || response.status >= 500:
 		attempt = sdkgo.NewMutationRetry[T](brazeFailure(operationName, sdkgo.FailureAvailability, "Braze is temporarily unavailable"), response.retryAfter)
 	case response.status != expectedStatus:
-		attempt = brazeMutationBranch(rejected, zero, operationName, sdkgo.FailureProviderRejection, "Braze rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteRefusalStatus(response.status, response.body) {
+			attempt = brazeMutationBranch(rejected, zero, operationName, sdkgo.FailureProviderRejection, "Braze rejected HTTP "+strconv.Itoa(response.status))
+		} else {
+			attempt = sdkgo.NewMutationRetry[T](brazeFailure(operationName, sdkgo.FailureTransport, "Braze write outcome is unknown"), 0)
+		}
 	case errors.Is(response.err, providerhttp.ErrBodyTooLarge):
-		attempt = brazeMutationBranch(invalid, zero, operationName, sdkgo.FailureResponseTooLarge, "Braze response exceeded the configured limit")
+		attempt = sdkgo.NewMutationRetry[T](brazeFailure(operationName, sdkgo.FailureResponseTooLarge, "Braze response exceeded the configured limit"), 0)
 	case response.err != nil:
 		attempt = sdkgo.NewMutationRetry[T](brazeFailure(operationName, sdkgo.FailureTransport, "Braze response was interrupted"), 0)
 	default:

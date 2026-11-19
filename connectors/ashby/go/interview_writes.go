@@ -122,7 +122,7 @@ func (operation CreateInterviewScheduleOperation) Invoke(call sdkgo.Call, input 
 		return sdkgo.NewMutationRetry[InterviewScheduleSummary](failure(sdkgo.FailureTransport, "interview scheduling outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[InterviewScheduleSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "createInterviewSchedule", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -140,6 +140,9 @@ func (operation CreateInterviewScheduleOperation) Invoke(call sdkgo.Call, input 
 	if code != "" {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[InterviewScheduleSummary](failure(sdkgo.FailureProviderRejection, "an earlier schedule may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[InterviewScheduleSummary](failure(sdkgo.FailureTransport, "refusal checkpoint unavailable"), 0)
 		}
 		return scheduleBranch("createInterviewSchedule", CreateInterviewScheduleBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected scheduling")
 	}

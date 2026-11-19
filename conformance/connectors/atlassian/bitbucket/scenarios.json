@@ -512,7 +512,7 @@
       "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -559,7 +559,7 @@
       "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -632,16 +632,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "name": "",
-          "target": {
-            "hash": ""
-          }
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -685,16 +679,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "name": "",
-          "target": {
-            "hash": ""
-          }
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -783,16 +771,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "name": "",
-          "target": {
-            "hash": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -837,7 +819,7 @@
       "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -874,7 +856,7 @@
       "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -928,15 +910,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "name": "",
-          "repository": "",
-          "workspace": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -970,15 +947,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "name": "",
-          "repository": "",
-          "workspace": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1078,35 +1050,13 @@
             ]
           },
           "status": 409
-        },
-        {
-          "body": "{\"name\":\"feature/tests\",\"target\":{\"hash\":\"0123456789abcdef0123456789abcdef01234567\"}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-token"
-            ]
-          },
-          "status": 200
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
-        "output": {
-          "name": "feature/tests",
-          "target": {
-            "hash": "0123456789abcdef0123456789abcdef01234567"
-          }
-        },
-        "requestCount": 2,
-        "retry": false,
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1147,35 +1097,13 @@
             ]
           },
           "status": 409
-        },
-        {
-          "body": "{\"name\":\"feature/tests\",\"target\":{\"hash\":\"1111111111111111111111111111111111111111\"}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-token"
-            ]
-          },
-          "status": 200
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "name": "",
-          "target": {
-            "hash": ""
-          }
-        },
-        "requestCount": 2,
-        "retry": false,
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2028,7 +1956,7 @@
       "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2206,22 +2134,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "505db72d-58a9-5eb5-a5d0-afd666136526",
-          "state": "canResend"
-        },
-        "output": {
-          "content": {
-            "raw": ""
-          },
-          "deleted": false,
-          "id": 0
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2406,7 +2328,7 @@
       "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2460,7 +2382,7 @@
       "callId": "2d630d2f-da21-5e15-82ed-aab830761e39",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2539,17 +2461,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "content": {
-            "raw": ""
-          },
-          "deleted": false,
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2709,7 +2624,7 @@
       "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2753,7 +2668,7 @@
       "callId": "04a8b706-a05c-56b3-8d87-a41c0665d9fd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2936,7 +2851,7 @@
       "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2981,7 +2896,7 @@
       "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3043,17 +2958,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "content": {
-            "raw": ""
-          },
-          "deleted": false,
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3211,7 +3119,7 @@
       "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3256,7 +3164,7 @@
       "callId": "b27f3605-6337-54db-8e97-b1ee695082d6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3318,17 +3226,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "content": {
-            "raw": ""
-          },
-          "deleted": false,
-          "id": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3880,7 +3781,7 @@
       "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3922,7 +3823,7 @@
       "callId": "13a2c4c8-430c-5555-b55d-ca47ec7c1dc2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3981,15 +3882,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0,
-          "state": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4198,7 +4094,7 @@
       "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4240,7 +4136,7 @@
       "callId": "6cf013e1-48a1-5f3d-8bf9-c1a5ab59cd9a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4299,15 +4195,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0,
-          "state": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4516,7 +4407,7 @@
       "callId": "7995d08a-01ea-5f1e-a920-54526681db55",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5026,7 +4917,7 @@
       "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5078,7 +4969,7 @@
       "callId": "20fc3548-f017-507f-934c-0caeefc57cf9",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5155,16 +5046,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "full_name": "",
-          "is_private": false,
-          "name": "",
-          "uuid": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5367,35 +5252,13 @@
             ]
           },
           "status": 409
-        },
-        {
-          "body": "{\"uuid\":\"{a1b2c3d4-1234-4567-89ab-1234567890ab}\",\"name\":\"Meridian API\",\"full_name\":\"meridian/api\",\"is_private\":true}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/2.0/repositories/meridian/api",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-token"
-            ]
-          },
-          "status": 200
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
-        "output": {
-          "full_name": "meridian/api",
-          "is_private": true,
-          "name": "Meridian API",
-          "uuid": "{a1b2c3d4-1234-4567-89ab-1234567890ab}"
-        },
-        "requestCount": 2,
-        "retry": false,
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5435,35 +5298,13 @@
             ]
           },
           "status": 409
-        },
-        {
-          "body": "{\"uuid\":\"{a1b2c3d4-1234-4567-89ab-1234567890ab}\",\"name\":\"Different\",\"full_name\":\"meridian/api\",\"is_private\":true}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/2.0/repositories/meridian/api",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-token"
-            ]
-          },
-          "status": 200
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "full_name": "",
-          "is_private": false,
-          "name": "",
-          "uuid": ""
-        },
-        "requestCount": 2,
-        "retry": false,
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5532,7 +5373,7 @@
       "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5583,7 +5424,7 @@
       "callId": "af7410b8-0bb5-57de-b826-e7af0427c2cc",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5658,16 +5499,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "full_name": "",
-          "is_private": false,
-          "name": "",
-          "uuid": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5845,7 +5680,7 @@
       "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5885,7 +5720,7 @@
       "callId": "43e9f805-9cdf-5ae1-b089-9e5682419fd4",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5942,14 +5777,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "AUTHORIZATION",
-        "output": {
-          "repository": "",
-          "workspace": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5982,14 +5813,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "repository": "",
-          "workspace": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7440,7 +7267,7 @@
       "callId": "62ebb82e-6992-58ef-98c2-f7cc5a054dcd",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"not found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7489,7 +7316,7 @@
       "callId": "62ebb82e-6992-58ef-98c2-f7cc5a054dcd",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"type\":\"error\",\"error\":{\"message\":\"invalid request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7561,15 +7388,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": 0,
-          "state": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

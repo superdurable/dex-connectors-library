@@ -129,7 +129,7 @@ func (operation CreatePullRequestOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureAvailability, "pull request creation outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
 			return sdkgo.NewMutationRetry[PullRequest](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "bitbucket", Operation: name, Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -230,15 +230,24 @@ func (client *Client) executePullRequestAction(call sdkgo.Call, input PullReques
 	case response.StatusCode == http.StatusConflict:
 		return client.confirmPullRequestState(call, name, path, input.PullRequestID, expectedState, successBranch, rejectedBranch, invalidBranch)
 	case response.StatusCode == http.StatusNotFound:
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "pull request action outcome is unknown"), 0)
+		}
 		return pullRequestBranch(name, notFoundBranch, sdkgo.FailureNotFound, "pull request was not found")
 	case response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden:
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "pull request action outcome is unknown"), 0)
+		}
 		return pullRequestBranch(name, rejectedBranch, sdkgo.FailureAuthorization, "Bitbucket denied pull request action")
 	case response.StatusCode != http.StatusOK:
+		if !isDefiniteRefusalResponse(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "pull request action outcome is unknown"), 0)
+		}
 		return pullRequestBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket rejected pull request action with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	output, err := decodePullRequestResponse(response, client.maxResponseBytes)
 	if err != nil || output.ID != input.PullRequestID || output.State != expectedState {
-		return pullRequestBranch(name, invalidBranch, sdkgo.FailureProtocol, "Bitbucket returned a different pull request state")
+		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned a different pull request state"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, output, nil, sdkgo.Receipt{})
 }
@@ -265,14 +274,14 @@ func (client *Client) confirmPullRequestState(call sdkgo.Call, name, path string
 		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureAvailability, "pull request confirmation is unavailable"), 0)
 	}
 	if response.StatusCode != http.StatusOK {
-		return pullRequestBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket did not confirm pull request state")
+		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "Bitbucket did not confirm pull request state"), 0)
 	}
 	output, err := decodePullRequestResponse(response, client.maxResponseBytes)
 	if err != nil || output.ID != pullRequestID {
-		return pullRequestBranch(name, invalidBranch, sdkgo.FailureProtocol, "Bitbucket returned an invalid pull request confirmation")
+		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned an invalid pull request confirmation"), 0)
 	}
 	if output.State != expectedState {
-		return pullRequestBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket rejected the pull request action")
+		return sdkgo.NewMutationRetry[PullRequest](*failureFor(name, sdkgo.FailureTransport, "Bitbucket pull request action remains unconfirmed"), 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, output, nil, sdkgo.Receipt{})
 }

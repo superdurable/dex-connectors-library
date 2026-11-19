@@ -142,7 +142,8 @@ func invokeCloseDraftSend[T interface{ EmailActivity | SMSActivity }](client *Cl
 		return retryOrUncertainCloseCreate[T](operation, sdkgo.FailureAvailability, "send outcome is unknown", canResendUnknown)
 	}
 	if response.StatusCode != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) {
 			return closeMutationRetry[T](operation, sdkgo.FailureTransport, "send outcome is unknown", 0)
 		}
 		if decision.MaximumPriorSends > 0 {

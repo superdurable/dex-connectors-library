@@ -180,7 +180,8 @@ func invokeBrevoEmailSend(call sdkgo.Call, client *Client, name string, payload 
 		return sdkgo.NewMutationRetry[EmailSendResult](*brevoFailure(name, sdkgo.FailureTransport, "email outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) || decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[EmailSendResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: "email_operations", Message: "provider write outcome is unknown"}, 0)
 		}
 		if fence.RecordCanResend() != nil {
@@ -191,7 +192,10 @@ func invokeBrevoEmailSend(call sdkgo.Call, client *Client, name string, payload 
 	body, readError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	var result EmailSendResult
 	if readError != nil || json.Unmarshal(body, &result) != nil || result.MessageID == "" {
-		return sdkgo.NewMutationUncertain(EmailSendResult{}, *brevoFailure(name, sdkgo.FailureProtocol, "Brevo accepted an email but its message ID could not be confirmed"), sdkgo.Receipt{})
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return sdkgo.NewMutationUncertain(EmailSendResult{}, *brevoFailure(name, sdkgo.FailureProtocol, "Brevo accepted an email but its message ID could not be confirmed"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[EmailSendResult](*brevoFailure(name, sdkgo.FailureProtocol, "Brevo accepted an email but its message ID could not be confirmed"), 0)
 	}
 	return sdkgo.NewMutationBranch(sent, result, nil, sdkgo.Receipt{})
 }

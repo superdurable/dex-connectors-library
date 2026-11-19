@@ -361,7 +361,7 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 		}
 		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureTransport, "post outcome is unknown"), 0)
 	}
-	if isDefiniteRefusalStatus(response.status) {
+	if isDefiniteRefusalStatus(response.status, response.body) {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureTransport, "earlier post outcome remains unconfirmed"), 0)
 		}
@@ -437,7 +437,7 @@ func (operation DeletePostOperation) Invoke(call sdkgo.Call, input DeletePostInp
 		Errors []json.RawMessage `json:"errors"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.Data == nil || wire.Data.DeletePost == nil {
-		return bufferMutationBranch(sdkgo.BranchID("invalidResponse"), PostDeleteResult{}, name, sdkgo.FailureProtocol, "Buffer returned invalid delete JSON")
+		return sdkgo.NewMutationRetry[PostDeleteResult](bufferFailure(name, sdkgo.FailureProtocol, "Buffer returned invalid delete JSON"), 0)
 	}
 	if len(wire.Errors) != 0 || wire.Data.DeletePost.TypeName != "DeletePostSuccess" {
 		return bufferMutationBranch(DeletePostBranchProviderRejected, PostDeleteResult{}, name, sdkgo.FailureProviderRejection, "Buffer rejected post deletion")
@@ -507,7 +507,7 @@ func classifyPostMutation(response providerResponse, name, field, channelID stri
 		Errors []json.RawMessage          `json:"errors"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.Data == nil {
-		return bufferMutationBranch(invalid, PostProfile{}, name, sdkgo.FailureProtocol, "Buffer returned invalid post JSON")
+		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureProtocol, "Buffer returned invalid post JSON"), 0)
 	}
 	if len(wire.Errors) != 0 {
 		return bufferMutationBranch(rejected, PostProfile{}, name, sdkgo.FailureProviderRejection, "Buffer rejected the GraphQL mutation")
@@ -517,13 +517,13 @@ func classifyPostMutation(response providerResponse, name, field, channelID stri
 		Post     PostProfile `json:"post"`
 	}
 	if json.Unmarshal(wire.Data[field], &payload) != nil || payload.TypeName == "" {
-		return bufferMutationBranch(invalid, PostProfile{}, name, sdkgo.FailureProtocol, "Buffer returned invalid post payload")
+		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureProtocol, "Buffer returned invalid post payload"), 0)
 	}
 	if payload.TypeName != "PostActionSuccess" {
 		return bufferMutationBranch(rejected, PostProfile{}, name, sdkgo.FailureProviderRejection, "Buffer rejected the post")
 	}
 	if payload.Post.ID == "" || payload.Post.ChannelID == "" || channelID != "" && payload.Post.ChannelID != channelID {
-		return bufferMutationBranch(invalid, PostProfile{}, name, sdkgo.FailureProtocol, "Buffer returned an invalid post identity")
+		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureProtocol, "Buffer returned an invalid post identity"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, payload.Post, nil, sdkgo.Receipt{})
 }
@@ -541,7 +541,7 @@ func classifyBufferMutationResponse[T any](response providerResponse, name strin
 	case response.status == http.StatusRequestTimeout || response.status >= 500:
 		attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureAvailability, "Buffer is temporarily unavailable"), response.retryAfter)
 	case response.status != http.StatusOK:
-		if isDefiniteRefusalStatus(response.status) {
+		if isDefiniteRefusalStatus(response.status, response.body) {
 			attempt = bufferMutationBranch(rejected, zero, name, sdkgo.FailureProviderRejection, "Buffer rejected HTTP "+strconv.Itoa(response.status))
 		} else {
 			attempt = sdkgo.NewMutationRetry[T](bufferFailure(name, sdkgo.FailureTransport, "Buffer mutation outcome is unknown"), 0)

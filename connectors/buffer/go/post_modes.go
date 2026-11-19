@@ -143,7 +143,7 @@ func (client *Client) createPostWithMode(call sdkgo.Call, name, channelID, text,
 		}
 		return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureTransport, "post outcome is unknown"), 0)
 	}
-	if isDefiniteRefusalStatus(response.status) {
+	if isDefiniteRefusalStatus(response.status, response.body) {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[PostProfile](bufferFailure(name, sdkgo.FailureTransport, "earlier post outcome remains unconfirmed"), 0)
 		}

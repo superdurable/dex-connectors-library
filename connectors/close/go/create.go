@@ -165,7 +165,8 @@ func invokeCloseCreate[T interface {
 		return retryOrUncertainCloseCreate[T](operation, sdkgo.FailureAvailability, "creation outcome is unknown", canResendUnknown)
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) {
 			return closeMutationRetry[T](operation, sdkgo.FailureTransport, "creation outcome is unknown", 0)
 		}
 		if decision.MaximumPriorSends > 0 {

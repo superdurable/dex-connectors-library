@@ -163,20 +163,26 @@ func (operation UpdateCandidateOperation) Invoke(call sdkgo.Call, input UpdateCa
 		return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureAvailability, "Ashby candidate updating is unavailable"), response.retryAfter)
 	}
 	if response.status == http.StatusNotFound {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
+			return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureTransport, "candidate update outcome is unknown"), 0)
+		}
 		return updateCandidateBranch(UpdateCandidateBranchNotFound, sdkgo.FailureNotFound, "Ashby did not expose the candidate")
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
+			return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureTransport, "candidate update outcome is unknown"), 0)
+		}
 		return updateCandidateBranch(UpdateCandidateBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected candidate updating with HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return updateCandidateBranch(UpdateCandidateBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Ashby candidate update response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureResponseTooLarge, "Ashby candidate update response exceeded the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureTransport, "Ashby candidate update response was interrupted"), 0)
 	}
 	profile, rejectionCode, err := decodeCandidate(response.body, input.CandidateID)
 	if err != nil {
-		return updateCandidateBranch(UpdateCandidateBranchInvalidResponse, sdkgo.FailureProtocol, "Ashby returned invalid updated candidate JSON")
+		return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureProtocol, "Ashby returned invalid updated candidate JSON"), 0)
 	}
 	if rejectionCode == "candidate_not_found" {
 		return updateCandidateBranch(UpdateCandidateBranchNotFound, sdkgo.FailureNotFound, "Ashby did not expose the candidate")
@@ -185,7 +191,7 @@ func (operation UpdateCandidateOperation) Invoke(call sdkgo.Call, input UpdateCa
 		return updateCandidateBranch(UpdateCandidateBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected candidate updating")
 	}
 	if profile.Name != input.Name {
-		return updateCandidateBranch(UpdateCandidateBranchInvalidResponse, sdkgo.FailureProtocol, "Ashby returned a different candidate name")
+		return sdkgo.NewMutationRetry[CandidateProfile](updateCandidateFailure(sdkgo.FailureProtocol, "Ashby returned a different candidate name"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateCandidateBranchUpdated, profile, nil, sdkgo.Receipt{})
 }

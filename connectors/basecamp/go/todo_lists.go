@@ -189,7 +189,7 @@ func (operation CreateTodoListOperation) Invoke(call sdkgo.Call, input CreateTod
 		return projectMutationRetry[TodoList]("createTodoList", sdkgo.FailureTransport, "list creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[TodoList](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createTodoList", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -237,7 +237,7 @@ func (operation UpdateTodoListOperation) Invoke(call sdkgo.Call, input UpdateTod
 	}
 	list, err := decodeTodoList(response.body, input.TodoListID)
 	if err != nil || list.Name != input.Name {
-		return projectMutationBranch[TodoList]("updateTodoList", UpdateTodoListBranchInvalidResponse, sdkgo.FailureProtocol, "Basecamp returned invalid updated list JSON")
+		return projectMutationRetry[TodoList]("updateTodoList", sdkgo.FailureProtocol, "Basecamp returned invalid updated list JSON", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateTodoListBranchUpdated, list, nil, sdkgo.Receipt{})
 }

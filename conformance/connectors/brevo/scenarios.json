@@ -2131,7 +2131,7 @@
       "callId": "eda7f811-02aa-5d5f-8d7e-904f48227b12",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2393,7 +2393,7 @@
       "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\",\"message\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2438,7 +2438,7 @@
       "callId": "9f08be91-8966-5e40-befd-3ea41df8abd9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2670,7 +2670,7 @@
       "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\",\"message\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2711,7 +2711,7 @@
       "callId": "491567c0-7f59-5d45-9191-34eeb0109176",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2916,7 +2916,7 @@
       "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2992,19 +2992,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "4938f15b-ddfc-5097-8205-1691fd66831d",
-          "state": "canResend"
-        },
-        "output": {
-          "category": "",
-          "name": ""
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3242,7 +3239,7 @@
       "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\",\"message\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3295,7 +3292,7 @@
       "callId": "72213af1-d927-5d12-8520-bebb1ea0832f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3560,7 +3557,7 @@
       "callId": "39df3840-8666-508e-b964-0c667d93824b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"not_found\",\"message\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3603,7 +3600,7 @@
       "callId": "39df3840-8666-508e-b964-0c667d93824b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4166,7 +4163,7 @@
       "callId": "2c2d5725-c297-597d-bb79-53e7752e3349",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4530,7 +4527,7 @@
       "callId": "8c666627-f37f-5dba-aae1-43fa49337804",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5040,7 +5037,7 @@
       "callId": "fd3ae004-4741-5c8e-ba9f-265250cd155c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"invalid_parameter\",\"message\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

@@ -137,7 +137,8 @@ func (operation CreateDNSRecordOperation) invokeCreate(call sdkgo.Call, zoneID s
 		return cloudflareCreateRetryOrUncertain(sdkgo.FailureAvailability, "creation outcome is unknown", canResendUnknown)
 	}
 	if response.StatusCode != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) {
 			return sdkgo.NewMutationRetry[DNSRecord](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "cloudflare", Operation: operationID, Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -151,17 +152,20 @@ func (operation CreateDNSRecordOperation) invokeCreate(call sdkgo.Call, zoneID s
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {
-		return cloudflareCreateUncertain(sdkgo.FailureTransport, "creation succeeded but response was incomplete")
+		return cloudflareCreateRetryOrUncertain(sdkgo.FailureTransport, "creation succeeded but response was incomplete", canResendUnknown)
 	}
 	if isCloudflareRejection(responseBody) {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[DNSRecord](*failure(sdkgo.FailureTransport, "createDNSRecord", "earlier possible write remains unconfirmed"), 0)
 		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[DNSRecord](*failure(sdkgo.FailureTransport, "createDNSRecord", "refusal checkpoint unavailable"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateDNSRecordBranchProviderRejected, DNSRecord{}, failure(sdkgo.FailureProviderRejection, operationID, "Cloudflare rejected the request"), sdkgo.Receipt{})
 	}
 	record, err := decodeDNSRecord(responseBody)
 	if err != nil {
-		return cloudflareCreateUncertain(sdkgo.FailureProtocol, "creation succeeded but response identity is invalid")
+		return cloudflareCreateRetryOrUncertain(sdkgo.FailureProtocol, "creation succeeded but response identity is invalid", canResendUnknown)
 	}
 	// The response already confirms creation; a failed read-back checkpoint cannot undo it.
 	_ = fence.RecordProviderID(record.ID)

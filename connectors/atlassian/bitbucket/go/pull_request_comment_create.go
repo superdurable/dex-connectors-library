@@ -112,7 +112,7 @@ func (operation CreatePullRequestCommentOperation) Invoke(call sdkgo.Call, input
 		return sdkgo.NewMutationRetry[PullRequestComment](*failureFor(name, sdkgo.FailureAvailability, "comment creation outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
 			return sdkgo.NewMutationRetry[PullRequestComment](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "bitbucket", Operation: name, Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {

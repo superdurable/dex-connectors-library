@@ -157,17 +157,21 @@ func (operation CreateBranchOperation) Invoke(call sdkgo.Call, input CreateBranc
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureAvailability, "branch creation is unavailable"), 0)
 	case response.StatusCode == http.StatusConflict:
-		return operation.client.confirmBranchConflict(call, name, branchPath(ref), CreateBranchBranchCreated, CreateBranchBranchProviderRejected, CreateBranchBranchInvalidResponse, func(branch Branch) bool {
-			return branch.Name == input.Name && strings.EqualFold(branch.Target.Hash, input.TargetHash)
-		})
+		return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureTransport, "branch creation outcome is unknown"), 0)
 	case response.StatusCode == http.StatusNotFound:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureTransport, "branch creation outcome is unknown"), 0)
+		}
 		return branchWriteBranch(name, CreateBranchBranchNotFound, sdkgo.FailureNotFound, "repository or target commit was not found")
 	case response.StatusCode != http.StatusCreated:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureTransport, "branch creation outcome is unknown"), 0)
+		}
 		return branchWriteBranch(name, CreateBranchBranchProviderRejected, sdkgo.FailureProviderRejection, "Bitbucket rejected branch creation with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	branch, err := decodeBranchResponse(response, operation.client.maxResponseBytes)
 	if err != nil || branch.Name != input.Name || !strings.EqualFold(branch.Target.Hash, input.TargetHash) {
-		return branchWriteBranch(name, CreateBranchBranchInvalidResponse, sdkgo.FailureProtocol, "Bitbucket returned a different branch or target")
+		return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureProtocol, "Bitbucket returned a different branch or target"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateBranchBranchCreated, branch, nil, sdkgo.Receipt{})
 }
@@ -222,42 +226,17 @@ func (operation DeleteBranchOperation) Invoke(call sdkgo.Call, input BranchRefIn
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[DeletedBranch](*failureFor(name, sdkgo.FailureAvailability, "branch deletion is unavailable"), 0)
 	case response.StatusCode == http.StatusNotFound:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[DeletedBranch](*failureFor(name, sdkgo.FailureTransport, "branch deletion outcome is unknown"), 0)
+		}
 		return deletedBranchBranch(DeleteBranchBranchNotFound, sdkgo.FailureNotFound, "branch was not found")
 	case response.StatusCode != http.StatusNoContent:
+		if !isDefiniteRefusalResponse(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationRetry[DeletedBranch](*failureFor(name, sdkgo.FailureTransport, "branch deletion outcome is unknown"), 0)
+		}
 		return deletedBranchBranch(DeleteBranchBranchProviderRejected, sdkgo.FailureProviderRejection, "Bitbucket rejected branch deletion with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	return sdkgo.NewMutationBranch(DeleteBranchBranchDeleted, DeletedBranch{Workspace: input.Workspace, Repository: input.Repository, Name: input.Name}, nil, sdkgo.Receipt{})
-}
-
-func (client *Client) confirmBranchConflict(call sdkgo.Call, name, path string, successBranch, rejectedBranch, invalidBranch sdkgo.BranchID, matches func(Branch) bool) sdkgo.MutationAttempt[Branch] {
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
-	if err != nil {
-		return branchWriteBranch(name, invalidBranch, sdkgo.FailureLocalDefect, "branch confirmation could not be built")
-	}
-	request.Header.Set("Accept", "application/json")
-	authorization := client.authorize(call, name, request, invalidBranch, rejectedBranch, invalidBranch)
-	if authorization.failure != nil {
-		return sdkgo.NewMutationBranch(authorization.branch, Branch{}, authorization.failure, sdkgo.Receipt{})
-	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureTransport, "branch confirmation request failed"), 0)
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500 {
-		return sdkgo.NewMutationRetry[Branch](*failureFor(name, sdkgo.FailureAvailability, "branch confirmation is unavailable"), 0)
-	}
-	if response.StatusCode != http.StatusOK {
-		return branchWriteBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "Bitbucket did not confirm the branch")
-	}
-	branch, err := decodeBranchResponse(response, client.maxResponseBytes)
-	if err != nil {
-		return branchWriteBranch(name, invalidBranch, sdkgo.FailureProtocol, "Bitbucket returned an invalid branch confirmation")
-	}
-	if !matches(branch) {
-		return branchWriteBranch(name, rejectedBranch, sdkgo.FailureProviderRejection, "existing branch points to a different commit")
-	}
-	return sdkgo.NewMutationBranch(successBranch, branch, nil, sdkgo.Receipt{})
 }
 
 func decodeBranch(body []byte) (Branch, error) {

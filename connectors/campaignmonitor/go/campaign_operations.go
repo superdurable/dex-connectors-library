@@ -486,7 +486,7 @@ func (client *Client) invokeLimitedCampaignMutation(call sdkgo.Call, name, path 
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "campaign outcome is unknown"), 0)
 	}
 	if status != successStatus {
-		if !isDefiniteRefusalStatus(status) {
+		if !isDefiniteRefusalStatus(status, body) || decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[CampaignIdentity](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "campaignmonitor", Operation: "campaign_operations", Message: "provider write outcome is unknown"}, 0)
 		}
 		if fence.RecordCanResend() != nil {
@@ -497,7 +497,10 @@ func (client *Client) invokeLimitedCampaignMutation(call sdkgo.Call, name, path 
 	if id := decodeID(body); id != "" {
 		identity.ID = id
 	} else {
-		return sdkgo.NewMutationUncertain(CampaignIdentity{}, queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor accepted an action but its outcome is unconfirmed"), sdkgo.Receipt{})
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return sdkgo.NewMutationUncertain(CampaignIdentity{}, queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor accepted an action but its outcome is unconfirmed"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor accepted an action but its outcome is unconfirmed"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, identity, nil, sdkgo.Receipt{})
 }
@@ -539,13 +542,16 @@ func (operation UnscheduleCampaignOperation) Invoke(call sdkgo.Call, input Unsch
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor is temporarily unavailable"), retryAfter)
 	case status != http.StatusOK && status != http.StatusNoContent:
+		if !isDefiniteRefusalStatus(status, body) {
+			return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "campaign write outcome is unknown"), 0)
+		}
 		return campaignMutationBranch(name, UnscheduleCampaignBranchProviderRejected, CampaignIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
-		return campaignMutationBranch(name, UnscheduleCampaignBranchInvalidResponse, CampaignIdentity{}, sdkgo.FailureResponseTooLarge, "Campaign Monitor response exceeded the limit")
+		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureResponseTooLarge, "Campaign Monitor response exceeded the limit"), 0)
 	case err != nil:
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor response was interrupted"), 0)
 	case len(body) != 0:
-		return campaignMutationBranch(name, UnscheduleCampaignBranchInvalidResponse, CampaignIdentity{}, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected response body")
+		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected response body"), 0)
 	}
 	return sdkgo.NewMutationBranch(UnscheduleCampaignBranchUnscheduled, CampaignIdentity{ID: input.CampaignID}, nil, sdkgo.Receipt{})
 }
@@ -567,13 +573,16 @@ func (operation DeleteCampaignOperation) Invoke(call sdkgo.Call, input DeleteCam
 	case status == http.StatusRequestTimeout || status >= 500:
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureAvailability, "Campaign Monitor is temporarily unavailable"), retryAfter)
 	case status != http.StatusOK && status != http.StatusNoContent:
+		if !isDefiniteRefusalStatus(status, body) {
+			return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "campaign write outcome is unknown"), 0)
+		}
 		return campaignMutationBranch(name, DeleteCampaignBranchProviderRejected, CampaignIdentity{}, sdkgo.FailureProviderRejection, "Campaign Monitor rejected HTTP "+strconv.Itoa(status))
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
-		return campaignMutationBranch(name, DeleteCampaignBranchInvalidResponse, CampaignIdentity{}, sdkgo.FailureResponseTooLarge, "Campaign Monitor response exceeded the limit")
+		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureResponseTooLarge, "Campaign Monitor response exceeded the limit"), 0)
 	case err != nil:
 		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureTransport, "Campaign Monitor response was interrupted"), 0)
 	case len(body) != 0:
-		return campaignMutationBranch(name, DeleteCampaignBranchInvalidResponse, CampaignIdentity{}, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected response body")
+		return sdkgo.NewMutationRetry[CampaignIdentity](queryFailure(name, sdkgo.FailureProtocol, "Campaign Monitor returned an unexpected response body"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteCampaignBranchDeleted, CampaignIdentity{ID: input.CampaignID}, nil, sdkgo.Receipt{})
 }

@@ -97,7 +97,8 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureTransport, "contact outcome is unknown"), 0)
 	}
 	if response.StatusCode != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) || decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[ContactWriteResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "brevo", Operation: name, Message: "provider write outcome is unknown"}, 0)
 		}
 		if fence.RecordCanResend() != nil {
@@ -110,7 +111,10 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		ID int64 `json:"id"`
 	}
 	if readError != nil || json.Unmarshal(body, &created) != nil || created.ID <= 0 {
-		return sdkgo.NewMutationUncertain(ContactWriteResult{}, *brevoFailure(name, sdkgo.FailureProtocol, "Brevo created a contact but its ID could not be confirmed"), sdkgo.Receipt{})
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return sdkgo.NewMutationUncertain(ContactWriteResult{}, *brevoFailure(name, sdkgo.FailureProtocol, "Brevo created a contact but its ID could not be confirmed"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureProtocol, "Brevo created a contact but its ID could not be confirmed"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateContactBranchCreated, ContactWriteResult{ID: created.ID, Email: input.Email, Created: true}, nil, sdkgo.Receipt{})
 }

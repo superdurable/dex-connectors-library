@@ -202,17 +202,20 @@ func executeAshbySafeWrite[OUT any](client *Client, call sdkgo.Call, operationNa
 		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureAvailability, "Ashby write endpoint is unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
+			return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "Ashby write outcome is unknown"), response.retryAfter)
+		}
 		return branch(rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected the write with HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return branch(invalidBranch, sdkgo.FailureResponseTooLarge, "Ashby write response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureResponseTooLarge, "Ashby write response exceeded the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "Ashby write response was interrupted"), 0)
 	}
 	output, code, err := decode(response.body)
 	if err != nil || code == "" && !matches(output) {
-		return branch(invalidBranch, sdkgo.FailureProtocol, "Ashby returned an invalid write result")
+		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureProtocol, "Ashby returned an invalid write result"), 0)
 	}
 	if code != "" {
 		return branch(rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected the write")

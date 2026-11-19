@@ -169,7 +169,7 @@ func (operation CreateIdeaOperation) Invoke(call sdkgo.Call, input CreateIdeaInp
 		}
 		return sdkgo.NewMutationRetry[IdeaProfile](bufferFailure(name, sdkgo.FailureTransport, "idea outcome is unknown"), 0)
 	}
-	if isDefiniteRefusalStatus(response.status) {
+	if isDefiniteRefusalStatus(response.status, response.body) {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[IdeaProfile](bufferFailure(name, sdkgo.FailureTransport, "earlier idea outcome remains unconfirmed"), 0)
 		}

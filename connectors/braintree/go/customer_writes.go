@@ -98,7 +98,7 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 			return braintreeMutationRetry[CustomerProfile]("createCustomer", sdkgo.FailureAvailability, "customer resend checkpoint is unavailable", 0)
 		}
 	}
-	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+	if isDefiniteRefusalStatus(response.status, response.body) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
 		return braintreeMutationRetry[CustomerProfile]("createCustomer", sdkgo.FailureAvailability, "customer refusal checkpoint is unavailable", 0)
 	}
 	return customerProfileMutationAttempt(response, "createCustomer", "createCustomer", "", CreateCustomerBranchCreated, "", CreateCustomerBranchProviderRejected, "", CreateCustomerBranchDefect, decision.MaximumPriorSends > 0)
@@ -160,7 +160,7 @@ func (operation DeleteCustomerOperation) Invoke(call sdkgo.Call, input GetCustom
 		Data map[string]json.RawMessage `json:"data"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || len(wire.Data["deleteCustomer"]) == 0 || string(wire.Data["deleteCustomer"]) == "null" {
-		return braintreeMutationBranch[CustomerDeleteResult]("deleteCustomer", DeleteCustomerBranchInvalidResponse, sdkgo.FailureProtocol, "Braintree deletion payload is missing")
+		return braintreeMutationRetry[CustomerDeleteResult]("deleteCustomer", sdkgo.FailureProtocol, "Braintree deletion payload is missing", 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteCustomerBranchDeleted, CustomerDeleteResult{CustomerID: input.CustomerID, Deleted: true}, nil, sdkgo.Receipt{})
 }
@@ -175,10 +175,7 @@ func customerProfileMutationAttempt(response providerResponse, operation, field,
 		} `json:"data"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || !validGraphQLID(wire.Data[field].Customer.ID) || (expectedID != "" && wire.Data[field].Customer.ID != expectedID) {
-		if invalid == "" {
-			return braintreeMutationRetry[CustomerProfile](operation, sdkgo.FailureProtocol, "Braintree customer creation response is uncertain", 0)
-		}
-		return braintreeMutationBranch[CustomerProfile](operation, invalid, sdkgo.FailureProtocol, "Braintree customer payload is invalid")
+		return braintreeMutationRetry[CustomerProfile](operation, sdkgo.FailureProtocol, "Braintree customer payload is invalid", 0)
 	}
 	return sdkgo.NewMutationBranch(success, wire.Data[field].Customer, nil, sdkgo.Receipt{})
 }
@@ -200,7 +197,7 @@ func classifyBraintreeMutationResponse[T any](response providerResponse, operati
 		return braintreeMutationRetry[T](operation, sdkgo.FailureAvailability, "Braintree mutation outcome is unknown", response.retryAfter), true
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return braintreeMutationRetry[T](operation, sdkgo.FailureTransport, "Braintree mutation outcome is unknown", 0), true
 		}
 		if hasPriorSend {
@@ -209,20 +206,14 @@ func classifyBraintreeMutationResponse[T any](response providerResponse, operati
 		return braintreeMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Braintree rejected HTTP "+strconv.Itoa(response.status)), true
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		if invalid == "" {
-			return braintreeMutationRetry[T](operation, sdkgo.FailureResponseTooLarge, "Braintree mutation response is uncertain", 0), true
-		}
-		return braintreeMutationBranch[T](operation, invalid, sdkgo.FailureResponseTooLarge, "Braintree response exceeded the configured limit"), true
+		return braintreeMutationRetry[T](operation, sdkgo.FailureResponseTooLarge, "Braintree mutation response is uncertain", 0), true
 	}
 	var wire struct {
 		Data   json.RawMessage   `json:"data"`
 		Errors []json.RawMessage `json:"errors"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil {
-		if invalid == "" {
-			return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree mutation response is uncertain", 0), true
-		}
-		return braintreeMutationBranch[T](operation, invalid, sdkgo.FailureProtocol, "Braintree returned invalid GraphQL JSON"), true
+		return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree mutation response is uncertain", 0), true
 	}
 	if len(wire.Errors) > 0 {
 		switch classifyGraphQLErrors(wire.Errors) {
@@ -244,10 +235,7 @@ func classifyBraintreeMutationResponse[T any](response providerResponse, operati
 		return braintreeMutationBranch[T](operation, rejected, sdkgo.FailureProviderRejection, "Braintree rejected the mutation"), true
 	}
 	if len(wire.Data) == 0 || string(wire.Data) == "null" {
-		if invalid == "" {
-			return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree mutation response is uncertain", 0), true
-		}
-		return braintreeMutationBranch[T](operation, invalid, sdkgo.FailureProtocol, "Braintree GraphQL data is missing"), true
+		return braintreeMutationRetry[T](operation, sdkgo.FailureProtocol, "Braintree mutation response is uncertain", 0), true
 	}
 	return sdkgo.MutationAttempt[T]{}, false
 }

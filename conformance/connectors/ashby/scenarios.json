@@ -396,8 +396,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "a09c82f9-5043-5a94-b7ea-602dda67d7c0",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "applicationId": "",
@@ -843,13 +842,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "submissionId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2366,8 +2362,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "ccdf1476-bf3f-5dba-98bd-4a58457c1a54",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "applicationId": "",
@@ -2905,18 +2900,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "applicationId": "",
-          "createdAt": "",
-          "id": "",
-          "interviewStageId": "",
-          "status": "",
-          "updatedAt": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3210,18 +3197,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "applicationId": "",
-          "createdAt": "",
-          "id": "",
-          "interviewStageId": "",
-          "status": "",
-          "updatedAt": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3564,7 +3543,7 @@
       "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"not_found\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3606,7 +3585,7 @@
       "callId": "6dad2141-1b31-57ed-8208-41abe1f3c5de",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"forbidden\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4891,19 +4870,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "candidateId": "",
-          "createdAt": "",
-          "id": "",
-          "interviewStageId": "",
-          "jobId": "",
-          "status": "",
-          "updatedAt": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5221,19 +5191,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "candidateId": "",
-          "createdAt": "",
-          "id": "",
-          "interviewStageId": "",
-          "jobId": "",
-          "status": "",
-          "updatedAt": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5515,13 +5476,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "applicationId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6642,8 +6600,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "c41d31a4-10eb-51fc-9911-c45d22e15e00",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "createdAt": "",
@@ -7057,17 +7014,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "createdAt": "",
-          "id": "",
-          "status": "",
-          "title": "",
-          "updatedAt": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7365,17 +7315,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "createdAt": "",
-          "id": "",
-          "status": "",
-          "title": "",
-          "updatedAt": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7938,8 +7881,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "aae6f9e8-4bff-553e-8296-1955b29d4d80",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "createdAt": "",
@@ -9544,8 +9486,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "createdAt": "",
@@ -11113,16 +11054,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "createdAt": "",
-          "id": "",
-          "name": "",
-          "updatedAt": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11162,16 +11097,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "createdAt": "",
-          "id": "",
-          "name": "",
-          "updatedAt": ""
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11211,16 +11140,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "createdAt": "",
-          "id": "",
-          "name": "",
-          "updatedAt": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

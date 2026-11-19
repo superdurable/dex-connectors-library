@@ -83,7 +83,7 @@ func (operation CreateJobOperation) Invoke(call sdkgo.Call, input CreateJobInput
 		return sdkgo.NewMutationRetry[JobSummary](jobFailure("createJob", sdkgo.FailureTransport, "Ashby job create outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[JobSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "job_writes", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -101,6 +101,9 @@ func (operation CreateJobOperation) Invoke(call sdkgo.Call, input CreateJobInput
 	if rejectionCode != "" {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[JobSummary](jobFailure("createJob", sdkgo.FailureProviderRejection, "an earlier job create may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[JobSummary](jobFailure("createJob", sdkgo.FailureTransport, "refusal checkpoint unavailable"), 0)
 		}
 		return createJobBranch(CreateJobBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected job creation")
 	}
@@ -190,17 +193,20 @@ func (client *Client) executeSafeJobWrite(call sdkgo.Call, operationName string,
 		return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureAvailability, "Ashby job write is unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
+			return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureTransport, "Ashby job write outcome is unknown"), response.retryAfter)
+		}
 		return jobWriteBranch(operationName, branches.rejected, sdkgo.FailureProviderRejection, "Ashby rejected the job write with HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return jobWriteBranch(operationName, branches.invalid, sdkgo.FailureResponseTooLarge, "Ashby job write response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureResponseTooLarge, "Ashby job write response exceeded the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureTransport, "Ashby job write response was interrupted"), 0)
 	}
 	job, rejectionCode, err := decodeJobSummary(response.body)
 	if err != nil || rejectionCode == "" && !matches(job) {
-		return jobWriteBranch(operationName, branches.invalid, sdkgo.FailureProtocol, "Ashby returned an invalid updated job")
+		return sdkgo.NewMutationRetry[JobSummary](jobFailure(operationName, sdkgo.FailureProtocol, "Ashby returned an invalid updated job"), 0)
 	}
 	if rejectionCode != "" {
 		return jobWriteBranch(operationName, branches.rejected, sdkgo.FailureProviderRejection, "Ashby rejected the job write")

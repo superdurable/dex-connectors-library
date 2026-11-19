@@ -4000,7 +4000,7 @@
       "callId": "b04b250b-c3fe-5d1d-90a0-4b66d9543af4",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5755,7 +5755,7 @@
       "callId": "7184a128-637f-55a9-9aaf-258395c50909",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7486,7 +7486,7 @@
       "callId": "4dd73add-19aa-5a9a-a192-5613749e8e99",
       "exchanges": [
         {
-          "body": "SENTINEL",
+          "body": "{\"error\":\"invalid request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

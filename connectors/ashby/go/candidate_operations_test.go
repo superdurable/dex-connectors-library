@@ -94,10 +94,13 @@ func TestUpdateCandidateClassifiesFailures(t *testing.T) {
 		branch sdkgo.BranchID
 		retry  bool
 	}{
-		{name: "missing", status: 404, branch: UpdateCandidateBranchNotFound},
-		{name: "rejected", status: 403, branch: UpdateCandidateBranchProviderRejected},
+		{name: "missing", status: 404, body: `{"success":false,"errorInfo":{"code":"candidate_not_found"}}`, branch: UpdateCandidateBranchNotFound},
+		{name: "rejected", status: 403, body: `{"success":false,"errorInfo":{"code":"forbidden"}}`, branch: UpdateCandidateBranchProviderRejected},
 		{name: "provider missing", status: 200, body: `{"success":false,"errorInfo":{"code":"candidate_not_found"}}`, branch: UpdateCandidateBranchNotFound},
-		{name: "invalid", status: 200, body: `{"success":true,"results":{}}`, branch: UpdateCandidateBranchInvalidResponse},
+		{name: "invalid", status: 200, body: `{"success":true,"results":{}}`, retry: true},
+		{name: "empty refusal body", status: 400, retry: true},
+		{name: "conflict", status: 409, body: `{"error":"conflict"}`, retry: true},
+		{name: "other client error", status: 405, body: `{"error":"unsupported"}`, retry: true},
 		{name: "rate limit", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},
 	} {

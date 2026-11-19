@@ -2442,8 +2442,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "content": "",
@@ -2752,7 +2751,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -2760,18 +2759,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "content": "",
-          "id": "",
-          "name": "",
-          "proxied": false,
-          "ttl": 0,
-          "type": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
       "input": {

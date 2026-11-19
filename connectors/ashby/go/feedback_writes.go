@@ -100,7 +100,7 @@ func (operation RequestApplicationFeedbackOperation) Invoke(call sdkgo.Call, inp
 		return sdkgo.NewMutationRetry[FeedbackRequestReceipt](failure(sdkgo.FailureTransport, "feedback request outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[FeedbackRequestReceipt](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: "feedback_writes", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -118,6 +118,9 @@ func (operation RequestApplicationFeedbackOperation) Invoke(call sdkgo.Call, inp
 	if code != "" {
 		if decision.MaximumPriorSends > 0 {
 			return sdkgo.NewMutationRetry[FeedbackRequestReceipt](failure(sdkgo.FailureProviderRejection, "an earlier feedback request may have succeeded"), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[FeedbackRequestReceipt](failure(sdkgo.FailureTransport, "refusal checkpoint unavailable"), 0)
 		}
 		return feedbackRequestBranch(RequestApplicationFeedbackBranchProviderRejected, sdkgo.FailureProviderRejection, "Ashby rejected feedback request")
 	}

@@ -144,7 +144,7 @@ func (operation CreateTodoOperation) Invoke(call sdkgo.Call, input CreateTodoInp
 		return projectMutationRetry[Todo]("createTodo", sdkgo.FailureTransport, "to-do creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[Todo](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "createTodo", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
@@ -188,7 +188,7 @@ func (operation UpdateTodoOperation) Invoke(call sdkgo.Call, input UpdateTodoInp
 	}
 	todo, err := decodeTodo(response.body, input.TodoID)
 	if err != nil || todo.Content != input.Content {
-		return projectMutationBranch[Todo]("updateTodo", UpdateTodoBranchInvalidResponse, sdkgo.FailureProtocol, "Basecamp returned invalid updated to-do JSON")
+		return projectMutationRetry[Todo]("updateTodo", sdkgo.FailureProtocol, "Basecamp returned invalid updated to-do JSON", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateTodoBranchUpdated, todo, nil, sdkgo.Receipt{})
 }

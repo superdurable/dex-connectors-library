@@ -293,7 +293,7 @@ func (client *Client) executeLimitedApplicationWrite(call sdkgo.Call, operationN
 		return sdkgo.NewMutationRetry[ApplicationSummary](failure(sdkgo.FailureTransport, "application write outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[ApplicationSummary](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "ashby", Operation: operationName, Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {

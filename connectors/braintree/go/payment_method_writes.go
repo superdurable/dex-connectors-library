@@ -217,7 +217,7 @@ func (operation DeletePaymentMethodFromVaultOperation) Invoke(call sdkgo.Call, i
 		Data map[string]json.RawMessage `json:"data"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || len(wire.Data["deletePaymentMethodFromVault"]) == 0 || string(wire.Data["deletePaymentMethodFromVault"]) == "null" {
-		return braintreeMutationBranch[PaymentMethodDeleteResult]("deletePaymentMethodFromVault", DeletePaymentMethodFromVaultBranchInvalidResponse, sdkgo.FailureProtocol, "Braintree vault deletion payload is missing")
+		return braintreeMutationRetry[PaymentMethodDeleteResult]("deletePaymentMethodFromVault", sdkgo.FailureProtocol, "Braintree vault deletion payload is missing", 0)
 	}
 	return sdkgo.NewMutationBranch(DeletePaymentMethodFromVaultBranchDeleted, PaymentMethodDeleteResult{PaymentMethodID: input.PaymentMethodID, Deleted: true}, nil, sdkgo.Receipt{})
 }
@@ -247,7 +247,7 @@ func (client *Client) invokeLimitedPaymentMethod(call sdkgo.Call, definition sdk
 			return braintreeMutationRetry[PaymentMethodProfile](operation, sdkgo.FailureAvailability, "payment method resend checkpoint is unavailable", 0)
 		}
 	}
-	if isDefiniteRefusalStatus(response.status) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
+	if isDefiniteRefusalStatus(response.status, response.body) && decision.MaximumPriorSends == 0 && fence.RecordCanResend() != nil {
 		return braintreeMutationRetry[PaymentMethodProfile](operation, sdkgo.FailureAvailability, "payment method refusal checkpoint is unavailable", 0)
 	}
 	if attempt, handled := classifyBraintreeMutationResponse[PaymentMethodProfile](response, operation, notFound, rejected, "", defect, decision.MaximumPriorSends > 0); handled {

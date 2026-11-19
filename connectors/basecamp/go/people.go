@@ -292,7 +292,7 @@ func (operation EnrollPersonOperation) Invoke(call sdkgo.Call, input EnrollPerso
 		return projectMutationRetry[EnrollmentResult]("enrollPerson", sdkgo.FailureTransport, "enrollment outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteRefusalStatus(response.status, response.body) {
 			return sdkgo.NewMutationRetry[EnrollmentResult](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "basecamp", Operation: "enrollPerson", Message: "provider write outcome is unknown"}, 0)
 		}
 		if decision.MaximumPriorSends > 0 {
