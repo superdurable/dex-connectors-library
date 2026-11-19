@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGetHolidayStatusStep, type Connection, type GetHolidayStatusInput, type GetHolidayStatusOutput } from '@superdurable/connector-tianapi';
+import { newGetHolidayStatusStep, type Connection, type GetHolidayStatusInput, type GetHolidayStatusOutput } from '../../src/index.js';
 
 /** Static Dex Web connection for this example. */
 export const ConnectionName = 'tianapi';
