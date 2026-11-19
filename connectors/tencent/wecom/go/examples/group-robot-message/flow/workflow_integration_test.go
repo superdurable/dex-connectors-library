@@ -60,8 +60,8 @@ func TestGroupRobotMessageRetriesSystemBusyWithRealDex(t *testing.T) {
 	require.EqualValues(t, 2, requests.Load())
 }
 
-// A dropped connection after WeCom read the post leaves its outcome unknown; the unwired uncertain branch fails the Flow.
-func TestGroupRobotMessageNeverRepostsAnUnconfirmedPostWithRealDex(t *testing.T) {
+// A dropped connection leaves the post unconfirmed; the Flow retries only to the send cap.
+func TestGroupRobotMessageCapsUnconfirmedPostsWithRealDex(t *testing.T) {
 	var requests atomic.Int32
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
@@ -75,19 +75,19 @@ func TestGroupRobotMessageNeverRepostsAnUnconfirmedPostWithRealDex(t *testing.T)
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.NotContains(t, result.ErrorMessage, integrationWebhookKey)
-	require.EqualValues(t, 1, requests.Load())
+	require.EqualValues(t, 3, requests.Load())
 }
 
-// WeCom accepts the post, then the Worker is lost before the Step commits. The attempt on the
-// replacement Worker reads the durable claim heartbeat and must not post again.
-func TestGroupRobotMessageNeverRepostsAfterTheWorkerIsLostWithRealDex(t *testing.T) {
+// WeCom accepts a post before Worker loss; the replacement may resend within the cap.
+func TestGroupRobotMessageResendsAfterTheWorkerIsLostWithRealDex(t *testing.T) {
 	var requests atomic.Int32
 	releaseHeldPost := make(chan struct{})
 	var releaseOnce sync.Once
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests.Add(1)
-		// The post is already accepted; the reply is withheld until the old Worker is gone.
-		<-releaseHeldPost
+		if requests.Add(1) == 1 {
+			// The first post is accepted; its reply stays withheld until the old Worker is gone.
+			<-releaseHeldPost
+		}
 		_, err := w.Write([]byte(`{"errcode":0,"errmsg":"ok"}`))
 		require.NoError(t, err)
 	}))
@@ -100,11 +100,8 @@ func TestGroupRobotMessageNeverRepostsAfterTheWorkerIsLostWithRealDex(t *testing
 
 	result := harness.waitForFlow(t, flowID)
 	releaseOnce.Do(func() { close(releaseHeldPost) })
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.NotContains(t, result.ErrorMessage, integrationWebhookKey)
-	require.Contains(t, result.ErrorMessage, "an earlier attempt may have posted", "the replacement Worker's attempt read the claim checkpoint")
-	require.EqualValues(t, 1, requests.Load(), "the attempt on the replacement Worker did not post again")
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	require.EqualValues(t, 2, requests.Load(), "the replacement Worker resends within the cap")
 }
 
 func newProviderConnection(t *testing.T, baseURL string) wecom.Connection {

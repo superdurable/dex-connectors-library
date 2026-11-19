@@ -2,8 +2,10 @@
 
 This runnable Flow calls `sendGroupRobotMessage` with the static `wecom-robot`
 connection and completes with the posted message type and content size.
-Optional branches, including `uncertain`, are unwired so they fail the Flow. If
-a post becomes uncertain, check the group chat before starting a new Flow.
+Optional branches, including `uncertain`, are unwired so they fail the Flow.
+Unknown outcomes may be resent up to the default cap of three possible sends;
+WeCom has no robot-message read-back, so a duplicate can appear. If a post
+becomes uncertain, check the group chat before starting a new Flow.
 
 ## Strict FDG 2.0 generation
 
@@ -11,7 +13,7 @@ From `connectors/tencent/wecom/go`, run:
 
 ```bash
 mkdir -p build
-dexcli visualize ./examples/group-robot-message/flow/workflow.go --schema-version 2.0 --json --out ./build/group-robot-message
+dexcli visualize ./examples/group-robot-message/flow/workflow.go --schema-version 2.0 --json --open=false --out ./build/group-robot-message
 ```
 
 The command must report `valid: true`. An unpublished connector can report

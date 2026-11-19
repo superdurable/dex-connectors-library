@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -25,9 +26,11 @@ var testRobotText = SendGroupRobotMessageInput{
 	MentionedUserIDs: []string{"zhangsan", "@all"}, MentionedMobileNumbers: []string{"13800001111"},
 }
 
-func TestSendGroupRobotMessagePostsOnceThenFailsClosed(t *testing.T) {
+func TestSendGroupRobotMessageCapsResendsAfterLostCommit(t *testing.T) {
 	var requestPath, requestKey, requestBody, contentType string
+	var requestCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
 		require.Equal(t, http.MethodPost, r.Method)
 		requestPath, requestKey, contentType = r.URL.Path, r.URL.Query().Get("key"), r.Header.Get("Content-Type")
 		body, err := io.ReadAll(r.Body)
@@ -48,11 +51,18 @@ func TestSendGroupRobotMessagePostsOnceThenFailsClosed(t *testing.T) {
 	require.Equal(t, "application/json", contentType)
 	require.JSONEq(t, `{"msgtype":"text","text":{"content":"Deployment 42 finished","mentioned_list":["zhangsan","@all"],"mentioned_mobile_list":["13800001111"]}}`, requestBody)
 
-	// A later attempt of the same call never posts again, even after a confirmed post.
+	// If a Worker loses the successful result, two bounded repeats are permitted.
+	for range 2 {
+		ctx.AdvanceAttempt()
+		repeated, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+		require.NoError(t, err)
+		require.Equal(t, SendGroupRobotMessageBranchSent, repeated.Branch)
+	}
 	ctx.AdvanceAttempt()
-	repeated, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	uncertain, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
 	require.NoError(t, err)
-	require.Equal(t, SendGroupRobotMessageBranchUncertain, repeated.Branch)
+	require.Equal(t, SendGroupRobotMessageBranchUncertain, uncertain.Branch)
+	require.EqualValues(t, 3, requestCount.Load())
 }
 
 func TestSendGroupRobotMessageEncodesMarkdown(t *testing.T) {
@@ -145,7 +155,7 @@ func (failBeforeSendingTransport) RoundTrip(*http.Request) (*http.Response, erro
 	return nil, &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("connection refused")}
 }
 
-func TestSendGroupRobotMessageNeverResendsAfterACustomTransportError(t *testing.T) {
+func TestSendGroupRobotMessageCapsCustomTransportResends(t *testing.T) {
 	for _, testCase := range []struct {
 		name          string
 		transport     func(*fakeWeCom) http.RoundTripper
@@ -153,7 +163,7 @@ func TestSendGroupRobotMessageNeverResendsAfterACustomTransportError(t *testing.
 	}{
 		{name: "error after sending", transport: func(fake *fakeWeCom) http.RoundTripper {
 			return sendThenFailTransport{delegate: fake.server.Client().Transport}
-		}, expectedPosts: 1},
+		}, expectedPosts: 3},
 		{name: "error before sending", transport: func(*fakeWeCom) http.RoundTripper { return failBeforeSendingTransport{} }},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -161,6 +171,12 @@ func TestSendGroupRobotMessageNeverResendsAfterACustomTransportError(t *testing.
 			client, err := New(Config{BaseURL: fake.server.URL}, testCredentials(), WithHTTPClient(&http.Client{Transport: testCase.transport(fake)}))
 			require.NoError(t, err)
 			ctx := singledispatchtest.NewContext("custom-transport-flow", "post-step")
+			for range 2 {
+				_, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+				failure, _ := requireRetry(t, err)
+				requireSecretFree(t, failure.Message, err.Error())
+				ctx.AdvanceAttempt()
+			}
 			uncertain, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
 			require.NoError(t, err)
 			require.Equal(t, SendGroupRobotMessageBranchUncertain, uncertain.Branch)
@@ -169,7 +185,7 @@ func TestSendGroupRobotMessageNeverResendsAfterACustomTransportError(t *testing.
 			repeated, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
 			require.NoError(t, err)
 			require.Equal(t, SendGroupRobotMessageBranchUncertain, repeated.Branch)
-			require.Equal(t, testCase.expectedPosts, fake.sendCount(), "a custom transport error never permits a second post")
+			require.Equal(t, testCase.expectedPosts, fake.sendCount(), "custom transport posts stay within the cap")
 		})
 	}
 }
@@ -217,7 +233,7 @@ func TestSendGroupRobotMessageSelectsProviderRejectedForDefiniteRefusals(t *test
 	}
 }
 
-func TestSendGroupRobotMessageSelectsUncertainWhenAcceptanceIsUnconfirmed(t *testing.T) {
+func TestSendGroupRobotMessageRetriesUnknownOutcomeWithinSendCap(t *testing.T) {
 	for _, testCase := range []struct {
 		name  string
 		reply fakeReply
@@ -234,18 +250,74 @@ func TestSendGroupRobotMessageSelectsUncertainWhenAcceptanceIsUnconfirmed(t *tes
 			fake := newFakeWeCom(t)
 			fake.sendReplies = []fakeReply{testCase.reply, {body: `{"errcode":0,"errmsg":"ok"}`}}
 			client := newTestClient(t, fake.server.URL)
-			ctx := singledispatchtest.NewContext("uncertain-flow", "post-step")
-			uncertain, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
-			require.NoError(t, err)
-			require.Equal(t, SendGroupRobotMessageBranchUncertain, uncertain.Branch)
-			requireSecretFree(t, uncertain.Failure.Message)
+			ctx := singledispatchtest.NewContext("unknown-flow", "post-step")
+			_, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+			failure, _ := requireRetry(t, err)
+			requireSecretFree(t, failure.Message, err.Error())
 			ctx.AdvanceAttempt()
 			repeated, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
 			require.NoError(t, err)
-			require.Equal(t, SendGroupRobotMessageBranchUncertain, repeated.Branch)
-			require.Equal(t, 1, fake.sendCount(), "an unconfirmed post is never repeated")
+			require.Equal(t, SendGroupRobotMessageBranchSent, repeated.Branch)
+			require.Equal(t, 2, fake.sendCount())
 		})
 	}
+}
+
+func TestSendGroupRobotMessageSelectsUncertainAtSendCap(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{
+		{status: http.StatusInternalServerError},
+		{status: http.StatusBadGateway},
+		{body: `{"errcode":`},
+		{body: `{"errcode":0,"errmsg":"ok"}`},
+	}
+	client := newTestClient(t, fake.server.URL)
+	ctx := singledispatchtest.NewContext("capped-flow", "post-step")
+	for range 2 {
+		_, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+		failure, _ := requireRetry(t, err)
+		requireSecretFree(t, failure.Message, err.Error())
+		ctx.AdvanceAttempt()
+	}
+	uncertain, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	require.NoError(t, err)
+	require.Equal(t, SendGroupRobotMessageBranchUncertain, uncertain.Branch)
+	require.Contains(t, uncertain.Failure.Message, "send cap")
+	require.Equal(t, 3, fake.sendCount())
+	ctx.AdvanceAttempt()
+	repeated, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	require.NoError(t, err)
+	require.Equal(t, SendGroupRobotMessageBranchUncertain, repeated.Branch)
+	require.Equal(t, 3, fake.sendCount())
+}
+
+func TestSendGroupRobotMessageHonorsOneSendOverride(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	client := newTestClient(t, fake.server.URL)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("one-send-flow", "post-step"),
+		client.SendGroupRobotMessage(), testRobotConnection, testRobotText, sdkgo.WithMaxSends(1))
+	require.NoError(t, err)
+	require.Equal(t, SendGroupRobotMessageBranchUncertain, result.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
+func TestSendGroupRobotMessageDoesNotClaimLaterRefusalWasTheWholeOutcome(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{
+		{status: http.StatusInternalServerError},
+		{body: `{"errcode":93004,"errmsg":"webhook disabled"}`},
+	}
+	client := newTestClient(t, fake.server.URL)
+	ctx := singledispatchtest.NewContext("prior-unknown-flow", "post-step")
+	_, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	_, _ = requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	require.NoError(t, err)
+	require.Equal(t, SendGroupRobotMessageBranchUncertain, result.Branch)
+	require.Contains(t, result.Failure.Message, "earlier post may have succeeded")
+	require.Equal(t, 2, fake.sendCount())
 }
 
 func TestSendGroupRobotMessageRejectsInvalidInputBeforePosting(t *testing.T) {

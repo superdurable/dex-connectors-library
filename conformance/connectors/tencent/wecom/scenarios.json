@@ -1,0 +1,2196 @@
+{
+  "connector": "tencent/wecom",
+  "scenarios": [
+    {
+      "callId": "8ca3de9e-dd8e-5612-927d-e7cf9bbda3d8",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8ca3de9e-dd8e-5612-927d-e7cf9bbda3d8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contentBytes": 22,
+          "messageType": "text"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ca3de9e-dd8e-5612-927d-e7cf9bbda3d8",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-sent",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "ad364281-ea14-564e-8b5d-8895ca67962f",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "markdown": {
+              "content": "**Deploy 42** finished"
+            },
+            "msgtype": "markdown"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ad364281-ea14-564e-8b5d-8895ca67962f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contentBytes": 22,
+          "messageType": "markdown"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ad364281-ea14-564e-8b5d-8895ca67962f",
+      "input": {
+        "content": "**Deploy 42** finished",
+        "messageType": "markdown"
+      },
+      "name": "sendGroupRobotMessage-markdown",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "f2d7ff84-7192-59e1-91ec-47324d125c7f",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":93004,\"errmsg\":\"webhook disabled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f2d7ff84-7192-59e1-91ec-47324d125c7f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contentBytes": 0,
+          "messageType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d7ff84-7192-59e1-91ec-47324d125c7f",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-providerRejected",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "38ba5fc4-38aa-55a8-bc5c-e584281cd875",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contentBytes": 0,
+          "messageType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "38ba5fc4-38aa-55a8-bc5c-e584281cd875",
+      "input": {
+        "content": "",
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-defect",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "b0e058df-7564-58b1-8c2b-face74d9b6ac",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b0e058df-7564-58b1-8c2b-face74d9b6ac",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0e058df-7564-58b1-8c2b-face74d9b6ac",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-429",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "4813635c-197f-5fee-82bc-8a58a61c3936",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4813635c-197f-5fee-82bc-8a58a61c3936",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4813635c-197f-5fee-82bc-8a58a61c3936",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-503",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "5c80fdcc-12ee-53ec-880f-e1b190672e52",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5c80fdcc-12ee-53ec-880f-e1b190672e52",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c80fdcc-12ee-53ec-880f-e1b190672e52",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-500",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "e3e90fe6-0a7e-55f7-a4ff-a627f08d2fd4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3e90fe6-0a7e-55f7-a4ff-a627f08d2fd4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3e90fe6-0a7e-55f7-a4ff-a627f08d2fd4",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-transport-before-send",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "8ec3e10d-5235-5b41-adde-08c2824e025b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8ec3e10d-5235-5b41-adde-08c2824e025b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ec3e10d-5235-5b41-adde-08c2824e025b",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-transport-after-send",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "f523dc34-c781-5c56-80eb-62556b3ad2c7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"errcode\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "f523dc34-c781-5c56-80eb-62556b3ad2c7",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "contentBytes": 0,
+          "messageType": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "f523dc34-c781-5c56-80eb-62556b3ad2c7",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "f523dc34-c781-5c56-80eb-62556b3ad2c7",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "f523dc34-c781-5c56-80eb-62556b3ad2c7",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendGroupRobotMessage-uncertain-cap",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "8c5a9d7e-d662-59f8-85e7-278adbe18315",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"errcode\":93004,\"errmsg\":\"webhook disabled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "8c5a9d7e-d662-59f8-85e7-278adbe18315",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "contentBytes": 0,
+          "messageType": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8c5a9d7e-d662-59f8-85e7-278adbe18315",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "8c5a9d7e-d662-59f8-85e7-278adbe18315",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendGroupRobotMessage-prior-unknown-then-refused",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "0c853d37-a6a1-51f9-8b08-2cf581eaf40c",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":-1,\"errmsg\":\"system busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c853d37-a6a1-51f9-8b08-2cf581eaf40c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c853d37-a6a1-51f9-8b08-2cf581eaf40c",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-system-busy",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "2add0189-0c54-5fab-9dbf-b451e33d02ac",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":45009,\"errmsg\":\"frequency limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2add0189-0c54-5fab-9dbf-b451e33d02ac",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "2add0189-0c54-5fab-9dbf-b451e33d02ac",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-frequency-limit",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "c9a5addc-ef69-5ab2-a813-026fbd7e8550",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":45033,\"errmsg\":\"concurrency limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c9a5addc-ef69-5ab2-a813-026fbd7e8550",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c9a5addc-ef69-5ab2-a813-026fbd7e8550",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-concurrency-limit",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "bb01df4a-46b3-54a7-8a0a-c3779cbe73f1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bb01df4a-46b3-54a7-8a0a-c3779cbe73f1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bb01df4a-46b3-54a7-8a0a-c3779cbe73f1",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-408",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "4336b4e1-1889-5d60-b0e4-f0b43634fb9e",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/webhook/send",
+          "query": {
+            "key": [
+              "REDACTED-WECOM-WEBHOOK-KEY"
+            ]
+          },
+          "requestBody": {
+            "msgtype": "text",
+            "text": {
+              "content": "Deployment 42 finished",
+              "mentioned_list": [
+                "zhangsan",
+                "@all"
+              ],
+              "mentioned_mobile_list": [
+                "13800001111"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4336b4e1-1889-5d60-b0e4-f0b43634fb9e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4336b4e1-1889-5d60-b0e4-f0b43634fb9e",
+      "input": {
+        "content": "Deployment 42 finished",
+        "mentionedMobileNumbers": [
+          "13800001111"
+        ],
+        "mentionedUserIds": [
+          "zhangsan",
+          "@all"
+        ],
+        "messageType": "text"
+      },
+      "name": "sendGroupRobotMessage-malformed",
+      "operation": "sendGroupRobotMessage"
+    },
+    {
+      "callId": "ccfc0255-06b5-56dc-b274-9949fee13645",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"msgid\":\"mock-msgid-42\",\"invaliduser\":\"\",\"invalidparty\":\"\",\"invalidtag\":\"\",\"unlicenseduser\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Deployment 42 finished"
+            },
+            "toparty": "2",
+            "totag": "3",
+            "touser": "zhangsan"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "mock-msgid-42",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ccfc0255-06b5-56dc-b274-9949fee13645",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-sent",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "7adc043c-2dea-52f8-9c86-2789f948e2aa",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":0,\"errmsg\":\"ok\",\"msgid\":\"mock-msgid-42\",\"invaliduser\":\"\",\"invalidparty\":\"\",\"invalidtag\":\"\",\"unlicenseduser\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "markdown": {
+              "content": "**Deploy 42** finished"
+            },
+            "msgtype": "markdown",
+            "touser": "@all"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "mock-msgid-42",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7adc043c-2dea-52f8-9c86-2789f948e2aa",
+      "input": {
+        "content": "**Deploy 42** finished",
+        "messageType": "markdown",
+        "toAllMembers": true
+      },
+      "name": "sendApplicationMessage-all-members",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "05071982-e950-50ef-bd6c-ba3fffa76755",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":81013,\"errmsg\":\"invalid recipient\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Deployment 42 finished"
+            },
+            "toparty": "2",
+            "totag": "3",
+            "touser": "zhangsan"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05071982-e950-50ef-bd6c-ba3fffa76755",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-providerRejected",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "fb595716-4080-5026-a70c-d76933cd6364",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fb595716-4080-5026-a70c-d76933cd6364",
+      "input": {
+        "content": "",
+        "messageType": "text"
+      },
+      "name": "sendApplicationMessage-defect",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "d8263c5c-130f-5b69-983b-9e3ad19c59ba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d8263c5c-130f-5b69-983b-9e3ad19c59ba",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-token-429",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "877133a6-6ffc-5fc8-8810-801c6dfeeab3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "877133a6-6ffc-5fc8-8810-801c6dfeeab3",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-token-500",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "a3862beb-46f8-51b5-a1e5-90ee025946f6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3862beb-46f8-51b5-a1e5-90ee025946f6",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-token-transport-before-send",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "a574b417-30d7-57db-be8f-0383dc19fb0f",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Deployment 42 finished"
+            },
+            "toparty": "2",
+            "totag": "3",
+            "touser": "zhangsan"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a574b417-30d7-57db-be8f-0383dc19fb0f",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-send-429",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "8906baa4-60ea-572c-8ae7-cc8c9416f3e8",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Deployment 42 finished"
+            },
+            "toparty": "2",
+            "totag": "3",
+            "touser": "zhangsan"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8906baa4-60ea-572c-8ae7-cc8c9416f3e8",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-send-500",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "356d3cc9-390a-5861-9fa9-a785e66b9afa",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Deployment 42 finished"
+            },
+            "toparty": "2",
+            "totag": "3",
+            "touser": "zhangsan"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "356d3cc9-390a-5861-9fa9-a785e66b9afa",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-send-transport-after-send",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "673ecc40-ccb7-5608-8a58-9f387889b89a",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Deployment 42 finished"
+            },
+            "toparty": "2",
+            "totag": "3",
+            "touser": "zhangsan"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "673ecc40-ccb7-5608-8a58-9f387889b89a",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendApplicationMessage-uncertain-cutoff",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "5c0e4af9-f8fc-5acb-b0e5-2310fc83bf59",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":40001,\"errmsg\":\"invalid secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "invalidDepartmentIds": [],
+          "invalidTagIds": [],
+          "invalidUserIds": [],
+          "messageId": "",
+          "unlicensedUserIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c0e4af9-f8fc-5acb-b0e5-2310fc83bf59",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-token-rejected",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "7684a69d-9417-5f57-96c6-622b0922a2be",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errcode\":-1,\"errmsg\":\"system busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Deployment 42 finished"
+            },
+            "toparty": "2",
+            "totag": "3",
+            "touser": "zhangsan"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7684a69d-9417-5f57-96c6-622b0922a2be",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-system-busy",
+      "operation": "sendApplicationMessage"
+    },
+    {
+      "callId": "f5cc9c71-50d7-5649-9e40-c0ba27b378d9",
+      "exchanges": [
+        {
+          "body": "{\"errcode\":0,\"access_token\":\"REDACTED_WECOM_TEST_TOKEN\",\"expires_in\":7200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cgi-bin/gettoken",
+          "query": {
+            "corpid": [
+              "ww1a2b3c4d5e6f7a8b"
+            ],
+            "corpsecret": [
+              "REDACTED_WECOM_CORP_SECRET"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi-bin/message/send",
+          "query": {
+            "access_token": [
+              "REDACTED_WECOM_TEST_TOKEN"
+            ]
+          },
+          "requestBody": {
+            "agentid": 1000002,
+            "duplicate_check_interval": 14400,
+            "enable_duplicate_check": 1,
+            "msgtype": "text",
+            "safe": 1,
+            "text": {
+              "content": "Deployment 42 finished"
+            },
+            "toparty": "2",
+            "totag": "3",
+            "touser": "zhangsan"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f5cc9c71-50d7-5649-9e40-c0ba27b378d9",
+      "input": {
+        "content": "Deployment 42 finished",
+        "isConfidential": true,
+        "messageType": "text",
+        "toDepartmentIds": [
+          "2"
+        ],
+        "toTagIds": [
+          "3"
+        ],
+        "toUserIds": [
+          "zhangsan"
+        ]
+      },
+      "name": "sendApplicationMessage-send-503",
+      "operation": "sendApplicationMessage"
+    }
+  ],
+  "schemaVersion": 1
+}

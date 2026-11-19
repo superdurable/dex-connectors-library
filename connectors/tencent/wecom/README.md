@@ -68,20 +68,23 @@ most 4096 UTF-8 bytes) message. The result records the message type and
 content size, never the content.
 
 WeCom robot posts accept no idempotency key, return no message ID, and cannot be
-read back. The operation therefore uses sync Execute durability and the
-`singledispatch` fence: once a post may have reached WeCom, no later attempt of
-the same Step posts again.
+read back. A duplicate chat message is acceptable, so the operation uses a
+`singledispatch` fence with a default cap of three possibly effective sends.
+`MaxSends` on the Step factory can lower that cap to one or raise it to ten.
 
 | Outcome | Selected when |
 | --- | --- |
 | `sent` | errcode 0 |
 | Retry | errcode -1 (system busy), 45009 (frequency limit, retried after one minute), or 45033 (concurrency limit); HTTP 429 or 503; or a DNS, dial, or proxy CONNECT failure of net/http's own Transport before a connection was made |
-| `providerRejected` | any other errcode, such as 93000 (invalid webhook or robot removed), 93004 (robot disabled), or 45002 (content too large), or another HTTP 4xx |
-| `uncertain` | HTTP 5xx other than 503, HTTP 408, an interrupted, malformed, or oversized response, any other transport failure, any transport failure of a custom `WithHTTPClient` RoundTripper, or a later attempt after such an outcome or a lost Worker |
+| `providerRejected` | a definite refusal before any earlier unconfirmed send, such as errcode 93000 (invalid webhook or robot removed), 93004 (robot disabled), 45002 (content too large), or another HTTP 4xx |
+| `uncertain` | the send cap is reached after unknown outcomes; an invalid checkpoint or a later definite refusal cannot rule out an earlier accepted post |
 | `defect` | invalid input, a connection that is not `group-robot`, or a malformed `webhook_key`; nothing was posted |
 
-Wire `uncertain` only when the application can ask a person to check the
-group chat; unwired, it fails the Flow so the outcome stays visible.
+HTTP 5xx other than 503, HTTP 408, interrupted or malformed responses, and
+transport failures after possible dispatch retry within the cap. WeCom offers
+no robot-message read-back API, so these retries may duplicate a message.
+Wire `uncertain` only when the application can ask a person to check the group
+chat; unwired, it fails the Flow so the outcome stays visible.
 
 ### `sendApplicationMessage`
 
