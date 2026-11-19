@@ -8,6 +8,8 @@ metadata:
   categories: [marketing]
   version: v0.1.0
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [listTags], triggers: []}
   provider: weiban
   codegen:
     go:

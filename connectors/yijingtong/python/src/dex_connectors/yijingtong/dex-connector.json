@@ -1,0 +1,52 @@
+{
+  "connectorId": "yijingtong",
+  "releaseTag": "connectors/yijingtong/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-yijingtong",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_warehouses_step",
+      "kind": "query",
+      "operationId": "listWarehouses",
+      "inputType": "ListWarehousesInput",
+      "description": "List authorized warehouse codes, names, and countries without inventory or customer data.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListWarehousesInput selects the tenant's authorized warehouse catalog.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

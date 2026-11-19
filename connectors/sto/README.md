@@ -11,3 +11,7 @@ The gateway accepts HTTPS POST form data at `https://cloudinter-linkgateway.sto.
 ## Runnable Flow
 
 The [waybill-trace example](go/examples/waybill-trace/README.md) starts `STOWaybillTrace` with `{"waybillNo":"884000400421364"}`. Its static ConnectionName is `sto`, and it stores only minimized tracking data in a Dex Attribute. See the example README for the Worker command, strict FDG generation, and real Dex mock test.
+
+## Python
+
+The [`python/`](python/) package implements the `queryWaybillTrace` Query. Its checked-in example runs a Worker and a real Dex retry test; provider authorization remains unverified.
