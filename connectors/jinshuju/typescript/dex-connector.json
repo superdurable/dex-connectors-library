@@ -1,0 +1,60 @@
+{
+  "connectorId": "jinshuju",
+  "releaseTag": "connectors/jinshuju/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-jinshuju",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListFormsPageStep",
+      "kind": "query",
+      "operationId": "listFormsPage",
+      "inputType": "ListFormsPageInput",
+      "description": "List one page of forms accessible to the Access Token.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListFormsPageInput optionally continues from a previously returned page cursor.",
+        "properties": {
+          "next": {
+            "description": "Next is the opaque cursor returned by the previous page; blank starts at the first page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "next"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

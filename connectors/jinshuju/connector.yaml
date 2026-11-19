@@ -39,6 +39,12 @@ spec:
         - Sign in at https://jinshuju.net/. For a personal token, open avatar > 个人中心 > API > 个人 Access Token > 创建 Token, name it, and copy the one-time secret value. This token sees the account's own forms; use it when sufficient.
         - For enterprise-wide access on an enterprise plan, an administrator opens 系统设置 > 企业 API > 企业 Access Token > 创建 Token. It can see all enterprise forms. Copy its one-time secret value into Dex and revoke it from the same page when access is no longer needed. The connector adds Bearer automatically.
         - Start the ListFormsPage Flow with an optional next cursor copied verbatim from a prior page. Blank means the first page. Each page has up to 50 forms. Leave timeout and maxResponseBytes blank for displayed defaults. The connector returns only form names and tokens, not creators or submitted data.
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-jinshuju"
+      operations: [listFormsPage]
+      triggers: []
   operations:
     - name: listFormsPage
       goName: ListFormsPage
