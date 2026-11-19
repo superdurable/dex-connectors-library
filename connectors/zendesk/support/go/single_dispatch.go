@@ -152,6 +152,10 @@ func isDefiniteRefusal(result zendeskExchange) bool {
 		!result.response.hasTicketIdentity && !result.response.hasCredentialEcho
 }
 
+func isDefiniteNewWriteRefusal(result zendeskExchange) bool {
+	return isDefiniteRefusal(result) && result.response.hasReadableError && !result.response.hasOtherProviderIdentity
+}
+
 // isDefiniteRefusalStatus reports a status that proves Zendesk applied nothing.
 func isDefiniteRefusalStatus(statusCode int) bool {
 	switch statusCode {

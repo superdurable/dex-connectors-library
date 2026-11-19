@@ -40,11 +40,19 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	SearchRecentPosts() sdkgo.Query[SearchRecentPostsInput, PostPage]
+	GetUser() sdkgo.Query[GetUserInput, UserMetadata]
 	GetPost() sdkgo.Query[GetPostInput, PostMetadata]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) SearchRecentPosts() sdkgo.Query[SearchRecentPostsInput, PostPage] {
+	return operations.client.SearchRecentPosts()
+}
+func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, UserMetadata] {
+	return operations.client.GetUser()
+}
 func (operations clientOperations) GetPost() sdkgo.Query[GetPostInput, PostMetadata] {
 	return operations.client.GetPost()
 }
@@ -184,6 +192,154 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const SearchRecentPostsBranchFound sdkgo.BranchID = "found"
+const SearchRecentPostsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchRecentPostsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchRecentPostsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchRecentPostsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchRecentPosts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchRecentPostsBranchFound, Description: "X returned a search page."},
+		{ID: SearchRecentPostsBranchProviderRejected, Description: "X conclusively rejected the search.", Optional: true},
+		{ID: SearchRecentPostsBranchInvalidResponse, Description: "X returned malformed or oversized JSON.", Optional: true},
+		{ID: SearchRecentPostsBranchDefect, Description: "Search input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchRecentPostsResult = sdkgo.QueryResult[PostPage]
+
+type SearchRecentPostsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=x-twitter"`
+	operationID                    struct{}                                    `connector:"operationId=searchRecentPosts"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchRecentPostsInput             `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[SearchRecentPostsResult]       `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[SearchRecentPostsResult]       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchRecentPostsResult]       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchRecentPostsResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PostPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewSearchRecentPostsStep[IN any](config SearchRecentPostsStepConfig[IN]) sdkgo.QueryStep[IN, SearchRecentPostsInput, PostPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("x-twitter connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchRecentPostsInput, PostPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchRecentPosts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchRecentPostsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchRecentPostsResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(SearchRecentPostsBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchRecentPostsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchRecentPostsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchRecentPostsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetUserBranchFound sdkgo.BranchID = "found"
+const GetUserBranchNotFound sdkgo.BranchID = "notFound"
+const GetUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserBranchFound, Description: "X returned the user profile."},
+		{ID: GetUserBranchNotFound, Description: "X did not expose the user.", Optional: true},
+		{ID: GetUserBranchProviderRejected, Description: "X conclusively rejected the lookup.", Optional: true},
+		{ID: GetUserBranchInvalidResponse, Description: "X returned malformed or oversized JSON.", Optional: true},
+		{ID: GetUserBranchDefect, Description: "Username or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserResult = sdkgo.QueryResult[UserMetadata]
+
+type GetUserStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=x-twitter"`
+	operationID                    struct{}                                        `connector:"operationId=getUser"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetUserResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetUserResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, GetUserInput, UserMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("x-twitter connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserInput, UserMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetPostBranchFound sdkgo.BranchID = "found"

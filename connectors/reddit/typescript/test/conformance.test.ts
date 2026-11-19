@@ -8,7 +8,8 @@ import { RedditClient } from '../src/client.js';
 import { GetPostInputSchema, ListSubredditPostsInputSchema, SearchPostsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/reddit/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/reddit/scenarios.json', import.meta.url))
+  .filter(scenario => ['getPost', 'listSubredditPosts', 'searchPosts'].includes(scenario.operation));
 const connection = { provider: 'reddit', name: 'reddit' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeReddit, ''));
 

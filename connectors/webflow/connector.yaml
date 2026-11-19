@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: webflow
   displayName: Webflow
-  description: Webflow REST connector with two bounded operations.
+  description: Read Webflow CMS collections and staged or live items.
   company: Webflow
   categories: [marketing]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: webflow
   languages:
@@ -64,6 +64,175 @@ spec:
         API; supply it in each operation input.
       - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+  - name: listCollections
+    goName: ListCollections
+    inputType: ListCollectionsInput
+    outputType: ListCollectionsOutput
+    kind: query
+    description: List CMS collections for a site.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Listed CMS collections.
+    - id: notFound
+      goName: NotFound
+      description: The site does not exist or is not visible.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultListCollections
+      branch: listed
+      description: A site with one CMS collection.
+      default: true
+      output:
+        data:
+          collections:
+          - id: 62b720ef280c7a7a3be8cabe
+            displayName: Articles
+  - name: getCollection
+    goName: GetCollection
+    inputType: GetCollectionInput
+    outputType: GetCollectionOutput
+    kind: query
+    description: Get CMS collection details and fields.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Found the CMS collection.
+    - id: notFound
+      goName: NotFound
+      description: The collection does not exist or is not visible.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultGetCollection
+      branch: found
+      description: A CMS collection schema.
+      default: true
+      output:
+        data:
+          id: 62b720ef280c7a7a3be8cabe
+          displayName: Articles
+          fields: []
+  - name: listLiveCollectionItems
+    goName: ListLiveCollectionItems
+    inputType: ListCollectionItemsInput
+    outputType: ListCollectionItemsOutput
+    kind: query
+    description: List a page of published CMS items.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Listed published CMS items.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultListLiveCollectionItems
+      branch: listed
+      description: One published CMS item.
+      default: true
+      output:
+        data:
+          items:
+          - id: 62b720ef280c7a7a3be8cabe
+            fieldData:
+              name: Meridian
+          pagination:
+            total: 1
+            limit: 100
+            offset: 0
+  - name: getLiveCollectionItem
+    goName: GetLiveCollectionItem
+    inputType: GetCollectionItemInput
+    outputType: GetCollectionItemOutput
+    kind: query
+    description: Get a published CMS item.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Found the published CMS item.
+    - id: notFound
+      goName: NotFound
+      description: The item does not exist or is not published.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultGetLiveCollectionItem
+      branch: found
+      description: A published CMS item.
+      default: true
+      output:
+        data:
+          id: 62b720ef280c7a7a3be8cabe
+          fieldData:
+            name: Meridian
   - name: listCollectionItems
     goName: ListCollectionItems
     inputType: ListCollectionItemsInput

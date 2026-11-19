@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/workday/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/workday/scenarios.json")
+    if scenario["operation"] == "getWorker"
+]
 CONNECTION = sdk.ConnectionRef("workday", "workday")
 ADAPTER = conformance.PythonOperationAdapter(
     "workday",

@@ -1,0 +1,60 @@
+{
+  "connectorId": "bocha",
+  "releaseTag": "connectors/bocha/go/v0.1.1",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-bocha",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_search_web_step",
+      "kind": "query",
+      "operationId": "searchWeb",
+      "inputType": "SearchWebInput",
+      "description": "Search public web pages and return up to five titles, URLs, and snippets.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchWebInput supplies a public web search query.",
+        "properties": {
+          "query": {
+            "description": "Query is a nonblank search phrase of at most 256 Unicode characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

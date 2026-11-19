@@ -9,6 +9,8 @@ metadata:
   version: v0.1.1
 spec:
   provider: bocha
+  languages:
+    python: {version: v0.1.0, operations: [searchWeb], triggers: []}
   codegen:
     go:
       package: bocha

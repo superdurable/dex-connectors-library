@@ -7,3 +7,5 @@ Create a personal access token in [Gitee Personal Access Tokens](https://gitee.c
 The Query retries HTTP 408, 429, 5xx, and transport failures under Dex's default retry budget. HTTP 404 selects `notFound`; other non-200 statuses select `providerRejected`. Malformed or oversized responses select `invalidResponse`; invalid input or credentials select `defect`.
 
 Install `github.com/superdurable/dex-connectors-library/connectors/gitee/go@v0.1.0` after release. Provider tests use an HTTP test server. The mock-backed example integration test uses a real Dex Worker and Client. Live personal-token authentication and private-repository lookup require a user-configured token and remain unverified by local tests.
+
+The [Python package](python/README.md) implements `getRepository` and includes a [runnable Dex Flow](python/examples/repository_lookup/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.

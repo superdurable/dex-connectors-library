@@ -33,9 +33,29 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.advanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"searchTickets": newConformanceQueryInvocation(t, scenario.Input, context, client.SearchTickets(), zendeskConnection),
-		"getTicket":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetTicket(), zendeskConnection),
-		"createTicket":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTicket(), zendeskConnection, scenario.CallID),
-		"updateTicket":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateTicket(), zendeskConnection, scenario.CallID),
+		"searchTickets":          newConformanceQueryInvocation(t, scenario.Input, context, client.SearchTickets(), zendeskConnection),
+		"getTicket":              newConformanceQueryInvocation(t, scenario.Input, context, client.GetTicket(), zendeskConnection),
+		"createTicket":           newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTicket(), zendeskConnection, scenario.CallID),
+		"updateTicket":           newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateTicket(), zendeskConnection, scenario.CallID),
+		"listTickets":            newConformanceQueryInvocation(t, scenario.Input, context, client.ListTickets(), zendeskConnection),
+		"deleteTicket":           newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteTicket(), zendeskConnection, scenario.CallID),
+		"recoverSuspendedTicket": newConformanceMutationInvocation(t, scenario.Input, context, client.RecoverSuspendedTicket(), zendeskConnection, scenario.CallID),
+		"listTicketFields":       newConformanceQueryInvocation(t, scenario.Input, context, client.ListTicketFields(), zendeskConnection),
+		"getTicketField":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetTicketField(), zendeskConnection),
+		"listUsers":              newConformanceQueryInvocation(t, scenario.Input, context, client.ListUsers(), zendeskConnection),
+		"getUser":                newConformanceQueryInvocation(t, scenario.Input, context, client.GetUser(), zendeskConnection),
+		"searchUsers":            newConformanceQueryInvocation(t, scenario.Input, context, client.SearchUsers(), zendeskConnection),
+		"createUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.CreateUser(), zendeskConnection, scenario.CallID),
+		"updateUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateUser(), zendeskConnection, scenario.CallID),
+		"deleteUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteUser(), zendeskConnection, scenario.CallID),
+		"listOrganizations":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListOrganizations(), zendeskConnection),
+		"countOrganizations":     newConformanceQueryInvocation(t, scenario.Input, context, client.CountOrganizations(), zendeskConnection),
+		"getOrganization":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetOrganization(), zendeskConnection),
+		"getOrganizationRelated": newConformanceQueryInvocation(t, scenario.Input, context, client.GetOrganizationRelated(), zendeskConnection),
+		"listUserOrganizations":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListUserOrganizations(), zendeskConnection),
+		"getUserRelated":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetUserRelated(), zendeskConnection),
+		"createOrganization":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateOrganization(), zendeskConnection, scenario.CallID),
+		"updateOrganization":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateOrganization(), zendeskConnection, scenario.CallID),
+		"deleteOrganization":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteOrganization(), zendeskConnection, scenario.CallID),
 	}}
 }

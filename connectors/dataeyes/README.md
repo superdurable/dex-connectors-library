@@ -5,3 +5,7 @@ This connector reads one public HTTPS page through the [DataEyes Web Reader API]
 Use a **search/reading Key** from the DataEyes console's **MCP产品 → 接入与密钥** page, as described in the [official Key guide](https://doc.shuyanai.com/doc-8441886). A model API Key is a different credential and does not work. Save the Key in Dex Web Connections and start `ReadWebPage` with an HTTPS public URL without user info, query, or fragment. Reading may consume quota; retry is limited to one additional attempt. The connector disables redirects and maps provider error codes without exposing raw messages.
 
 Run the [example Flow](go/examples/read-web-page/) with the generated mock or a user-controlled connection. Live reading and quota behavior are unverified without a user-controlled Key.
+
+The [TypeScript package](typescript/README.md) implements `readWebPage` and includes a [runnable Dex Flow](typescript/examples/web-reader/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.
+
+The [Python package](python/README.md) implements `readWebPage` and includes a [runnable Dex Flow](python/examples/read_web_page/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.

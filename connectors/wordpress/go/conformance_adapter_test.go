@@ -4,6 +4,7 @@
 package wordpress
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -22,6 +23,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := singledispatchtest.NewContext("wordpress-conformance", scenario.Name)
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) {
+		require.NoError(t, context.SetPersistedCheckpoint(json.RawMessage(value)))
+	})
+	for range priorAttempt {
+		context.AdvanceAttempt()
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
 			context.AdvanceAttempt()
@@ -30,5 +37,15 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createPost": newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePost(), testConnection, scenario.CallID),
 		"getPost":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPost(), testConnection),
 		"listPosts":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPosts(), testConnection),
+		"updatePost": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdatePost(), testConnection, scenario.CallID),
+		"deletePost": newConformanceMutationInvocation(t, scenario.Input, context, client.DeletePost(), testConnection, scenario.CallID),
+		"createPage": newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePage(), testConnection, scenario.CallID),
+		"getPage": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPage(), testConnection),
+		"listPages": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPages(), testConnection),
+		"updatePage": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdatePage(), testConnection, scenario.CallID),
+		"deletePage": newConformanceMutationInvocation(t, scenario.Input, context, client.DeletePage(), testConnection, scenario.CallID),
+		"getUser": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetUser(), testConnection),
+		"listUsers": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListUsers(), testConnection),
+		"updateUser": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateUser(), testConnection, scenario.CallID),
 	}}
 }

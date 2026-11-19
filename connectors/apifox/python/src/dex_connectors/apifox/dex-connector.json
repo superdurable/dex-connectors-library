@@ -1,0 +1,60 @@
+{
+  "connectorId": "apifox",
+  "releaseTag": "connectors/apifox/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-apifox",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_project_api_summary_step",
+      "kind": "query",
+      "operationId": "getProjectAPISummary",
+      "inputType": "GetProjectAPISummaryInput",
+      "description": "Read only a summary of one accessible project's OpenAPI document.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetProjectAPISummaryInput identifies one Apifox project by positive decimal ID.",
+        "properties": {
+          "projectID": {
+            "description": "ProjectID is the decimal ID shown in Apifox Project Settings.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectID"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

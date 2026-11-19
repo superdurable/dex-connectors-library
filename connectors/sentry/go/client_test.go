@@ -103,6 +103,8 @@ func TestUpdateIssueStatusHTTPAndFailure(t *testing.T) {
 
 		if reject {
 			writer.WriteHeader(404)
+			_, err = io.WriteString(writer, `{"detail":"Issue not found"}`)
+			require.NoError(t, err)
 			return
 		}
 		_, err = io.WriteString(writer, `{"id":"123","shortId":"APP-1","title":"ExampleError","status":"resolved"}`)
@@ -132,8 +134,8 @@ func TestUpdateIssueStatusRetriesUnknownAnswers(t *testing.T) {
 		"unlisted":      {status: http.StatusTooEarly, body: `{}`},
 		"redirect":      {status: http.StatusFound},
 		"malformed":     {status: http.StatusOK, body: `[]`},
-		"definite 422":  {status: http.StatusUnprocessableEntity, body: `{}`, isRejected: true},
-		"definite 400":  {status: http.StatusBadRequest, body: `{}`, isRejected: true},
+		"definite 422":  {status: http.StatusUnprocessableEntity, body: `{"detail":"Invalid status"}`, isRejected: true},
+		"definite 400":  {status: http.StatusBadRequest, body: `{"detail":"Invalid status"}`, isRejected: true},
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 			writer.WriteHeader(testCase.status)

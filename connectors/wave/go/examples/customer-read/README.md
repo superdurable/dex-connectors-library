@@ -2,6 +2,12 @@
 
 This runnable Flow reads one Wave customer with `getCustomer` through the static `wave` connection and persists its profile. Configure secret `accessToken` in Dex Web Connections using the [connection guide](../../../README.md). Optional branches are unwired and fail the Flow when selected.
 
+`WaveCreateCustomer` runs `createCustomer` with the same static connection. Start it with `{"businessId":"business-1","name":"Example Customer"}` after replacing the business ID with one from the Wave API Playground. The mutation has a three-send cap and can fail with an uncertain outcome. Its mock-backed real Dex test verifies one customer creation call and the returned profile.
+
+`WaveCreateProduct` runs `createProduct`. Start it with `{"businessId":"business-1","name":"Example Product","unitPrice":"2.50","incomeAccountId":"account-1"}` after replacing both IDs with values from your Wave business. Find a sold product's income account in the API Playground using the [official product creation guide](https://developer.waveapps.com/hc/en-us/articles/360033284492-Mutation-Create-product-service). The mutation has a three-send cap; its mock-backed real Dex test verifies the returned product.
+
+`WaveCreateInvoice` runs `createInvoice`. Start it with `{"businessId":"business-1","customerId":"customer-1","productId":"product-1"}` after replacing all IDs with values from your Wave business. The mutation has a three-send cap; its mock-backed real Dex test verifies the returned invoice. The [official invoice creation guide](https://developer.waveapps.com/hc/en-us/articles/360038817812-Mutation-Create-invoice) shows the corresponding GraphQL mutation.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/wave/go`, run:

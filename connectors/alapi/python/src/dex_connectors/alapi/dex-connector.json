@@ -1,0 +1,60 @@
+{
+  "connectorId": "alapi",
+  "releaseTag": "connectors/alapi/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-alapi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_lookup_ip_location_step",
+      "kind": "query",
+      "operationId": "lookupIPLocation",
+      "inputType": "LookupIPLocationInput",
+      "description": "Look up country, province, city, district, and operator for one public IPv4 address.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "LookupIPLocationInput identifies one public IPv4 address.",
+        "properties": {
+          "ipAddress": {
+            "description": "IPAddress is an IPv4 address, not a hostname or CIDR range.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ipAddress"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -77,4 +77,8 @@ func TestMockBackedFlowWithRealDex(t *testing.T) {
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, sentry.ListIssuesInput(input), calls[0].Input)
 	require.Equal(t, sentry.ListIssuesBranchListed, calls[0].Branch)
+	organizationCalls := mock.ListOrganizations().Calls()
+	require.Len(t, organizationCalls, 1)
+	require.Equal(t, sentry.ListOrganizationsInput{}, organizationCalls[0].Input)
+	require.Equal(t, sentry.ListOrganizationsBranchListed, organizationCalls[0].Branch)
 }

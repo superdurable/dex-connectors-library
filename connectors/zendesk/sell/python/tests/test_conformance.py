@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/zendesk/sell/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/zendesk/sell/scenarios.json")
+    if scenario["operation"] in {"listLeads", "getLead"}
+]
 CONNECTION = sdk.ConnectionRef("zendesk-sell", "zendesk-sell")
 TEST_CREDENTIALS = zendesk_sell.Credentials(sdk.SecretString("test-token"))
 ADAPTER = conformance.PythonOperationAdapter(
@@ -25,9 +29,7 @@ ADAPTER = conformance.PythonOperationAdapter(
         zendesk_sell.Config(base_url="http://127.0.0.1:8848/v2"),
         conformance.static_credentials(CONNECTION, TEST_CREDENTIALS)
         if recorder.scenario["name"] != "listLeads-defect"
-        else conformance.static_credentials(
-            sdk.ConnectionRef("zendesk-sell", "missing"), TEST_CREDENTIALS
-        ),
+        else conformance.static_credentials(sdk.ConnectionRef("zendesk-sell", "missing"), TEST_CREDENTIALS),
         http_client,
     ),
 )

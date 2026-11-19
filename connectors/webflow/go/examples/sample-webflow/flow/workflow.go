@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package flow demonstrates Webflow's listCollectionItems operation in a Dex Flow.
+// Package flow demonstrates Webflow's listCollections operation in a Dex Flow.
 package flow
 
 import (
@@ -19,7 +19,7 @@ const (
 	callStepType   = "CallWebflow"
 )
 
-var sampleResultAttribute = dex.DefineAttribute[webflow.ListCollectionItemsOutput]("webflow-sample-result")
+var sampleResultAttribute = dex.DefineAttribute[webflow.ListCollectionsOutput]("webflow-sample-result")
 
 // Flow calls Webflow once and completes with the provider result.
 type Flow struct {
@@ -63,11 +63,11 @@ func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 	return &dex.RPCResult[map[string]any]{Output: map[string]any{"webflow-sample-result": result}}, nil
 }
 
-func inspectResult(ctx dex.Context) (webflow.ListCollectionItemsOutput, error) {
+func inspectResult(ctx dex.Context) (webflow.ListCollectionsOutput, error) {
 	result, err := sampleResultAttribute.Get(ctx)
 	var missing *dex.AttributeNotFoundError
 	if err != nil && !errors.As(err, &missing) {
-		return webflow.ListCollectionItemsOutput{}, err
+		return webflow.ListCollectionsOutput{}, err
 	}
 	return result, nil
 }
@@ -76,9 +76,9 @@ func inspectResult(ctx dex.Context) (webflow.ListCollectionItemsOutput, error) {
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startRequest{}),
-		dex.DefineStep(webflow.NewListCollectionItemsStep(webflow.ListCollectionItemsStepConfig[webflow.ListCollectionItemsInput]{
+		dex.DefineStep(webflow.NewListCollectionsStep(webflow.ListCollectionsStepConfig[webflow.ListCollectionsInput]{
 			StepType: callStepType, ConnectionName: ConnectionName, Connection: flow.connection,
-			Annotations:         sdkgo.StepAnnotations{GroupID: "webflow", GroupLabel: "Webflow", Explanation: "List a page of staged CMS collection items."},
+			Annotations:         sdkgo.StepAnnotations{GroupID: "webflow", GroupLabel: "Webflow", Explanation: "List CMS collections for a site."},
 			MapToOperationInput: MapToOperationInput, Listed: sdkgo.GoTo(completeRequest{}),
 		})),
 		dex.DefineStep(completeRequest{}),
@@ -86,7 +86,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 }
 
 // MapToOperationInput passes the validated Flow request to the connector.
-func MapToOperationInput(request webflow.ListCollectionItemsInput) webflow.ListCollectionItemsInput {
+func MapToOperationInput(request webflow.ListCollectionsInput) webflow.ListCollectionsInput {
 	return request
 }
 
@@ -95,21 +95,21 @@ func MapToOperationInput(request webflow.ListCollectionItemsInput) webflow.ListC
 type startRequest struct{ dex.StepDefaults }
 
 func (startRequest) GetStepType() string { return "StartWebflowRequest" }
-func (startRequest) WaitFor(dex.Context, webflow.ListCollectionItemsInput) (*dex.Wait, error) {
+func (startRequest) WaitFor(dex.Context, webflow.ListCollectionsInput) (*dex.Wait, error) {
 	return dex.SkipWaitImmediately(), nil
 }
-func (startRequest) Execute(_ dex.Context, request webflow.ListCollectionItemsInput) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[webflow.ListCollectionItemsInput](callStepType), request), nil
+func (startRequest) Execute(_ dex.Context, request webflow.ListCollectionsInput) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[webflow.ListCollectionsInput](callStepType), request), nil
 }
 
 // dex:group group-id:webflow-complete group-label:"Webflow sample"
 // dex:explanation text:"Complete the Flow with the provider response."
 type completeRequest struct {
-	dex.StepDefaultsNoWaitFor[webflow.ListCollectionItemsResult]
+	dex.StepDefaultsNoWaitFor[webflow.ListCollectionsResult]
 }
 
 func (completeRequest) GetStepType() string { return "CompleteWebflowRequest" }
-func (completeRequest) Execute(ctx dex.Context, result webflow.ListCollectionItemsResult) (*dex.StepDecision, error) {
+func (completeRequest) Execute(ctx dex.Context, result webflow.ListCollectionsResult) (*dex.StepDecision, error) {
 	if err := sampleResultAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}

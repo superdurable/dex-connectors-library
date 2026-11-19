@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: upstash-redis
   displayName: Upstash Redis
-  description: Read Redis string keys through an Upstash database REST endpoint.
+  description: Read and manage Redis keys through an Upstash database REST endpoint.
   company: Upstash
   categories: [databases-storage]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: upstash-redis
   languages:
@@ -34,12 +34,12 @@ spec:
         goName: Timeout
         type: duration
         default: 15s
-        description: Maximum duration of one GET command as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+        description: Maximum duration of one Redis REST command as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
         default: 2097152
-        description: Maximum complete GET response in bytes. Blank uses the displayed default; increase only for larger stored strings.
+        description: Maximum complete Redis REST response in bytes. Blank uses the displayed default; increase only for larger results.
   auth:
     type: apiKey
     connectionKind: upstash-redis-rest-token
@@ -48,12 +48,12 @@ spec:
         goName: RestToken
         type: secretString
         required: true
-        description: Secret opaque UPSTASH_REDIS_REST_TOKEN from https://console.upstash.com > Redis > selected database > Connect > REST. Copy the Read-Only Token for getKey, or the standard Token if writes are later needed. Blank prevents requests. Dex stores it as a secret and sends it only in the Authorization header; reset the database password to revoke it.
+        description: Secret opaque UPSTASH_REDIS_REST_TOKEN from https://console.upstash.com > Redis > selected database > Connect > REST. Copy the standard Token for writes; the Read-Only Token supports queries only. Blank prevents requests. Dex stores it as a secret and sends it only in the Authorization header; reset the database password to revoke it.
     guide:
       startURL: https://console.upstash.com
       steps:
         - Sign in to https://console.upstash.com > Redis, create or select a database, open Connect > REST, and copy UPSTASH_REDIS_REST_URL to baseUrl. It is a non-secret HTTPS origin such as https://example.upstash.io.
-        - In the same REST tab enable Read-Only Token and copy UPSTASH_REDIS_REST_TOKEN to secret rest_token. The opaque token is shown in the console; reset the database password to revoke it. A read-only token is sufficient for getKey.
+        - In the same REST tab copy the standard Token to secret rest_token for write operations; a Read-Only Token supports query operations only. The opaque token is shown in the console; reset the database password to revoke it.
         - In the database's Data Browser, find the exact Redis string key; supply that key to getKey. Blank key is invalid. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
     - name: getKey
@@ -77,3 +77,143 @@ spec:
           default: true
           description: One example string key exists.
           output: {key: "sample:key", value: example, exists: true}
+    - name: setKey
+      goName: SetKey
+      inputType: SetKeyInput
+      outputType: KeyWrite
+      kind: mutation
+      description: Replace a Redis string value, optionally with an expiration.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: set, goName: Set, description: The string value was set.}
+        - {id: providerRejected, goName: ProviderRejected, description: Upstash rejected the command., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Upstash returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The key or value is invalid., optional: true}
+      mocks:
+        - name: setDefault
+          branch: set
+          default: true
+          description: One example string value is stored.
+          output: {key: "sample:key"}
+    - name: deleteKey
+      goName: DeleteKey
+      inputType: DeleteKeyInput
+      outputType: KeyDeletion
+      kind: mutation
+      description: Delete one Redis key if present.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The key is now absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Upstash rejected the command., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Upstash returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The key is invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example key is removed.
+          output: {key: "sample:key", existed: true}
+    - name: listKeys
+      goName: ListKeys
+      inputType: ListKeysInput
+      outputType: KeyList
+      kind: query
+      description: List Redis keys matching a glob pattern.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Matching key names were returned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Upstash rejected the command., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Upstash returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The pattern is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example key matches the pattern.
+          output: {keys: ["sample:key"]}
+    - name: getListLength
+      goName: GetListLength
+      inputType: GetListLengthInput
+      outputType: ListLength
+      kind: query
+      description: Read the number of elements in a Redis list.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: The list length was returned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Upstash rejected the command., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Upstash returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The key is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example list contains three elements.
+          output: {key: "sample:list", length: 3}
+    - name: getInfo
+      goName: GetInfo
+      inputType: GetInfoInput
+      outputType: DatabaseInfo
+      kind: query
+      description: Read the Redis server INFO report.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Redis server information was returned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Upstash rejected the command., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Upstash returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The connection token is unavailable., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example INFO report is available.
+          output: {report: "# Server\nredis_version:7.2"}
+    - name: pushListItem
+      goName: PushListItem
+      inputType: PushListItemInput
+      outputType: ListPush
+      kind: mutation
+      description: Push one string onto the left or right end of a Redis list.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: pushed, goName: Pushed, description: The item was pushed onto the list.}
+        - {id: providerRejected, goName: ProviderRejected, description: Upstash rejected the command., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The push may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: "The key, value, or direction is invalid.", optional: true}
+      mocks:
+        - name: pushedDefault
+          branch: pushed
+          default: true
+          description: One example item is pushed.
+          output: {key: "sample:list", length: 3}
+    - name: publishMessage
+      goName: PublishMessage
+      inputType: PublishMessageInput
+      outputType: MessagePublication
+      kind: mutation
+      description: Publish one message to a Redis channel.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: published, goName: Published, description: The message was published.}
+        - {id: providerRejected, goName: ProviderRejected, description: Upstash rejected the command., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Publication may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The channel or message is invalid., optional: true}
+      mocks:
+        - name: publishedDefault
+          branch: published
+          default: true
+          description: One example message is published.
+          output: {channel: "sample:channel", subscribers: 1}

@@ -9,3 +9,5 @@ Sign in to the [Get Note Open Platform](https://www.biji.com/openapi), create an
 ## Example and verification
 
 The [runnable Flow](go/examples/get-note-task-status/) starts with a task ID from `data.tasks[0].task_id` of a prior note-save call and completes with a typed `GetNoteTaskStatusOutput`. Its default mock returns a completed task. Live Get Note authorization and status response variation remain unverified without a user-controlled Dex Web Connection.
+
+The [Python package](python/README.md) implements `getNoteTaskStatus` and includes a [runnable Dex Flow](python/examples/get_note_task_status/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.

@@ -1,0 +1,52 @@
+{
+  "connectorId": "baichuan",
+  "releaseTag": "connectors/baichuan/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-baichuan",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListKnowledgeBasesStep",
+      "kind": "query",
+      "operationId": "listKnowledgeBases",
+      "inputType": "ListKnowledgeBasesInput",
+      "description": "Read all knowledge bases returned for the configured Baichuan API key.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListKnowledgeBasesInput requests all knowledge bases visible to the connection's API key.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

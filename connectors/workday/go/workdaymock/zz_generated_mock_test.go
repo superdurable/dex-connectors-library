@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listWorkers/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[workday.WorkerPage](`{"total":1,"data":[{"id":"0123456789abcdef0123456789abcdef","descriptor":"Ada Lovelace"}]}`)
+			return err
+		}},
 		{name: "getWorker/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[workday.WorkerSummary](`{"id":"0123456789abcdef0123456789abcdef","descriptor":"Ada Lovelace"}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListWorkers().Definition().Operation.OperationID != "listWorkers" {
+		t.Errorf("listWorkers mock has another definition")
+	}
 	if mock.GetWorker().Definition().Operation.OperationID != "getWorker" {
 		t.Errorf("getWorker mock has another definition")
 	}
