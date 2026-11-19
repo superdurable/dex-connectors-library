@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: gowu
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-gowu", operations: [getAccessClient], triggers: []}
   codegen:
     go:
       package: gowu
