@@ -7,3 +7,5 @@ The Go connector reads [current weather](https://docs.seniverse.com/api/weather/
 See the [runnable Dex Flow](go/examples/current-weather/README.md) for connection setup and local verification. Real provider authorization and response have not been exercised by mock tests.
 
 The company logo comes from Seniverse's [official brand assets](https://www.seniverse.com/brand).
+
+The [TypeScript package](typescript/) provides the same `GetCurrentWeather` operation, Go-recorded conformance, and a runnable Dex Worker and Client example.
