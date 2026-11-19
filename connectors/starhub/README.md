@@ -7,3 +7,5 @@ Register at [StarHub Ai](https://www.starhubc.com), open the console's **API Key
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "starhub"`. Run the worker with `go run .` from its directory, then start `StarHubModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [developer docs](https://www.starhubc.com/docs), [service terms](https://www.starhubc.com/terms). Real provider authorization is not verified without a customer-controlled Key.
+
+The [TypeScript package](typescript/) provides the same `ListModels` operation, Go-recorded conformance tests, and a runnable Dex Worker and Client example.
