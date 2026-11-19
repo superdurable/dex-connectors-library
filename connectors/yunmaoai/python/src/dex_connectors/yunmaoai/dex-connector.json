@@ -43,7 +43,7 @@
       ],
       "inputSchema": {
         "additionalProperties": false,
-        "description": "ListModelsInput requests models visible to the YunMaoAI API Key.",
+        "description": "ListModelsInput requests models visible to a YunMaoAI API Key.",
         "properties": {},
         "type": "object"
       }
