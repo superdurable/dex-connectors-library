@@ -23,15 +23,32 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	context := newStepDexContext("conformance")
 	// createMessage's single-dispatch fence reads each earlier attempt's heartbeat checkpoint.
-	fencedContext := singledispatchtest.NewContext("announcement-flow", "conformance")
+	messageContext := singledispatchtest.NewContext("announcement-flow", "conformance")
+	channelContext := singledispatchtest.NewContext("discord-conformance", "create-guild-channel")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
-		if attempt > 1 {
-			fencedContext.AdvanceAttempt()
+		if attempt > 1 && scenario.Operation == "createGuildChannel" {
+			channelContext.AdvanceAttempt()
+		}
+		if attempt > 1 && scenario.Operation == "createMessage" {
+			messageContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listGuildChannels":     newConformanceQueryInvocation(t, scenario.Input, context, client.ListGuildChannels(), discordConnection),
+		"createGuildChannel":    newConformanceMutationInvocation(t, scenario.Input, channelContext, client.CreateGuildChannel(), discordConnection, scenario.CallID),
+		"updateChannel":         newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateChannel(), discordConnection, scenario.CallID),
+		"deleteChannel":         newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteChannel(), discordConnection, scenario.CallID),
+		"listGuildMembers":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListGuildMembers(), discordConnection),
+		"banGuildMember":        newConformanceMutationInvocation(t, scenario.Input, context, client.BanGuildMember(), discordConnection, scenario.CallID),
+		"kickGuildMember":       newConformanceMutationInvocation(t, scenario.Input, context, client.KickGuildMember(), discordConnection, scenario.CallID),
+		"addGuildMemberRole":    newConformanceMutationInvocation(t, scenario.Input, context, client.AddGuildMemberRole(), discordConnection, scenario.CallID),
+		"removeGuildMemberRole": newConformanceMutationInvocation(t, scenario.Input, context, client.RemoveGuildMemberRole(), discordConnection, scenario.CallID),
+		"timeoutGuildMember":    newConformanceMutationInvocation(t, scenario.Input, context, client.TimeoutGuildMember(), discordConnection, scenario.CallID),
+		"unbanGuildMember":      newConformanceMutationInvocation(t, scenario.Input, context, client.UnbanGuildMember(), discordConnection, scenario.CallID),
+		"getMessage":            newConformanceQueryInvocation(t, scenario.Input, context, client.GetMessage(), discordConnection),
+		"deleteMessage":         newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteMessage(), discordConnection, scenario.CallID),
 		"getChannel":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetChannel(), discordConnection),
 		"listChannelMessages": newConformanceQueryInvocation(t, scenario.Input, context, client.ListChannelMessages(), discordConnection),
-		"createMessage":       newConformanceMutationInvocation(t, scenario.Input, fencedContext, client.CreateMessage(), discordConnection, scenario.CallID),
+		"createMessage":       newConformanceMutationInvocation(t, scenario.Input, messageContext, client.CreateMessage(), discordConnection, scenario.CallID),
 		"addReaction":         newConformanceMutationInvocation(t, scenario.Input, context, client.AddReaction(), discordConnection, scenario.CallID),
 	}}
 }

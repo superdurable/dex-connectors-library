@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Deel API root as an absolute HTTPS URL ending in /rest. Blank uses the displayed Sandbox endpoint. For Production use https://api.letsdeel.com/rest; override only for the matching environment or a trusted local test gateway. */
   baseUrl?: string;
-  /** Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow contract reads. Runtime value in milliseconds. */
+  /** Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow contract pages. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete contract response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large contract metadata. */
+  /** Maximum complete API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large contract pages. */
   maxResponseBytes?: number;
 }
 

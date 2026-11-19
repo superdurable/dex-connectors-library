@@ -356,6 +356,950 @@
       },
       "name": "getCustomersByEmail-transportFailure",
       "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "c0000001-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"campaign\":{\"id\":5,\"name\":\"Welcome series\",\"active\":true,\"state\":\"running\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "active": true,
+          "id": 5,
+          "name": "Welcome series",
+          "state": "running"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-found",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000002-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "active": false,
+          "id": 0,
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-notFound",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000003-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "active": false,
+          "id": 0,
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-providerRejected",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000004-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "active": false,
+          "id": 0,
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-invalidResponse",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000005-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "active": false,
+          "id": 0,
+          "name": "",
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 0
+      },
+      "name": "getCampaign-defect",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000006-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-rateLimit",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000007-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-serverUnavailable",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000008-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5
+      },
+      "name": "getCampaign-transportFailure",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "c0000009-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"campaigns\":[{\"id\":5,\"name\":\"Welcome series\",\"active\":true,\"state\":\"running\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": [
+            {
+              "active": true,
+              "id": 5,
+              "name": "Welcome series",
+              "state": "running"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-found",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000a-79fa-5c50-981c-c82719452587",
+      "exchanges": [
+        {
+          "body": "{\"campaigns\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-empty",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000b-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-providerRejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000c-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-invalidResponse",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000d-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "campaigns": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-defect",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000e-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-rateLimit",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c000000f-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-serverUnavailable",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c0000010-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCampaigns-transportFailure",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c0000011-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"metric\":{\"series\":{\"sent\":[1],\"delivered\":[1]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "campaignId": 5,
+          "series": {
+            "delivered": [
+              1
+            ],
+            "sent": [
+              1
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-found",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000012-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "campaignId": 0,
+          "series": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-notFound",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000013-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaignId": 0,
+          "series": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-providerRejected",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000014-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaignId": 0,
+          "series": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-invalidResponse",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000015-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaignId": 0,
+          "series": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 0,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-defect",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000016-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-rateLimit",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000017-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-serverUnavailable",
+      "operation": "getCampaignMetrics"
+    },
+    {
+      "callId": "c0000018-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/campaigns/5/metrics",
+          "query": {
+            "end": [
+              "1735804800"
+            ],
+            "res": [
+              "days"
+            ],
+            "start": [
+              "1735718400"
+            ],
+            "version": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": 5,
+        "endUnix": 1735804800,
+        "resolution": "days",
+        "startUnix": 1735718400
+      },
+      "name": "getCampaignMetrics-transportFailure",
+      "operation": "getCampaignMetrics"
     }
   ],
   "schemaVersion": 1

@@ -39,6 +39,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		}
 		context.nextAttempt()
 	}, actions: map[string]conformanceOperationInvocation{
+		"closeTask":         newConformanceMutationInvocation(t, scenario.Input, context, client.CloseTask(), testConnection, scenario.CallID),
+		"reopenTask":        newConformanceMutationInvocation(t, scenario.Input, context, client.ReopenTask(), testConnection, scenario.CallID),
 		"getTask":           newConformanceQueryInvocation(t, scenario.Input, context, client.GetTask(), testConnection),
 		"updateTaskContent": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateTask(), testConnection, scenario.CallID),
 		"listTasks":         newConformanceQueryInvocation(t, scenario.Input, context, client.ListTasks(), testConnection),

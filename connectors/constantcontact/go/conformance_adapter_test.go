@@ -4,6 +4,7 @@
 package constantcontact
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -24,7 +25,57 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getContact": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
+	context := &listConformanceContext{attempt: 1}
+	if len(scenario.PriorHeartbeat) > 0 {
+		context.heartbeat = append([]byte(nil), scenario.PriorHeartbeat...)
+		var prior struct {
+			Attempt int32 `json:"attempt"`
+		}
+		require.NoError(t, json.Unmarshal(context.heartbeat, &prior))
+		context.attempt = prior.Attempt + 1
+	}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			context.attempt = int32(attempt)
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"getSegment":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetSegment(), reference),
+		"listSegments":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListSegments(), reference),
+		"createSegment":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSegment(), reference, scenario.CallID),
+		"updateSegment":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateSegment(), reference, scenario.CallID),
+		"deleteSegment":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteSegment(), reference, scenario.CallID),
+		"getActivity":       newConformanceQueryInvocation(t, scenario.Input, context, client.GetActivity(), reference),
+		"listActivities":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListActivities(), reference),
+		"createContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateContact(), reference, scenario.CallID),
+		"updateContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateContact(), reference, scenario.CallID),
+		"getContact":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetContact(), reference),
+		"listContacts":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListContacts(), reference),
+		"deleteContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteContact(), reference, scenario.CallID),
+		"getContactList":    newConformanceQueryInvocation(t, scenario.Input, context, client.GetContactList(), reference),
+		"listContactLists":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListContactLists(), reference),
+		"createContactList": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateContactList(), reference, scenario.CallID),
+		"updateContactList": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateContactList(), reference, scenario.CallID),
+		"deleteContactList": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteContactList(), reference, scenario.CallID),
 	}}
+}
+
+type listConformanceContext struct {
+	queryContext
+	attempt   int32
+	heartbeat []byte
+}
+
+func (context *listConformanceContext) Attempt() int32 { return context.attempt }
+func (context *listConformanceContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err == nil {
+		context.heartbeat = encoded
+	}
+	return err
+}
+func (context *listConformanceContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
 }

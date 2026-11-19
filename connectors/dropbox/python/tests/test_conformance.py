@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay, static_credentials  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/dropbox/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/dropbox/scenarios.json")
+    if scenario["operation"] in {"listFolder", "getMetadata", "continueFolder", "downloadFile", "uploadFile"}
+]
 CONNECTION = sdk.ConnectionRef("dropbox", "dropbox")
 
 

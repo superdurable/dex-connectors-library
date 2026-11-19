@@ -88,7 +88,7 @@ func TestChannelAnnouncementExampleRunsEveryDiscordOperationWithRealDex(t *testi
 		require.Len(t, messages, 1)
 		require.Equal(t, messages[0].ID, outcome.MessageID)
 		require.Equal(t, 1, provider.postAttempts(incompleteChannelID), "a 2xx is never resent")
-		require.Equal(t, 2, provider.messageReadBacks(incompleteChannelID), "the failed read-back retried with the saved message ID")
+		require.Equal(t, 3, provider.messageReadBacks(incompleteChannelID), "the fence retries read-back and the Flow reads the confirmed message")
 	})
 
 	t.Run("an unknown channel fails the Flow on the unwired notFound branch before posting", func(t *testing.T) {
@@ -292,7 +292,7 @@ func newAnnouncementIntegrationHarness(t *testing.T, providerURL string) (*Flow,
 func newAnnouncementIntegrationHarnessWithConnection(t *testing.T, connection discord.Connection) (*Flow, *announcementIntegrationHarness) {
 	t.Helper()
 	flow := NewFlow(connection)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewChannelLifecycleFlow(connection), NewMemberModerationFlow(connection)})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)

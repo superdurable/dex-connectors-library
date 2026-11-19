@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: elevenlabs
   displayName: ElevenLabs
-  description: List voices and generate bounded audio through ElevenLabs.
+  description: Discover voices and speech models, manage generated history, configure voices, and generate bounded audio.
   company: ElevenLabs
   categories: [ai]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: elevenlabs
   languages:
@@ -52,9 +52,154 @@ spec:
       startURL: https://elevenlabs.io/app/developers/api-keys
       steps:
         - Open https://elevenlabs.io/app/developers/api-keys and sign in or create an account.
-        - Navigate to ElevenLabs > Developers > API Keys > Create API Key; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
+        - Navigate to ElevenLabs > Developers > API Keys > Create API Key; create or select a key with voice read, voice write, or speech generation permission for the operations you use, and copy its provider-issued string.
         - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ModelsList
+      kind: query
+      description: List available model IDs, names, text-to-speech support, and input limits.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: ElevenLabs returned available models.}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected model listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned invalid model data., optional: true}
+        - {id: defect, goName: Defect, description: Credentials are unavailable or invalid., optional: true}
+      mocks:
+        - {name: sampleModels, branch: listed, description: One text-to-speech model is listed., default: true, output: {models: [{modelId: eleven_multilingual_v2, name: Multilingual v2, canDoTextToSpeech: true, maximumTextLengthPerRequest: 5000}]}}
+    - name: listHistoryItems
+      goName: ListHistoryItems
+      inputType: ListHistoryItemsInput
+      outputType: HistoryItemsPage
+      kind: query
+      description: List generated item IDs and operational metadata without text or audio.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: ElevenLabs returned a history page.}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected history listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned invalid history data., optional: true}
+        - {id: defect, goName: Defect, description: History filters or credentials are invalid., optional: true}
+      mocks:
+        - {name: historyPage, branch: listed, description: One generated item is listed without text or audio., default: true, output: {items: [{historyItemId: history_meridian, dateUnix: 1714650306, voiceId: voice_meridian, modelId: eleven_multilingual_v2, contentType: audio/mpeg, source: TTS}], hasMore: false}}
+    - name: getHistoryItem
+      goName: GetHistoryItem
+      inputType: HistoryItemIdentityInput
+      outputType: HistoryItemMetadata
+      kind: query
+      description: Read one generated item's operational metadata without text or audio.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: ElevenLabs returned the generated item.}
+        - {id: notFound, goName: NotFound, description: The generated item is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected item retrieval., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned invalid item data., optional: true}
+        - {id: defect, goName: Defect, description: History item ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: historyItem, branch: found, description: One generated item's metadata is returned., default: true, output: {historyItemId: history_meridian, dateUnix: 1714650306, voiceId: voice_meridian, modelId: eleven_multilingual_v2, contentType: audio/mpeg, source: TTS}}
+    - name: deleteHistoryItem
+      goName: DeleteHistoryItem
+      inputType: HistoryItemIdentityInput
+      outputType: DeletedHistoryItem
+      kind: mutation
+      description: Permanently delete one generated history item by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The generated item is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned an invalid deletion confirmation., optional: true}
+        - {id: defect, goName: Defect, description: History item ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: historyDeleted, branch: deleted, description: The generated item was deleted., default: true, output: {historyItemId: history_meridian, deleted: true}}
+    - name: getVoice
+      goName: GetVoice
+      inputType: GetVoiceInput
+      outputType: Voice
+      kind: query
+      description: Read one voice's stable ID and display name.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: ElevenLabs returned the requested voice.}
+        - {id: notFound, goName: NotFound, description: The voice does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned malformed or oversized voice data., optional: true}
+        - {id: defect, goName: Defect, description: Local voice ID or credentials are invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundDefault
+          branch: found
+          description: A representative voice was found by ID.
+          default: true
+          output: {voiceId: voice_meridian, name: Meridian Narrator}
+    - name: editVoiceMetadata
+      goName: EditVoiceMetadata
+      inputType: EditVoiceMetadataInput
+      outputType: EditedVoiceMetadata
+      kind: mutation
+      description: Replace a voice's display name and optionally its description without changing samples.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: edited, goName: Edited, description: ElevenLabs accepted the voice metadata edit.}
+        - {id: notFound, goName: NotFound, description: The voice is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected the metadata edit., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned an invalid edit confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Voice ID and metadata or credentials are invalid., optional: true}
+      mocks:
+        - {name: metadataEdited, branch: edited, description: One voice's display metadata was edited., default: true, output: {voiceId: voice_meridian, name: Meridian Narrator}}
+    - name: deleteVoice
+      goName: DeleteVoice
+      inputType: GetVoiceInput
+      outputType: DeletedVoice
+      kind: mutation
+      description: Permanently delete a voice by ID; a missing voice is already absent.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The voice is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected voice deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned an invalid deletion confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Voice ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: voiceDeleted, branch: deleted, description: One voice was deleted., default: true, output: {voiceId: voice_meridian, deleted: true}}
+    - name: updateVoiceSettings
+      goName: UpdateVoiceSettings
+      inputType: UpdateVoiceSettingsInput
+      outputType: UpdatedVoiceSettings
+      kind: mutation
+      description: Replace a voice's five primary generation settings with absolute values.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: ElevenLabs confirmed the voice settings replacement.}
+        - {id: notFound, goName: NotFound, description: The voice does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs conclusively rejected the settings., optional: true}
+        - {id: defect, goName: Defect, description: Local settings or credentials are invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          description: Representative voice settings were replaced.
+          default: true
+          output: {voiceId: voice_meridian}
     - name: listVoices
       goName: ListVoices
       inputType: ListVoicesInput
