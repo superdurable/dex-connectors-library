@@ -5,11 +5,11 @@ package sfexpress
 
 import (
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -66,8 +66,8 @@ func (operation QueryRoutesOperation) Invoke(call sdkgo.Call, input QueryRoutesI
 	if err != nil {
 		return routeBranch(QueryRoutesBranchDefect, sdkgo.FailureValidation, "SF Express route request is invalid")
 	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	requestID, err := newRequestID()
+	timestamp := strconv.FormatInt(operation.client.clock().Unix(), 10)
+	requestID, err := newRequestID(operation.client.requestIDReader)
 	if err != nil {
 		return routeRetry(sdkgo.FailureAvailability, "SF Express request ID generation failed", 0)
 	}
@@ -185,9 +185,9 @@ func signRouteMessage(message, timestamp, checkword string) string {
 	return base64.StdEncoding.EncodeToString(digest[:])
 }
 
-func newRequestID() (string, error) {
+func newRequestID(reader io.Reader) (string, error) {
 	var bytes [16]byte
-	if _, err := rand.Read(bytes[:]); err != nil {
+	if _, err := io.ReadFull(reader, bytes[:]); err != nil {
 		return "", err
 	}
 	bytes[6] = (bytes[6] & 0x0f) | 0x40

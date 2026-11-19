@@ -7,8 +7,10 @@ package smzdm
 import (
 	"errors"
 	"fmt"
-	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"net/http"
+	"time"
+
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 // Option supplies a non-serializable client dependency to New.
@@ -22,6 +24,10 @@ func (option httpClientOption) applyClientOption(client *Client) {
 // WithHTTPClient supplies an HTTP client for provider tests or a trusted proxy. Redirects are disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
 
+type clockOption struct{ now func() time.Time }
+
+func (option clockOption) applyClientOption(client *Client) { client.clock = option.now }
+
 // Client owns immutable SMZDM configuration and resolves credentials for each query. It is safe for concurrent Steps.
 type Client struct {
 	baseURL          string
@@ -29,6 +35,7 @@ type Client struct {
 	requestFrom      string
 	credentials      CredentialSource
 	httpClient       *http.Client
+	clock            func() time.Time
 }
 
 // New validates configuration without contacting SMZDM. Rotated credentials take effect on the next call.
@@ -47,12 +54,15 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("SMZDM base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, requestFrom: config.RequestFrom, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, requestFrom: config.RequestFrom, credentials: credentials, clock: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("SMZDM client option is required")
 		}
 		option.applyClientOption(client)
+	}
+	if client.clock == nil {
+		return nil, errors.New("SMZDM clock is required")
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil

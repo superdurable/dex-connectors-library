@@ -5,10 +5,14 @@
 package sfexpress
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
+	"time"
+
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 // Option supplies a non-serializable client dependency to New.
@@ -22,12 +26,24 @@ func (option httpClientOption) applyClientOption(client *Client) {
 // WithHTTPClient supplies an HTTP client for provider tests or a trusted proxy. Redirects are disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
 
+type clockOption struct{ now func() time.Time }
+
+func (option clockOption) applyClientOption(client *Client) { client.clock = option.now }
+
+type requestIDReaderOption struct{ reader io.Reader }
+
+func (option requestIDReaderOption) applyClientOption(client *Client) {
+	client.requestIDReader = option.reader
+}
+
 // Client owns immutable SF Express configuration and resolves credentials for each query. It is safe for concurrent Steps.
 type Client struct {
 	baseURL          string
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	clock            func() time.Time
+	requestIDReader  io.Reader
 }
 
 // New validates configuration without contacting SFExpress. Rotated credentials take effect on the next call.
@@ -46,12 +62,15 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("SFExpress base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, clock: time.Now, requestIDReader: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("SFExpress client option is required")
 		}
 		option.applyClientOption(client)
+	}
+	if client.clock == nil || client.requestIDReader == nil {
+		return nil, errors.New("SFExpress clock and request ID reader are required")
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil
