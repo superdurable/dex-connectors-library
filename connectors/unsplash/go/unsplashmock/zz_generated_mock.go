@@ -17,9 +17,22 @@ import (
 
 // Mock is a scripted unsplash connection. Script each operation through its accessor.
 type Mock struct {
-	connection   unsplash.Connection
-	searchPhotos *connectormock.Query[unsplash.SearchPhotosInput, unsplash.PhotoPage]
-	getPhoto     *connectormock.Query[unsplash.GetPhotoInput, unsplash.Photo]
+	connection           unsplash.Connection
+	searchPhotos         *connectormock.Query[unsplash.SearchPhotosInput, unsplash.PhotoPage]
+	getPhoto             *connectormock.Query[unsplash.GetPhotoInput, unsplash.Photo]
+	listPhotos           *connectormock.Query[unsplash.ListPhotosInput, unsplash.PhotoList]
+	getRandomPhoto       *connectormock.Query[unsplash.GetRandomPhotoInput, unsplash.Photo]
+	searchCollections    *connectormock.Query[unsplash.SearchCollectionsInput, unsplash.CollectionPage]
+	listCollections      *connectormock.Query[unsplash.ListCollectionsInput, unsplash.CollectionList]
+	getCollection        *connectormock.Query[unsplash.GetCollectionInput, unsplash.Collection]
+	listCollectionPhotos *connectormock.Query[unsplash.ListCollectionPhotosInput, unsplash.PhotoList]
+	getUser              *connectormock.Query[unsplash.GetUserInput, unsplash.User]
+	listUserPhotos       *connectormock.Query[unsplash.ListUserPhotosInput, unsplash.PhotoList]
+	searchUsers          *connectormock.Query[unsplash.SearchUsersInput, unsplash.UserPage]
+	listTopics           *connectormock.Query[unsplash.ListTopicsInput, unsplash.TopicList]
+	getTopic             *connectormock.Query[unsplash.GetTopicInput, unsplash.Topic]
+	listTopicPhotos      *connectormock.Query[unsplash.ListTopicPhotosInput, unsplash.PhotoList]
+	trackPhotoDownload   *connectormock.Mutation[unsplash.TrackPhotoDownloadInput, unsplash.TrackedPhotoDownload]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +40,37 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		searchPhotos: connectormock.NewQuery[unsplash.SearchPhotosInput, unsplash.PhotoPage](t, unsplash.SearchPhotosDefinition),
-		getPhoto:     connectormock.NewQuery[unsplash.GetPhotoInput, unsplash.Photo](t, unsplash.GetPhotoDefinition),
+		searchPhotos:         connectormock.NewQuery[unsplash.SearchPhotosInput, unsplash.PhotoPage](t, unsplash.SearchPhotosDefinition),
+		getPhoto:             connectormock.NewQuery[unsplash.GetPhotoInput, unsplash.Photo](t, unsplash.GetPhotoDefinition),
+		listPhotos:           connectormock.NewQuery[unsplash.ListPhotosInput, unsplash.PhotoList](t, unsplash.ListPhotosDefinition),
+		getRandomPhoto:       connectormock.NewQuery[unsplash.GetRandomPhotoInput, unsplash.Photo](t, unsplash.GetRandomPhotoDefinition),
+		searchCollections:    connectormock.NewQuery[unsplash.SearchCollectionsInput, unsplash.CollectionPage](t, unsplash.SearchCollectionsDefinition),
+		listCollections:      connectormock.NewQuery[unsplash.ListCollectionsInput, unsplash.CollectionList](t, unsplash.ListCollectionsDefinition),
+		getCollection:        connectormock.NewQuery[unsplash.GetCollectionInput, unsplash.Collection](t, unsplash.GetCollectionDefinition),
+		listCollectionPhotos: connectormock.NewQuery[unsplash.ListCollectionPhotosInput, unsplash.PhotoList](t, unsplash.ListCollectionPhotosDefinition),
+		getUser:              connectormock.NewQuery[unsplash.GetUserInput, unsplash.User](t, unsplash.GetUserDefinition),
+		listUserPhotos:       connectormock.NewQuery[unsplash.ListUserPhotosInput, unsplash.PhotoList](t, unsplash.ListUserPhotosDefinition),
+		searchUsers:          connectormock.NewQuery[unsplash.SearchUsersInput, unsplash.UserPage](t, unsplash.SearchUsersDefinition),
+		listTopics:           connectormock.NewQuery[unsplash.ListTopicsInput, unsplash.TopicList](t, unsplash.ListTopicsDefinition),
+		getTopic:             connectormock.NewQuery[unsplash.GetTopicInput, unsplash.Topic](t, unsplash.GetTopicDefinition),
+		listTopicPhotos:      connectormock.NewQuery[unsplash.ListTopicPhotosInput, unsplash.PhotoList](t, unsplash.ListTopicPhotosDefinition),
+		trackPhotoDownload:   connectormock.NewMutation[unsplash.TrackPhotoDownloadInput, unsplash.TrackedPhotoDownload](t, unsplash.TrackPhotoDownloadDefinition),
 	}
 	mock.searchPhotos.Default(SearchPhotosDefault())
 	mock.getPhoto.Default(GetPhotoDefault())
+	mock.listPhotos.Default(ListPhotosDefault())
+	mock.getRandomPhoto.Default(GetRandomPhotoDefault())
+	mock.searchCollections.Default(SearchCollectionsDefault())
+	mock.listCollections.Default(ListCollectionsDefault())
+	mock.getCollection.Default(GetCollectionDefault())
+	mock.listCollectionPhotos.Default(ListCollectionPhotosDefault())
+	mock.getUser.Default(GetUserDefault())
+	mock.listUserPhotos.Default(ListUserPhotosDefault())
+	mock.searchUsers.Default(SearchUsersDefault())
+	mock.listTopics.Default(ListTopicsDefault())
+	mock.getTopic.Default(GetTopicDefault())
+	mock.listTopicPhotos.Default(ListTopicPhotosDefault())
+	mock.trackPhotoDownload.Default(TrackPhotoDownloadDefault())
 	connection, err := unsplash.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "unsplash", Name: connectionName})
 	if err != nil {
 		t.Fatalf("unsplash mock connection: %v", err)
@@ -53,6 +92,71 @@ func (mock *Mock) GetPhoto() *connectormock.Query[unsplash.GetPhotoInput, unspla
 	return mock.getPhoto
 }
 
+// ListPhotos returns the listPhotos script.
+func (mock *Mock) ListPhotos() *connectormock.Query[unsplash.ListPhotosInput, unsplash.PhotoList] {
+	return mock.listPhotos
+}
+
+// GetRandomPhoto returns the getRandomPhoto script.
+func (mock *Mock) GetRandomPhoto() *connectormock.Query[unsplash.GetRandomPhotoInput, unsplash.Photo] {
+	return mock.getRandomPhoto
+}
+
+// SearchCollections returns the searchCollections script.
+func (mock *Mock) SearchCollections() *connectormock.Query[unsplash.SearchCollectionsInput, unsplash.CollectionPage] {
+	return mock.searchCollections
+}
+
+// ListCollections returns the listCollections script.
+func (mock *Mock) ListCollections() *connectormock.Query[unsplash.ListCollectionsInput, unsplash.CollectionList] {
+	return mock.listCollections
+}
+
+// GetCollection returns the getCollection script.
+func (mock *Mock) GetCollection() *connectormock.Query[unsplash.GetCollectionInput, unsplash.Collection] {
+	return mock.getCollection
+}
+
+// ListCollectionPhotos returns the listCollectionPhotos script.
+func (mock *Mock) ListCollectionPhotos() *connectormock.Query[unsplash.ListCollectionPhotosInput, unsplash.PhotoList] {
+	return mock.listCollectionPhotos
+}
+
+// GetUser returns the getUser script.
+func (mock *Mock) GetUser() *connectormock.Query[unsplash.GetUserInput, unsplash.User] {
+	return mock.getUser
+}
+
+// ListUserPhotos returns the listUserPhotos script.
+func (mock *Mock) ListUserPhotos() *connectormock.Query[unsplash.ListUserPhotosInput, unsplash.PhotoList] {
+	return mock.listUserPhotos
+}
+
+// SearchUsers returns the searchUsers script.
+func (mock *Mock) SearchUsers() *connectormock.Query[unsplash.SearchUsersInput, unsplash.UserPage] {
+	return mock.searchUsers
+}
+
+// ListTopics returns the listTopics script.
+func (mock *Mock) ListTopics() *connectormock.Query[unsplash.ListTopicsInput, unsplash.TopicList] {
+	return mock.listTopics
+}
+
+// GetTopic returns the getTopic script.
+func (mock *Mock) GetTopic() *connectormock.Query[unsplash.GetTopicInput, unsplash.Topic] {
+	return mock.getTopic
+}
+
+// ListTopicPhotos returns the listTopicPhotos script.
+func (mock *Mock) ListTopicPhotos() *connectormock.Query[unsplash.ListTopicPhotosInput, unsplash.PhotoList] {
+	return mock.listTopicPhotos
+}
+
+// TrackPhotoDownload returns the trackPhotoDownload script.
+func (mock *Mock) TrackPhotoDownload() *connectormock.Mutation[unsplash.TrackPhotoDownloadInput, unsplash.TrackedPhotoDownload] {
+	return mock.trackPhotoDownload
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchPhotos() sdkgo.Query[unsplash.SearchPhotosInput, unsplash.PhotoPage] {
@@ -60,6 +164,45 @@ func (operations mockOperations) SearchPhotos() sdkgo.Query[unsplash.SearchPhoto
 }
 func (operations mockOperations) GetPhoto() sdkgo.Query[unsplash.GetPhotoInput, unsplash.Photo] {
 	return operations.mock.getPhoto
+}
+func (operations mockOperations) ListPhotos() sdkgo.Query[unsplash.ListPhotosInput, unsplash.PhotoList] {
+	return operations.mock.listPhotos
+}
+func (operations mockOperations) GetRandomPhoto() sdkgo.Query[unsplash.GetRandomPhotoInput, unsplash.Photo] {
+	return operations.mock.getRandomPhoto
+}
+func (operations mockOperations) SearchCollections() sdkgo.Query[unsplash.SearchCollectionsInput, unsplash.CollectionPage] {
+	return operations.mock.searchCollections
+}
+func (operations mockOperations) ListCollections() sdkgo.Query[unsplash.ListCollectionsInput, unsplash.CollectionList] {
+	return operations.mock.listCollections
+}
+func (operations mockOperations) GetCollection() sdkgo.Query[unsplash.GetCollectionInput, unsplash.Collection] {
+	return operations.mock.getCollection
+}
+func (operations mockOperations) ListCollectionPhotos() sdkgo.Query[unsplash.ListCollectionPhotosInput, unsplash.PhotoList] {
+	return operations.mock.listCollectionPhotos
+}
+func (operations mockOperations) GetUser() sdkgo.Query[unsplash.GetUserInput, unsplash.User] {
+	return operations.mock.getUser
+}
+func (operations mockOperations) ListUserPhotos() sdkgo.Query[unsplash.ListUserPhotosInput, unsplash.PhotoList] {
+	return operations.mock.listUserPhotos
+}
+func (operations mockOperations) SearchUsers() sdkgo.Query[unsplash.SearchUsersInput, unsplash.UserPage] {
+	return operations.mock.searchUsers
+}
+func (operations mockOperations) ListTopics() sdkgo.Query[unsplash.ListTopicsInput, unsplash.TopicList] {
+	return operations.mock.listTopics
+}
+func (operations mockOperations) GetTopic() sdkgo.Query[unsplash.GetTopicInput, unsplash.Topic] {
+	return operations.mock.getTopic
+}
+func (operations mockOperations) ListTopicPhotos() sdkgo.Query[unsplash.ListTopicPhotosInput, unsplash.PhotoList] {
+	return operations.mock.listTopicPhotos
+}
+func (operations mockOperations) TrackPhotoDownload() sdkgo.Mutation[unsplash.TrackPhotoDownloadInput, unsplash.TrackedPhotoDownload] {
+	return operations.mock.trackPhotoDownload
 }
 
 // SearchPhotosSearched selects the searched branch: Unsplash returned a page of photos, possibly empty.
@@ -136,3 +279,528 @@ func GetPhotoFoundDefaultPhoto() connectormock.Case[unsplash.Photo] {
 
 // GetPhotoDefault is the manifest default, foundDefaultPhoto, which New installs.
 func GetPhotoDefault() connectormock.Case[unsplash.Photo] { return GetPhotoFoundDefaultPhoto() }
+
+// ListPhotosListed selects the listed branch: Unsplash returned the public listPhotos data.
+func ListPhotosListed(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListPhotosBranchListed, value, failure)
+}
+
+// ListPhotosNotFound selects the notFound branch: The requested public resource does not exist.
+func ListPhotosNotFound(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListPhotosBranchNotFound, value, failure)
+}
+
+// ListPhotosProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func ListPhotosProviderRejected(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListPhotosBranchProviderRejected, value, failure)
+}
+
+// ListPhotosInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func ListPhotosInvalidResponse(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListPhotosBranchInvalidResponse, value, failure)
+}
+
+// ListPhotosDefect selects the defect branch: Local input or credentials are invalid.
+func ListPhotosDefect(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListPhotosBranchDefect, value, failure)
+}
+
+// ListPhotosRetry asks Dex to retry the listPhotos Step, after the delay when it is positive.
+func ListPhotosRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Retry[unsplash.PhotoList](failure, after)
+}
+
+// ListPhotosListPhotosDefault is the manifest mock listPhotosDefault: Returns representative public Unsplash data for listPhotos.
+func ListPhotosListPhotosDefault() connectormock.Case[unsplash.PhotoList] {
+	value := connectormock.MustDecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
+	return connectormock.Branch(unsplash.ListPhotosBranchListed, value, nil)
+}
+
+// ListPhotosDefault is the manifest default, listPhotosDefault, which New installs.
+func ListPhotosDefault() connectormock.Case[unsplash.PhotoList] { return ListPhotosListPhotosDefault() }
+
+// GetRandomPhotoFound selects the found branch: Unsplash returned the public getRandomPhoto data.
+func GetRandomPhotoFound(value unsplash.Photo, failure *sdkgo.Failure) connectormock.Case[unsplash.Photo] {
+	return connectormock.Branch(unsplash.GetRandomPhotoBranchFound, value, failure)
+}
+
+// GetRandomPhotoNotFound selects the notFound branch: The requested public resource does not exist.
+func GetRandomPhotoNotFound(value unsplash.Photo, failure *sdkgo.Failure) connectormock.Case[unsplash.Photo] {
+	return connectormock.Branch(unsplash.GetRandomPhotoBranchNotFound, value, failure)
+}
+
+// GetRandomPhotoProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func GetRandomPhotoProviderRejected(value unsplash.Photo, failure *sdkgo.Failure) connectormock.Case[unsplash.Photo] {
+	return connectormock.Branch(unsplash.GetRandomPhotoBranchProviderRejected, value, failure)
+}
+
+// GetRandomPhotoInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func GetRandomPhotoInvalidResponse(value unsplash.Photo, failure *sdkgo.Failure) connectormock.Case[unsplash.Photo] {
+	return connectormock.Branch(unsplash.GetRandomPhotoBranchInvalidResponse, value, failure)
+}
+
+// GetRandomPhotoDefect selects the defect branch: Local input or credentials are invalid.
+func GetRandomPhotoDefect(value unsplash.Photo, failure *sdkgo.Failure) connectormock.Case[unsplash.Photo] {
+	return connectormock.Branch(unsplash.GetRandomPhotoBranchDefect, value, failure)
+}
+
+// GetRandomPhotoRetry asks Dex to retry the getRandomPhoto Step, after the delay when it is positive.
+func GetRandomPhotoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.Photo] {
+	return connectormock.Retry[unsplash.Photo](failure, after)
+}
+
+// GetRandomPhotoGetRandomPhotoDefault is the manifest mock getRandomPhotoDefault: Returns representative public Unsplash data for getRandomPhoto.
+func GetRandomPhotoGetRandomPhotoDefault() connectormock.Case[unsplash.Photo] {
+	value := connectormock.MustDecodeOutput[unsplash.Photo](`{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}`)
+	return connectormock.Branch(unsplash.GetRandomPhotoBranchFound, value, nil)
+}
+
+// GetRandomPhotoDefault is the manifest default, getRandomPhotoDefault, which New installs.
+func GetRandomPhotoDefault() connectormock.Case[unsplash.Photo] {
+	return GetRandomPhotoGetRandomPhotoDefault()
+}
+
+// SearchCollectionsSearched selects the searched branch: Unsplash returned the public searchCollections data.
+func SearchCollectionsSearched(value unsplash.CollectionPage, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionPage] {
+	return connectormock.Branch(unsplash.SearchCollectionsBranchSearched, value, failure)
+}
+
+// SearchCollectionsNotFound selects the notFound branch: The requested public resource does not exist.
+func SearchCollectionsNotFound(value unsplash.CollectionPage, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionPage] {
+	return connectormock.Branch(unsplash.SearchCollectionsBranchNotFound, value, failure)
+}
+
+// SearchCollectionsProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func SearchCollectionsProviderRejected(value unsplash.CollectionPage, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionPage] {
+	return connectormock.Branch(unsplash.SearchCollectionsBranchProviderRejected, value, failure)
+}
+
+// SearchCollectionsInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func SearchCollectionsInvalidResponse(value unsplash.CollectionPage, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionPage] {
+	return connectormock.Branch(unsplash.SearchCollectionsBranchInvalidResponse, value, failure)
+}
+
+// SearchCollectionsDefect selects the defect branch: Local input or credentials are invalid.
+func SearchCollectionsDefect(value unsplash.CollectionPage, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionPage] {
+	return connectormock.Branch(unsplash.SearchCollectionsBranchDefect, value, failure)
+}
+
+// SearchCollectionsRetry asks Dex to retry the searchCollections Step, after the delay when it is positive.
+func SearchCollectionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.CollectionPage] {
+	return connectormock.Retry[unsplash.CollectionPage](failure, after)
+}
+
+// SearchCollectionsSearchCollectionsDefault is the manifest mock searchCollectionsDefault: Returns representative public Unsplash data for searchCollections.
+func SearchCollectionsSearchCollectionsDefault() connectormock.Case[unsplash.CollectionPage] {
+	value := connectormock.MustDecodeOutput[unsplash.CollectionPage](`{"total":1,"totalPages":1,"collections":[{"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}]}`)
+	return connectormock.Branch(unsplash.SearchCollectionsBranchSearched, value, nil)
+}
+
+// SearchCollectionsDefault is the manifest default, searchCollectionsDefault, which New installs.
+func SearchCollectionsDefault() connectormock.Case[unsplash.CollectionPage] {
+	return SearchCollectionsSearchCollectionsDefault()
+}
+
+// ListCollectionsListed selects the listed branch: Unsplash returned the public listCollections data.
+func ListCollectionsListed(value unsplash.CollectionList, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionList] {
+	return connectormock.Branch(unsplash.ListCollectionsBranchListed, value, failure)
+}
+
+// ListCollectionsNotFound selects the notFound branch: The requested public resource does not exist.
+func ListCollectionsNotFound(value unsplash.CollectionList, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionList] {
+	return connectormock.Branch(unsplash.ListCollectionsBranchNotFound, value, failure)
+}
+
+// ListCollectionsProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func ListCollectionsProviderRejected(value unsplash.CollectionList, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionList] {
+	return connectormock.Branch(unsplash.ListCollectionsBranchProviderRejected, value, failure)
+}
+
+// ListCollectionsInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func ListCollectionsInvalidResponse(value unsplash.CollectionList, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionList] {
+	return connectormock.Branch(unsplash.ListCollectionsBranchInvalidResponse, value, failure)
+}
+
+// ListCollectionsDefect selects the defect branch: Local input or credentials are invalid.
+func ListCollectionsDefect(value unsplash.CollectionList, failure *sdkgo.Failure) connectormock.Case[unsplash.CollectionList] {
+	return connectormock.Branch(unsplash.ListCollectionsBranchDefect, value, failure)
+}
+
+// ListCollectionsRetry asks Dex to retry the listCollections Step, after the delay when it is positive.
+func ListCollectionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.CollectionList] {
+	return connectormock.Retry[unsplash.CollectionList](failure, after)
+}
+
+// ListCollectionsListCollectionsDefault is the manifest mock listCollectionsDefault: Returns representative public Unsplash data for listCollections.
+func ListCollectionsListCollectionsDefault() connectormock.Case[unsplash.CollectionList] {
+	value := connectormock.MustDecodeOutput[unsplash.CollectionList](`{"collections":[{"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}]}`)
+	return connectormock.Branch(unsplash.ListCollectionsBranchListed, value, nil)
+}
+
+// ListCollectionsDefault is the manifest default, listCollectionsDefault, which New installs.
+func ListCollectionsDefault() connectormock.Case[unsplash.CollectionList] {
+	return ListCollectionsListCollectionsDefault()
+}
+
+// GetCollectionFound selects the found branch: Unsplash returned the public getCollection data.
+func GetCollectionFound(value unsplash.Collection, failure *sdkgo.Failure) connectormock.Case[unsplash.Collection] {
+	return connectormock.Branch(unsplash.GetCollectionBranchFound, value, failure)
+}
+
+// GetCollectionNotFound selects the notFound branch: The requested public resource does not exist.
+func GetCollectionNotFound(value unsplash.Collection, failure *sdkgo.Failure) connectormock.Case[unsplash.Collection] {
+	return connectormock.Branch(unsplash.GetCollectionBranchNotFound, value, failure)
+}
+
+// GetCollectionProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func GetCollectionProviderRejected(value unsplash.Collection, failure *sdkgo.Failure) connectormock.Case[unsplash.Collection] {
+	return connectormock.Branch(unsplash.GetCollectionBranchProviderRejected, value, failure)
+}
+
+// GetCollectionInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func GetCollectionInvalidResponse(value unsplash.Collection, failure *sdkgo.Failure) connectormock.Case[unsplash.Collection] {
+	return connectormock.Branch(unsplash.GetCollectionBranchInvalidResponse, value, failure)
+}
+
+// GetCollectionDefect selects the defect branch: Local input or credentials are invalid.
+func GetCollectionDefect(value unsplash.Collection, failure *sdkgo.Failure) connectormock.Case[unsplash.Collection] {
+	return connectormock.Branch(unsplash.GetCollectionBranchDefect, value, failure)
+}
+
+// GetCollectionRetry asks Dex to retry the getCollection Step, after the delay when it is positive.
+func GetCollectionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.Collection] {
+	return connectormock.Retry[unsplash.Collection](failure, after)
+}
+
+// GetCollectionGetCollectionDefault is the manifest mock getCollectionDefault: Returns representative public Unsplash data for getCollection.
+func GetCollectionGetCollectionDefault() connectormock.Case[unsplash.Collection] {
+	value := connectormock.MustDecodeOutput[unsplash.Collection](`{"id":"206","title":"Office","description":"Workspaces","htmlUrl":"https://unsplash.com/collections/206/office","totalPhotos":12}`)
+	return connectormock.Branch(unsplash.GetCollectionBranchFound, value, nil)
+}
+
+// GetCollectionDefault is the manifest default, getCollectionDefault, which New installs.
+func GetCollectionDefault() connectormock.Case[unsplash.Collection] {
+	return GetCollectionGetCollectionDefault()
+}
+
+// ListCollectionPhotosListed selects the listed branch: Unsplash returned the public listCollectionPhotos data.
+func ListCollectionPhotosListed(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListCollectionPhotosBranchListed, value, failure)
+}
+
+// ListCollectionPhotosNotFound selects the notFound branch: The requested public resource does not exist.
+func ListCollectionPhotosNotFound(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListCollectionPhotosBranchNotFound, value, failure)
+}
+
+// ListCollectionPhotosProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func ListCollectionPhotosProviderRejected(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListCollectionPhotosBranchProviderRejected, value, failure)
+}
+
+// ListCollectionPhotosInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func ListCollectionPhotosInvalidResponse(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListCollectionPhotosBranchInvalidResponse, value, failure)
+}
+
+// ListCollectionPhotosDefect selects the defect branch: Local input or credentials are invalid.
+func ListCollectionPhotosDefect(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListCollectionPhotosBranchDefect, value, failure)
+}
+
+// ListCollectionPhotosRetry asks Dex to retry the listCollectionPhotos Step, after the delay when it is positive.
+func ListCollectionPhotosRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Retry[unsplash.PhotoList](failure, after)
+}
+
+// ListCollectionPhotosListCollectionPhotosDefault is the manifest mock listCollectionPhotosDefault: Returns representative public Unsplash data for listCollectionPhotos.
+func ListCollectionPhotosListCollectionPhotosDefault() connectormock.Case[unsplash.PhotoList] {
+	value := connectormock.MustDecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
+	return connectormock.Branch(unsplash.ListCollectionPhotosBranchListed, value, nil)
+}
+
+// ListCollectionPhotosDefault is the manifest default, listCollectionPhotosDefault, which New installs.
+func ListCollectionPhotosDefault() connectormock.Case[unsplash.PhotoList] {
+	return ListCollectionPhotosListCollectionPhotosDefault()
+}
+
+// GetUserFound selects the found branch: Unsplash returned the public getUser data.
+func GetUserFound(value unsplash.User, failure *sdkgo.Failure) connectormock.Case[unsplash.User] {
+	return connectormock.Branch(unsplash.GetUserBranchFound, value, failure)
+}
+
+// GetUserNotFound selects the notFound branch: The requested public resource does not exist.
+func GetUserNotFound(value unsplash.User, failure *sdkgo.Failure) connectormock.Case[unsplash.User] {
+	return connectormock.Branch(unsplash.GetUserBranchNotFound, value, failure)
+}
+
+// GetUserProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func GetUserProviderRejected(value unsplash.User, failure *sdkgo.Failure) connectormock.Case[unsplash.User] {
+	return connectormock.Branch(unsplash.GetUserBranchProviderRejected, value, failure)
+}
+
+// GetUserInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func GetUserInvalidResponse(value unsplash.User, failure *sdkgo.Failure) connectormock.Case[unsplash.User] {
+	return connectormock.Branch(unsplash.GetUserBranchInvalidResponse, value, failure)
+}
+
+// GetUserDefect selects the defect branch: Local input or credentials are invalid.
+func GetUserDefect(value unsplash.User, failure *sdkgo.Failure) connectormock.Case[unsplash.User] {
+	return connectormock.Branch(unsplash.GetUserBranchDefect, value, failure)
+}
+
+// GetUserRetry asks Dex to retry the getUser Step, after the delay when it is positive.
+func GetUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.User] {
+	return connectormock.Retry[unsplash.User](failure, after)
+}
+
+// GetUserGetUserDefault is the manifest mock getUserDefault: Returns representative public Unsplash data for getUser.
+func GetUserGetUserDefault() connectormock.Case[unsplash.User] {
+	value := connectormock.MustDecodeOutput[unsplash.User](`{"id":"user-1","username":"photographer","name":"A. Photographer","htmlUrl":"https://unsplash.com/@photographer"}`)
+	return connectormock.Branch(unsplash.GetUserBranchFound, value, nil)
+}
+
+// GetUserDefault is the manifest default, getUserDefault, which New installs.
+func GetUserDefault() connectormock.Case[unsplash.User] { return GetUserGetUserDefault() }
+
+// ListUserPhotosListed selects the listed branch: Unsplash returned the public listUserPhotos data.
+func ListUserPhotosListed(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListUserPhotosBranchListed, value, failure)
+}
+
+// ListUserPhotosNotFound selects the notFound branch: The requested public resource does not exist.
+func ListUserPhotosNotFound(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListUserPhotosBranchNotFound, value, failure)
+}
+
+// ListUserPhotosProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func ListUserPhotosProviderRejected(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListUserPhotosBranchProviderRejected, value, failure)
+}
+
+// ListUserPhotosInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func ListUserPhotosInvalidResponse(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListUserPhotosBranchInvalidResponse, value, failure)
+}
+
+// ListUserPhotosDefect selects the defect branch: Local input or credentials are invalid.
+func ListUserPhotosDefect(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListUserPhotosBranchDefect, value, failure)
+}
+
+// ListUserPhotosRetry asks Dex to retry the listUserPhotos Step, after the delay when it is positive.
+func ListUserPhotosRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Retry[unsplash.PhotoList](failure, after)
+}
+
+// ListUserPhotosListUserPhotosDefault is the manifest mock listUserPhotosDefault: Returns representative public Unsplash data for listUserPhotos.
+func ListUserPhotosListUserPhotosDefault() connectormock.Case[unsplash.PhotoList] {
+	value := connectormock.MustDecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
+	return connectormock.Branch(unsplash.ListUserPhotosBranchListed, value, nil)
+}
+
+// ListUserPhotosDefault is the manifest default, listUserPhotosDefault, which New installs.
+func ListUserPhotosDefault() connectormock.Case[unsplash.PhotoList] {
+	return ListUserPhotosListUserPhotosDefault()
+}
+
+// SearchUsersSearched selects the searched branch: Unsplash returned the public searchUsers data.
+func SearchUsersSearched(value unsplash.UserPage, failure *sdkgo.Failure) connectormock.Case[unsplash.UserPage] {
+	return connectormock.Branch(unsplash.SearchUsersBranchSearched, value, failure)
+}
+
+// SearchUsersNotFound selects the notFound branch: The requested public resource does not exist.
+func SearchUsersNotFound(value unsplash.UserPage, failure *sdkgo.Failure) connectormock.Case[unsplash.UserPage] {
+	return connectormock.Branch(unsplash.SearchUsersBranchNotFound, value, failure)
+}
+
+// SearchUsersProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func SearchUsersProviderRejected(value unsplash.UserPage, failure *sdkgo.Failure) connectormock.Case[unsplash.UserPage] {
+	return connectormock.Branch(unsplash.SearchUsersBranchProviderRejected, value, failure)
+}
+
+// SearchUsersInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func SearchUsersInvalidResponse(value unsplash.UserPage, failure *sdkgo.Failure) connectormock.Case[unsplash.UserPage] {
+	return connectormock.Branch(unsplash.SearchUsersBranchInvalidResponse, value, failure)
+}
+
+// SearchUsersDefect selects the defect branch: Local input or credentials are invalid.
+func SearchUsersDefect(value unsplash.UserPage, failure *sdkgo.Failure) connectormock.Case[unsplash.UserPage] {
+	return connectormock.Branch(unsplash.SearchUsersBranchDefect, value, failure)
+}
+
+// SearchUsersRetry asks Dex to retry the searchUsers Step, after the delay when it is positive.
+func SearchUsersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.UserPage] {
+	return connectormock.Retry[unsplash.UserPage](failure, after)
+}
+
+// SearchUsersSearchUsersDefault is the manifest mock searchUsersDefault: Returns representative public Unsplash data for searchUsers.
+func SearchUsersSearchUsersDefault() connectormock.Case[unsplash.UserPage] {
+	value := connectormock.MustDecodeOutput[unsplash.UserPage](`{"total":1,"totalPages":1,"users":[{"id":"user-1","username":"photographer","name":"A. Photographer","htmlUrl":"https://unsplash.com/@photographer"}]}`)
+	return connectormock.Branch(unsplash.SearchUsersBranchSearched, value, nil)
+}
+
+// SearchUsersDefault is the manifest default, searchUsersDefault, which New installs.
+func SearchUsersDefault() connectormock.Case[unsplash.UserPage] {
+	return SearchUsersSearchUsersDefault()
+}
+
+// ListTopicsListed selects the listed branch: Unsplash returned the public listTopics data.
+func ListTopicsListed(value unsplash.TopicList, failure *sdkgo.Failure) connectormock.Case[unsplash.TopicList] {
+	return connectormock.Branch(unsplash.ListTopicsBranchListed, value, failure)
+}
+
+// ListTopicsNotFound selects the notFound branch: The requested public resource does not exist.
+func ListTopicsNotFound(value unsplash.TopicList, failure *sdkgo.Failure) connectormock.Case[unsplash.TopicList] {
+	return connectormock.Branch(unsplash.ListTopicsBranchNotFound, value, failure)
+}
+
+// ListTopicsProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func ListTopicsProviderRejected(value unsplash.TopicList, failure *sdkgo.Failure) connectormock.Case[unsplash.TopicList] {
+	return connectormock.Branch(unsplash.ListTopicsBranchProviderRejected, value, failure)
+}
+
+// ListTopicsInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func ListTopicsInvalidResponse(value unsplash.TopicList, failure *sdkgo.Failure) connectormock.Case[unsplash.TopicList] {
+	return connectormock.Branch(unsplash.ListTopicsBranchInvalidResponse, value, failure)
+}
+
+// ListTopicsDefect selects the defect branch: Local input or credentials are invalid.
+func ListTopicsDefect(value unsplash.TopicList, failure *sdkgo.Failure) connectormock.Case[unsplash.TopicList] {
+	return connectormock.Branch(unsplash.ListTopicsBranchDefect, value, failure)
+}
+
+// ListTopicsRetry asks Dex to retry the listTopics Step, after the delay when it is positive.
+func ListTopicsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.TopicList] {
+	return connectormock.Retry[unsplash.TopicList](failure, after)
+}
+
+// ListTopicsListTopicsDefault is the manifest mock listTopicsDefault: Returns representative public Unsplash data for listTopics.
+func ListTopicsListTopicsDefault() connectormock.Case[unsplash.TopicList] {
+	value := connectormock.MustDecodeOutput[unsplash.TopicList](`{"topics":[{"id":"topic-1","slug":"architecture","title":"Architecture","htmlUrl":"https://unsplash.com/t/architecture"}]}`)
+	return connectormock.Branch(unsplash.ListTopicsBranchListed, value, nil)
+}
+
+// ListTopicsDefault is the manifest default, listTopicsDefault, which New installs.
+func ListTopicsDefault() connectormock.Case[unsplash.TopicList] { return ListTopicsListTopicsDefault() }
+
+// GetTopicFound selects the found branch: Unsplash returned the public getTopic data.
+func GetTopicFound(value unsplash.Topic, failure *sdkgo.Failure) connectormock.Case[unsplash.Topic] {
+	return connectormock.Branch(unsplash.GetTopicBranchFound, value, failure)
+}
+
+// GetTopicNotFound selects the notFound branch: The requested public resource does not exist.
+func GetTopicNotFound(value unsplash.Topic, failure *sdkgo.Failure) connectormock.Case[unsplash.Topic] {
+	return connectormock.Branch(unsplash.GetTopicBranchNotFound, value, failure)
+}
+
+// GetTopicProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func GetTopicProviderRejected(value unsplash.Topic, failure *sdkgo.Failure) connectormock.Case[unsplash.Topic] {
+	return connectormock.Branch(unsplash.GetTopicBranchProviderRejected, value, failure)
+}
+
+// GetTopicInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func GetTopicInvalidResponse(value unsplash.Topic, failure *sdkgo.Failure) connectormock.Case[unsplash.Topic] {
+	return connectormock.Branch(unsplash.GetTopicBranchInvalidResponse, value, failure)
+}
+
+// GetTopicDefect selects the defect branch: Local input or credentials are invalid.
+func GetTopicDefect(value unsplash.Topic, failure *sdkgo.Failure) connectormock.Case[unsplash.Topic] {
+	return connectormock.Branch(unsplash.GetTopicBranchDefect, value, failure)
+}
+
+// GetTopicRetry asks Dex to retry the getTopic Step, after the delay when it is positive.
+func GetTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.Topic] {
+	return connectormock.Retry[unsplash.Topic](failure, after)
+}
+
+// GetTopicGetTopicDefault is the manifest mock getTopicDefault: Returns representative public Unsplash data for getTopic.
+func GetTopicGetTopicDefault() connectormock.Case[unsplash.Topic] {
+	value := connectormock.MustDecodeOutput[unsplash.Topic](`{"id":"topic-1","slug":"architecture","title":"Architecture","htmlUrl":"https://unsplash.com/t/architecture"}`)
+	return connectormock.Branch(unsplash.GetTopicBranchFound, value, nil)
+}
+
+// GetTopicDefault is the manifest default, getTopicDefault, which New installs.
+func GetTopicDefault() connectormock.Case[unsplash.Topic] { return GetTopicGetTopicDefault() }
+
+// ListTopicPhotosListed selects the listed branch: Unsplash returned the public listTopicPhotos data.
+func ListTopicPhotosListed(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListTopicPhotosBranchListed, value, failure)
+}
+
+// ListTopicPhotosNotFound selects the notFound branch: The requested public resource does not exist.
+func ListTopicPhotosNotFound(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListTopicPhotosBranchNotFound, value, failure)
+}
+
+// ListTopicPhotosProviderRejected selects the providerRejected branch: Unsplash rejected the request or application key.
+func ListTopicPhotosProviderRejected(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListTopicPhotosBranchProviderRejected, value, failure)
+}
+
+// ListTopicPhotosInvalidResponse selects the invalidResponse branch: Unsplash returned malformed or oversized data.
+func ListTopicPhotosInvalidResponse(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListTopicPhotosBranchInvalidResponse, value, failure)
+}
+
+// ListTopicPhotosDefect selects the defect branch: Local input or credentials are invalid.
+func ListTopicPhotosDefect(value unsplash.PhotoList, failure *sdkgo.Failure) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Branch(unsplash.ListTopicPhotosBranchDefect, value, failure)
+}
+
+// ListTopicPhotosRetry asks Dex to retry the listTopicPhotos Step, after the delay when it is positive.
+func ListTopicPhotosRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.PhotoList] {
+	return connectormock.Retry[unsplash.PhotoList](failure, after)
+}
+
+// ListTopicPhotosListTopicPhotosDefault is the manifest mock listTopicPhotosDefault: Returns representative public Unsplash data for listTopicPhotos.
+func ListTopicPhotosListTopicPhotosDefault() connectormock.Case[unsplash.PhotoList] {
+	value := connectormock.MustDecodeOutput[unsplash.PhotoList](`{"photos":[{"id":"office-1","description":"A sunlit office","altDescription":"sunlit office interior","htmlUrl":"https://unsplash.com/photos/office-1","regularUrl":"https://images.unsplash.com/photo-office-1","photographerName":"A. Photographer","photographerURL":"https://unsplash.com/@photographer"}]}`)
+	return connectormock.Branch(unsplash.ListTopicPhotosBranchListed, value, nil)
+}
+
+// ListTopicPhotosDefault is the manifest default, listTopicPhotosDefault, which New installs.
+func ListTopicPhotosDefault() connectormock.Case[unsplash.PhotoList] {
+	return ListTopicPhotosListTopicPhotosDefault()
+}
+
+// TrackPhotoDownloadTracked selects the tracked branch: Unsplash recorded the download event and returned an image URL.
+func TrackPhotoDownloadTracked(value unsplash.TrackedPhotoDownload, failure *sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchTracked, value, failure)
+}
+
+// TrackPhotoDownloadNotFound selects the notFound branch: The photo does not exist.
+func TrackPhotoDownloadNotFound(value unsplash.TrackedPhotoDownload, failure *sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchNotFound, value, failure)
+}
+
+// TrackPhotoDownloadProviderRejected selects the providerRejected branch: Unsplash conclusively rejected the event or application key.
+func TrackPhotoDownloadProviderRejected(value unsplash.TrackedPhotoDownload, failure *sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchProviderRejected, value, failure)
+}
+
+// TrackPhotoDownloadUncertain returns an uncertain trackPhotoDownload outcome.
+func TrackPhotoDownloadUncertain(value unsplash.TrackedPhotoDownload, failure sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// TrackPhotoDownloadDefect selects the defect branch: Local input or credentials are invalid.
+func TrackPhotoDownloadDefect(value unsplash.TrackedPhotoDownload, failure *sdkgo.Failure) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchDefect, value, failure)
+}
+
+// TrackPhotoDownloadRetry asks Dex to retry the trackPhotoDownload Step, after the delay when it is positive.
+func TrackPhotoDownloadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return connectormock.Retry[unsplash.TrackedPhotoDownload](failure, after)
+}
+
+// TrackPhotoDownloadTrackedDefaultPhoto is the manifest mock trackedDefaultPhoto: Unsplash recorded an office photo download event.
+func TrackPhotoDownloadTrackedDefaultPhoto() connectormock.Case[unsplash.TrackedPhotoDownload] {
+	value := connectormock.MustDecodeOutput[unsplash.TrackedPhotoDownload](`{"url":"https://images.unsplash.com/photo-office-1"}`)
+	return connectormock.Branch(unsplash.TrackPhotoDownloadBranchTracked, value, nil)
+}
+
+// TrackPhotoDownloadDefault is the manifest default, trackedDefaultPhoto, which New installs.
+func TrackPhotoDownloadDefault() connectormock.Case[unsplash.TrackedPhotoDownload] {
+	return TrackPhotoDownloadTrackedDefaultPhoto()
+}

@@ -27,6 +27,13 @@ func (providerContext) Value(key any) any           { return context.Background(
 
 var testConnection = sdkgo.ConnectionRef{Provider: "unsplash", Name: "unsplash"}
 
+func TestDownloadRefusalRequiresUnambiguousBody(t *testing.T) {
+	require.True(t, isDefiniteDownloadRefusal(&downloadTrackingResponse{status: http.StatusUnauthorized, body: []byte(`{"errors":["Invalid application key"]}`)}))
+	require.False(t, isDefiniteDownloadRefusal(&downloadTrackingResponse{status: http.StatusConflict, body: []byte(`{"errors":["Conflict"]}`)}))
+	require.False(t, isDefiniteDownloadRefusal(&downloadTrackingResponse{status: http.StatusBadRequest, body: []byte(`{}`)}))
+	require.False(t, isDefiniteDownloadRefusal(&downloadTrackingResponse{status: http.StatusBadRequest, body: []byte(`{"errors":["Invalid"],"url":"https://example.com"}`)}))
+}
+
 func newProviderClient(t *testing.T, address string) *Client {
 	t.Helper()
 	client, err := New(Config{BaseURL: address}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {AccessKey: sdkgo.NewSecretString("unsplash-test-key")}})

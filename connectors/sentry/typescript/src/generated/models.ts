@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Sentry token. Start at https://sentry.io/settings/account/api/auth-tokens/, follow User Settings > Auth Tokens > Create New Token. Create an auth token with event:read for reads and event:write for status updates. Copy the opaque secret; blank prevents requests. It is sent only in the Authorization header. */
+  /** Secret Sentry token. Start at https://sentry.io/settings/account/api/auth-tokens/, follow User Settings > Auth Tokens > Create New Token. Create an auth token with event:read and event:write for issue reads and updates, event:admin for issue deletion, project:read, project:write, and project:admin for project reads and writes, org:read for organization reads, and org:write for organization updates. Organization creation requires a user token with account permission to create organizations. Copy the opaque secret; blank prevents requests. It is sent only in the Authorization header. */
   apiKey: SecretString;
 }
 

@@ -63,7 +63,8 @@ def test_added_at_rejects_nanosecond_truncation() -> None:
     """Reject a valid Go timestamp when datetime would lose three digits."""
     root = Path(__file__).parents[4]
     scenarios = json.loads((root / "conformance/connectors/spotify/scenarios.json").read_text())
-    body = json.loads(scenarios["scenarios"][0]["exchanges"][0]["body"])
+    playlist_page = next(scenario for scenario in scenarios["scenarios"] if scenario["name"] == "listed")
+    body = json.loads(playlist_page["exchanges"][0]["body"])
     body["items"][0]["added_at"] = "2026-09-01T12:30:00.123456789Z"
     with pytest.raises(ValueError, match="added_at"):
         _decode_page(json.dumps(body).encode(), "3cEYpjA9oz9GiPac4AsH4n")

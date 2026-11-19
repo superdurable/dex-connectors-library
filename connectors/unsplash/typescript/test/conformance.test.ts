@@ -8,7 +8,8 @@ import { ProviderTransportError, type ProviderRequest } from '@superdurable/conn
 import { Client } from '../src/client.js';
 import { GetPhotoInputSchema, SearchPhotosInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/unsplash/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/unsplash/scenarios.json', import.meta.url))
+  .filter(scenario => ['searchPhotos', 'getPhoto'].includes(scenario.operation));
 const connection = { provider: 'unsplash', name: 'unsplash' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeUnsplash));
 async function invokeUnsplash(scenario: Scenario, recorder: ExchangeRecorder) {

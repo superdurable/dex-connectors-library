@@ -36,3 +36,5 @@ a user-configured Web Service Key in Dex Web Connections; it is not run by the
 provider tests.
 
 The [TypeScript package](typescript/README.md) implements `geocodeAddress` and includes a [runnable Dex Flow](typescript/examples/address-lookup/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.
+
+The [Python package](python/README.md) implements the same Query and has a checked-in Dex Flow and Worker.

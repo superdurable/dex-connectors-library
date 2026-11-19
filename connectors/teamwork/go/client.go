@@ -5,6 +5,8 @@
 package teamwork
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -68,6 +70,10 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, call.Context, http.MethodGet, path, nil)
+}
+
+func (client *Client) request(call sdkgo.Call, requestContext context.Context, method, path string, body []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -76,11 +82,14 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
+	if len(body) > 0 {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(apiToken+":")))
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -88,6 +97,6 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

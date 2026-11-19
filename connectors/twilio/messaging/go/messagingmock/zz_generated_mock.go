@@ -17,9 +17,12 @@ import (
 
 // Mock is a scripted twilio-messaging connection. Script each operation through its accessor.
 type Mock struct {
-	connection  messaging.Connection
-	sendMessage *connectormock.Mutation[messaging.SendMessageInput, messaging.Message]
-	getMessage  *connectormock.Query[messaging.GetMessageInput, messaging.Message]
+	connection    messaging.Connection
+	sendMessage   *connectormock.Mutation[messaging.SendMessageInput, messaging.Message]
+	getMessage    *connectormock.Query[messaging.GetMessageInput, messaging.Message]
+	listMessages  *connectormock.Query[messaging.ListMessagesInput, messaging.MessagePage]
+	deleteMessage *connectormock.Mutation[messaging.DeleteMessageInput, messaging.DeletedMessage]
+	redactMessage *connectormock.Mutation[messaging.RedactMessageInput, messaging.Message]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		sendMessage: connectormock.NewMutation[messaging.SendMessageInput, messaging.Message](t, messaging.SendMessageDefinition),
-		getMessage:  connectormock.NewQuery[messaging.GetMessageInput, messaging.Message](t, messaging.GetMessageDefinition),
+		sendMessage:   connectormock.NewMutation[messaging.SendMessageInput, messaging.Message](t, messaging.SendMessageDefinition),
+		getMessage:    connectormock.NewQuery[messaging.GetMessageInput, messaging.Message](t, messaging.GetMessageDefinition),
+		listMessages:  connectormock.NewQuery[messaging.ListMessagesInput, messaging.MessagePage](t, messaging.ListMessagesDefinition),
+		deleteMessage: connectormock.NewMutation[messaging.DeleteMessageInput, messaging.DeletedMessage](t, messaging.DeleteMessageDefinition),
+		redactMessage: connectormock.NewMutation[messaging.RedactMessageInput, messaging.Message](t, messaging.RedactMessageDefinition),
 	}
 	mock.sendMessage.Default(SendMessageDefault())
 	mock.getMessage.Default(GetMessageDefault())
+	mock.listMessages.Default(ListMessagesDefault())
+	mock.deleteMessage.Default(DeleteMessageDefault())
+	mock.redactMessage.Default(RedactMessageDefault())
 	connection, err := messaging.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "twilio", Name: connectionName})
 	if err != nil {
 		t.Fatalf("twilio-messaging mock connection: %v", err)
@@ -53,6 +62,21 @@ func (mock *Mock) GetMessage() *connectormock.Query[messaging.GetMessageInput, m
 	return mock.getMessage
 }
 
+// ListMessages returns the listMessages script.
+func (mock *Mock) ListMessages() *connectormock.Query[messaging.ListMessagesInput, messaging.MessagePage] {
+	return mock.listMessages
+}
+
+// DeleteMessage returns the deleteMessage script.
+func (mock *Mock) DeleteMessage() *connectormock.Mutation[messaging.DeleteMessageInput, messaging.DeletedMessage] {
+	return mock.deleteMessage
+}
+
+// RedactMessage returns the redactMessage script.
+func (mock *Mock) RedactMessage() *connectormock.Mutation[messaging.RedactMessageInput, messaging.Message] {
+	return mock.redactMessage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SendMessage() sdkgo.Mutation[messaging.SendMessageInput, messaging.Message] {
@@ -60,6 +84,15 @@ func (operations mockOperations) SendMessage() sdkgo.Mutation[messaging.SendMess
 }
 func (operations mockOperations) GetMessage() sdkgo.Query[messaging.GetMessageInput, messaging.Message] {
 	return operations.mock.getMessage
+}
+func (operations mockOperations) ListMessages() sdkgo.Query[messaging.ListMessagesInput, messaging.MessagePage] {
+	return operations.mock.listMessages
+}
+func (operations mockOperations) DeleteMessage() sdkgo.Mutation[messaging.DeleteMessageInput, messaging.DeletedMessage] {
+	return operations.mock.deleteMessage
+}
+func (operations mockOperations) RedactMessage() sdkgo.Mutation[messaging.RedactMessageInput, messaging.Message] {
+	return operations.mock.redactMessage
 }
 
 // SendMessageAccepted selects the accepted branch: Twilio created the message and returned its SID; delivery status arrives later through getMessage.
@@ -158,3 +191,106 @@ func GetMessageInvalidMessageResponse() connectormock.Case[messaging.Message] {
 
 // GetMessageDefault is the manifest default, deliveredText, which New installs.
 func GetMessageDefault() connectormock.Case[messaging.Message] { return GetMessageDeliveredText() }
+
+// ListMessagesListed selects the listed branch: Twilio returned the requested message page.
+func ListMessagesListed(value messaging.MessagePage, failure *sdkgo.Failure) connectormock.Case[messaging.MessagePage] {
+	return connectormock.Branch(messaging.ListMessagesBranchListed, value, failure)
+}
+
+// ListMessagesProviderRejected selects the providerRejected branch: Twilio definitively rejected the list request.
+func ListMessagesProviderRejected(value messaging.MessagePage, failure *sdkgo.Failure) connectormock.Case[messaging.MessagePage] {
+	return connectormock.Branch(messaging.ListMessagesBranchProviderRejected, value, failure)
+}
+
+// ListMessagesInvalidResponse selects the invalidResponse branch: Twilio returned an invalid or oversized message page.
+func ListMessagesInvalidResponse(value messaging.MessagePage, failure *sdkgo.Failure) connectormock.Case[messaging.MessagePage] {
+	return connectormock.Branch(messaging.ListMessagesBranchInvalidResponse, value, failure)
+}
+
+// ListMessagesDefect selects the defect branch: The list filters or connection are invalid.
+func ListMessagesDefect(value messaging.MessagePage, failure *sdkgo.Failure) connectormock.Case[messaging.MessagePage] {
+	return connectormock.Branch(messaging.ListMessagesBranchDefect, value, failure)
+}
+
+// ListMessagesRetry asks Dex to retry the listMessages Step, after the delay when it is positive.
+func ListMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[messaging.MessagePage] {
+	return connectormock.Retry[messaging.MessagePage](failure, after)
+}
+
+// ListMessagesRecentMessages is the manifest mock recentMessages: A representative page of account messages without bodies.
+func ListMessagesRecentMessages() connectormock.Case[messaging.MessagePage] {
+	value := connectormock.MustDecodeOutput[messaging.MessagePage](`{"page":0,"pageSize":50,"messages":[{"sid":"SMfedcba9876543210fedcba9876543210","accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","status":"delivered","direction":"outbound-api","segmentCount":1,"createdAt":"2026-09-30T17:04:05Z"}]}`)
+	return connectormock.Branch(messaging.ListMessagesBranchListed, value, nil)
+}
+
+// ListMessagesDefault is the manifest default, recentMessages, which New installs.
+func ListMessagesDefault() connectormock.Case[messaging.MessagePage] {
+	return ListMessagesRecentMessages()
+}
+
+// DeleteMessageDeleted selects the deleted branch: Twilio deleted the record or it was already absent.
+func DeleteMessageDeleted(value messaging.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[messaging.DeletedMessage] {
+	return connectormock.Branch(messaging.DeleteMessageBranchDeleted, value, failure)
+}
+
+// DeleteMessageProviderRejected selects the providerRejected branch: Twilio definitively rejected the deletion.
+func DeleteMessageProviderRejected(value messaging.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[messaging.DeletedMessage] {
+	return connectormock.Branch(messaging.DeleteMessageBranchProviderRejected, value, failure)
+}
+
+// DeleteMessageDefect selects the defect branch: The message SID or connection is invalid.
+func DeleteMessageDefect(value messaging.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[messaging.DeletedMessage] {
+	return connectormock.Branch(messaging.DeleteMessageBranchDefect, value, failure)
+}
+
+// DeleteMessageRetry asks Dex to retry the deleteMessage Step, after the delay when it is positive.
+func DeleteMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[messaging.DeletedMessage] {
+	return connectormock.Retry[messaging.DeletedMessage](failure, after)
+}
+
+// DeleteMessageDeletedMessage is the manifest mock deletedMessage: The message record was deleted.
+func DeleteMessageDeletedMessage() connectormock.Case[messaging.DeletedMessage] {
+	value := connectormock.MustDecodeOutput[messaging.DeletedMessage](`{"messageSid":"SMfedcba9876543210fedcba9876543210"}`)
+	return connectormock.Branch(messaging.DeleteMessageBranchDeleted, value, nil)
+}
+
+// DeleteMessageDefault is the manifest default, deletedMessage, which New installs.
+func DeleteMessageDefault() connectormock.Case[messaging.DeletedMessage] {
+	return DeleteMessageDeletedMessage()
+}
+
+// RedactMessageRedacted selects the redacted branch: Twilio erased the stored message body.
+func RedactMessageRedacted(value messaging.Message, failure *sdkgo.Failure) connectormock.Case[messaging.Message] {
+	return connectormock.Branch(messaging.RedactMessageBranchRedacted, value, failure)
+}
+
+// RedactMessageNotFound selects the notFound branch: The message does not exist.
+func RedactMessageNotFound(value messaging.Message, failure *sdkgo.Failure) connectormock.Case[messaging.Message] {
+	return connectormock.Branch(messaging.RedactMessageBranchNotFound, value, failure)
+}
+
+// RedactMessageProviderRejected selects the providerRejected branch: Twilio definitively rejected the redaction.
+func RedactMessageProviderRejected(value messaging.Message, failure *sdkgo.Failure) connectormock.Case[messaging.Message] {
+	return connectormock.Branch(messaging.RedactMessageBranchProviderRejected, value, failure)
+}
+
+// RedactMessageDefect selects the defect branch: The message SID or connection is invalid.
+func RedactMessageDefect(value messaging.Message, failure *sdkgo.Failure) connectormock.Case[messaging.Message] {
+	return connectormock.Branch(messaging.RedactMessageBranchDefect, value, failure)
+}
+
+// RedactMessageRetry asks Dex to retry the redactMessage Step, after the delay when it is positive.
+func RedactMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[messaging.Message] {
+	return connectormock.Retry[messaging.Message](failure, after)
+}
+
+// RedactMessageRedactedMessage is the manifest mock redactedMessage: The stored body was erased.
+func RedactMessageRedactedMessage() connectormock.Case[messaging.Message] {
+	value := connectormock.MustDecodeOutput[messaging.Message](`{"sid":"SMfedcba9876543210fedcba9876543210","accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","status":"delivered","direction":"outbound-api","segmentCount":1,"createdAt":"2026-09-30T17:04:05Z"}`)
+	return connectormock.Branch(messaging.RedactMessageBranchRedacted, value, nil)
+}
+
+// RedactMessageDefault is the manifest default, redactedMessage, which New installs.
+func RedactMessageDefault() connectormock.Case[messaging.Message] {
+	return RedactMessageRedactedMessage()
+}

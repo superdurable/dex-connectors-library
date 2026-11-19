@@ -14,14 +14,21 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/smartsheet/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/smartsheet/scenarios.json")
+    if scenario["operation"] in {"listSheets", "getSheet"}
+]
 CONNECTION = sdk.ConnectionRef("smartsheet", "smartsheet")
 ADAPTER = conformance.PythonOperationAdapter(
-    "smartsheet", CONNECTION, smartsheet,
+    "smartsheet",
+    CONNECTION,
+    smartsheet,
     lambda client, _: smartsheet.Client(
         smartsheet.Config(base_url="http://127.0.0.1:28590/2.0"),
         conformance.static_credentials(
-            CONNECTION, smartsheet.Credentials(sdk.SecretString("test-secret-key"))),
+            CONNECTION, smartsheet.Credentials(sdk.SecretString("test-secret-key"))
+        ),
         client,
     ),
 )

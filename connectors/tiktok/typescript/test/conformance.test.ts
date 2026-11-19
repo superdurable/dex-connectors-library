@@ -8,7 +8,8 @@ import { TikTokClient } from '../src/client.js';
 import { ListCampaignsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/tiktok/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/tiktok/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listCampaigns');
 const connection = { provider: 'tiktok-business', name: 'tiktok-business' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTikTok, '/open_api/v1.3'));
 

@@ -16,6 +16,106 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getTrack/sampleTrack/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.TrackSummary](`{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","durationMilliseconds":213000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}],"album":{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}}`)
+			return err
+		}},
+		{name: "searchTracks/sampleTrackSearch/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","durationMilliseconds":213000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "searchTracks/sampleTrackSearch/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"7ouMYWpwJ422jRcDASZB7P","name":"Another Song","spotifyUrl":"https://open.spotify.com/track/7ouMYWpwJ422jRcDASZB7P","durationMilliseconds":180000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "searchTracks/sampleTrackSearch/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"3n3Ppam7vgaVa1iaRUc9Lp","name":"Final Song","spotifyUrl":"https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp","durationMilliseconds":200000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
+		{name: "getArtist/sampleArtist/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.ArtistSummary](`{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist","spotifyUrl":"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF","genres":["pop"]}`)
+			return err
+		}},
+		{name: "listArtistAlbums/sampleArtistAlbums/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "listArtistAlbums/sampleArtistAlbums/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"2up3OPMp9Tb4dAKM2erWXQ","name":"Second Album","spotifyUrl":"https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ","releaseDate":"2025-01-01","totalTracks":8,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "listArtistAlbums/sampleArtistAlbums/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"4aawyAB9vmqN3uQ7FjRGTy","name":"Third Album","spotifyUrl":"https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy","releaseDate":"2024-01-01","totalTracks":6,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
+		{name: "searchArtists/sampleArtistSearch/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.ArtistSummaryPage](`{"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist","spotifyUrl":"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF","genres":["pop"]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "searchArtists/sampleArtistSearch/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.ArtistSummaryPage](`{"artists":[{"id":"3TVXtAsR1Inumwj472S9r4","name":"Another Artist","spotifyUrl":"https://open.spotify.com/artist/3TVXtAsR1Inumwj472S9r4","genres":["rock"]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "searchArtists/sampleArtistSearch/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.ArtistSummaryPage](`{"artists":[{"id":"1Xyo4u8uXC1ZmMpatF05PJ","name":"Third Artist","spotifyUrl":"https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ","genres":["soul"]}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
+		{name: "getAlbum/sampleAlbum/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummary](`{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}`)
+			return err
+		}},
+		{name: "listAlbumTracks/sampleAlbumTracks/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumTrackPage](`{"albumId":"1ATL5GLyefJaxhQzSPVrLX","tracks":[{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","durationMilliseconds":213000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "listAlbumTracks/sampleAlbumTracks/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumTrackPage](`{"albumId":"1ATL5GLyefJaxhQzSPVrLX","tracks":[{"id":"7ouMYWpwJ422jRcDASZB7P","name":"Another Song","spotifyUrl":"https://open.spotify.com/track/7ouMYWpwJ422jRcDASZB7P","durationMilliseconds":180000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "listAlbumTracks/sampleAlbumTracks/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumTrackPage](`{"albumId":"1ATL5GLyefJaxhQzSPVrLX","tracks":[{"id":"3n3Ppam7vgaVa1iaRUc9Lp","name":"Final Song","spotifyUrl":"https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp","durationMilliseconds":200000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
+		{name: "searchAlbums/sampleAlbumSearch/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "searchAlbums/sampleAlbumSearch/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"2up3OPMp9Tb4dAKM2erWXQ","name":"Second Album","spotifyUrl":"https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ","releaseDate":"2025-01-01","totalTracks":8,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "searchAlbums/sampleAlbumSearch/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"4aawyAB9vmqN3uQ7FjRGTy","name":"Third Album","spotifyUrl":"https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy","releaseDate":"2024-01-01","totalTracks":6,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
+		{name: "listUserPlaylists/sampleUserPlaylists/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.PlaylistSummaryPage](`{"playlists":[{"id":"3cEYpjA9oz9GiPac4AsH4n","name":"Example One","ownerUserId":"sample-user","spotifyUrl":"https://open.spotify.com/playlist/3cEYpjA9oz9GiPac4AsH4n","snapshotId":"sample-snapshot-1","public":true}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "listUserPlaylists/sampleUserPlaylists/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.PlaylistSummaryPage](`{"playlists":[{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"Example Two","ownerUserId":"sample-user","spotifyUrl":"https://open.spotify.com/playlist/4iV5W9uYEdYUVa79Axb7Rh","snapshotId":"sample-snapshot-2","public":true}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "listUserPlaylists/sampleUserPlaylists/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.PlaylistSummaryPage](`{"playlists":[{"id":"7ouMYWpwJ422jRcDASZB7P","name":"Example Three","ownerUserId":"sample-user","spotifyUrl":"https://open.spotify.com/playlist/7ouMYWpwJ422jRcDASZB7P","snapshotId":"sample-snapshot-3","public":true}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
+		{name: "searchPlaylists/samplePlaylistSearch/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.PlaylistSummaryPage](`{"playlists":[{"id":"3cEYpjA9oz9GiPac4AsH4n","name":"Example One","ownerUserId":"sample-user","spotifyUrl":"https://open.spotify.com/playlist/3cEYpjA9oz9GiPac4AsH4n","snapshotId":"sample-snapshot-1","public":true}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "searchPlaylists/samplePlaylistSearch/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.PlaylistSummaryPage](`{"playlists":[{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"Example Two","ownerUserId":"sample-user","spotifyUrl":"https://open.spotify.com/playlist/4iV5W9uYEdYUVa79Axb7Rh","snapshotId":"sample-snapshot-2","public":true}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "searchPlaylists/samplePlaylistSearch/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.PlaylistSummaryPage](`{"playlists":[{"id":"7ouMYWpwJ422jRcDASZB7P","name":"Example Three","ownerUserId":"sample-user","spotifyUrl":"https://open.spotify.com/playlist/7ouMYWpwJ422jRcDASZB7P","snapshotId":"sample-snapshot-3","public":true}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
+		{name: "getPlaylist/samplePlaylist/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.PlaylistSummary](`{"id":"3cEYpjA9oz9GiPac4AsH4n","name":"Example Playlist","ownerUserId":"sample-user","spotifyUrl":"https://open.spotify.com/playlist/3cEYpjA9oz9GiPac4AsH4n","snapshotId":"sample-snapshot","public":true}`)
+			return err
+		}},
 		{name: "listPlaylistTracks/oneAvailableTrack/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[spotify.PlaylistTrackPage](`{"playlistId":"3cEYpjA9oz9GiPac4AsH4n","tracks":[{"position":0,"id":"4iV5W9uYEdYUVa79Axb7Rh","uri":"spotify:track:4iV5W9uYEdYUVa79Axb7Rh","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}],"album":{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]},"durationMilliseconds":213000,"explicit":false,"discNumber":1,"trackNumber":2}],"skippedItems":1,"limit":2,"offset":0,"total":5,"nextOffset":2}`)
 			return err
@@ -38,6 +138,39 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetTrack().Definition().Operation.OperationID != "getTrack" {
+		t.Errorf("getTrack mock has another definition")
+	}
+	if mock.SearchTracks().Definition().Operation.OperationID != "searchTracks" {
+		t.Errorf("searchTracks mock has another definition")
+	}
+	if mock.GetArtist().Definition().Operation.OperationID != "getArtist" {
+		t.Errorf("getArtist mock has another definition")
+	}
+	if mock.ListArtistAlbums().Definition().Operation.OperationID != "listArtistAlbums" {
+		t.Errorf("listArtistAlbums mock has another definition")
+	}
+	if mock.SearchArtists().Definition().Operation.OperationID != "searchArtists" {
+		t.Errorf("searchArtists mock has another definition")
+	}
+	if mock.GetAlbum().Definition().Operation.OperationID != "getAlbum" {
+		t.Errorf("getAlbum mock has another definition")
+	}
+	if mock.ListAlbumTracks().Definition().Operation.OperationID != "listAlbumTracks" {
+		t.Errorf("listAlbumTracks mock has another definition")
+	}
+	if mock.SearchAlbums().Definition().Operation.OperationID != "searchAlbums" {
+		t.Errorf("searchAlbums mock has another definition")
+	}
+	if mock.ListUserPlaylists().Definition().Operation.OperationID != "listUserPlaylists" {
+		t.Errorf("listUserPlaylists mock has another definition")
+	}
+	if mock.SearchPlaylists().Definition().Operation.OperationID != "searchPlaylists" {
+		t.Errorf("searchPlaylists mock has another definition")
+	}
+	if mock.GetPlaylist().Definition().Operation.OperationID != "getPlaylist" {
+		t.Errorf("getPlaylist mock has another definition")
+	}
 	if mock.ListPlaylistTracks().Definition().Operation.OperationID != "listPlaylistTracks" {
 		t.Errorf("listPlaylistTracks mock has another definition")
 	}

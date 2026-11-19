@@ -5,6 +5,9 @@ This runnable Worker starts `TMDBMovieSearch` with typed `moviesearch.Request`, 
 static Dex Web connection name is `tmdb`. Optional failure branches are
 unwired and fail the Flow when selected.
 
+The Worker also registers `TMDBTVSearch` with typed `moviesearch.TVRequest`.
+Its mock-backed Dex test exercises `tmdb.NewSearchTVStep` and saves a `tmdb.TVPage`.
+
 The completed provider result is available in the Dex Web summary and display views.
 
 ## Generate the strict FDG 2.0 definition
@@ -29,7 +32,7 @@ mkdir -p /tmp/tmdb-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/tmdb/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/tmdb/go \
-  --version v0.2.0 --tag connectors/tmdb/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/tmdb/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/tmdb-release/connector-release.json \
   --digest-output /tmp/tmdb-release/connector-release.json.sha256

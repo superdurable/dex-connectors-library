@@ -1,10 +1,10 @@
 {
   "connectorId": "typeform",
-  "releaseTag": "connectors/typeform/go/v0.23.1",
+  "releaseTag": "connectors/typeform/go/v0.24.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-typeform",
-    "version": "0.1.1"
+    "version": "0.2.0"
   },
   "factories": [
     {

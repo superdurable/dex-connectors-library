@@ -6,4 +6,9 @@ APISpace is operated in China by 深圳市银云信息技术有限公司, as sta
 
 The [runnable Dex Flow](go/examples/current-weather/README.md) shows setup and typed output. [APISpace's official logo](https://www.apispace.com/logos/APISpace.svg) is included unchanged. Live authorization and production weather responses remain unverified.
 
+## Python
+
+The [Python package](python/README.md) implements `getCurrentWeather` and includes
+a runnable Dex Flow plus Go-recorded provider conformance scenarios.
+
 The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.

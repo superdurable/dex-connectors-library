@@ -42,6 +42,10 @@ type Connection struct {
 type Operations interface {
 	SearchMovies() sdkgo.Query[SearchMoviesInput, MoviePage]
 	GetMovie() sdkgo.Query[GetMovieInput, Movie]
+	SearchTV() sdkgo.Query[SearchTVInput, TVPage]
+	GetTV() sdkgo.Query[GetTVInput, TVSeries]
+	SearchPeople() sdkgo.Query[SearchPeopleInput, PeoplePage]
+	GetPerson() sdkgo.Query[GetPersonInput, Person]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +55,18 @@ func (operations clientOperations) SearchMovies() sdkgo.Query[SearchMoviesInput,
 }
 func (operations clientOperations) GetMovie() sdkgo.Query[GetMovieInput, Movie] {
 	return operations.client.GetMovie()
+}
+func (operations clientOperations) SearchTV() sdkgo.Query[SearchTVInput, TVPage] {
+	return operations.client.SearchTV()
+}
+func (operations clientOperations) GetTV() sdkgo.Query[GetTVInput, TVSeries] {
+	return operations.client.GetTV()
+}
+func (operations clientOperations) SearchPeople() sdkgo.Query[SearchPeopleInput, PeoplePage] {
+	return operations.client.SearchPeople()
+}
+func (operations clientOperations) GetPerson() sdkgo.Query[GetPersonInput, Person] {
+	return operations.client.GetPerson()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +346,302 @@ func NewGetMovieStep[IN any](config GetMovieStepConfig[IN]) sdkgo.QueryStep[IN, 
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetMovieBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchTVBranchSearched sdkgo.BranchID = "searched"
+const SearchTVBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchTVBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchTVBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchTVDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchTV"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchTVBranchSearched, Description: "TMDB returned a TV search page."},
+		{ID: SearchTVBranchProviderRejected, Description: "TMDB definitively rejected the search.", Optional: true},
+		{ID: SearchTVBranchInvalidResponse, Description: "TMDB returned incomplete or oversized JSON.", Optional: true},
+		{ID: SearchTVBranchDefect, Description: "The search input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchTVResult = sdkgo.QueryResult[TVPage]
+
+type SearchTVStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=tmdb"`
+	operationID                    struct{}                                  `connector:"operationId=searchTV"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchTVInput                    `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchTVResult]              `connector:"branch=searched"`
+	ProviderRejected               sdkgo.Target[SearchTVResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchTVResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchTVResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TVPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewSearchTVStep[IN any](config SearchTVStepConfig[IN]) sdkgo.QueryStep[IN, SearchTVInput, TVPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("tmdb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchTVInput, TVPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchTV(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchTVResult] {
+			branches := make([]sdkgo.BranchTarget[SearchTVResult], 0, 4)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchTVBranchSearched))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchTVBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchTVBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchTVBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTVBranchFound sdkgo.BranchID = "found"
+const GetTVBranchNotFound sdkgo.BranchID = "notFound"
+const GetTVBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTVBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTVBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTVDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTV"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTVBranchFound, Description: "TMDB returned the series."},
+		{ID: GetTVBranchNotFound, Description: "The series does not exist.", Optional: true},
+		{ID: GetTVBranchProviderRejected, Description: "TMDB definitively rejected the request.", Optional: true},
+		{ID: GetTVBranchInvalidResponse, Description: "TMDB returned incomplete or oversized JSON.", Optional: true},
+		{ID: GetTVBranchDefect, Description: "The series ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTVResult = sdkgo.QueryResult[TVSeries]
+
+type GetTVStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=tmdb"`
+	operationID                    struct{}                                    `connector:"operationId=getTV"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTVInput                         `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTVResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTVResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTVResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTVResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTVResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TVSeries]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetTVStep[IN any](config GetTVStepConfig[IN]) sdkgo.QueryStep[IN, GetTVInput, TVSeries] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("tmdb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTVInput, TVSeries]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTV(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTVResult] {
+			branches := make([]sdkgo.BranchTarget[GetTVResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTVBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTVBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTVBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTVBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTVBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchPeopleBranchSearched sdkgo.BranchID = "searched"
+const SearchPeopleBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchPeopleBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchPeopleBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchPeopleDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchPeople"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchPeopleBranchSearched, Description: "TMDB returned a person search page."},
+		{ID: SearchPeopleBranchProviderRejected, Description: "TMDB definitively rejected the search.", Optional: true},
+		{ID: SearchPeopleBranchInvalidResponse, Description: "TMDB returned incomplete or oversized JSON.", Optional: true},
+		{ID: SearchPeopleBranchDefect, Description: "The search input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchPeopleResult = sdkgo.QueryResult[PeoplePage]
+
+type SearchPeopleStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=tmdb"`
+	operationID                    struct{}                                      `connector:"operationId=searchPeople"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchPeopleInput                    `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchPeopleResult]              `connector:"branch=searched"`
+	ProviderRejected               sdkgo.Target[SearchPeopleResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchPeopleResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchPeopleResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PeoplePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewSearchPeopleStep[IN any](config SearchPeopleStepConfig[IN]) sdkgo.QueryStep[IN, SearchPeopleInput, PeoplePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("tmdb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchPeopleInput, PeoplePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchPeople(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchPeopleResult] {
+			branches := make([]sdkgo.BranchTarget[SearchPeopleResult], 0, 4)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchPeopleBranchSearched))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchPeopleBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchPeopleBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchPeopleBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPersonBranchFound sdkgo.BranchID = "found"
+const GetPersonBranchNotFound sdkgo.BranchID = "notFound"
+const GetPersonBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPersonBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPersonBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPersonDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPerson"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPersonBranchFound, Description: "TMDB returned the person."},
+		{ID: GetPersonBranchNotFound, Description: "The person does not exist.", Optional: true},
+		{ID: GetPersonBranchProviderRejected, Description: "TMDB definitively rejected the request.", Optional: true},
+		{ID: GetPersonBranchInvalidResponse, Description: "TMDB returned incomplete or oversized JSON.", Optional: true},
+		{ID: GetPersonBranchDefect, Description: "The person ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPersonResult = sdkgo.QueryResult[Person]
+
+type GetPersonStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=tmdb"`
+	operationID                    struct{}                                  `connector:"operationId=getPerson"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPersonInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPersonResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPersonResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPersonResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPersonResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPersonResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Person]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetPersonStep[IN any](config GetPersonStepConfig[IN]) sdkgo.QueryStep[IN, GetPersonInput, Person] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("tmdb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPersonInput, Person]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPerson(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPersonResult] {
+			branches := make([]sdkgo.BranchTarget[GetPersonResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPersonBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPersonBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPersonBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPersonBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPersonBranchDefect))
 			}
 			return branches
 		}(),

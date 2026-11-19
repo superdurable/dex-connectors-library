@@ -52,15 +52,15 @@ func TestMockDefaultCompletesWithRealDex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	flowID := "supabase-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	input := supabase.SelectRowsInput{Table: "projects", Limit: 10}
+	input := supabase.GetRowInput{Table: "projects", Column: "id", Value: "1"}
 	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var output supabase.SelectRowsOutput
+	var output supabase.GetRowOutput
 	require.NoError(t, result.DecodeSingleOutput(&output))
-	calls := mock.SelectRows().Calls()
+	calls := mock.GetRow().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, input, calls[0].Input)
 }
