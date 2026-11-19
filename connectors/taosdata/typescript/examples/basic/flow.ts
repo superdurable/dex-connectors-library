@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newListDatabasesStep, type Connection, type ListDatabasesInput, type ListDatabasesOutput } from '@superdurable/connector-taosdata';
+import { newListDatabasesStep, type Connection, type ListDatabasesInput, type ListDatabasesOutput } from '../../src/index.js';
 
 /** Static Dex Web connection for this example. */
 export const ConnectionName = 'taosdata';
