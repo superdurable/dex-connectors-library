@@ -24,6 +24,70 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
 			return err
 		}},
+		{name: "upsertSubscriber/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+			return err
+		}},
+		{name: "listTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.TagsPage](`{"tags":[{"id":12,"name":"Welcome"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "createTag/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.TagMetadata](`{"id":12,"name":"Welcome"}`)
+			return err
+		}},
+		{name: "tagSubscriber/taggedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+			return err
+		}},
+		{name: "removeTagFromSubscriber/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.TagRemoval](`{"tagId":12,"subscriberId":204,"removed":true}`)
+			return err
+		}},
+		{name: "listCustomFields/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.CustomFieldsPage](`{"customFields":[{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "createCustomField/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.CustomFieldMetadata](`{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}`)
+			return err
+		}},
+		{name: "updateCustomField/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.CustomFieldMetadata](`{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}`)
+			return err
+		}},
+		{name: "deleteCustomField/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.CustomFieldDeletion](`{"customFieldId":8,"deleted":true}`)
+			return err
+		}},
+		{name: "listForms/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.FormsPage](`{"forms":[{"id":53,"name":"Sign up","type":"embed"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "listFormSubscribers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+			return err
+		}},
+		{name: "addSubscriberToForm/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+			return err
+		}},
+		{name: "listSequences/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SequencesPage](`{"sequences":[{"id":61,"name":"Welcome series","active":true,"repeat":false}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "listSequenceSubscribers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+			return err
+		}},
+		{name: "addSubscriberToSequence/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+			return err
+		}},
+		{name: "listTagSubscribers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +103,53 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetSubscriber().Definition().Operation.OperationID != "getSubscriber" {
 		t.Errorf("getSubscriber mock has another definition")
+	}
+	if mock.UpsertSubscriber().Definition().Operation.OperationID != "upsertSubscriber" {
+		t.Errorf("upsertSubscriber mock has another definition")
+	}
+	if mock.ListTags().Definition().Operation.OperationID != "listTags" {
+		t.Errorf("listTags mock has another definition")
+	}
+	if mock.CreateTag().Definition().Operation.OperationID != "createTag" {
+		t.Errorf("createTag mock has another definition")
+	}
+	if mock.TagSubscriber().Definition().Operation.OperationID != "tagSubscriber" {
+		t.Errorf("tagSubscriber mock has another definition")
+	}
+	if mock.RemoveTagFromSubscriber().Definition().Operation.OperationID != "removeTagFromSubscriber" {
+		t.Errorf("removeTagFromSubscriber mock has another definition")
+	}
+	if mock.ListCustomFields().Definition().Operation.OperationID != "listCustomFields" {
+		t.Errorf("listCustomFields mock has another definition")
+	}
+	if mock.CreateCustomField().Definition().Operation.OperationID != "createCustomField" {
+		t.Errorf("createCustomField mock has another definition")
+	}
+	if mock.UpdateCustomField().Definition().Operation.OperationID != "updateCustomField" {
+		t.Errorf("updateCustomField mock has another definition")
+	}
+	if mock.DeleteCustomField().Definition().Operation.OperationID != "deleteCustomField" {
+		t.Errorf("deleteCustomField mock has another definition")
+	}
+	if mock.ListForms().Definition().Operation.OperationID != "listForms" {
+		t.Errorf("listForms mock has another definition")
+	}
+	if mock.ListFormSubscribers().Definition().Operation.OperationID != "listFormSubscribers" {
+		t.Errorf("listFormSubscribers mock has another definition")
+	}
+	if mock.AddSubscriberToForm().Definition().Operation.OperationID != "addSubscriberToForm" {
+		t.Errorf("addSubscriberToForm mock has another definition")
+	}
+	if mock.ListSequences().Definition().Operation.OperationID != "listSequences" {
+		t.Errorf("listSequences mock has another definition")
+	}
+	if mock.ListSequenceSubscribers().Definition().Operation.OperationID != "listSequenceSubscribers" {
+		t.Errorf("listSequenceSubscribers mock has another definition")
+	}
+	if mock.AddSubscriberToSequence().Definition().Operation.OperationID != "addSubscriberToSequence" {
+		t.Errorf("addSubscriberToSequence mock has another definition")
+	}
+	if mock.ListTagSubscribers().Definition().Operation.OperationID != "listTagSubscribers" {
+		t.Errorf("listTagSubscribers mock has another definition")
 	}
 }

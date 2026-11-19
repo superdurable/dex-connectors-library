@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret provider-issued API key from Jotform My Account > API at https://www.jotform.com/myaccount/api. Create or select a read-only key and copy its full string; blank makes calls select defect. Dex stores it as a secret and sends it only in the APIKEY header. */
+  /** Secret provider-issued API key from Jotform My Account > API at https://www.jotform.com/myaccount/api. Select read-only access for Queries or Full Access for form and submission writes; copy the full opaque string. Blank makes calls select defect. Dex stores it as a secret and sends it only in the APIKEY header. */
   apiKey: SecretString;
 }
 

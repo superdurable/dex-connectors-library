@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted klaviyo connection. Script each operation through its accessor.
 type Mock struct {
-	connection  klaviyo.Connection
-	getProfile  *connectormock.Query[klaviyo.GetProfileInput, klaviyo.Profile]
-	createEvent *connectormock.Mutation[klaviyo.CreateEventInput, klaviyo.EventAcceptance]
+	connection   klaviyo.Connection
+	getProfile   *connectormock.Query[klaviyo.GetProfileInput, klaviyo.Profile]
+	createEvent  *connectormock.Mutation[klaviyo.CreateEventInput, klaviyo.EventAcceptance]
+	listProfiles *connectormock.Query[klaviyo.ListProfilesInput, klaviyo.ProfilesPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getProfile:  connectormock.NewQuery[klaviyo.GetProfileInput, klaviyo.Profile](t, klaviyo.GetProfileDefinition),
-		createEvent: connectormock.NewMutation[klaviyo.CreateEventInput, klaviyo.EventAcceptance](t, klaviyo.CreateEventDefinition),
+		getProfile:   connectormock.NewQuery[klaviyo.GetProfileInput, klaviyo.Profile](t, klaviyo.GetProfileDefinition),
+		createEvent:  connectormock.NewMutation[klaviyo.CreateEventInput, klaviyo.EventAcceptance](t, klaviyo.CreateEventDefinition),
+		listProfiles: connectormock.NewQuery[klaviyo.ListProfilesInput, klaviyo.ProfilesPage](t, klaviyo.ListProfilesDefinition),
 	}
 	mock.getProfile.Default(GetProfileDefault())
 	mock.createEvent.Default(CreateEventDefault())
+	mock.listProfiles.Default(ListProfilesDefault())
 	connection, err := klaviyo.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "klaviyo", Name: connectionName})
 	if err != nil {
 		t.Fatalf("klaviyo mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) CreateEvent() *connectormock.Mutation[klaviyo.CreateEventInput
 	return mock.createEvent
 }
 
+// ListProfiles returns the listProfiles script.
+func (mock *Mock) ListProfiles() *connectormock.Query[klaviyo.ListProfilesInput, klaviyo.ProfilesPage] {
+	return mock.listProfiles
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetProfile() sdkgo.Query[klaviyo.GetProfileInput, klaviyo.Profile] {
@@ -60,6 +68,9 @@ func (operations mockOperations) GetProfile() sdkgo.Query[klaviyo.GetProfileInpu
 }
 func (operations mockOperations) CreateEvent() sdkgo.Mutation[klaviyo.CreateEventInput, klaviyo.EventAcceptance] {
 	return operations.mock.createEvent
+}
+func (operations mockOperations) ListProfiles() sdkgo.Query[klaviyo.ListProfilesInput, klaviyo.ProfilesPage] {
+	return operations.mock.listProfiles
 }
 
 // GetProfileFound selects the found branch: Klaviyo returned the profile.
@@ -130,4 +141,40 @@ func CreateEventAcceptedDefaultEvent() connectormock.Case[klaviyo.EventAcceptanc
 // CreateEventDefault is the manifest default, acceptedDefaultEvent, which New installs.
 func CreateEventDefault() connectormock.Case[klaviyo.EventAcceptance] {
 	return CreateEventAcceptedDefaultEvent()
+}
+
+// ListProfilesListed selects the listed branch: Klaviyo returned a profile page.
+func ListProfilesListed(value klaviyo.ProfilesPage, failure *sdkgo.Failure) connectormock.Case[klaviyo.ProfilesPage] {
+	return connectormock.Branch(klaviyo.ListProfilesBranchListed, value, failure)
+}
+
+// ListProfilesProviderRejected selects the providerRejected branch: Klaviyo conclusively rejected the request.
+func ListProfilesProviderRejected(value klaviyo.ProfilesPage, failure *sdkgo.Failure) connectormock.Case[klaviyo.ProfilesPage] {
+	return connectormock.Branch(klaviyo.ListProfilesBranchProviderRejected, value, failure)
+}
+
+// ListProfilesInvalidResponse selects the invalidResponse branch: Klaviyo returned malformed or oversized JSON.
+func ListProfilesInvalidResponse(value klaviyo.ProfilesPage, failure *sdkgo.Failure) connectormock.Case[klaviyo.ProfilesPage] {
+	return connectormock.Branch(klaviyo.ListProfilesBranchInvalidResponse, value, failure)
+}
+
+// ListProfilesDefect selects the defect branch: Local input or credentials are invalid.
+func ListProfilesDefect(value klaviyo.ProfilesPage, failure *sdkgo.Failure) connectormock.Case[klaviyo.ProfilesPage] {
+	return connectormock.Branch(klaviyo.ListProfilesBranchDefect, value, failure)
+}
+
+// ListProfilesRetry asks Dex to retry the listProfiles Step, after the delay when it is positive.
+func ListProfilesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[klaviyo.ProfilesPage] {
+	return connectormock.Retry[klaviyo.ProfilesPage](failure, after)
+}
+
+// ListProfilesListedDefault is the manifest mock listedDefault: One sample profile is returned.
+func ListProfilesListedDefault() connectormock.Case[klaviyo.ProfilesPage] {
+	value := connectormock.MustDecodeOutput[klaviyo.ProfilesPage](`{"profiles":[{"id":"profile-meridian-1","email":"member@meridian.co"}],"nextCursor":""}`)
+	return connectormock.Branch(klaviyo.ListProfilesBranchListed, value, nil)
+}
+
+// ListProfilesDefault is the manifest default, listedDefault, which New installs.
+func ListProfilesDefault() connectormock.Case[klaviyo.ProfilesPage] {
+	return ListProfilesListedDefault()
 }

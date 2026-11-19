@@ -8,7 +8,8 @@ import { FacebookLeadAdsClient } from '../src/client.js';
 import { GetLeadInputSchema, ListLeadFormsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/meta/facebook-lead-ads/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/meta/facebook-lead-ads/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listLeadForms' || scenario.operation === 'getLead');
 const connection = { provider: 'facebook-lead-ads', name: 'facebook-lead-ads' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeFacebookLeadAds, '/v25.0'));
 

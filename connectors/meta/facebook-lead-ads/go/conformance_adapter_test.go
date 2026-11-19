@@ -19,6 +19,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {PageAccessToken: sdkgo.NewSecretString("test-page-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"listLeads":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeads(), reference),
 		"listLeadForms": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeadForms(), reference),
 		"getLead":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
 	}}
