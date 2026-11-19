@@ -5,6 +5,8 @@
 package drip
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -60,6 +62,14 @@ var errCredential = errors.New("Drip credential unavailable")
 var errRequest = errors.New("Drip request failed")
 
 func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Duration, error) {
+	return client.send(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) send(call sdkgo.Call, method, path string, body []byte) ([]byte, int, time.Duration, error) {
+	return client.sendWithContext(call, call.Context, method, path, body)
+}
+
+func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Context, method, path string, body []byte) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return nil, 0, 0, errCredential
@@ -68,11 +78,14 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	if !providerhttp.IsHeaderSafeCredential(apiKey) {
 		return nil, 0, 0, errCredential
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
 	request.Header.Set("Accept", "application/json")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
 	request.SetBasicAuth(apiKey, "")
 	response, err := client.httpClient.Do(request)
@@ -81,8 +94,52 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return body, response.StatusCode, retryAfter, err
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return responseBody, response.StatusCode, retryAfter, err
+}
+
+type mutationBranches struct{ success, rejected, invalid, defect sdkgo.BranchID }
+
+func invokeMutation[T any](call sdkgo.Call, client *Client, operation, method, path string, body []byte, branches mutationBranches, decode func([]byte) (T, error)) sdkgo.MutationAttempt[T] {
+	var zero T
+	responseBody, status, retryAfter, err := client.send(call, method, path, body)
+	if errors.Is(err, errCredential) {
+		return mutationBranch(operation, branches.defect, zero, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+	}
+	if errors.Is(err, errRequest) {
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureTransport, "Drip request failed"), 0)
+	}
+	if status == http.StatusTooManyRequests {
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureRateLimit, "Drip rate limited the request"), retryAfter)
+	}
+	if status == http.StatusRequestTimeout || status >= 500 {
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureAvailability, "Drip is temporarily unavailable"), retryAfter)
+	}
+	if method == http.MethodDelete && status == http.StatusNotFound {
+		value, decodeErr := decode(nil)
+		if decodeErr == nil {
+			return sdkgo.NewMutationBranch(branches.success, value, nil, sdkgo.Receipt{})
+		}
+	}
+	if status != http.StatusOK && status != http.StatusCreated && status != http.StatusNoContent {
+		return mutationBranch(operation, branches.rejected, zero, sdkgo.FailureProviderRejection, "Drip rejected HTTP "+strconv.Itoa(status))
+	}
+	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
+		return mutationBranch(operation, branches.invalid, zero, sdkgo.FailureResponseTooLarge, "Drip response exceeded the configured limit")
+	}
+	if err != nil {
+		return sdkgo.NewMutationRetry[T](queryFailure(operation, sdkgo.FailureTransport, "Drip response was interrupted"), 0)
+	}
+	value, err := decode(responseBody)
+	if err != nil {
+		return mutationBranch(operation, branches.invalid, zero, sdkgo.FailureProtocol, "Drip returned invalid JSON")
+	}
+	return sdkgo.NewMutationBranch(branches.success, value, nil, sdkgo.Receipt{})
+}
+
+func mutationBranch[T any](operation string, branch sdkgo.BranchID, value T, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[T] {
+	failure := queryFailure(operation, kind, message)
+	return sdkgo.NewMutationBranch(branch, value, &failure, sdkgo.Receipt{})
 }
 
 type queryBranches struct{ found, notFound, rejected, invalid, defect sdkgo.BranchID }

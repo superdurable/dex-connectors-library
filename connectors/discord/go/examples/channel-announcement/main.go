@@ -40,7 +40,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{channelannouncement.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{channelannouncement.NewFlow(connection), channelannouncement.NewChannelLifecycleFlow(connection), channelannouncement.NewMemberModerationFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Discord channel announcement Flow: %w", err)
 	}
