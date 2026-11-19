@@ -5,10 +5,10 @@ package pingcap
 
 import (
 	"crypto/md5"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"io"
 	"strings"
 )
 
@@ -117,9 +117,9 @@ func parseDigestChallenge(header string) (digestChallenge, error) {
 	return digestChallenge{realm: values["realm"], nonce: values["nonce"], opaque: values["opaque"], algorithm: algorithm}, nil
 }
 
-func digestAuthorization(challenge digestChallenge, username string, password string, method string, uri string) (string, error) {
+func digestAuthorization(challenge digestChallenge, username string, password string, method string, uri string, nonceReader io.Reader) (string, error) {
 	random := make([]byte, 16)
-	if _, err := rand.Read(random); err != nil {
+	if _, err := io.ReadFull(nonceReader, random); err != nil {
 		return "", errors.New("Digest nonce generation failed")
 	}
 	cnonce := hex.EncodeToString(random)

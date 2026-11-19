@@ -1,0 +1,842 @@
+{
+  "connector": "pingcap",
+  "scenarios": [
+    {
+      "callId": "30000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"tidbcloud\", nonce=\"server-nonce\", qop=\"auth\", opaque=\"opaque-value\", algorithm=SHA-256"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{\"items\":[{\"id\":\"101\",\"org_id\":\"201\",\"name\":\"demo\",\"cluster_count\":3,\"user_count\":1,\"create_timestamp\":\"1652407748\",\"type\":\"dedicated\"}],\"total\":4}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Digest username=\"test-public-key\", realm=\"tidbcloud\", nonce=\"server-nonce\", uri=\"/api/v1beta/projects?page=2\u0026page_size=3\", response=\"37f9e8715825600c501a50e987803c61272288afdd5db2ae31a39ba8be16e00a\", algorithm=SHA-256, qop=auth, nc=00000001, cnonce=\"1cecdf12e5ad39bdf826d77bb8627876\", opaque=\"opaque-value\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "items": [
+            {
+              "clusterCount": 3,
+              "createTimestamp": "1652407748",
+              "id": "101",
+              "name": "demo",
+              "orgId": "201",
+              "type": "dedicated",
+              "userCount": 1
+            }
+          ],
+          "page": 2,
+          "pageSize": 3,
+          "total": 4
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-listed",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-listed"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"tidbcloud\", nonce=\"server-nonce\", qop=\"auth\", opaque=\"opaque-value\", algorithm=SHA-256"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{\"items\":[],\"total\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Digest username=\"test-public-key\", realm=\"tidbcloud\", nonce=\"server-nonce\", uri=\"/api/v1beta/projects?page=2\u0026page_size=3\", response=\"48164fec229707770d444f440cd7dbc5a8bf9538eb4ec657f68586885be6d697\", algorithm=SHA-256, qop=auth, nc=00000001, cnonce=\"eba367ce7713882da6e101a3535a289d\", opaque=\"opaque-value\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "items": [],
+          "page": 2,
+          "pageSize": 3,
+          "total": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-empty",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-empty"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"x\", qop=\"auth\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "items": [],
+          "page": 0,
+          "pageSize": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-providerRejected",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-providerRejected"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"tidbcloud\", nonce=\"server-nonce\", qop=\"auth\", opaque=\"opaque-value\", algorithm=SHA-256"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{\"items\":null,\"total\":4}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Digest username=\"test-public-key\", realm=\"tidbcloud\", nonce=\"server-nonce\", uri=\"/api/v1beta/projects?page=2\u0026page_size=3\", response=\"04598c67c7d70544302ff171fe2684e68ae3ea9c77ab49028dc710f55b56c703\", algorithm=SHA-256, qop=auth, nc=00000001, cnonce=\"17c73ef4f04811886570149386acc2d3\", opaque=\"opaque-value\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "items": [],
+          "page": 0,
+          "pageSize": 0,
+          "total": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-invalidResponse",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-invalidResponse"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "items": [],
+          "page": 0,
+          "pageSize": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "pageSize": 3
+      },
+      "name": "listProjects-defect",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-defect"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-429",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-429"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-503",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-503"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-transport",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-transport"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"tidbcloud\", nonce=\"server-nonce\", qop=\"auth\", opaque=\"opaque-value\", algorithm=SHA-256"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{\"items\":[{\"id\":\"101\",\"org_id\":\"201\",\"name\":\"demo\",\"cluster_count\":3,\"user_count\":1,\"create_timestamp\":\"1652407748\",\"type\":\"dedicated\"}],\"total\":4}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Digest username=\"test-public-key\", realm=\"tidbcloud\", nonce=\"server-nonce\", uri=\"/api/v1beta/projects?page=2\u0026page_size=3\", response=\"0ada0709e02f631a84c6f4d1ddd6b5139ad528a720696b28dfb5c021499b06e0\", algorithm=SHA-256, qop=auth, nc=00000001, cnonce=\"316b1ab8a097679e6c739d38065b9e6c\", opaque=\"opaque-value\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "items": [],
+          "page": 0,
+          "pageSize": 0,
+          "total": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-oversized",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-oversized"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"tidbcloud\", nonce=\"server-nonce\", qop=\"auth\", opaque=\"opaque-value\", algorithm=SHA-256"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Digest username=\"test-public-key\", realm=\"tidbcloud\", nonce=\"server-nonce\", uri=\"/api/v1beta/projects?page=2\u0026page_size=3\", response=\"6bd5b7a3805f744935a9b52c7959a0a9bed1c29ed7b37d377491fdd6877e4728\", algorithm=SHA-256, qop=auth, nc=00000001, cnonce=\"aa11a8851f774df34d85541bd3a78f16\", opaque=\"opaque-value\""
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "items": [],
+          "page": 0,
+          "pageSize": 0,
+          "total": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-second401",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-second401"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"tidbcloud\", nonce=\"server-nonce\", qop=\"auth\", opaque=\"opaque-value\", algorithm=SHA-256"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Digest username=\"test-public-key\", realm=\"tidbcloud\", nonce=\"server-nonce\", uri=\"/api/v1beta/projects?page=2\u0026page_size=3\", response=\"93c855ecab7e9a188afe2624208a1a04b971c0ef0f7e09b4a41b97d552678088\", algorithm=SHA-256, qop=auth, nc=00000001, cnonce=\"a99799a9e3dd2ab10d0ee5629195d167\", opaque=\"opaque-value\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-second429",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-second429"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"tidbcloud\", nonce=\"server-nonce\", qop=\"auth\", opaque=\"opaque-value\", algorithm=SHA-256"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Digest username=\"test-public-key\", realm=\"tidbcloud\", nonce=\"server-nonce\", uri=\"/api/v1beta/projects?page=2\u0026page_size=3\", response=\"bc5750dceac2ca6d5e73f268b4c4523fbe7afe89f74c7ddaca95bef16d13ff8b\", algorithm=SHA-256, qop=auth, nc=00000001, cnonce=\"b4265bfd0122104bbdb3bd721b255b5a\", opaque=\"opaque-value\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-second503",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-second503"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000013",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"tidbcloud\", nonce=\"server-nonce\", qop=\"auth\", opaque=\"opaque-value\", algorithm=MD5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{\"items\":[{\"id\":\"101\",\"org_id\":\"201\",\"name\":\"demo\",\"cluster_count\":3,\"user_count\":1,\"create_timestamp\":\"1652407748\",\"type\":\"dedicated\"}],\"total\":4}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Digest username=\"test-public-key\", realm=\"tidbcloud\", nonce=\"server-nonce\", uri=\"/api/v1beta/projects?page=2\u0026page_size=3\", response=\"3e21e4ac41b972d8d8fd51cc2eeb0f1f\", algorithm=MD5, qop=auth, nc=00000001, cnonce=\"97289522b186da32688943e602cd0111\", opaque=\"opaque-value\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "items": [
+            {
+              "clusterCount": 3,
+              "createTimestamp": "1652407748",
+              "id": "101",
+              "name": "demo",
+              "orgId": "201",
+              "type": "dedicated",
+              "userCount": 1
+            }
+          ],
+          "page": 2,
+          "pageSize": 3,
+          "total": 4
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-md5",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-md5"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000014",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "WWW-Authenticate": "Digest realm=\"x\", nonce=\"n\", qop=\"auth\", stale=true"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1beta/projects",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "items": [],
+          "page": 0,
+          "pageSize": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 3
+      },
+      "name": "listProjects-staleChallenge",
+      "operation": "listProjects",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PINGCAP_listProjects-staleChallenge"
+    }
+  ],
+  "schemaVersion": 1
+}

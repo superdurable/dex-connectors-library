@@ -7,6 +7,7 @@ package polyv
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -14,10 +15,12 @@ import (
 // Option supplies a non-serializable HTTP client dependency to New.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ httpClient *http.Client }
+type clockOption struct{ now func() time.Time }
 
 func (option httpClientOption) applyClientOption(client *Client) {
 	client.httpClient = option.httpClient
 }
+func (option clockOption) applyClientOption(client *Client) { client.now = option.now }
 
 // WithHTTPClient supplies an HTTP client for provider tests or a proxy. Redirects are disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -27,6 +30,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // New validates configuration without contacting Polyv. Rotated credentials take effect on the next call.
@@ -41,7 +45,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Timeout <= 0 || config.MaxResponseBytes <= 0 {
 		return nil, errors.New("Polyv timeout and maxResponseBytes must be positive")
 	}
-	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Polyv client option is required")

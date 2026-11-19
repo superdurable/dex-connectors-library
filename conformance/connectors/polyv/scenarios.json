@@ -1,0 +1,454 @@
+{
+  "connector": "polyv",
+  "scenarios": [
+    {
+      "callId": "30000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"channels\":[2139283,\"2139268\"]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channelIds": [
+            "2139283",
+            "2139268"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-listed",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"channels\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channelIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-empty",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"code\":400,\"message\":\"invalid signature.\",\"data\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "channelIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-providerRejected",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channelIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-invalidResponse",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "channelIds": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-defect",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-429",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-503",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-transport",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"channels\":[2139283]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "channelIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-oversized",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"code\":500,\"message\":\"qps exceeds number of calls\",\"data\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-businessRate",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/live/v3/user/channels",
+          "query": {
+            "appId": [
+              "testappid"
+            ],
+            "sign": [
+              "BCABA143A2659B620C45B35D4F1E2A29"
+            ],
+            "timestamp": [
+              "1767225600000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "channelIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {},
+      "name": "listChannels-unauthorized",
+      "operation": "listChannels"
+    }
+  ],
+  "schemaVersion": 1
+}
