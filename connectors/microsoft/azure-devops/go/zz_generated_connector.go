@@ -40,12 +40,16 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	QueryWorkItems() sdkgo.Query[QueryWorkItemsInput, WorkItemIDs]
 	ListProjects() sdkgo.Query[ListProjectsInput, Projects]
 	GetWorkItem() sdkgo.Query[GetWorkItemInput, WorkItemMetadata]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) QueryWorkItems() sdkgo.Query[QueryWorkItemsInput, WorkItemIDs] {
+	return operations.client.QueryWorkItems()
+}
 func (operations clientOperations) ListProjects() sdkgo.Query[ListProjectsInput, Projects] {
 	return operations.client.ListProjects()
 }
@@ -187,6 +191,77 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential personal_access_token is required")
 	}
 	return nil
+}
+
+const QueryWorkItemsBranchListed sdkgo.BranchID = "listed"
+const QueryWorkItemsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const QueryWorkItemsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const QueryWorkItemsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var QueryWorkItemsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "queryWorkItems"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: QueryWorkItemsBranchListed, Description: "Azure DevOps returned matching work item IDs."},
+		{ID: QueryWorkItemsBranchProviderRejected, Description: "Azure DevOps rejected the query.", Optional: true},
+		{ID: QueryWorkItemsBranchInvalidResponse, Description: "Azure DevOps returned malformed or oversized JSON.", Optional: true},
+		{ID: QueryWorkItemsBranchDefect, Description: "The project, WIQL, page size, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type QueryWorkItemsResult = sdkgo.QueryResult[WorkItemIDs]
+
+type QueryWorkItemsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=azure-devops"`
+	operationID                    struct{}                                       `connector:"operationId=queryWorkItems"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) QueryWorkItemsInput                   `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[QueryWorkItemsResult]             `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[QueryWorkItemsResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[QueryWorkItemsResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[QueryWorkItemsResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WorkItemIDs]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewQueryWorkItemsStep[IN any](config QueryWorkItemsStepConfig[IN]) sdkgo.QueryStep[IN, QueryWorkItemsInput, WorkItemIDs] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("azure-devops connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QueryWorkItemsInput, WorkItemIDs]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.QueryWorkItems(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[QueryWorkItemsResult] {
+			branches := make([]sdkgo.BranchTarget[QueryWorkItemsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(QueryWorkItemsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(QueryWorkItemsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(QueryWorkItemsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(QueryWorkItemsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListProjectsBranchListed sdkgo.BranchID = "listed"

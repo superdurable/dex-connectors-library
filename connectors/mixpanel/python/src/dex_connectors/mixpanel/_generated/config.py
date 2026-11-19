@@ -13,6 +13,7 @@ class Config:
     project_id: int
     base_url: str = "https://api.mixpanel.com"
     export_base_url: str = "https://data.mixpanel.com/api/2.0"
+    query_base_url: str = "https://mixpanel.com/api/query"
     timeout_seconds: float = 15
     max_response_bytes: int = 2097152
 

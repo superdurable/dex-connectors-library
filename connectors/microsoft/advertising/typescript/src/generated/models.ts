@@ -12,9 +12,9 @@ export interface Config {
   baseUrl?: string;
   /** Non-secret numeric manager customer ID from https://ui.ads.microsoft.com > Campaigns; copy the cid URL parameter, not the account number. Blank prevents campaign queries. */
   customerId: string;
-  /** Maximum duration of one campaign request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for slow accounts. Runtime value in milliseconds. */
+  /** Maximum duration of one Campaign Management request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for slow accounts. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete campaign JSON response in bytes. Blank uses the displayed default; increase only for unusually large accounts. */
+  /** Maximum complete Campaign Management JSON response in bytes. Blank uses the displayed default; increase only for unusually large accounts. */
   maxResponseBytes?: number;
 }
 

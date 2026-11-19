@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted miro connection. Script each operation through its accessor.
 type Mock struct {
-	connection miro.Connection
-	getBoard   *connectormock.Query[miro.GetBoardInput, miro.BoardMetadata]
+	connection       miro.Connection
+	listBoards       *connectormock.Query[miro.ListBoardsInput, miro.BoardsPage]
+	listBoardItems   *connectormock.Query[miro.ListBoardItemsInput, miro.BoardItemsPage]
+	getBoardItem     *connectormock.Query[miro.GetBoardItemInput, miro.BoardItemMetadata]
+	listBoardMembers *connectormock.Query[miro.ListBoardMembersInput, miro.BoardMembersPage]
+	getBoard         *connectormock.Query[miro.GetBoardInput, miro.BoardMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +30,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getBoard: connectormock.NewQuery[miro.GetBoardInput, miro.BoardMetadata](t, miro.GetBoardDefinition),
+		listBoards:       connectormock.NewQuery[miro.ListBoardsInput, miro.BoardsPage](t, miro.ListBoardsDefinition),
+		listBoardItems:   connectormock.NewQuery[miro.ListBoardItemsInput, miro.BoardItemsPage](t, miro.ListBoardItemsDefinition),
+		getBoardItem:     connectormock.NewQuery[miro.GetBoardItemInput, miro.BoardItemMetadata](t, miro.GetBoardItemDefinition),
+		listBoardMembers: connectormock.NewQuery[miro.ListBoardMembersInput, miro.BoardMembersPage](t, miro.ListBoardMembersDefinition),
+		getBoard:         connectormock.NewQuery[miro.GetBoardInput, miro.BoardMetadata](t, miro.GetBoardDefinition),
 	}
+	mock.listBoards.Default(ListBoardsDefault())
+	mock.listBoardItems.Default(ListBoardItemsDefault())
+	mock.getBoardItem.Default(GetBoardItemDefault())
+	mock.listBoardMembers.Default(ListBoardMembersDefault())
 	mock.getBoard.Default(GetBoardDefault())
 	connection, err := miro.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "miro", Name: connectionName})
 	if err != nil {
@@ -40,6 +52,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() miro.Connection { return mock.connection }
 
+// ListBoards returns the listBoards script.
+func (mock *Mock) ListBoards() *connectormock.Query[miro.ListBoardsInput, miro.BoardsPage] {
+	return mock.listBoards
+}
+
+// ListBoardItems returns the listBoardItems script.
+func (mock *Mock) ListBoardItems() *connectormock.Query[miro.ListBoardItemsInput, miro.BoardItemsPage] {
+	return mock.listBoardItems
+}
+
+// GetBoardItem returns the getBoardItem script.
+func (mock *Mock) GetBoardItem() *connectormock.Query[miro.GetBoardItemInput, miro.BoardItemMetadata] {
+	return mock.getBoardItem
+}
+
+// ListBoardMembers returns the listBoardMembers script.
+func (mock *Mock) ListBoardMembers() *connectormock.Query[miro.ListBoardMembersInput, miro.BoardMembersPage] {
+	return mock.listBoardMembers
+}
+
 // GetBoard returns the getBoard script.
 func (mock *Mock) GetBoard() *connectormock.Query[miro.GetBoardInput, miro.BoardMetadata] {
 	return mock.getBoard
@@ -47,8 +79,177 @@ func (mock *Mock) GetBoard() *connectormock.Query[miro.GetBoardInput, miro.Board
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListBoards() sdkgo.Query[miro.ListBoardsInput, miro.BoardsPage] {
+	return operations.mock.listBoards
+}
+func (operations mockOperations) ListBoardItems() sdkgo.Query[miro.ListBoardItemsInput, miro.BoardItemsPage] {
+	return operations.mock.listBoardItems
+}
+func (operations mockOperations) GetBoardItem() sdkgo.Query[miro.GetBoardItemInput, miro.BoardItemMetadata] {
+	return operations.mock.getBoardItem
+}
+func (operations mockOperations) ListBoardMembers() sdkgo.Query[miro.ListBoardMembersInput, miro.BoardMembersPage] {
+	return operations.mock.listBoardMembers
+}
 func (operations mockOperations) GetBoard() sdkgo.Query[miro.GetBoardInput, miro.BoardMetadata] {
 	return operations.mock.getBoard
+}
+
+// ListBoardsListed selects the listed branch: Miro returned a page of boards.
+func ListBoardsListed(value miro.BoardsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardsPage] {
+	return connectormock.Branch(miro.ListBoardsBranchListed, value, failure)
+}
+
+// ListBoardsProviderRejected selects the providerRejected branch: Miro conclusively rejected the lookup.
+func ListBoardsProviderRejected(value miro.BoardsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardsPage] {
+	return connectormock.Branch(miro.ListBoardsBranchProviderRejected, value, failure)
+}
+
+// ListBoardsInvalidResponse selects the invalidResponse branch: Miro returned malformed or oversized JSON.
+func ListBoardsInvalidResponse(value miro.BoardsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardsPage] {
+	return connectormock.Branch(miro.ListBoardsBranchInvalidResponse, value, failure)
+}
+
+// ListBoardsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListBoardsDefect(value miro.BoardsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardsPage] {
+	return connectormock.Branch(miro.ListBoardsBranchDefect, value, failure)
+}
+
+// ListBoardsRetry asks Dex to retry the listBoards Step, after the delay when it is positive.
+func ListBoardsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[miro.BoardsPage] {
+	return connectormock.Retry[miro.BoardsPage](failure, after)
+}
+
+// ListBoardsListedDefault is the manifest mock listedDefault: One example board is returned.
+func ListBoardsListedDefault() connectormock.Case[miro.BoardsPage] {
+	value := connectormock.MustDecodeOutput[miro.BoardsPage](`{"boards":[{"id":"uXjVOD6LSME=","name":"Example board"}],"offset":0,"total":1}`)
+	return connectormock.Branch(miro.ListBoardsBranchListed, value, nil)
+}
+
+// ListBoardsDefault is the manifest default, listedDefault, which New installs.
+func ListBoardsDefault() connectormock.Case[miro.BoardsPage] { return ListBoardsListedDefault() }
+
+// ListBoardItemsListed selects the listed branch: Miro returned a page of board items.
+func ListBoardItemsListed(value miro.BoardItemsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemsPage] {
+	return connectormock.Branch(miro.ListBoardItemsBranchListed, value, failure)
+}
+
+// ListBoardItemsNotFound selects the notFound branch: The board was absent or inaccessible.
+func ListBoardItemsNotFound(value miro.BoardItemsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemsPage] {
+	return connectormock.Branch(miro.ListBoardItemsBranchNotFound, value, failure)
+}
+
+// ListBoardItemsProviderRejected selects the providerRejected branch: Miro conclusively rejected the lookup.
+func ListBoardItemsProviderRejected(value miro.BoardItemsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemsPage] {
+	return connectormock.Branch(miro.ListBoardItemsBranchProviderRejected, value, failure)
+}
+
+// ListBoardItemsInvalidResponse selects the invalidResponse branch: Miro returned malformed or oversized JSON.
+func ListBoardItemsInvalidResponse(value miro.BoardItemsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemsPage] {
+	return connectormock.Branch(miro.ListBoardItemsBranchInvalidResponse, value, failure)
+}
+
+// ListBoardItemsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListBoardItemsDefect(value miro.BoardItemsPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemsPage] {
+	return connectormock.Branch(miro.ListBoardItemsBranchDefect, value, failure)
+}
+
+// ListBoardItemsRetry asks Dex to retry the listBoardItems Step, after the delay when it is positive.
+func ListBoardItemsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[miro.BoardItemsPage] {
+	return connectormock.Retry[miro.BoardItemsPage](failure, after)
+}
+
+// ListBoardItemsListedDefault is the manifest mock listedDefault: One sample item is returned.
+func ListBoardItemsListedDefault() connectormock.Case[miro.BoardItemsPage] {
+	value := connectormock.MustDecodeOutput[miro.BoardItemsPage](`{"items":[{"id":"item-1","type":"sticky_note"}],"cursor":""}`)
+	return connectormock.Branch(miro.ListBoardItemsBranchListed, value, nil)
+}
+
+// ListBoardItemsDefault is the manifest default, listedDefault, which New installs.
+func ListBoardItemsDefault() connectormock.Case[miro.BoardItemsPage] {
+	return ListBoardItemsListedDefault()
+}
+
+// GetBoardItemFound selects the found branch: Miro returned the board item.
+func GetBoardItemFound(value miro.BoardItemMetadata, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemMetadata] {
+	return connectormock.Branch(miro.GetBoardItemBranchFound, value, failure)
+}
+
+// GetBoardItemNotFound selects the notFound branch: The item was absent or inaccessible.
+func GetBoardItemNotFound(value miro.BoardItemMetadata, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemMetadata] {
+	return connectormock.Branch(miro.GetBoardItemBranchNotFound, value, failure)
+}
+
+// GetBoardItemProviderRejected selects the providerRejected branch: Miro conclusively rejected the lookup.
+func GetBoardItemProviderRejected(value miro.BoardItemMetadata, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemMetadata] {
+	return connectormock.Branch(miro.GetBoardItemBranchProviderRejected, value, failure)
+}
+
+// GetBoardItemInvalidResponse selects the invalidResponse branch: Miro returned malformed or oversized JSON.
+func GetBoardItemInvalidResponse(value miro.BoardItemMetadata, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemMetadata] {
+	return connectormock.Branch(miro.GetBoardItemBranchInvalidResponse, value, failure)
+}
+
+// GetBoardItemDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetBoardItemDefect(value miro.BoardItemMetadata, failure *sdkgo.Failure) connectormock.Case[miro.BoardItemMetadata] {
+	return connectormock.Branch(miro.GetBoardItemBranchDefect, value, failure)
+}
+
+// GetBoardItemRetry asks Dex to retry the getBoardItem Step, after the delay when it is positive.
+func GetBoardItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[miro.BoardItemMetadata] {
+	return connectormock.Retry[miro.BoardItemMetadata](failure, after)
+}
+
+// GetBoardItemFoundDefault is the manifest mock foundDefault: One sample item is returned.
+func GetBoardItemFoundDefault() connectormock.Case[miro.BoardItemMetadata] {
+	value := connectormock.MustDecodeOutput[miro.BoardItemMetadata](`{"id":"item-1","type":"sticky_note"}`)
+	return connectormock.Branch(miro.GetBoardItemBranchFound, value, nil)
+}
+
+// GetBoardItemDefault is the manifest default, foundDefault, which New installs.
+func GetBoardItemDefault() connectormock.Case[miro.BoardItemMetadata] {
+	return GetBoardItemFoundDefault()
+}
+
+// ListBoardMembersListed selects the listed branch: Miro returned a page of board members.
+func ListBoardMembersListed(value miro.BoardMembersPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardMembersPage] {
+	return connectormock.Branch(miro.ListBoardMembersBranchListed, value, failure)
+}
+
+// ListBoardMembersNotFound selects the notFound branch: The board was absent or inaccessible.
+func ListBoardMembersNotFound(value miro.BoardMembersPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardMembersPage] {
+	return connectormock.Branch(miro.ListBoardMembersBranchNotFound, value, failure)
+}
+
+// ListBoardMembersProviderRejected selects the providerRejected branch: Miro conclusively rejected the lookup.
+func ListBoardMembersProviderRejected(value miro.BoardMembersPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardMembersPage] {
+	return connectormock.Branch(miro.ListBoardMembersBranchProviderRejected, value, failure)
+}
+
+// ListBoardMembersInvalidResponse selects the invalidResponse branch: Miro returned malformed or oversized JSON.
+func ListBoardMembersInvalidResponse(value miro.BoardMembersPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardMembersPage] {
+	return connectormock.Branch(miro.ListBoardMembersBranchInvalidResponse, value, failure)
+}
+
+// ListBoardMembersDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListBoardMembersDefect(value miro.BoardMembersPage, failure *sdkgo.Failure) connectormock.Case[miro.BoardMembersPage] {
+	return connectormock.Branch(miro.ListBoardMembersBranchDefect, value, failure)
+}
+
+// ListBoardMembersRetry asks Dex to retry the listBoardMembers Step, after the delay when it is positive.
+func ListBoardMembersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[miro.BoardMembersPage] {
+	return connectormock.Retry[miro.BoardMembersPage](failure, after)
+}
+
+// ListBoardMembersListedDefault is the manifest mock listedDefault: One sample member is returned.
+func ListBoardMembersListedDefault() connectormock.Case[miro.BoardMembersPage] {
+	value := connectormock.MustDecodeOutput[miro.BoardMembersPage](`{"members":[{"id":"member-1","role":"viewer"}],"offset":0,"total":1}`)
+	return connectormock.Branch(miro.ListBoardMembersBranchListed, value, nil)
+}
+
+// ListBoardMembersDefault is the manifest default, listedDefault, which New installs.
+func ListBoardMembersDefault() connectormock.Case[miro.BoardMembersPage] {
+	return ListBoardMembersListedDefault()
 }
 
 // GetBoardFound selects the found branch: Miro returned the board.

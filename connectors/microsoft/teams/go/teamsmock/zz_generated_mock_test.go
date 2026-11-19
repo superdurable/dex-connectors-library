@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listChannels/listedDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[teams.ListChannelsOutput](`{"channels":[{"id":"19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2","displayName":"Incidents","membershipType":"standard"}]}`)
+			return err
+		}},
+		{name: "getChannel/foundDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[teams.Channel](`{"id":"19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2","displayName":"Incidents","membershipType":"standard"}`)
+			return err
+		}},
+		{name: "listChannelMessages/listedDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[teams.ListChannelMessagesOutput](`{"messages":[{"id":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:30:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"importance":"normal","contentType":"text","text":"INC-1042"}]}`)
+			return err
+		}},
+		{name: "getChannelMessage/foundDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[teams.Message](`{"id":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:30:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"importance":"normal","contentType":"text","text":"INC-1042"}`)
+			return err
+		}},
+		{name: "listChats/listedDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[teams.ListChatsOutput](`{"chats":[{"id":"19:incident@thread.v2","chatType":"group","topic":"Incident response"}]}`)
+			return err
+		}},
+		{name: "getChat/foundDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[teams.Chat](`{"id":"19:incident@thread.v2","chatType":"group","topic":"Incident response"}`)
+			return err
+		}},
 		{name: "listThreadReplies/incidentAcknowledgement/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[teams.ListThreadRepliesOutput](`{"replies":[{"id":"1616990032036","replyToId":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:31:00Z","sender":{"userId":"8ea0e38b-efb3-4757-924a-5f94061cf8c2","displayName":"Incident Bot"},"importance":"normal","contentType":"text","text":"Status: SEV2 incident INC-1042 is being investigated. Reply ack in this thread to acknowledge.","webUrl":"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032036"},{"id":"1616990032040","replyToId":"1616990032035","messageType":"message","createdAt":"2026-10-01T09:32:00Z","sender":{"userId":"5f1c2d3e-4b5a-4c6d-8e7f-901a2b3c4d5e","displayName":"Ada Lovelace"},"importance":"normal","contentType":"text","text":"ACK INC-1042","webUrl":"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616990032040"}]}`)
 			return err
@@ -42,6 +66,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListChannels().Definition().Operation.OperationID != "listChannels" {
+		t.Errorf("listChannels mock has another definition")
+	}
+	if mock.GetChannel().Definition().Operation.OperationID != "getChannel" {
+		t.Errorf("getChannel mock has another definition")
+	}
+	if mock.ListChannelMessages().Definition().Operation.OperationID != "listChannelMessages" {
+		t.Errorf("listChannelMessages mock has another definition")
+	}
+	if mock.GetChannelMessage().Definition().Operation.OperationID != "getChannelMessage" {
+		t.Errorf("getChannelMessage mock has another definition")
+	}
+	if mock.ListChats().Definition().Operation.OperationID != "listChats" {
+		t.Errorf("listChats mock has another definition")
+	}
+	if mock.GetChat().Definition().Operation.OperationID != "getChat" {
+		t.Errorf("getChat mock has another definition")
+	}
 	if mock.ListThreadReplies().Definition().Operation.OperationID != "listThreadReplies" {
 		t.Errorf("listThreadReplies mock has another definition")
 	}

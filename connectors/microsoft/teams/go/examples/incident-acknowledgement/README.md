@@ -1,9 +1,11 @@
 # Microsoft Teams incident acknowledgement example
 
 This example runs one operation-only Flow from Dex Web **Start Flow** and uses
-every Microsoft Teams operation to get a person to acknowledge an incident:
+the messaging operations plus a channel read to get a person to acknowledge an incident:
 
 1. `RecordIncidentUpdate` validates the incident and records it.
+   `CheckIncidentChannel` calls `teams.NewGetChannelStep` to confirm the
+   selected channel is still visible before posting.
 2. `PostIncidentUpdate` calls `teams.NewPostChannelMessageStep` once with the
    incident as the subject and the summary as HTML, in the channel the team
    and channel pickers saved. An unwired `providerRejected` or `uncertain`
