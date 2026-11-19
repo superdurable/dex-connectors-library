@@ -9,3 +9,5 @@ Yunda's [authentication rules](https://yundaex.apifox.cn/doc-345775) and [balanc
 ## Python
 
 The `python/` package provides the `getWaybillBalance` Query. Run its checked-in example from `python/examples/`.
+
+The [TypeScript package](typescript/README.md) implements `getWaybillBalance` with a [runnable Dex Flow](typescript/examples/waybill-balance/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.

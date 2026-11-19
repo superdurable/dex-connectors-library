@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [getPatentValuation], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-zhihuiya", operations: [getPatentValuation], triggers: []}
   provider: zhihuiya
   codegen:
     go:
