@@ -44,6 +44,8 @@ spec:
         - Sign in to https://cloud.tdengine.com/, select the intended instance, then open Programming > REST API. Copy its Cloud URL and Cloud Token into Dex. The token is per user and instance and can be reset in TDengine Cloud.
         - Enter only the HTTPS origin for Cloud URL, with no path, query, fragment, credentials, or trailing slash. Keep the Cloud Token private. A blank URL or token prevents requests.
         - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector sends only the fixed SELECT of name, ntables, and status from information_schema.ins_databases; it never accepts SQL from a Flow.
+  languages:
+    python: {version: v0.1.0, operations: [listDatabases], triggers: []}
   operations:
     - name: listDatabases
       goName: ListDatabases
