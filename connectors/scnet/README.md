@@ -9,3 +9,5 @@ Sign in to the [SCNet console](https://www.scnet.cn/ui/console/index.html), open
 ## Example
 
 The [runnable Flow](go/examples/list-models/) starts with `{}` and completes with a typed `ListModelsOutput`. Its default mock returns one model. Live SCNet authorization, model visibility and provider response variation remain unverified without a user-controlled Dex Web Connection.
+
+The [Python package](python/) implements `listModels` and its [runnable Flow](python/examples/current_query/) verifies retry and persistence with a real local Dex Worker and Client.
