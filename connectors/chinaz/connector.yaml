@@ -11,6 +11,7 @@ spec:
   provider: chinaz
   languages:
     python: {version: v0.1.0, operations: [getSiteTDK], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-chinaz", operations: [getSiteTDK], triggers: []}
   codegen:
     go:
       package: chinaz
