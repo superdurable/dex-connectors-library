@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGetTaskStatusStep, type Connection, type GetTaskStatusInput, type GetTaskStatusOutput } from '@superdurable/connector-shengshu';
+import { newGetTaskStatusStep, type Connection, type GetTaskStatusInput, type GetTaskStatusOutput } from '../../src/index.js';
 
 /** Static Dex Web connection for the Shengshu example. */
 export const ConnectionName = 'shengshu';
