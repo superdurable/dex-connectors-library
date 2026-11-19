@@ -8,6 +8,8 @@ metadata:
   categories: [productivity]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, operations: [listApplications], triggers: []}
   provider: qingflow
   codegen:
     go:
