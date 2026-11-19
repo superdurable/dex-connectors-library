@@ -1,10 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package smartsheet implements read-only Smartsheet API Queries.
+// Package smartsheet implements Smartsheet API Queries and Mutations.
 package smartsheet
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // Option supplies a non-serializable HTTP dependency.
@@ -52,6 +55,45 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil
+}
+
+var errCredential = errors.New("Smartsheet credentials are unavailable")
+var errProviderRequest = errors.New("Smartsheet request failed")
+
+type providerResponse struct {
+	body       []byte
+	status     int
+	retryAfter time.Duration
+	err        error
+}
+
+func (client *Client) request(call sdkgo.Call, requestContext context.Context, method, path string, body []byte, isFenced bool) providerResponse {
+	credentials, err := client.credentials.Resolve(call)
+	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
+		return providerResponse{err: errCredential}
+	}
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(body))
+	if err != nil {
+		return providerResponse{err: errProviderRequest}
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Authorization", "Bearer "+credentials.APIKey.Reveal())
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	if isFenced {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return providerResponse{err: errProviderRequest}
+		}
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return providerResponse{err: errProviderRequest}
+	}
+	defer func() { _ = response.Body.Close() }()
+	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return providerResponse{body: responseBody, status: response.StatusCode,
+		retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()), err: readErr}
 }
 
 // ListSheetsInput selects one page of accessible sheets.

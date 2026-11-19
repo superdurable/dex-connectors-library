@@ -17,9 +17,42 @@ import (
 
 // Mock is a scripted square connection. Script each operation through its accessor.
 type Mock struct {
-	connection   square.Connection
-	listPayments *connectormock.Query[square.ListPaymentsInput, square.PaymentPage]
-	getPayment   *connectormock.Query[square.GetPaymentInput, square.Payment]
+	connection                square.Connection
+	listPayments              *connectormock.Query[square.ListPaymentsInput, square.PaymentPage]
+	getPayment                *connectormock.Query[square.GetPaymentInput, square.Payment]
+	createPayment             *connectormock.Mutation[square.CreatePaymentInput, square.Payment]
+	updatePayment             *connectormock.Mutation[square.UpdatePaymentInput, square.Payment]
+	cancelPayment             *connectormock.Mutation[square.CancelPaymentInput, square.Payment]
+	completePayment           *connectormock.Mutation[square.CompletePaymentInput, square.Payment]
+	listRefunds               *connectormock.Query[square.ListRefundsInput, square.RefundPage]
+	getRefund                 *connectormock.Query[square.GetRefundInput, square.Refund]
+	refundPayment             *connectormock.Mutation[square.RefundPaymentInput, square.Refund]
+	listCustomers             *connectormock.Query[square.ListCustomersInput, square.CustomerPage]
+	searchCustomers           *connectormock.Query[square.SearchCustomersInput, square.CustomerPage]
+	getCustomer               *connectormock.Query[square.GetCustomerInput, square.Customer]
+	createCustomer            *connectormock.Mutation[square.CreateCustomerInput, square.Customer]
+	updateCustomer            *connectormock.Mutation[square.UpdateCustomerInput, square.Customer]
+	deleteCustomer            *connectormock.Mutation[square.DeleteCustomerInput, square.DeletedCustomer]
+	searchOrders              *connectormock.Query[square.SearchOrdersInput, square.OrderPage]
+	getOrder                  *connectormock.Query[square.GetOrderInput, square.Order]
+	createOrder               *connectormock.Mutation[square.CreateOrderInput, square.Order]
+	updateOrder               *connectormock.Mutation[square.UpdateOrderInput, square.Order]
+	listCatalogObjects        *connectormock.Query[square.ListCatalogObjectsInput, square.CatalogPage]
+	searchCatalogObjects      *connectormock.Query[square.SearchCatalogObjectsInput, square.CatalogPage]
+	getCatalogObject          *connectormock.Query[square.GetCatalogObjectInput, square.CatalogObject]
+	upsertCatalogObject       *connectormock.Mutation[square.UpsertCatalogObjectInput, square.CatalogObject]
+	deleteCatalogObject       *connectormock.Mutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects]
+	retrieveInventoryCount    *connectormock.Query[square.RetrieveInventoryCountInput, square.InventoryCounts]
+	listInvoices              *connectormock.Query[square.ListInvoicesInput, square.InvoicePage]
+	getInvoice                *connectormock.Query[square.GetInvoiceInput, square.Invoice]
+	createInvoice             *connectormock.Mutation[square.CreateInvoiceInput, square.Invoice]
+	updateInvoice             *connectormock.Mutation[square.UpdateInvoiceInput, square.Invoice]
+	publishInvoice            *connectormock.Mutation[square.PublishInvoiceInput, square.Invoice]
+	cancelInvoice             *connectormock.Mutation[square.CancelInvoiceInput, square.Invoice]
+	deleteInvoice             *connectormock.Mutation[square.DeleteInvoiceInput, square.DeletedInvoice]
+	setInventoryPhysicalCount *connectormock.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts]
+	listLocations             *connectormock.Query[square.ListLocationsInput, square.LocationList]
+	getLocation               *connectormock.Query[square.GetLocationInput, square.Location]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +60,77 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listPayments: connectormock.NewQuery[square.ListPaymentsInput, square.PaymentPage](t, square.ListPaymentsDefinition),
-		getPayment:   connectormock.NewQuery[square.GetPaymentInput, square.Payment](t, square.GetPaymentDefinition),
+		listPayments:              connectormock.NewQuery[square.ListPaymentsInput, square.PaymentPage](t, square.ListPaymentsDefinition),
+		getPayment:                connectormock.NewQuery[square.GetPaymentInput, square.Payment](t, square.GetPaymentDefinition),
+		createPayment:             connectormock.NewMutation[square.CreatePaymentInput, square.Payment](t, square.CreatePaymentDefinition),
+		updatePayment:             connectormock.NewMutation[square.UpdatePaymentInput, square.Payment](t, square.UpdatePaymentDefinition),
+		cancelPayment:             connectormock.NewMutation[square.CancelPaymentInput, square.Payment](t, square.CancelPaymentDefinition),
+		completePayment:           connectormock.NewMutation[square.CompletePaymentInput, square.Payment](t, square.CompletePaymentDefinition),
+		listRefunds:               connectormock.NewQuery[square.ListRefundsInput, square.RefundPage](t, square.ListRefundsDefinition),
+		getRefund:                 connectormock.NewQuery[square.GetRefundInput, square.Refund](t, square.GetRefundDefinition),
+		refundPayment:             connectormock.NewMutation[square.RefundPaymentInput, square.Refund](t, square.RefundPaymentDefinition),
+		listCustomers:             connectormock.NewQuery[square.ListCustomersInput, square.CustomerPage](t, square.ListCustomersDefinition),
+		searchCustomers:           connectormock.NewQuery[square.SearchCustomersInput, square.CustomerPage](t, square.SearchCustomersDefinition),
+		getCustomer:               connectormock.NewQuery[square.GetCustomerInput, square.Customer](t, square.GetCustomerDefinition),
+		createCustomer:            connectormock.NewMutation[square.CreateCustomerInput, square.Customer](t, square.CreateCustomerDefinition),
+		updateCustomer:            connectormock.NewMutation[square.UpdateCustomerInput, square.Customer](t, square.UpdateCustomerDefinition),
+		deleteCustomer:            connectormock.NewMutation[square.DeleteCustomerInput, square.DeletedCustomer](t, square.DeleteCustomerDefinition),
+		searchOrders:              connectormock.NewQuery[square.SearchOrdersInput, square.OrderPage](t, square.SearchOrdersDefinition),
+		getOrder:                  connectormock.NewQuery[square.GetOrderInput, square.Order](t, square.GetOrderDefinition),
+		createOrder:               connectormock.NewMutation[square.CreateOrderInput, square.Order](t, square.CreateOrderDefinition),
+		updateOrder:               connectormock.NewMutation[square.UpdateOrderInput, square.Order](t, square.UpdateOrderDefinition),
+		listCatalogObjects:        connectormock.NewQuery[square.ListCatalogObjectsInput, square.CatalogPage](t, square.ListCatalogObjectsDefinition),
+		searchCatalogObjects:      connectormock.NewQuery[square.SearchCatalogObjectsInput, square.CatalogPage](t, square.SearchCatalogObjectsDefinition),
+		getCatalogObject:          connectormock.NewQuery[square.GetCatalogObjectInput, square.CatalogObject](t, square.GetCatalogObjectDefinition),
+		upsertCatalogObject:       connectormock.NewMutation[square.UpsertCatalogObjectInput, square.CatalogObject](t, square.UpsertCatalogObjectDefinition),
+		deleteCatalogObject:       connectormock.NewMutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects](t, square.DeleteCatalogObjectDefinition),
+		retrieveInventoryCount:    connectormock.NewQuery[square.RetrieveInventoryCountInput, square.InventoryCounts](t, square.RetrieveInventoryCountDefinition),
+		listInvoices:              connectormock.NewQuery[square.ListInvoicesInput, square.InvoicePage](t, square.ListInvoicesDefinition),
+		getInvoice:                connectormock.NewQuery[square.GetInvoiceInput, square.Invoice](t, square.GetInvoiceDefinition),
+		createInvoice:             connectormock.NewMutation[square.CreateInvoiceInput, square.Invoice](t, square.CreateInvoiceDefinition),
+		updateInvoice:             connectormock.NewMutation[square.UpdateInvoiceInput, square.Invoice](t, square.UpdateInvoiceDefinition),
+		publishInvoice:            connectormock.NewMutation[square.PublishInvoiceInput, square.Invoice](t, square.PublishInvoiceDefinition),
+		cancelInvoice:             connectormock.NewMutation[square.CancelInvoiceInput, square.Invoice](t, square.CancelInvoiceDefinition),
+		deleteInvoice:             connectormock.NewMutation[square.DeleteInvoiceInput, square.DeletedInvoice](t, square.DeleteInvoiceDefinition),
+		setInventoryPhysicalCount: connectormock.NewMutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts](t, square.SetInventoryPhysicalCountDefinition),
+		listLocations:             connectormock.NewQuery[square.ListLocationsInput, square.LocationList](t, square.ListLocationsDefinition),
+		getLocation:               connectormock.NewQuery[square.GetLocationInput, square.Location](t, square.GetLocationDefinition),
 	}
 	mock.listPayments.Default(ListPaymentsDefault())
 	mock.getPayment.Default(GetPaymentDefault())
+	mock.createPayment.Default(CreatePaymentDefault())
+	mock.updatePayment.Default(UpdatePaymentDefault())
+	mock.cancelPayment.Default(CancelPaymentDefault())
+	mock.completePayment.Default(CompletePaymentDefault())
+	mock.listRefunds.Default(ListRefundsDefault())
+	mock.getRefund.Default(GetRefundDefault())
+	mock.refundPayment.Default(RefundPaymentDefault())
+	mock.listCustomers.Default(ListCustomersDefault())
+	mock.searchCustomers.Default(SearchCustomersDefault())
+	mock.getCustomer.Default(GetCustomerDefault())
+	mock.createCustomer.Default(CreateCustomerDefault())
+	mock.updateCustomer.Default(UpdateCustomerDefault())
+	mock.deleteCustomer.Default(DeleteCustomerDefault())
+	mock.searchOrders.Default(SearchOrdersDefault())
+	mock.getOrder.Default(GetOrderDefault())
+	mock.createOrder.Default(CreateOrderDefault())
+	mock.updateOrder.Default(UpdateOrderDefault())
+	mock.listCatalogObjects.Default(ListCatalogObjectsDefault())
+	mock.searchCatalogObjects.Default(SearchCatalogObjectsDefault())
+	mock.getCatalogObject.Default(GetCatalogObjectDefault())
+	mock.upsertCatalogObject.Default(UpsertCatalogObjectDefault())
+	mock.deleteCatalogObject.Default(DeleteCatalogObjectDefault())
+	mock.retrieveInventoryCount.Default(RetrieveInventoryCountDefault())
+	mock.listInvoices.Default(ListInvoicesDefault())
+	mock.getInvoice.Default(GetInvoiceDefault())
+	mock.createInvoice.Default(CreateInvoiceDefault())
+	mock.updateInvoice.Default(UpdateInvoiceDefault())
+	mock.publishInvoice.Default(PublishInvoiceDefault())
+	mock.cancelInvoice.Default(CancelInvoiceDefault())
+	mock.deleteInvoice.Default(DeleteInvoiceDefault())
+	mock.setInventoryPhysicalCount.Default(SetInventoryPhysicalCountDefault())
+	mock.listLocations.Default(ListLocationsDefault())
+	mock.getLocation.Default(GetLocationDefault())
 	connection, err := square.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "square", Name: connectionName})
 	if err != nil {
 		t.Fatalf("square mock connection: %v", err)
@@ -53,6 +152,171 @@ func (mock *Mock) GetPayment() *connectormock.Query[square.GetPaymentInput, squa
 	return mock.getPayment
 }
 
+// CreatePayment returns the createPayment script.
+func (mock *Mock) CreatePayment() *connectormock.Mutation[square.CreatePaymentInput, square.Payment] {
+	return mock.createPayment
+}
+
+// UpdatePayment returns the updatePayment script.
+func (mock *Mock) UpdatePayment() *connectormock.Mutation[square.UpdatePaymentInput, square.Payment] {
+	return mock.updatePayment
+}
+
+// CancelPayment returns the cancelPayment script.
+func (mock *Mock) CancelPayment() *connectormock.Mutation[square.CancelPaymentInput, square.Payment] {
+	return mock.cancelPayment
+}
+
+// CompletePayment returns the completePayment script.
+func (mock *Mock) CompletePayment() *connectormock.Mutation[square.CompletePaymentInput, square.Payment] {
+	return mock.completePayment
+}
+
+// ListRefunds returns the listRefunds script.
+func (mock *Mock) ListRefunds() *connectormock.Query[square.ListRefundsInput, square.RefundPage] {
+	return mock.listRefunds
+}
+
+// GetRefund returns the getRefund script.
+func (mock *Mock) GetRefund() *connectormock.Query[square.GetRefundInput, square.Refund] {
+	return mock.getRefund
+}
+
+// RefundPayment returns the refundPayment script.
+func (mock *Mock) RefundPayment() *connectormock.Mutation[square.RefundPaymentInput, square.Refund] {
+	return mock.refundPayment
+}
+
+// ListCustomers returns the listCustomers script.
+func (mock *Mock) ListCustomers() *connectormock.Query[square.ListCustomersInput, square.CustomerPage] {
+	return mock.listCustomers
+}
+
+// SearchCustomers returns the searchCustomers script.
+func (mock *Mock) SearchCustomers() *connectormock.Query[square.SearchCustomersInput, square.CustomerPage] {
+	return mock.searchCustomers
+}
+
+// GetCustomer returns the getCustomer script.
+func (mock *Mock) GetCustomer() *connectormock.Query[square.GetCustomerInput, square.Customer] {
+	return mock.getCustomer
+}
+
+// CreateCustomer returns the createCustomer script.
+func (mock *Mock) CreateCustomer() *connectormock.Mutation[square.CreateCustomerInput, square.Customer] {
+	return mock.createCustomer
+}
+
+// UpdateCustomer returns the updateCustomer script.
+func (mock *Mock) UpdateCustomer() *connectormock.Mutation[square.UpdateCustomerInput, square.Customer] {
+	return mock.updateCustomer
+}
+
+// DeleteCustomer returns the deleteCustomer script.
+func (mock *Mock) DeleteCustomer() *connectormock.Mutation[square.DeleteCustomerInput, square.DeletedCustomer] {
+	return mock.deleteCustomer
+}
+
+// SearchOrders returns the searchOrders script.
+func (mock *Mock) SearchOrders() *connectormock.Query[square.SearchOrdersInput, square.OrderPage] {
+	return mock.searchOrders
+}
+
+// GetOrder returns the getOrder script.
+func (mock *Mock) GetOrder() *connectormock.Query[square.GetOrderInput, square.Order] {
+	return mock.getOrder
+}
+
+// CreateOrder returns the createOrder script.
+func (mock *Mock) CreateOrder() *connectormock.Mutation[square.CreateOrderInput, square.Order] {
+	return mock.createOrder
+}
+
+// UpdateOrder returns the updateOrder script.
+func (mock *Mock) UpdateOrder() *connectormock.Mutation[square.UpdateOrderInput, square.Order] {
+	return mock.updateOrder
+}
+
+// ListCatalogObjects returns the listCatalogObjects script.
+func (mock *Mock) ListCatalogObjects() *connectormock.Query[square.ListCatalogObjectsInput, square.CatalogPage] {
+	return mock.listCatalogObjects
+}
+
+// SearchCatalogObjects returns the searchCatalogObjects script.
+func (mock *Mock) SearchCatalogObjects() *connectormock.Query[square.SearchCatalogObjectsInput, square.CatalogPage] {
+	return mock.searchCatalogObjects
+}
+
+// GetCatalogObject returns the getCatalogObject script.
+func (mock *Mock) GetCatalogObject() *connectormock.Query[square.GetCatalogObjectInput, square.CatalogObject] {
+	return mock.getCatalogObject
+}
+
+// UpsertCatalogObject returns the upsertCatalogObject script.
+func (mock *Mock) UpsertCatalogObject() *connectormock.Mutation[square.UpsertCatalogObjectInput, square.CatalogObject] {
+	return mock.upsertCatalogObject
+}
+
+// DeleteCatalogObject returns the deleteCatalogObject script.
+func (mock *Mock) DeleteCatalogObject() *connectormock.Mutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects] {
+	return mock.deleteCatalogObject
+}
+
+// RetrieveInventoryCount returns the retrieveInventoryCount script.
+func (mock *Mock) RetrieveInventoryCount() *connectormock.Query[square.RetrieveInventoryCountInput, square.InventoryCounts] {
+	return mock.retrieveInventoryCount
+}
+
+// ListInvoices returns the listInvoices script.
+func (mock *Mock) ListInvoices() *connectormock.Query[square.ListInvoicesInput, square.InvoicePage] {
+	return mock.listInvoices
+}
+
+// GetInvoice returns the getInvoice script.
+func (mock *Mock) GetInvoice() *connectormock.Query[square.GetInvoiceInput, square.Invoice] {
+	return mock.getInvoice
+}
+
+// CreateInvoice returns the createInvoice script.
+func (mock *Mock) CreateInvoice() *connectormock.Mutation[square.CreateInvoiceInput, square.Invoice] {
+	return mock.createInvoice
+}
+
+// UpdateInvoice returns the updateInvoice script.
+func (mock *Mock) UpdateInvoice() *connectormock.Mutation[square.UpdateInvoiceInput, square.Invoice] {
+	return mock.updateInvoice
+}
+
+// PublishInvoice returns the publishInvoice script.
+func (mock *Mock) PublishInvoice() *connectormock.Mutation[square.PublishInvoiceInput, square.Invoice] {
+	return mock.publishInvoice
+}
+
+// CancelInvoice returns the cancelInvoice script.
+func (mock *Mock) CancelInvoice() *connectormock.Mutation[square.CancelInvoiceInput, square.Invoice] {
+	return mock.cancelInvoice
+}
+
+// DeleteInvoice returns the deleteInvoice script.
+func (mock *Mock) DeleteInvoice() *connectormock.Mutation[square.DeleteInvoiceInput, square.DeletedInvoice] {
+	return mock.deleteInvoice
+}
+
+// SetInventoryPhysicalCount returns the setInventoryPhysicalCount script.
+func (mock *Mock) SetInventoryPhysicalCount() *connectormock.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts] {
+	return mock.setInventoryPhysicalCount
+}
+
+// ListLocations returns the listLocations script.
+func (mock *Mock) ListLocations() *connectormock.Query[square.ListLocationsInput, square.LocationList] {
+	return mock.listLocations
+}
+
+// GetLocation returns the getLocation script.
+func (mock *Mock) GetLocation() *connectormock.Query[square.GetLocationInput, square.Location] {
+	return mock.getLocation
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListPayments() sdkgo.Query[square.ListPaymentsInput, square.PaymentPage] {
@@ -60,6 +324,105 @@ func (operations mockOperations) ListPayments() sdkgo.Query[square.ListPaymentsI
 }
 func (operations mockOperations) GetPayment() sdkgo.Query[square.GetPaymentInput, square.Payment] {
 	return operations.mock.getPayment
+}
+func (operations mockOperations) CreatePayment() sdkgo.Mutation[square.CreatePaymentInput, square.Payment] {
+	return operations.mock.createPayment
+}
+func (operations mockOperations) UpdatePayment() sdkgo.Mutation[square.UpdatePaymentInput, square.Payment] {
+	return operations.mock.updatePayment
+}
+func (operations mockOperations) CancelPayment() sdkgo.Mutation[square.CancelPaymentInput, square.Payment] {
+	return operations.mock.cancelPayment
+}
+func (operations mockOperations) CompletePayment() sdkgo.Mutation[square.CompletePaymentInput, square.Payment] {
+	return operations.mock.completePayment
+}
+func (operations mockOperations) ListRefunds() sdkgo.Query[square.ListRefundsInput, square.RefundPage] {
+	return operations.mock.listRefunds
+}
+func (operations mockOperations) GetRefund() sdkgo.Query[square.GetRefundInput, square.Refund] {
+	return operations.mock.getRefund
+}
+func (operations mockOperations) RefundPayment() sdkgo.Mutation[square.RefundPaymentInput, square.Refund] {
+	return operations.mock.refundPayment
+}
+func (operations mockOperations) ListCustomers() sdkgo.Query[square.ListCustomersInput, square.CustomerPage] {
+	return operations.mock.listCustomers
+}
+func (operations mockOperations) SearchCustomers() sdkgo.Query[square.SearchCustomersInput, square.CustomerPage] {
+	return operations.mock.searchCustomers
+}
+func (operations mockOperations) GetCustomer() sdkgo.Query[square.GetCustomerInput, square.Customer] {
+	return operations.mock.getCustomer
+}
+func (operations mockOperations) CreateCustomer() sdkgo.Mutation[square.CreateCustomerInput, square.Customer] {
+	return operations.mock.createCustomer
+}
+func (operations mockOperations) UpdateCustomer() sdkgo.Mutation[square.UpdateCustomerInput, square.Customer] {
+	return operations.mock.updateCustomer
+}
+func (operations mockOperations) DeleteCustomer() sdkgo.Mutation[square.DeleteCustomerInput, square.DeletedCustomer] {
+	return operations.mock.deleteCustomer
+}
+func (operations mockOperations) SearchOrders() sdkgo.Query[square.SearchOrdersInput, square.OrderPage] {
+	return operations.mock.searchOrders
+}
+func (operations mockOperations) GetOrder() sdkgo.Query[square.GetOrderInput, square.Order] {
+	return operations.mock.getOrder
+}
+func (operations mockOperations) CreateOrder() sdkgo.Mutation[square.CreateOrderInput, square.Order] {
+	return operations.mock.createOrder
+}
+func (operations mockOperations) UpdateOrder() sdkgo.Mutation[square.UpdateOrderInput, square.Order] {
+	return operations.mock.updateOrder
+}
+func (operations mockOperations) ListCatalogObjects() sdkgo.Query[square.ListCatalogObjectsInput, square.CatalogPage] {
+	return operations.mock.listCatalogObjects
+}
+func (operations mockOperations) SearchCatalogObjects() sdkgo.Query[square.SearchCatalogObjectsInput, square.CatalogPage] {
+	return operations.mock.searchCatalogObjects
+}
+func (operations mockOperations) GetCatalogObject() sdkgo.Query[square.GetCatalogObjectInput, square.CatalogObject] {
+	return operations.mock.getCatalogObject
+}
+func (operations mockOperations) UpsertCatalogObject() sdkgo.Mutation[square.UpsertCatalogObjectInput, square.CatalogObject] {
+	return operations.mock.upsertCatalogObject
+}
+func (operations mockOperations) DeleteCatalogObject() sdkgo.Mutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects] {
+	return operations.mock.deleteCatalogObject
+}
+func (operations mockOperations) RetrieveInventoryCount() sdkgo.Query[square.RetrieveInventoryCountInput, square.InventoryCounts] {
+	return operations.mock.retrieveInventoryCount
+}
+func (operations mockOperations) ListInvoices() sdkgo.Query[square.ListInvoicesInput, square.InvoicePage] {
+	return operations.mock.listInvoices
+}
+func (operations mockOperations) GetInvoice() sdkgo.Query[square.GetInvoiceInput, square.Invoice] {
+	return operations.mock.getInvoice
+}
+func (operations mockOperations) CreateInvoice() sdkgo.Mutation[square.CreateInvoiceInput, square.Invoice] {
+	return operations.mock.createInvoice
+}
+func (operations mockOperations) UpdateInvoice() sdkgo.Mutation[square.UpdateInvoiceInput, square.Invoice] {
+	return operations.mock.updateInvoice
+}
+func (operations mockOperations) PublishInvoice() sdkgo.Mutation[square.PublishInvoiceInput, square.Invoice] {
+	return operations.mock.publishInvoice
+}
+func (operations mockOperations) CancelInvoice() sdkgo.Mutation[square.CancelInvoiceInput, square.Invoice] {
+	return operations.mock.cancelInvoice
+}
+func (operations mockOperations) DeleteInvoice() sdkgo.Mutation[square.DeleteInvoiceInput, square.DeletedInvoice] {
+	return operations.mock.deleteInvoice
+}
+func (operations mockOperations) SetInventoryPhysicalCount() sdkgo.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts] {
+	return operations.mock.setInventoryPhysicalCount
+}
+func (operations mockOperations) ListLocations() sdkgo.Query[square.ListLocationsInput, square.LocationList] {
+	return operations.mock.listLocations
+}
+func (operations mockOperations) GetLocation() sdkgo.Query[square.GetLocationInput, square.Location] {
+	return operations.mock.getLocation
 }
 
 // ListPaymentsListed selects the listed branch: List one page of Square payments.
@@ -139,3 +502,1230 @@ func GetPaymentDefaultAnswer() connectormock.Case[square.Payment] {
 
 // GetPaymentDefault is the manifest default, defaultAnswer, which New installs.
 func GetPaymentDefault() connectormock.Case[square.Payment] { return GetPaymentDefaultAnswer() }
+
+// CreatePaymentCreated selects the created branch: Square created the payment.
+func CreatePaymentCreated(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CreatePaymentBranchCreated, value, failure)
+}
+
+// CreatePaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the payment.
+func CreatePaymentProviderRejected(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CreatePaymentBranchProviderRejected, value, failure)
+}
+
+// CreatePaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CreatePaymentInvalidResponse(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CreatePaymentBranchInvalidResponse, value, failure)
+}
+
+// CreatePaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreatePaymentDefect(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CreatePaymentBranchDefect, value, failure)
+}
+
+// CreatePaymentRetry asks Dex to retry the createPayment Step, after the delay when it is positive.
+func CreatePaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Payment] {
+	return connectormock.Retry[square.Payment](failure, after)
+}
+
+// CreatePaymentDefaultAnswer is the manifest mock defaultAnswer: A Square payment created from a test source.
+func CreatePaymentDefaultAnswer() connectormock.Case[square.Payment] {
+	value := connectormock.MustDecodeOutput[square.Payment](`{"id":"pay_102","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
+	return connectormock.Branch(square.CreatePaymentBranchCreated, value, nil)
+}
+
+// CreatePaymentDefault is the manifest default, defaultAnswer, which New installs.
+func CreatePaymentDefault() connectormock.Case[square.Payment] { return CreatePaymentDefaultAnswer() }
+
+// UpdatePaymentUpdated selects the updated branch: Square updated the payment.
+func UpdatePaymentUpdated(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchUpdated, value, failure)
+}
+
+// UpdatePaymentNotFound selects the notFound branch: The payment was not found.
+func UpdatePaymentNotFound(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchNotFound, value, failure)
+}
+
+// UpdatePaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the update.
+func UpdatePaymentProviderRejected(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchProviderRejected, value, failure)
+}
+
+// UpdatePaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func UpdatePaymentInvalidResponse(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchInvalidResponse, value, failure)
+}
+
+// UpdatePaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdatePaymentDefect(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchDefect, value, failure)
+}
+
+// UpdatePaymentRetry asks Dex to retry the updatePayment Step, after the delay when it is positive.
+func UpdatePaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Payment] {
+	return connectormock.Retry[square.Payment](failure, after)
+}
+
+// UpdatePaymentDefaultAnswer is the manifest mock defaultAnswer: A Square payment with an updated amount.
+func UpdatePaymentDefaultAnswer() connectormock.Case[square.Payment] {
+	value := connectormock.MustDecodeOutput[square.Payment](`{"id":"pay_101","status":"APPROVED","amount_money":{"amount":3000,"currency":"USD"}}`)
+	return connectormock.Branch(square.UpdatePaymentBranchUpdated, value, nil)
+}
+
+// UpdatePaymentDefault is the manifest default, defaultAnswer, which New installs.
+func UpdatePaymentDefault() connectormock.Case[square.Payment] { return UpdatePaymentDefaultAnswer() }
+
+// CancelPaymentCanceled selects the canceled branch: Square canceled the payment.
+func CancelPaymentCanceled(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchCanceled, value, failure)
+}
+
+// CancelPaymentNotFound selects the notFound branch: The payment was not found.
+func CancelPaymentNotFound(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchNotFound, value, failure)
+}
+
+// CancelPaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the cancellation.
+func CancelPaymentProviderRejected(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchProviderRejected, value, failure)
+}
+
+// CancelPaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CancelPaymentInvalidResponse(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchInvalidResponse, value, failure)
+}
+
+// CancelPaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func CancelPaymentDefect(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchDefect, value, failure)
+}
+
+// CancelPaymentRetry asks Dex to retry the cancelPayment Step, after the delay when it is positive.
+func CancelPaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Payment] {
+	return connectormock.Retry[square.Payment](failure, after)
+}
+
+// CancelPaymentDefaultAnswer is the manifest mock defaultAnswer: A voided Square payment.
+func CancelPaymentDefaultAnswer() connectormock.Case[square.Payment] {
+	value := connectormock.MustDecodeOutput[square.Payment](`{"id":"pay_101","status":"CANCELED","amount_money":{"amount":2900,"currency":"USD"}}`)
+	return connectormock.Branch(square.CancelPaymentBranchCanceled, value, nil)
+}
+
+// CancelPaymentDefault is the manifest default, defaultAnswer, which New installs.
+func CancelPaymentDefault() connectormock.Case[square.Payment] { return CancelPaymentDefaultAnswer() }
+
+// CompletePaymentCompleted selects the completed branch: Square completed the payment.
+func CompletePaymentCompleted(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchCompleted, value, failure)
+}
+
+// CompletePaymentNotFound selects the notFound branch: The payment was not found.
+func CompletePaymentNotFound(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchNotFound, value, failure)
+}
+
+// CompletePaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the capture.
+func CompletePaymentProviderRejected(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchProviderRejected, value, failure)
+}
+
+// CompletePaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CompletePaymentInvalidResponse(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchInvalidResponse, value, failure)
+}
+
+// CompletePaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func CompletePaymentDefect(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchDefect, value, failure)
+}
+
+// CompletePaymentRetry asks Dex to retry the completePayment Step, after the delay when it is positive.
+func CompletePaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Payment] {
+	return connectormock.Retry[square.Payment](failure, after)
+}
+
+// CompletePaymentDefaultAnswer is the manifest mock defaultAnswer: A captured Square payment.
+func CompletePaymentDefaultAnswer() connectormock.Case[square.Payment] {
+	value := connectormock.MustDecodeOutput[square.Payment](`{"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
+	return connectormock.Branch(square.CompletePaymentBranchCompleted, value, nil)
+}
+
+// CompletePaymentDefault is the manifest default, defaultAnswer, which New installs.
+func CompletePaymentDefault() connectormock.Case[square.Payment] {
+	return CompletePaymentDefaultAnswer()
+}
+
+// ListRefundsListed selects the listed branch: Square listed the refunds.
+func ListRefundsListed(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchListed, value, failure)
+}
+
+// ListRefundsNotFound selects the notFound branch: The requested refund resource was not found.
+func ListRefundsNotFound(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchNotFound, value, failure)
+}
+
+// ListRefundsProviderRejected selects the providerRejected branch: Square conclusively rejected the read.
+func ListRefundsProviderRejected(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchProviderRejected, value, failure)
+}
+
+// ListRefundsInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func ListRefundsInvalidResponse(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchInvalidResponse, value, failure)
+}
+
+// ListRefundsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListRefundsDefect(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchDefect, value, failure)
+}
+
+// ListRefundsRetry asks Dex to retry the listRefunds Step, after the delay when it is positive.
+func ListRefundsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.RefundPage] {
+	return connectormock.Retry[square.RefundPage](failure, after)
+}
+
+// ListRefundsDefaultAnswer is the manifest mock defaultAnswer: One page with a completed Square refund.
+func ListRefundsDefaultAnswer() connectormock.Case[square.RefundPage] {
+	value := connectormock.MustDecodeOutput[square.RefundPage](`{"refunds":[{"id":"refund_101","payment_id":"pay_101","status":"COMPLETED","amount_money":{"amount":1000,"currency":"USD"}}],"cursor":""}`)
+	return connectormock.Branch(square.ListRefundsBranchListed, value, nil)
+}
+
+// ListRefundsDefault is the manifest default, defaultAnswer, which New installs.
+func ListRefundsDefault() connectormock.Case[square.RefundPage] { return ListRefundsDefaultAnswer() }
+
+// GetRefundFound selects the found branch: Square returned the refund.
+func GetRefundFound(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchFound, value, failure)
+}
+
+// GetRefundNotFound selects the notFound branch: The refund was not found.
+func GetRefundNotFound(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchNotFound, value, failure)
+}
+
+// GetRefundProviderRejected selects the providerRejected branch: Square conclusively rejected the read.
+func GetRefundProviderRejected(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchProviderRejected, value, failure)
+}
+
+// GetRefundInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetRefundInvalidResponse(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchInvalidResponse, value, failure)
+}
+
+// GetRefundDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetRefundDefect(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchDefect, value, failure)
+}
+
+// GetRefundRetry asks Dex to retry the getRefund Step, after the delay when it is positive.
+func GetRefundRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Refund] {
+	return connectormock.Retry[square.Refund](failure, after)
+}
+
+// GetRefundDefaultAnswer is the manifest mock defaultAnswer: A completed Square refund.
+func GetRefundDefaultAnswer() connectormock.Case[square.Refund] {
+	value := connectormock.MustDecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"COMPLETED","amount_money":{"amount":1000,"currency":"USD"}}`)
+	return connectormock.Branch(square.GetRefundBranchFound, value, nil)
+}
+
+// GetRefundDefault is the manifest default, defaultAnswer, which New installs.
+func GetRefundDefault() connectormock.Case[square.Refund] { return GetRefundDefaultAnswer() }
+
+// RefundPaymentRefunded selects the refunded branch: Square accepted the refund.
+func RefundPaymentRefunded(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.RefundPaymentBranchRefunded, value, failure)
+}
+
+// RefundPaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the refund.
+func RefundPaymentProviderRejected(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.RefundPaymentBranchProviderRejected, value, failure)
+}
+
+// RefundPaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func RefundPaymentInvalidResponse(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.RefundPaymentBranchInvalidResponse, value, failure)
+}
+
+// RefundPaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func RefundPaymentDefect(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.RefundPaymentBranchDefect, value, failure)
+}
+
+// RefundPaymentRetry asks Dex to retry the refundPayment Step, after the delay when it is positive.
+func RefundPaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Refund] {
+	return connectormock.Retry[square.Refund](failure, after)
+}
+
+// RefundPaymentDefaultAnswer is the manifest mock defaultAnswer: Square accepted a partial refund.
+func RefundPaymentDefaultAnswer() connectormock.Case[square.Refund] {
+	value := connectormock.MustDecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"PENDING","amount_money":{"amount":1000,"currency":"USD"}}`)
+	return connectormock.Branch(square.RefundPaymentBranchRefunded, value, nil)
+}
+
+// RefundPaymentDefault is the manifest default, defaultAnswer, which New installs.
+func RefundPaymentDefault() connectormock.Case[square.Refund] { return RefundPaymentDefaultAnswer() }
+
+// ListCustomersListed selects the listed branch: List one page of Square customers.
+func ListCustomersListed(value square.CustomerPage, failure *sdkgo.Failure) connectormock.Case[square.CustomerPage] {
+	return connectormock.Branch(square.ListCustomersBranchListed, value, failure)
+}
+
+// ListCustomersProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func ListCustomersProviderRejected(value square.CustomerPage, failure *sdkgo.Failure) connectormock.Case[square.CustomerPage] {
+	return connectormock.Branch(square.ListCustomersBranchProviderRejected, value, failure)
+}
+
+// ListCustomersInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func ListCustomersInvalidResponse(value square.CustomerPage, failure *sdkgo.Failure) connectormock.Case[square.CustomerPage] {
+	return connectormock.Branch(square.ListCustomersBranchInvalidResponse, value, failure)
+}
+
+// ListCustomersDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListCustomersDefect(value square.CustomerPage, failure *sdkgo.Failure) connectormock.Case[square.CustomerPage] {
+	return connectormock.Branch(square.ListCustomersBranchDefect, value, failure)
+}
+
+// ListCustomersRetry asks Dex to retry the listCustomers Step, after the delay when it is positive.
+func ListCustomersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.CustomerPage] {
+	return connectormock.Retry[square.CustomerPage](failure, after)
+}
+
+// ListCustomersDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square customer response.
+func ListCustomersDefaultAnswer() connectormock.Case[square.CustomerPage] {
+	value := connectormock.MustDecodeOutput[square.CustomerPage](`{"customers":[{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}],"cursor":""}`)
+	return connectormock.Branch(square.ListCustomersBranchListed, value, nil)
+}
+
+// ListCustomersDefault is the manifest default, defaultAnswer, which New installs.
+func ListCustomersDefault() connectormock.Case[square.CustomerPage] {
+	return ListCustomersDefaultAnswer()
+}
+
+// SearchCustomersListed selects the listed branch: Search Square customers by email or reference ID.
+func SearchCustomersListed(value square.CustomerPage, failure *sdkgo.Failure) connectormock.Case[square.CustomerPage] {
+	return connectormock.Branch(square.SearchCustomersBranchListed, value, failure)
+}
+
+// SearchCustomersProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func SearchCustomersProviderRejected(value square.CustomerPage, failure *sdkgo.Failure) connectormock.Case[square.CustomerPage] {
+	return connectormock.Branch(square.SearchCustomersBranchProviderRejected, value, failure)
+}
+
+// SearchCustomersInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func SearchCustomersInvalidResponse(value square.CustomerPage, failure *sdkgo.Failure) connectormock.Case[square.CustomerPage] {
+	return connectormock.Branch(square.SearchCustomersBranchInvalidResponse, value, failure)
+}
+
+// SearchCustomersDefect selects the defect branch: Local input or connection credentials are invalid.
+func SearchCustomersDefect(value square.CustomerPage, failure *sdkgo.Failure) connectormock.Case[square.CustomerPage] {
+	return connectormock.Branch(square.SearchCustomersBranchDefect, value, failure)
+}
+
+// SearchCustomersRetry asks Dex to retry the searchCustomers Step, after the delay when it is positive.
+func SearchCustomersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.CustomerPage] {
+	return connectormock.Retry[square.CustomerPage](failure, after)
+}
+
+// SearchCustomersDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square customer response.
+func SearchCustomersDefaultAnswer() connectormock.Case[square.CustomerPage] {
+	value := connectormock.MustDecodeOutput[square.CustomerPage](`{"customers":[{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}],"cursor":""}`)
+	return connectormock.Branch(square.SearchCustomersBranchListed, value, nil)
+}
+
+// SearchCustomersDefault is the manifest default, defaultAnswer, which New installs.
+func SearchCustomersDefault() connectormock.Case[square.CustomerPage] {
+	return SearchCustomersDefaultAnswer()
+}
+
+// GetCustomerFound selects the found branch: Read one Square customer.
+func GetCustomerFound(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.GetCustomerBranchFound, value, failure)
+}
+
+// GetCustomerNotFound selects the notFound branch: The customer was not found.
+func GetCustomerNotFound(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.GetCustomerBranchNotFound, value, failure)
+}
+
+// GetCustomerProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func GetCustomerProviderRejected(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.GetCustomerBranchProviderRejected, value, failure)
+}
+
+// GetCustomerInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetCustomerInvalidResponse(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.GetCustomerBranchInvalidResponse, value, failure)
+}
+
+// GetCustomerDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetCustomerDefect(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.GetCustomerBranchDefect, value, failure)
+}
+
+// GetCustomerRetry asks Dex to retry the getCustomer Step, after the delay when it is positive.
+func GetCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Customer] {
+	return connectormock.Retry[square.Customer](failure, after)
+}
+
+// GetCustomerDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square customer response.
+func GetCustomerDefaultAnswer() connectormock.Case[square.Customer] {
+	value := connectormock.MustDecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+	return connectormock.Branch(square.GetCustomerBranchFound, value, nil)
+}
+
+// GetCustomerDefault is the manifest default, defaultAnswer, which New installs.
+func GetCustomerDefault() connectormock.Case[square.Customer] { return GetCustomerDefaultAnswer() }
+
+// CreateCustomerCreated selects the created branch: Create a Square customer with a stable idempotency key.
+func CreateCustomerCreated(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.CreateCustomerBranchCreated, value, failure)
+}
+
+// CreateCustomerProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func CreateCustomerProviderRejected(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.CreateCustomerBranchProviderRejected, value, failure)
+}
+
+// CreateCustomerInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CreateCustomerInvalidResponse(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.CreateCustomerBranchInvalidResponse, value, failure)
+}
+
+// CreateCustomerDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateCustomerDefect(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.CreateCustomerBranchDefect, value, failure)
+}
+
+// CreateCustomerRetry asks Dex to retry the createCustomer Step, after the delay when it is positive.
+func CreateCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Customer] {
+	return connectormock.Retry[square.Customer](failure, after)
+}
+
+// CreateCustomerDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square customer response.
+func CreateCustomerDefaultAnswer() connectormock.Case[square.Customer] {
+	value := connectormock.MustDecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+	return connectormock.Branch(square.CreateCustomerBranchCreated, value, nil)
+}
+
+// CreateCustomerDefault is the manifest default, defaultAnswer, which New installs.
+func CreateCustomerDefault() connectormock.Case[square.Customer] {
+	return CreateCustomerDefaultAnswer()
+}
+
+// UpdateCustomerUpdated selects the updated branch: Update a Square customer profile with absolute field values.
+func UpdateCustomerUpdated(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.UpdateCustomerBranchUpdated, value, failure)
+}
+
+// UpdateCustomerNotFound selects the notFound branch: The customer was not found.
+func UpdateCustomerNotFound(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.UpdateCustomerBranchNotFound, value, failure)
+}
+
+// UpdateCustomerProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func UpdateCustomerProviderRejected(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.UpdateCustomerBranchProviderRejected, value, failure)
+}
+
+// UpdateCustomerInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func UpdateCustomerInvalidResponse(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.UpdateCustomerBranchInvalidResponse, value, failure)
+}
+
+// UpdateCustomerDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateCustomerDefect(value square.Customer, failure *sdkgo.Failure) connectormock.Case[square.Customer] {
+	return connectormock.Branch(square.UpdateCustomerBranchDefect, value, failure)
+}
+
+// UpdateCustomerRetry asks Dex to retry the updateCustomer Step, after the delay when it is positive.
+func UpdateCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Customer] {
+	return connectormock.Retry[square.Customer](failure, after)
+}
+
+// UpdateCustomerDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square customer response.
+func UpdateCustomerDefaultAnswer() connectormock.Case[square.Customer] {
+	value := connectormock.MustDecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+	return connectormock.Branch(square.UpdateCustomerBranchUpdated, value, nil)
+}
+
+// UpdateCustomerDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateCustomerDefault() connectormock.Case[square.Customer] {
+	return UpdateCustomerDefaultAnswer()
+}
+
+// DeleteCustomerDeleted selects the deleted branch: Delete a Square customer profile.
+func DeleteCustomerDeleted(value square.DeletedCustomer, failure *sdkgo.Failure) connectormock.Case[square.DeletedCustomer] {
+	return connectormock.Branch(square.DeleteCustomerBranchDeleted, value, failure)
+}
+
+// DeleteCustomerNotFound selects the notFound branch: The customer was not found.
+func DeleteCustomerNotFound(value square.DeletedCustomer, failure *sdkgo.Failure) connectormock.Case[square.DeletedCustomer] {
+	return connectormock.Branch(square.DeleteCustomerBranchNotFound, value, failure)
+}
+
+// DeleteCustomerProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func DeleteCustomerProviderRejected(value square.DeletedCustomer, failure *sdkgo.Failure) connectormock.Case[square.DeletedCustomer] {
+	return connectormock.Branch(square.DeleteCustomerBranchProviderRejected, value, failure)
+}
+
+// DeleteCustomerDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteCustomerDefect(value square.DeletedCustomer, failure *sdkgo.Failure) connectormock.Case[square.DeletedCustomer] {
+	return connectormock.Branch(square.DeleteCustomerBranchDefect, value, failure)
+}
+
+// DeleteCustomerRetry asks Dex to retry the deleteCustomer Step, after the delay when it is positive.
+func DeleteCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.DeletedCustomer] {
+	return connectormock.Retry[square.DeletedCustomer](failure, after)
+}
+
+// DeleteCustomerDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square customer response.
+func DeleteCustomerDefaultAnswer() connectormock.Case[square.DeletedCustomer] {
+	value := connectormock.MustDecodeOutput[square.DeletedCustomer](`{"customerId":"customer_101"}`)
+	return connectormock.Branch(square.DeleteCustomerBranchDeleted, value, nil)
+}
+
+// DeleteCustomerDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteCustomerDefault() connectormock.Case[square.DeletedCustomer] {
+	return DeleteCustomerDefaultAnswer()
+}
+
+// SearchOrdersListed selects the listed branch: Search one page of Square orders for a location.
+func SearchOrdersListed(value square.OrderPage, failure *sdkgo.Failure) connectormock.Case[square.OrderPage] {
+	return connectormock.Branch(square.SearchOrdersBranchListed, value, failure)
+}
+
+// SearchOrdersProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func SearchOrdersProviderRejected(value square.OrderPage, failure *sdkgo.Failure) connectormock.Case[square.OrderPage] {
+	return connectormock.Branch(square.SearchOrdersBranchProviderRejected, value, failure)
+}
+
+// SearchOrdersInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func SearchOrdersInvalidResponse(value square.OrderPage, failure *sdkgo.Failure) connectormock.Case[square.OrderPage] {
+	return connectormock.Branch(square.SearchOrdersBranchInvalidResponse, value, failure)
+}
+
+// SearchOrdersDefect selects the defect branch: Local input or connection credentials are invalid.
+func SearchOrdersDefect(value square.OrderPage, failure *sdkgo.Failure) connectormock.Case[square.OrderPage] {
+	return connectormock.Branch(square.SearchOrdersBranchDefect, value, failure)
+}
+
+// SearchOrdersRetry asks Dex to retry the searchOrders Step, after the delay when it is positive.
+func SearchOrdersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.OrderPage] {
+	return connectormock.Retry[square.OrderPage](failure, after)
+}
+
+// SearchOrdersDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square order response.
+func SearchOrdersDefaultAnswer() connectormock.Case[square.OrderPage] {
+	value := connectormock.MustDecodeOutput[square.OrderPage](`{"orders":[{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}],"cursor":""}`)
+	return connectormock.Branch(square.SearchOrdersBranchListed, value, nil)
+}
+
+// SearchOrdersDefault is the manifest default, defaultAnswer, which New installs.
+func SearchOrdersDefault() connectormock.Case[square.OrderPage] { return SearchOrdersDefaultAnswer() }
+
+// GetOrderFound selects the found branch: Read one Square order.
+func GetOrderFound(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchFound, value, failure)
+}
+
+// GetOrderNotFound selects the notFound branch: The order was not found.
+func GetOrderNotFound(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchNotFound, value, failure)
+}
+
+// GetOrderProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func GetOrderProviderRejected(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchProviderRejected, value, failure)
+}
+
+// GetOrderInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetOrderInvalidResponse(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchInvalidResponse, value, failure)
+}
+
+// GetOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetOrderDefect(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchDefect, value, failure)
+}
+
+// GetOrderRetry asks Dex to retry the getOrder Step, after the delay when it is positive.
+func GetOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Order] {
+	return connectormock.Retry[square.Order](failure, after)
+}
+
+// GetOrderDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square order response.
+func GetOrderDefaultAnswer() connectormock.Case[square.Order] {
+	value := connectormock.MustDecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+	return connectormock.Branch(square.GetOrderBranchFound, value, nil)
+}
+
+// GetOrderDefault is the manifest default, defaultAnswer, which New installs.
+func GetOrderDefault() connectormock.Case[square.Order] { return GetOrderDefaultAnswer() }
+
+// CreateOrderCreated selects the created branch: Create a Square order with a stable idempotency key.
+func CreateOrderCreated(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.CreateOrderBranchCreated, value, failure)
+}
+
+// CreateOrderProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func CreateOrderProviderRejected(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.CreateOrderBranchProviderRejected, value, failure)
+}
+
+// CreateOrderInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CreateOrderInvalidResponse(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.CreateOrderBranchInvalidResponse, value, failure)
+}
+
+// CreateOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateOrderDefect(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.CreateOrderBranchDefect, value, failure)
+}
+
+// CreateOrderRetry asks Dex to retry the createOrder Step, after the delay when it is positive.
+func CreateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Order] {
+	return connectormock.Retry[square.Order](failure, after)
+}
+
+// CreateOrderDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square order response.
+func CreateOrderDefaultAnswer() connectormock.Case[square.Order] {
+	value := connectormock.MustDecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+	return connectormock.Branch(square.CreateOrderBranchCreated, value, nil)
+}
+
+// CreateOrderDefault is the manifest default, defaultAnswer, which New installs.
+func CreateOrderDefault() connectormock.Case[square.Order] { return CreateOrderDefaultAnswer() }
+
+// UpdateOrderUpdated selects the updated branch: Update an open Square order using its current version and a stable idempotency key.
+func UpdateOrderUpdated(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchUpdated, value, failure)
+}
+
+// UpdateOrderNotFound selects the notFound branch: The order was not found.
+func UpdateOrderNotFound(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchNotFound, value, failure)
+}
+
+// UpdateOrderProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func UpdateOrderProviderRejected(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchProviderRejected, value, failure)
+}
+
+// UpdateOrderInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func UpdateOrderInvalidResponse(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchInvalidResponse, value, failure)
+}
+
+// UpdateOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateOrderDefect(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchDefect, value, failure)
+}
+
+// UpdateOrderRetry asks Dex to retry the updateOrder Step, after the delay when it is positive.
+func UpdateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Order] {
+	return connectormock.Retry[square.Order](failure, after)
+}
+
+// UpdateOrderDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square order response.
+func UpdateOrderDefaultAnswer() connectormock.Case[square.Order] {
+	value := connectormock.MustDecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+	return connectormock.Branch(square.UpdateOrderBranchUpdated, value, nil)
+}
+
+// UpdateOrderDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateOrderDefault() connectormock.Case[square.Order] { return UpdateOrderDefaultAnswer() }
+
+// ListCatalogObjectsListed selects the listed branch: List one page of Square catalog items.
+func ListCatalogObjectsListed(value square.CatalogPage, failure *sdkgo.Failure) connectormock.Case[square.CatalogPage] {
+	return connectormock.Branch(square.ListCatalogObjectsBranchListed, value, failure)
+}
+
+// ListCatalogObjectsProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func ListCatalogObjectsProviderRejected(value square.CatalogPage, failure *sdkgo.Failure) connectormock.Case[square.CatalogPage] {
+	return connectormock.Branch(square.ListCatalogObjectsBranchProviderRejected, value, failure)
+}
+
+// ListCatalogObjectsInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func ListCatalogObjectsInvalidResponse(value square.CatalogPage, failure *sdkgo.Failure) connectormock.Case[square.CatalogPage] {
+	return connectormock.Branch(square.ListCatalogObjectsBranchInvalidResponse, value, failure)
+}
+
+// ListCatalogObjectsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListCatalogObjectsDefect(value square.CatalogPage, failure *sdkgo.Failure) connectormock.Case[square.CatalogPage] {
+	return connectormock.Branch(square.ListCatalogObjectsBranchDefect, value, failure)
+}
+
+// ListCatalogObjectsRetry asks Dex to retry the listCatalogObjects Step, after the delay when it is positive.
+func ListCatalogObjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.CatalogPage] {
+	return connectormock.Retry[square.CatalogPage](failure, after)
+}
+
+// ListCatalogObjectsDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square catalog response.
+func ListCatalogObjectsDefaultAnswer() connectormock.Case[square.CatalogPage] {
+	value := connectormock.MustDecodeOutput[square.CatalogPage](`{"objects":[{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}],"cursor":""}`)
+	return connectormock.Branch(square.ListCatalogObjectsBranchListed, value, nil)
+}
+
+// ListCatalogObjectsDefault is the manifest default, defaultAnswer, which New installs.
+func ListCatalogObjectsDefault() connectormock.Case[square.CatalogPage] {
+	return ListCatalogObjectsDefaultAnswer()
+}
+
+// SearchCatalogObjectsListed selects the listed branch: Search Square catalog items by text.
+func SearchCatalogObjectsListed(value square.CatalogPage, failure *sdkgo.Failure) connectormock.Case[square.CatalogPage] {
+	return connectormock.Branch(square.SearchCatalogObjectsBranchListed, value, failure)
+}
+
+// SearchCatalogObjectsProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func SearchCatalogObjectsProviderRejected(value square.CatalogPage, failure *sdkgo.Failure) connectormock.Case[square.CatalogPage] {
+	return connectormock.Branch(square.SearchCatalogObjectsBranchProviderRejected, value, failure)
+}
+
+// SearchCatalogObjectsInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func SearchCatalogObjectsInvalidResponse(value square.CatalogPage, failure *sdkgo.Failure) connectormock.Case[square.CatalogPage] {
+	return connectormock.Branch(square.SearchCatalogObjectsBranchInvalidResponse, value, failure)
+}
+
+// SearchCatalogObjectsDefect selects the defect branch: Local input or connection credentials are invalid.
+func SearchCatalogObjectsDefect(value square.CatalogPage, failure *sdkgo.Failure) connectormock.Case[square.CatalogPage] {
+	return connectormock.Branch(square.SearchCatalogObjectsBranchDefect, value, failure)
+}
+
+// SearchCatalogObjectsRetry asks Dex to retry the searchCatalogObjects Step, after the delay when it is positive.
+func SearchCatalogObjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.CatalogPage] {
+	return connectormock.Retry[square.CatalogPage](failure, after)
+}
+
+// SearchCatalogObjectsDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square catalog response.
+func SearchCatalogObjectsDefaultAnswer() connectormock.Case[square.CatalogPage] {
+	value := connectormock.MustDecodeOutput[square.CatalogPage](`{"objects":[{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}],"cursor":""}`)
+	return connectormock.Branch(square.SearchCatalogObjectsBranchListed, value, nil)
+}
+
+// SearchCatalogObjectsDefault is the manifest default, defaultAnswer, which New installs.
+func SearchCatalogObjectsDefault() connectormock.Case[square.CatalogPage] {
+	return SearchCatalogObjectsDefaultAnswer()
+}
+
+// GetCatalogObjectFound selects the found branch: Read one Square catalog object.
+func GetCatalogObjectFound(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.GetCatalogObjectBranchFound, value, failure)
+}
+
+// GetCatalogObjectNotFound selects the notFound branch: The catalog object was not found.
+func GetCatalogObjectNotFound(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.GetCatalogObjectBranchNotFound, value, failure)
+}
+
+// GetCatalogObjectProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func GetCatalogObjectProviderRejected(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.GetCatalogObjectBranchProviderRejected, value, failure)
+}
+
+// GetCatalogObjectInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetCatalogObjectInvalidResponse(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.GetCatalogObjectBranchInvalidResponse, value, failure)
+}
+
+// GetCatalogObjectDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetCatalogObjectDefect(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.GetCatalogObjectBranchDefect, value, failure)
+}
+
+// GetCatalogObjectRetry asks Dex to retry the getCatalogObject Step, after the delay when it is positive.
+func GetCatalogObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.CatalogObject] {
+	return connectormock.Retry[square.CatalogObject](failure, after)
+}
+
+// GetCatalogObjectDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square catalog response.
+func GetCatalogObjectDefaultAnswer() connectormock.Case[square.CatalogObject] {
+	value := connectormock.MustDecodeOutput[square.CatalogObject](`{"object":{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}}`)
+	return connectormock.Branch(square.GetCatalogObjectBranchFound, value, nil)
+}
+
+// GetCatalogObjectDefault is the manifest default, defaultAnswer, which New installs.
+func GetCatalogObjectDefault() connectormock.Case[square.CatalogObject] {
+	return GetCatalogObjectDefaultAnswer()
+}
+
+// UpsertCatalogObjectUpserted selects the upserted branch: Create or fully replace one Square catalog item with a stable idempotency key.
+func UpsertCatalogObjectUpserted(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.UpsertCatalogObjectBranchUpserted, value, failure)
+}
+
+// UpsertCatalogObjectProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func UpsertCatalogObjectProviderRejected(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.UpsertCatalogObjectBranchProviderRejected, value, failure)
+}
+
+// UpsertCatalogObjectInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func UpsertCatalogObjectInvalidResponse(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.UpsertCatalogObjectBranchInvalidResponse, value, failure)
+}
+
+// UpsertCatalogObjectDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpsertCatalogObjectDefect(value square.CatalogObject, failure *sdkgo.Failure) connectormock.Case[square.CatalogObject] {
+	return connectormock.Branch(square.UpsertCatalogObjectBranchDefect, value, failure)
+}
+
+// UpsertCatalogObjectRetry asks Dex to retry the upsertCatalogObject Step, after the delay when it is positive.
+func UpsertCatalogObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.CatalogObject] {
+	return connectormock.Retry[square.CatalogObject](failure, after)
+}
+
+// UpsertCatalogObjectDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square catalog response.
+func UpsertCatalogObjectDefaultAnswer() connectormock.Case[square.CatalogObject] {
+	value := connectormock.MustDecodeOutput[square.CatalogObject](`{"object":{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}}`)
+	return connectormock.Branch(square.UpsertCatalogObjectBranchUpserted, value, nil)
+}
+
+// UpsertCatalogObjectDefault is the manifest default, defaultAnswer, which New installs.
+func UpsertCatalogObjectDefault() connectormock.Case[square.CatalogObject] {
+	return UpsertCatalogObjectDefaultAnswer()
+}
+
+// DeleteCatalogObjectDeleted selects the deleted branch: Delete one Square catalog item and its dependent variations.
+func DeleteCatalogObjectDeleted(value square.DeletedCatalogObjects, failure *sdkgo.Failure) connectormock.Case[square.DeletedCatalogObjects] {
+	return connectormock.Branch(square.DeleteCatalogObjectBranchDeleted, value, failure)
+}
+
+// DeleteCatalogObjectNotFound selects the notFound branch: The catalog object was not found.
+func DeleteCatalogObjectNotFound(value square.DeletedCatalogObjects, failure *sdkgo.Failure) connectormock.Case[square.DeletedCatalogObjects] {
+	return connectormock.Branch(square.DeleteCatalogObjectBranchNotFound, value, failure)
+}
+
+// DeleteCatalogObjectProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func DeleteCatalogObjectProviderRejected(value square.DeletedCatalogObjects, failure *sdkgo.Failure) connectormock.Case[square.DeletedCatalogObjects] {
+	return connectormock.Branch(square.DeleteCatalogObjectBranchProviderRejected, value, failure)
+}
+
+// DeleteCatalogObjectInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func DeleteCatalogObjectInvalidResponse(value square.DeletedCatalogObjects, failure *sdkgo.Failure) connectormock.Case[square.DeletedCatalogObjects] {
+	return connectormock.Branch(square.DeleteCatalogObjectBranchInvalidResponse, value, failure)
+}
+
+// DeleteCatalogObjectDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteCatalogObjectDefect(value square.DeletedCatalogObjects, failure *sdkgo.Failure) connectormock.Case[square.DeletedCatalogObjects] {
+	return connectormock.Branch(square.DeleteCatalogObjectBranchDefect, value, failure)
+}
+
+// DeleteCatalogObjectRetry asks Dex to retry the deleteCatalogObject Step, after the delay when it is positive.
+func DeleteCatalogObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.DeletedCatalogObjects] {
+	return connectormock.Retry[square.DeletedCatalogObjects](failure, after)
+}
+
+// DeleteCatalogObjectDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square catalog response.
+func DeleteCatalogObjectDefaultAnswer() connectormock.Case[square.DeletedCatalogObjects] {
+	value := connectormock.MustDecodeOutput[square.DeletedCatalogObjects](`{"deletedObjectIds":["item_101"]}`)
+	return connectormock.Branch(square.DeleteCatalogObjectBranchDeleted, value, nil)
+}
+
+// DeleteCatalogObjectDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteCatalogObjectDefault() connectormock.Case[square.DeletedCatalogObjects] {
+	return DeleteCatalogObjectDefaultAnswer()
+}
+
+// RetrieveInventoryCountFound selects the found branch: Read inventory counts for a catalog variation.
+func RetrieveInventoryCountFound(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchFound, value, failure)
+}
+
+// RetrieveInventoryCountNotFound selects the notFound branch: The catalog variation was not found.
+func RetrieveInventoryCountNotFound(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchNotFound, value, failure)
+}
+
+// RetrieveInventoryCountProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func RetrieveInventoryCountProviderRejected(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchProviderRejected, value, failure)
+}
+
+// RetrieveInventoryCountInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func RetrieveInventoryCountInvalidResponse(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchInvalidResponse, value, failure)
+}
+
+// RetrieveInventoryCountDefect selects the defect branch: Local input or connection credentials are invalid.
+func RetrieveInventoryCountDefect(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.RetrieveInventoryCountBranchDefect, value, failure)
+}
+
+// RetrieveInventoryCountRetry asks Dex to retry the retrieveInventoryCount Step, after the delay when it is positive.
+func RetrieveInventoryCountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Retry[square.InventoryCounts](failure, after)
+}
+
+// RetrieveInventoryCountDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square inventory count.
+func RetrieveInventoryCountDefaultAnswer() connectormock.Case[square.InventoryCounts] {
+	value := connectormock.MustDecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
+	return connectormock.Branch(square.RetrieveInventoryCountBranchFound, value, nil)
+}
+
+// RetrieveInventoryCountDefault is the manifest default, defaultAnswer, which New installs.
+func RetrieveInventoryCountDefault() connectormock.Case[square.InventoryCounts] {
+	return RetrieveInventoryCountDefaultAnswer()
+}
+
+// ListInvoicesListed selects the listed branch: List one page of invoices at a Square location.
+func ListInvoicesListed(value square.InvoicePage, failure *sdkgo.Failure) connectormock.Case[square.InvoicePage] {
+	return connectormock.Branch(square.ListInvoicesBranchListed, value, failure)
+}
+
+// ListInvoicesProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func ListInvoicesProviderRejected(value square.InvoicePage, failure *sdkgo.Failure) connectormock.Case[square.InvoicePage] {
+	return connectormock.Branch(square.ListInvoicesBranchProviderRejected, value, failure)
+}
+
+// ListInvoicesInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func ListInvoicesInvalidResponse(value square.InvoicePage, failure *sdkgo.Failure) connectormock.Case[square.InvoicePage] {
+	return connectormock.Branch(square.ListInvoicesBranchInvalidResponse, value, failure)
+}
+
+// ListInvoicesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListInvoicesDefect(value square.InvoicePage, failure *sdkgo.Failure) connectormock.Case[square.InvoicePage] {
+	return connectormock.Branch(square.ListInvoicesBranchDefect, value, failure)
+}
+
+// ListInvoicesRetry asks Dex to retry the listInvoices Step, after the delay when it is positive.
+func ListInvoicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.InvoicePage] {
+	return connectormock.Retry[square.InvoicePage](failure, after)
+}
+
+// ListInvoicesDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func ListInvoicesDefaultAnswer() connectormock.Case[square.InvoicePage] {
+	value := connectormock.MustDecodeOutput[square.InvoicePage](`{"invoices":[{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}],"cursor":""}`)
+	return connectormock.Branch(square.ListInvoicesBranchListed, value, nil)
+}
+
+// ListInvoicesDefault is the manifest default, defaultAnswer, which New installs.
+func ListInvoicesDefault() connectormock.Case[square.InvoicePage] { return ListInvoicesDefaultAnswer() }
+
+// GetInvoiceFound selects the found branch: Read one Square invoice.
+func GetInvoiceFound(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchFound, value, failure)
+}
+
+// GetInvoiceNotFound selects the notFound branch: The invoice was not found.
+func GetInvoiceNotFound(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchNotFound, value, failure)
+}
+
+// GetInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func GetInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchProviderRejected, value, failure)
+}
+
+// GetInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchInvalidResponse, value, failure)
+}
+
+// GetInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchDefect, value, failure)
+}
+
+// GetInvoiceRetry asks Dex to retry the getInvoice Step, after the delay when it is positive.
+func GetInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// GetInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func GetInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.GetInvoiceBranchFound, value, nil)
+}
+
+// GetInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func GetInvoiceDefault() connectormock.Case[square.Invoice] { return GetInvoiceDefaultAnswer() }
+
+// CreateInvoiceCreated selects the created branch: Create a draft email invoice for an open order.
+func CreateInvoiceCreated(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CreateInvoiceBranchCreated, value, failure)
+}
+
+// CreateInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func CreateInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CreateInvoiceBranchProviderRejected, value, failure)
+}
+
+// CreateInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CreateInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CreateInvoiceBranchInvalidResponse, value, failure)
+}
+
+// CreateInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CreateInvoiceBranchDefect, value, failure)
+}
+
+// CreateInvoiceRetry asks Dex to retry the createInvoice Step, after the delay when it is positive.
+func CreateInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// CreateInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func CreateInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.CreateInvoiceBranchCreated, value, nil)
+}
+
+// CreateInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func CreateInvoiceDefault() connectormock.Case[square.Invoice] { return CreateInvoiceDefaultAnswer() }
+
+// UpdateInvoiceUpdated selects the updated branch: Update the description of a Square invoice by version.
+func UpdateInvoiceUpdated(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.UpdateInvoiceBranchUpdated, value, failure)
+}
+
+// UpdateInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func UpdateInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.UpdateInvoiceBranchProviderRejected, value, failure)
+}
+
+// UpdateInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func UpdateInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.UpdateInvoiceBranchInvalidResponse, value, failure)
+}
+
+// UpdateInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.UpdateInvoiceBranchDefect, value, failure)
+}
+
+// UpdateInvoiceRetry asks Dex to retry the updateInvoice Step, after the delay when it is positive.
+func UpdateInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// UpdateInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func UpdateInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.UpdateInvoiceBranchUpdated, value, nil)
+}
+
+// UpdateInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateInvoiceDefault() connectormock.Case[square.Invoice] { return UpdateInvoiceDefaultAnswer() }
+
+// PublishInvoicePublished selects the published branch: Square published the invoice.
+func PublishInvoicePublished(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.PublishInvoiceBranchPublished, value, failure)
+}
+
+// PublishInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func PublishInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.PublishInvoiceBranchProviderRejected, value, failure)
+}
+
+// PublishInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func PublishInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.PublishInvoiceBranchInvalidResponse, value, failure)
+}
+
+// PublishInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func PublishInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.PublishInvoiceBranchDefect, value, failure)
+}
+
+// PublishInvoiceRetry asks Dex to retry the publishInvoice Step, after the delay when it is positive.
+func PublishInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// PublishInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func PublishInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.PublishInvoiceBranchPublished, value, nil)
+}
+
+// PublishInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func PublishInvoiceDefault() connectormock.Case[square.Invoice] { return PublishInvoiceDefaultAnswer() }
+
+// CancelInvoiceCanceled selects the canceled branch: Square canceled the invoice.
+func CancelInvoiceCanceled(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CancelInvoiceBranchCanceled, value, failure)
+}
+
+// CancelInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func CancelInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CancelInvoiceBranchProviderRejected, value, failure)
+}
+
+// CancelInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CancelInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CancelInvoiceBranchInvalidResponse, value, failure)
+}
+
+// CancelInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func CancelInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CancelInvoiceBranchDefect, value, failure)
+}
+
+// CancelInvoiceRetry asks Dex to retry the cancelInvoice Step, after the delay when it is positive.
+func CancelInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// CancelInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func CancelInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.CancelInvoiceBranchCanceled, value, nil)
+}
+
+// CancelInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func CancelInvoiceDefault() connectormock.Case[square.Invoice] { return CancelInvoiceDefaultAnswer() }
+
+// DeleteInvoiceDeleted selects the deleted branch: Square deleted the invoice.
+func DeleteInvoiceDeleted(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchDeleted, value, failure)
+}
+
+// DeleteInvoiceNotFound selects the notFound branch: The invoice was not found.
+func DeleteInvoiceNotFound(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchNotFound, value, failure)
+}
+
+// DeleteInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func DeleteInvoiceProviderRejected(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchProviderRejected, value, failure)
+}
+
+// DeleteInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func DeleteInvoiceInvalidResponse(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchInvalidResponse, value, failure)
+}
+
+// DeleteInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteInvoiceDefect(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchDefect, value, failure)
+}
+
+// DeleteInvoiceRetry asks Dex to retry the deleteInvoice Step, after the delay when it is positive.
+func DeleteInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Retry[square.DeletedInvoice](failure, after)
+}
+
+// DeleteInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func DeleteInvoiceDefaultAnswer() connectormock.Case[square.DeletedInvoice] {
+	value := connectormock.MustDecodeOutput[square.DeletedInvoice](`{"invoiceId":"invoice_101"}`)
+	return connectormock.Branch(square.DeleteInvoiceBranchDeleted, value, nil)
+}
+
+// DeleteInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteInvoiceDefault() connectormock.Case[square.DeletedInvoice] {
+	return DeleteInvoiceDefaultAnswer()
+}
+
+// SetInventoryPhysicalCountReconciled selects the reconciled branch: Square reconciled the physical count.
+func SetInventoryPhysicalCountReconciled(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchReconciled, value, failure)
+}
+
+// SetInventoryPhysicalCountProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func SetInventoryPhysicalCountProviderRejected(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchProviderRejected, value, failure)
+}
+
+// SetInventoryPhysicalCountInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func SetInventoryPhysicalCountInvalidResponse(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchInvalidResponse, value, failure)
+}
+
+// SetInventoryPhysicalCountDefect selects the defect branch: Local input or connection credentials are invalid.
+func SetInventoryPhysicalCountDefect(value square.InventoryCounts, failure *sdkgo.Failure) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchDefect, value, failure)
+}
+
+// SetInventoryPhysicalCountRetry asks Dex to retry the setInventoryPhysicalCount Step, after the delay when it is positive.
+func SetInventoryPhysicalCountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.InventoryCounts] {
+	return connectormock.Retry[square.InventoryCounts](failure, after)
+}
+
+// SetInventoryPhysicalCountDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square reconciled inventory count.
+func SetInventoryPhysicalCountDefaultAnswer() connectormock.Case[square.InventoryCounts] {
+	value := connectormock.MustDecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
+	return connectormock.Branch(square.SetInventoryPhysicalCountBranchReconciled, value, nil)
+}
+
+// SetInventoryPhysicalCountDefault is the manifest default, defaultAnswer, which New installs.
+func SetInventoryPhysicalCountDefault() connectormock.Case[square.InventoryCounts] {
+	return SetInventoryPhysicalCountDefaultAnswer()
+}
+
+// ListLocationsListed selects the listed branch: Square returned seller locations.
+func ListLocationsListed(value square.LocationList, failure *sdkgo.Failure) connectormock.Case[square.LocationList] {
+	return connectormock.Branch(square.ListLocationsBranchListed, value, failure)
+}
+
+// ListLocationsProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func ListLocationsProviderRejected(value square.LocationList, failure *sdkgo.Failure) connectormock.Case[square.LocationList] {
+	return connectormock.Branch(square.ListLocationsBranchProviderRejected, value, failure)
+}
+
+// ListLocationsInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func ListLocationsInvalidResponse(value square.LocationList, failure *sdkgo.Failure) connectormock.Case[square.LocationList] {
+	return connectormock.Branch(square.ListLocationsBranchInvalidResponse, value, failure)
+}
+
+// ListLocationsDefect selects the defect branch: Connection credentials are invalid.
+func ListLocationsDefect(value square.LocationList, failure *sdkgo.Failure) connectormock.Case[square.LocationList] {
+	return connectormock.Branch(square.ListLocationsBranchDefect, value, failure)
+}
+
+// ListLocationsRetry asks Dex to retry the listLocations Step, after the delay when it is positive.
+func ListLocationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.LocationList] {
+	return connectormock.Retry[square.LocationList](failure, after)
+}
+
+// ListLocationsDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square location list.
+func ListLocationsDefaultAnswer() connectormock.Case[square.LocationList] {
+	value := connectormock.MustDecodeOutput[square.LocationList](`{"locations":[{"id":"loc_101","name":"Main","status":"ACTIVE","currency":"USD"}]}`)
+	return connectormock.Branch(square.ListLocationsBranchListed, value, nil)
+}
+
+// ListLocationsDefault is the manifest default, defaultAnswer, which New installs.
+func ListLocationsDefault() connectormock.Case[square.LocationList] {
+	return ListLocationsDefaultAnswer()
+}
+
+// GetLocationFound selects the found branch: Square returned the seller location.
+func GetLocationFound(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchFound, value, failure)
+}
+
+// GetLocationNotFound selects the notFound branch: The location was not found.
+func GetLocationNotFound(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchNotFound, value, failure)
+}
+
+// GetLocationProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func GetLocationProviderRejected(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchProviderRejected, value, failure)
+}
+
+// GetLocationInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetLocationInvalidResponse(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchInvalidResponse, value, failure)
+}
+
+// GetLocationDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetLocationDefect(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchDefect, value, failure)
+}
+
+// GetLocationRetry asks Dex to retry the getLocation Step, after the delay when it is positive.
+func GetLocationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Location] {
+	return connectormock.Retry[square.Location](failure, after)
+}
+
+// GetLocationDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square location.
+func GetLocationDefaultAnswer() connectormock.Case[square.Location] {
+	value := connectormock.MustDecodeOutput[square.Location](`{"location":{"id":"loc_101","name":"Main","status":"ACTIVE","currency":"USD"}}`)
+	return connectormock.Branch(square.GetLocationBranchFound, value, nil)
+}
+
+// GetLocationDefault is the manifest default, defaultAnswer, which New installs.
+func GetLocationDefault() connectormock.Case[square.Location] { return GetLocationDefaultAnswer() }

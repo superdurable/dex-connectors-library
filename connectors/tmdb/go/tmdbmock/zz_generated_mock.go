@@ -20,6 +20,10 @@ type Mock struct {
 	connection   tmdb.Connection
 	searchMovies *connectormock.Query[tmdb.SearchMoviesInput, tmdb.MoviePage]
 	getMovie     *connectormock.Query[tmdb.GetMovieInput, tmdb.Movie]
+	searchTV     *connectormock.Query[tmdb.SearchTVInput, tmdb.TVPage]
+	getTV        *connectormock.Query[tmdb.GetTVInput, tmdb.TVSeries]
+	searchPeople *connectormock.Query[tmdb.SearchPeopleInput, tmdb.PeoplePage]
+	getPerson    *connectormock.Query[tmdb.GetPersonInput, tmdb.Person]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,9 +33,17 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		searchMovies: connectormock.NewQuery[tmdb.SearchMoviesInput, tmdb.MoviePage](t, tmdb.SearchMoviesDefinition),
 		getMovie:     connectormock.NewQuery[tmdb.GetMovieInput, tmdb.Movie](t, tmdb.GetMovieDefinition),
+		searchTV:     connectormock.NewQuery[tmdb.SearchTVInput, tmdb.TVPage](t, tmdb.SearchTVDefinition),
+		getTV:        connectormock.NewQuery[tmdb.GetTVInput, tmdb.TVSeries](t, tmdb.GetTVDefinition),
+		searchPeople: connectormock.NewQuery[tmdb.SearchPeopleInput, tmdb.PeoplePage](t, tmdb.SearchPeopleDefinition),
+		getPerson:    connectormock.NewQuery[tmdb.GetPersonInput, tmdb.Person](t, tmdb.GetPersonDefinition),
 	}
 	mock.searchMovies.Default(SearchMoviesDefault())
 	mock.getMovie.Default(GetMovieDefault())
+	mock.searchTV.Default(SearchTVDefault())
+	mock.getTV.Default(GetTVDefault())
+	mock.searchPeople.Default(SearchPeopleDefault())
+	mock.getPerson.Default(GetPersonDefault())
 	connection, err := tmdb.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "tmdb", Name: connectionName})
 	if err != nil {
 		t.Fatalf("tmdb mock connection: %v", err)
@@ -53,6 +65,24 @@ func (mock *Mock) GetMovie() *connectormock.Query[tmdb.GetMovieInput, tmdb.Movie
 	return mock.getMovie
 }
 
+// SearchTV returns the searchTV script.
+func (mock *Mock) SearchTV() *connectormock.Query[tmdb.SearchTVInput, tmdb.TVPage] {
+	return mock.searchTV
+}
+
+// GetTV returns the getTV script.
+func (mock *Mock) GetTV() *connectormock.Query[tmdb.GetTVInput, tmdb.TVSeries] { return mock.getTV }
+
+// SearchPeople returns the searchPeople script.
+func (mock *Mock) SearchPeople() *connectormock.Query[tmdb.SearchPeopleInput, tmdb.PeoplePage] {
+	return mock.searchPeople
+}
+
+// GetPerson returns the getPerson script.
+func (mock *Mock) GetPerson() *connectormock.Query[tmdb.GetPersonInput, tmdb.Person] {
+	return mock.getPerson
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchMovies() sdkgo.Query[tmdb.SearchMoviesInput, tmdb.MoviePage] {
@@ -60,6 +90,18 @@ func (operations mockOperations) SearchMovies() sdkgo.Query[tmdb.SearchMoviesInp
 }
 func (operations mockOperations) GetMovie() sdkgo.Query[tmdb.GetMovieInput, tmdb.Movie] {
 	return operations.mock.getMovie
+}
+func (operations mockOperations) SearchTV() sdkgo.Query[tmdb.SearchTVInput, tmdb.TVPage] {
+	return operations.mock.searchTV
+}
+func (operations mockOperations) GetTV() sdkgo.Query[tmdb.GetTVInput, tmdb.TVSeries] {
+	return operations.mock.getTV
+}
+func (operations mockOperations) SearchPeople() sdkgo.Query[tmdb.SearchPeopleInput, tmdb.PeoplePage] {
+	return operations.mock.searchPeople
+}
+func (operations mockOperations) GetPerson() sdkgo.Query[tmdb.GetPersonInput, tmdb.Person] {
+	return operations.mock.getPerson
 }
 
 // SearchMoviesSearched selects the searched branch: TMDB returned the requested result.
@@ -136,3 +178,151 @@ func GetMovieGetMovieDefault() connectormock.Case[tmdb.Movie] {
 
 // GetMovieDefault is the manifest default, getMovieDefault, which New installs.
 func GetMovieDefault() connectormock.Case[tmdb.Movie] { return GetMovieGetMovieDefault() }
+
+// SearchTVSearched selects the searched branch: TMDB returned a TV search page.
+func SearchTVSearched(value tmdb.TVPage, failure *sdkgo.Failure) connectormock.Case[tmdb.TVPage] {
+	return connectormock.Branch(tmdb.SearchTVBranchSearched, value, failure)
+}
+
+// SearchTVProviderRejected selects the providerRejected branch: TMDB definitively rejected the search.
+func SearchTVProviderRejected(value tmdb.TVPage, failure *sdkgo.Failure) connectormock.Case[tmdb.TVPage] {
+	return connectormock.Branch(tmdb.SearchTVBranchProviderRejected, value, failure)
+}
+
+// SearchTVInvalidResponse selects the invalidResponse branch: TMDB returned incomplete or oversized JSON.
+func SearchTVInvalidResponse(value tmdb.TVPage, failure *sdkgo.Failure) connectormock.Case[tmdb.TVPage] {
+	return connectormock.Branch(tmdb.SearchTVBranchInvalidResponse, value, failure)
+}
+
+// SearchTVDefect selects the defect branch: The search input or connection is invalid.
+func SearchTVDefect(value tmdb.TVPage, failure *sdkgo.Failure) connectormock.Case[tmdb.TVPage] {
+	return connectormock.Branch(tmdb.SearchTVBranchDefect, value, failure)
+}
+
+// SearchTVRetry asks Dex to retry the searchTV Step, after the delay when it is positive.
+func SearchTVRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tmdb.TVPage] {
+	return connectormock.Retry[tmdb.TVPage](failure, after)
+}
+
+// SearchTVSearchTVDefault is the manifest mock searchTVDefault: A representative TV search page.
+func SearchTVSearchTVDefault() connectormock.Case[tmdb.TVPage] {
+	value := connectormock.MustDecodeOutput[tmdb.TVPage](`{"page":1,"total_pages":1,"total_results":1,"results":[{"id":1396,"name":"Breaking Bad","overview":"A chemistry teacher enters the drug trade.","first_air_date":"2008-01-20"}]}`)
+	return connectormock.Branch(tmdb.SearchTVBranchSearched, value, nil)
+}
+
+// SearchTVDefault is the manifest default, searchTVDefault, which New installs.
+func SearchTVDefault() connectormock.Case[tmdb.TVPage] { return SearchTVSearchTVDefault() }
+
+// GetTVFound selects the found branch: TMDB returned the series.
+func GetTVFound(value tmdb.TVSeries, failure *sdkgo.Failure) connectormock.Case[tmdb.TVSeries] {
+	return connectormock.Branch(tmdb.GetTVBranchFound, value, failure)
+}
+
+// GetTVNotFound selects the notFound branch: The series does not exist.
+func GetTVNotFound(value tmdb.TVSeries, failure *sdkgo.Failure) connectormock.Case[tmdb.TVSeries] {
+	return connectormock.Branch(tmdb.GetTVBranchNotFound, value, failure)
+}
+
+// GetTVProviderRejected selects the providerRejected branch: TMDB definitively rejected the request.
+func GetTVProviderRejected(value tmdb.TVSeries, failure *sdkgo.Failure) connectormock.Case[tmdb.TVSeries] {
+	return connectormock.Branch(tmdb.GetTVBranchProviderRejected, value, failure)
+}
+
+// GetTVInvalidResponse selects the invalidResponse branch: TMDB returned incomplete or oversized JSON.
+func GetTVInvalidResponse(value tmdb.TVSeries, failure *sdkgo.Failure) connectormock.Case[tmdb.TVSeries] {
+	return connectormock.Branch(tmdb.GetTVBranchInvalidResponse, value, failure)
+}
+
+// GetTVDefect selects the defect branch: The series ID or connection is invalid.
+func GetTVDefect(value tmdb.TVSeries, failure *sdkgo.Failure) connectormock.Case[tmdb.TVSeries] {
+	return connectormock.Branch(tmdb.GetTVBranchDefect, value, failure)
+}
+
+// GetTVRetry asks Dex to retry the getTV Step, after the delay when it is positive.
+func GetTVRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tmdb.TVSeries] {
+	return connectormock.Retry[tmdb.TVSeries](failure, after)
+}
+
+// GetTVGetTVDefault is the manifest mock getTVDefault: A representative TV series.
+func GetTVGetTVDefault() connectormock.Case[tmdb.TVSeries] {
+	value := connectormock.MustDecodeOutput[tmdb.TVSeries](`{"id":1396,"name":"Breaking Bad","overview":"A chemistry teacher enters the drug trade.","first_air_date":"2008-01-20"}`)
+	return connectormock.Branch(tmdb.GetTVBranchFound, value, nil)
+}
+
+// GetTVDefault is the manifest default, getTVDefault, which New installs.
+func GetTVDefault() connectormock.Case[tmdb.TVSeries] { return GetTVGetTVDefault() }
+
+// SearchPeopleSearched selects the searched branch: TMDB returned a person search page.
+func SearchPeopleSearched(value tmdb.PeoplePage, failure *sdkgo.Failure) connectormock.Case[tmdb.PeoplePage] {
+	return connectormock.Branch(tmdb.SearchPeopleBranchSearched, value, failure)
+}
+
+// SearchPeopleProviderRejected selects the providerRejected branch: TMDB definitively rejected the search.
+func SearchPeopleProviderRejected(value tmdb.PeoplePage, failure *sdkgo.Failure) connectormock.Case[tmdb.PeoplePage] {
+	return connectormock.Branch(tmdb.SearchPeopleBranchProviderRejected, value, failure)
+}
+
+// SearchPeopleInvalidResponse selects the invalidResponse branch: TMDB returned incomplete or oversized JSON.
+func SearchPeopleInvalidResponse(value tmdb.PeoplePage, failure *sdkgo.Failure) connectormock.Case[tmdb.PeoplePage] {
+	return connectormock.Branch(tmdb.SearchPeopleBranchInvalidResponse, value, failure)
+}
+
+// SearchPeopleDefect selects the defect branch: The search input or connection is invalid.
+func SearchPeopleDefect(value tmdb.PeoplePage, failure *sdkgo.Failure) connectormock.Case[tmdb.PeoplePage] {
+	return connectormock.Branch(tmdb.SearchPeopleBranchDefect, value, failure)
+}
+
+// SearchPeopleRetry asks Dex to retry the searchPeople Step, after the delay when it is positive.
+func SearchPeopleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tmdb.PeoplePage] {
+	return connectormock.Retry[tmdb.PeoplePage](failure, after)
+}
+
+// SearchPeopleSearchPeopleDefault is the manifest mock searchPeopleDefault: A representative person search page.
+func SearchPeopleSearchPeopleDefault() connectormock.Case[tmdb.PeoplePage] {
+	value := connectormock.MustDecodeOutput[tmdb.PeoplePage](`{"page":1,"total_pages":1,"total_results":1,"results":[{"id":287,"name":"Brad Pitt","known_for_department":"Acting"}]}`)
+	return connectormock.Branch(tmdb.SearchPeopleBranchSearched, value, nil)
+}
+
+// SearchPeopleDefault is the manifest default, searchPeopleDefault, which New installs.
+func SearchPeopleDefault() connectormock.Case[tmdb.PeoplePage] {
+	return SearchPeopleSearchPeopleDefault()
+}
+
+// GetPersonFound selects the found branch: TMDB returned the person.
+func GetPersonFound(value tmdb.Person, failure *sdkgo.Failure) connectormock.Case[tmdb.Person] {
+	return connectormock.Branch(tmdb.GetPersonBranchFound, value, failure)
+}
+
+// GetPersonNotFound selects the notFound branch: The person does not exist.
+func GetPersonNotFound(value tmdb.Person, failure *sdkgo.Failure) connectormock.Case[tmdb.Person] {
+	return connectormock.Branch(tmdb.GetPersonBranchNotFound, value, failure)
+}
+
+// GetPersonProviderRejected selects the providerRejected branch: TMDB definitively rejected the request.
+func GetPersonProviderRejected(value tmdb.Person, failure *sdkgo.Failure) connectormock.Case[tmdb.Person] {
+	return connectormock.Branch(tmdb.GetPersonBranchProviderRejected, value, failure)
+}
+
+// GetPersonInvalidResponse selects the invalidResponse branch: TMDB returned incomplete or oversized JSON.
+func GetPersonInvalidResponse(value tmdb.Person, failure *sdkgo.Failure) connectormock.Case[tmdb.Person] {
+	return connectormock.Branch(tmdb.GetPersonBranchInvalidResponse, value, failure)
+}
+
+// GetPersonDefect selects the defect branch: The person ID or connection is invalid.
+func GetPersonDefect(value tmdb.Person, failure *sdkgo.Failure) connectormock.Case[tmdb.Person] {
+	return connectormock.Branch(tmdb.GetPersonBranchDefect, value, failure)
+}
+
+// GetPersonRetry asks Dex to retry the getPerson Step, after the delay when it is positive.
+func GetPersonRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tmdb.Person] {
+	return connectormock.Retry[tmdb.Person](failure, after)
+}
+
+// GetPersonGetPersonDefault is the manifest mock getPersonDefault: A representative person.
+func GetPersonGetPersonDefault() connectormock.Case[tmdb.Person] {
+	value := connectormock.MustDecodeOutput[tmdb.Person](`{"id":287,"name":"Brad Pitt","known_for_department":"Acting","biography":"A film actor."}`)
+	return connectormock.Branch(tmdb.GetPersonBranchFound, value, nil)
+}
+
+// GetPersonDefault is the manifest default, getPersonDefault, which New installs.
+func GetPersonDefault() connectormock.Case[tmdb.Person] { return GetPersonGetPersonDefault() }

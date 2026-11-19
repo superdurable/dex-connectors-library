@@ -24,6 +24,138 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
 			return err
 		}},
+		{name: "createPayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_102","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "updatePayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"APPROVED","amount_money":{"amount":3000,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "cancelPayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"CANCELED","amount_money":{"amount":2900,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "completePayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "listRefunds/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.RefundPage](`{"refunds":[{"id":"refund_101","payment_id":"pay_101","status":"COMPLETED","amount_money":{"amount":1000,"currency":"USD"}}],"cursor":""}`)
+			return err
+		}},
+		{name: "getRefund/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"COMPLETED","amount_money":{"amount":1000,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "refundPayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"PENDING","amount_money":{"amount":1000,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "listCustomers/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CustomerPage](`{"customers":[{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}],"cursor":""}`)
+			return err
+		}},
+		{name: "searchCustomers/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CustomerPage](`{"customers":[{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}],"cursor":""}`)
+			return err
+		}},
+		{name: "getCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+			return err
+		}},
+		{name: "createCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.DeletedCustomer](`{"customerId":"customer_101"}`)
+			return err
+		}},
+		{name: "searchOrders/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.OrderPage](`{"orders":[{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}],"cursor":""}`)
+			return err
+		}},
+		{name: "getOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+			return err
+		}},
+		{name: "createOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+			return err
+		}},
+		{name: "updateOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+			return err
+		}},
+		{name: "listCatalogObjects/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CatalogPage](`{"objects":[{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}],"cursor":""}`)
+			return err
+		}},
+		{name: "searchCatalogObjects/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CatalogPage](`{"objects":[{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}],"cursor":""}`)
+			return err
+		}},
+		{name: "getCatalogObject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CatalogObject](`{"object":{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}}`)
+			return err
+		}},
+		{name: "upsertCatalogObject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CatalogObject](`{"object":{"id":"item_101","type":"ITEM","version":1,"item_data":{"name":"Coffee"}}}`)
+			return err
+		}},
+		{name: "deleteCatalogObject/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.DeletedCatalogObjects](`{"deletedObjectIds":["item_101"]}`)
+			return err
+		}},
+		{name: "retrieveInventoryCount/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
+			return err
+		}},
+		{name: "listInvoices/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.InvoicePage](`{"invoices":[{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}],"cursor":""}`)
+			return err
+		}},
+		{name: "getInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "createInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "updateInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "publishInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "cancelInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "deleteInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.DeletedInvoice](`{"invoiceId":"invoice_101"}`)
+			return err
+		}},
+		{name: "setInventoryPhysicalCount/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
+			return err
+		}},
+		{name: "listLocations/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.LocationList](`{"locations":[{"id":"loc_101","name":"Main","status":"ACTIVE","currency":"USD"}]}`)
+			return err
+		}},
+		{name: "getLocation/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Location](`{"location":{"id":"loc_101","name":"Main","status":"ACTIVE","currency":"USD"}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +171,104 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetPayment().Definition().Operation.OperationID != "getPayment" {
 		t.Errorf("getPayment mock has another definition")
+	}
+	if mock.CreatePayment().Definition().Operation.OperationID != "createPayment" {
+		t.Errorf("createPayment mock has another definition")
+	}
+	if mock.UpdatePayment().Definition().Operation.OperationID != "updatePayment" {
+		t.Errorf("updatePayment mock has another definition")
+	}
+	if mock.CancelPayment().Definition().Operation.OperationID != "cancelPayment" {
+		t.Errorf("cancelPayment mock has another definition")
+	}
+	if mock.CompletePayment().Definition().Operation.OperationID != "completePayment" {
+		t.Errorf("completePayment mock has another definition")
+	}
+	if mock.ListRefunds().Definition().Operation.OperationID != "listRefunds" {
+		t.Errorf("listRefunds mock has another definition")
+	}
+	if mock.GetRefund().Definition().Operation.OperationID != "getRefund" {
+		t.Errorf("getRefund mock has another definition")
+	}
+	if mock.RefundPayment().Definition().Operation.OperationID != "refundPayment" {
+		t.Errorf("refundPayment mock has another definition")
+	}
+	if mock.ListCustomers().Definition().Operation.OperationID != "listCustomers" {
+		t.Errorf("listCustomers mock has another definition")
+	}
+	if mock.SearchCustomers().Definition().Operation.OperationID != "searchCustomers" {
+		t.Errorf("searchCustomers mock has another definition")
+	}
+	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
+		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
+	}
+	if mock.SearchOrders().Definition().Operation.OperationID != "searchOrders" {
+		t.Errorf("searchOrders mock has another definition")
+	}
+	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
+		t.Errorf("getOrder mock has another definition")
+	}
+	if mock.CreateOrder().Definition().Operation.OperationID != "createOrder" {
+		t.Errorf("createOrder mock has another definition")
+	}
+	if mock.UpdateOrder().Definition().Operation.OperationID != "updateOrder" {
+		t.Errorf("updateOrder mock has another definition")
+	}
+	if mock.ListCatalogObjects().Definition().Operation.OperationID != "listCatalogObjects" {
+		t.Errorf("listCatalogObjects mock has another definition")
+	}
+	if mock.SearchCatalogObjects().Definition().Operation.OperationID != "searchCatalogObjects" {
+		t.Errorf("searchCatalogObjects mock has another definition")
+	}
+	if mock.GetCatalogObject().Definition().Operation.OperationID != "getCatalogObject" {
+		t.Errorf("getCatalogObject mock has another definition")
+	}
+	if mock.UpsertCatalogObject().Definition().Operation.OperationID != "upsertCatalogObject" {
+		t.Errorf("upsertCatalogObject mock has another definition")
+	}
+	if mock.DeleteCatalogObject().Definition().Operation.OperationID != "deleteCatalogObject" {
+		t.Errorf("deleteCatalogObject mock has another definition")
+	}
+	if mock.RetrieveInventoryCount().Definition().Operation.OperationID != "retrieveInventoryCount" {
+		t.Errorf("retrieveInventoryCount mock has another definition")
+	}
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
+	}
+	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
+		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.CreateInvoice().Definition().Operation.OperationID != "createInvoice" {
+		t.Errorf("createInvoice mock has another definition")
+	}
+	if mock.UpdateInvoice().Definition().Operation.OperationID != "updateInvoice" {
+		t.Errorf("updateInvoice mock has another definition")
+	}
+	if mock.PublishInvoice().Definition().Operation.OperationID != "publishInvoice" {
+		t.Errorf("publishInvoice mock has another definition")
+	}
+	if mock.CancelInvoice().Definition().Operation.OperationID != "cancelInvoice" {
+		t.Errorf("cancelInvoice mock has another definition")
+	}
+	if mock.DeleteInvoice().Definition().Operation.OperationID != "deleteInvoice" {
+		t.Errorf("deleteInvoice mock has another definition")
+	}
+	if mock.SetInventoryPhysicalCount().Definition().Operation.OperationID != "setInventoryPhysicalCount" {
+		t.Errorf("setInventoryPhysicalCount mock has another definition")
+	}
+	if mock.ListLocations().Definition().Operation.OperationID != "listLocations" {
+		t.Errorf("listLocations mock has another definition")
+	}
+	if mock.GetLocation().Definition().Operation.OperationID != "getLocation" {
+		t.Errorf("getLocation mock has another definition")
 	}
 }

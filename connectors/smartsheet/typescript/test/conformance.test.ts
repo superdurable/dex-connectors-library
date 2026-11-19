@@ -6,7 +6,8 @@ import { SecretString, StaticCredentialProvider, type Call } from '@superdurable
 import { Client } from '../src/client.js';
 import { ExchangeRecorder, loadScenarios, replay, withScenarioHTTPServer, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/smartsheet/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/smartsheet/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listSheets' || scenario.operation === 'getSheet');
 const connection = { provider: 'smartsheet', name: 'smartsheet' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSmartsheet));

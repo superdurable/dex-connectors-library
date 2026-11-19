@@ -28,6 +28,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[messaging.Message](`{"sid":"SMfedcba9876543210fedcba9876543210","accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","status":"delivered","direction":"outbound-api","segmentCount":1,"createdAt":"2026-09-30T17:04:05Z","sentAt":"2026-09-30T17:04:06Z"}`)
 			return err
 		}},
+		{name: "listMessages/recentMessages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[messaging.MessagePage](`{"page":0,"pageSize":50,"messages":[{"sid":"SMfedcba9876543210fedcba9876543210","accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","status":"delivered","direction":"outbound-api","segmentCount":1,"createdAt":"2026-09-30T17:04:05Z"}]}`)
+			return err
+		}},
+		{name: "deleteMessage/deletedMessage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[messaging.DeletedMessage](`{"messageSid":"SMfedcba9876543210fedcba9876543210"}`)
+			return err
+		}},
+		{name: "redactMessage/redactedMessage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[messaging.Message](`{"sid":"SMfedcba9876543210fedcba9876543210","accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","status":"delivered","direction":"outbound-api","segmentCount":1,"createdAt":"2026-09-30T17:04:05Z"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -43,5 +55,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetMessage().Definition().Operation.OperationID != "getMessage" {
 		t.Errorf("getMessage mock has another definition")
+	}
+	if mock.ListMessages().Definition().Operation.OperationID != "listMessages" {
+		t.Errorf("listMessages mock has another definition")
+	}
+	if mock.DeleteMessage().Definition().Operation.OperationID != "deleteMessage" {
+		t.Errorf("deleteMessage mock has another definition")
+	}
+	if mock.RedactMessage().Definition().Operation.OperationID != "redactMessage" {
+		t.Errorf("redactMessage mock has another definition")
 	}
 }

@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{sourceinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{sourceinspection.NewFlow(connection), sourceinspection.NewSourceListFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Segment source inspection Flow: %w", err)
 	}

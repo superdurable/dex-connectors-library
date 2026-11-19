@@ -16,6 +16,90 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "editMessageText/editedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.MessageActionResult](`{"chatId":"-1001234567890","messageId":52}`)
+			return err
+		}},
+		{name: "deleteMessage/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.MessageActionResult](`{"chatId":"-1001234567890","messageId":52}`)
+			return err
+		}},
+		{name: "pinChatMessage/pinnedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.MessageActionResult](`{"chatId":"-1001234567890","messageId":52}`)
+			return err
+		}},
+		{name: "unpinChatMessage/unpinnedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.MessageActionResult](`{"chatId":"-1001234567890","messageId":52}`)
+			return err
+		}},
+		{name: "sendChatAction/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+			return err
+		}},
+		{name: "answerCallbackQuery/answeredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.AnsweredQuery](`{"answered":true}`)
+			return err
+		}},
+		{name: "answerInlineQuery/answeredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.AnsweredQuery](`{"answered":true}`)
+			return err
+		}},
+		{name: "getFile/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.TelegramFile](`{"fileId":"ABC123","fileUniqueId":"UNIQUE123","fileSize":1024,"filePath":"documents/example.pdf"}`)
+			return err
+		}},
+		{name: "getChatAdministrators/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatAdministrators](`{"administrators":[{"userId":42,"status":"administrator"}]}`)
+			return err
+		}},
+		{name: "getChatMember/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatMemberSummary](`{"userId":42,"status":"member"}`)
+			return err
+		}},
+		{name: "leaveChat/leftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+			return err
+		}},
+		{name: "setChatDescription/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+			return err
+		}},
+		{name: "setChatTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+			return err
+		}},
+		{name: "sendAnimation/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+			return err
+		}},
+		{name: "sendAudio/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+			return err
+		}},
+		{name: "sendDocument/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+			return err
+		}},
+		{name: "sendPhoto/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+			return err
+		}},
+		{name: "sendSticker/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+			return err
+		}},
+		{name: "sendVideo/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+			return err
+		}},
+		{name: "sendLocation/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+			return err
+		}},
+		{name: "sendMediaGroup/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessages](`{"messages":[{"chatId":-1001234567890,"messageId":53,"date":1794110000},{"chatId":-1001234567890,"messageId":54,"date":1794110000}]}`)
+			return err
+		}},
 		{name: "sendMessage/sentText/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":52,"date":1794110000}`)
 			return err
@@ -34,6 +118,69 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.EditMessageText().Definition().Operation.OperationID != "editMessageText" {
+		t.Errorf("editMessageText mock has another definition")
+	}
+	if mock.DeleteMessage().Definition().Operation.OperationID != "deleteMessage" {
+		t.Errorf("deleteMessage mock has another definition")
+	}
+	if mock.PinChatMessage().Definition().Operation.OperationID != "pinChatMessage" {
+		t.Errorf("pinChatMessage mock has another definition")
+	}
+	if mock.UnpinChatMessage().Definition().Operation.OperationID != "unpinChatMessage" {
+		t.Errorf("unpinChatMessage mock has another definition")
+	}
+	if mock.SendChatAction().Definition().Operation.OperationID != "sendChatAction" {
+		t.Errorf("sendChatAction mock has another definition")
+	}
+	if mock.AnswerCallbackQuery().Definition().Operation.OperationID != "answerCallbackQuery" {
+		t.Errorf("answerCallbackQuery mock has another definition")
+	}
+	if mock.AnswerInlineQuery().Definition().Operation.OperationID != "answerInlineQuery" {
+		t.Errorf("answerInlineQuery mock has another definition")
+	}
+	if mock.GetFile().Definition().Operation.OperationID != "getFile" {
+		t.Errorf("getFile mock has another definition")
+	}
+	if mock.GetChatAdministrators().Definition().Operation.OperationID != "getChatAdministrators" {
+		t.Errorf("getChatAdministrators mock has another definition")
+	}
+	if mock.GetChatMember().Definition().Operation.OperationID != "getChatMember" {
+		t.Errorf("getChatMember mock has another definition")
+	}
+	if mock.LeaveChat().Definition().Operation.OperationID != "leaveChat" {
+		t.Errorf("leaveChat mock has another definition")
+	}
+	if mock.SetChatDescription().Definition().Operation.OperationID != "setChatDescription" {
+		t.Errorf("setChatDescription mock has another definition")
+	}
+	if mock.SetChatTitle().Definition().Operation.OperationID != "setChatTitle" {
+		t.Errorf("setChatTitle mock has another definition")
+	}
+	if mock.SendAnimation().Definition().Operation.OperationID != "sendAnimation" {
+		t.Errorf("sendAnimation mock has another definition")
+	}
+	if mock.SendAudio().Definition().Operation.OperationID != "sendAudio" {
+		t.Errorf("sendAudio mock has another definition")
+	}
+	if mock.SendDocument().Definition().Operation.OperationID != "sendDocument" {
+		t.Errorf("sendDocument mock has another definition")
+	}
+	if mock.SendPhoto().Definition().Operation.OperationID != "sendPhoto" {
+		t.Errorf("sendPhoto mock has another definition")
+	}
+	if mock.SendSticker().Definition().Operation.OperationID != "sendSticker" {
+		t.Errorf("sendSticker mock has another definition")
+	}
+	if mock.SendVideo().Definition().Operation.OperationID != "sendVideo" {
+		t.Errorf("sendVideo mock has another definition")
+	}
+	if mock.SendLocation().Definition().Operation.OperationID != "sendLocation" {
+		t.Errorf("sendLocation mock has another definition")
+	}
+	if mock.SendMediaGroup().Definition().Operation.OperationID != "sendMediaGroup" {
+		t.Errorf("sendMediaGroup mock has another definition")
+	}
 	if mock.SendMessage().Definition().Operation.OperationID != "sendMessage" {
 		t.Errorf("sendMessage mock has another definition")
 	}

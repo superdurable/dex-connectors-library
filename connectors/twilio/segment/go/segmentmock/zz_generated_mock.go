@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted segment connection. Script each operation through its accessor.
 type Mock struct {
-	connection segment.Connection
-	getSource  *connectormock.Query[segment.GetSourceInput, segment.SourceProfile]
+	connection   segment.Connection
+	getSource    *connectormock.Query[segment.GetSourceInput, segment.SourceProfile]
+	listSources  *connectormock.Query[segment.ListSourcesInput, segment.SourcePage]
+	createSource *connectormock.Mutation[segment.CreateSourceInput, segment.SourceProfile]
+	updateSource *connectormock.Mutation[segment.UpdateSourceInput, segment.SourceProfile]
+	deleteSource *connectormock.Mutation[segment.DeleteSourceInput, segment.DeletedSource]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getSource: connectormock.NewQuery[segment.GetSourceInput, segment.SourceProfile](t, segment.GetSourceDefinition),
+		getSource:    connectormock.NewQuery[segment.GetSourceInput, segment.SourceProfile](t, segment.GetSourceDefinition),
+		listSources:  connectormock.NewQuery[segment.ListSourcesInput, segment.SourcePage](t, segment.ListSourcesDefinition),
+		createSource: connectormock.NewMutation[segment.CreateSourceInput, segment.SourceProfile](t, segment.CreateSourceDefinition),
+		updateSource: connectormock.NewMutation[segment.UpdateSourceInput, segment.SourceProfile](t, segment.UpdateSourceDefinition),
+		deleteSource: connectormock.NewMutation[segment.DeleteSourceInput, segment.DeletedSource](t, segment.DeleteSourceDefinition),
 	}
 	mock.getSource.Default(GetSourceDefault())
+	mock.listSources.Default(ListSourcesDefault())
+	mock.createSource.Default(CreateSourceDefault())
+	mock.updateSource.Default(UpdateSourceDefault())
+	mock.deleteSource.Default(DeleteSourceDefault())
 	connection, err := segment.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "segment", Name: connectionName})
 	if err != nil {
 		t.Fatalf("segment mock connection: %v", err)
@@ -45,10 +57,42 @@ func (mock *Mock) GetSource() *connectormock.Query[segment.GetSourceInput, segme
 	return mock.getSource
 }
 
+// ListSources returns the listSources script.
+func (mock *Mock) ListSources() *connectormock.Query[segment.ListSourcesInput, segment.SourcePage] {
+	return mock.listSources
+}
+
+// CreateSource returns the createSource script.
+func (mock *Mock) CreateSource() *connectormock.Mutation[segment.CreateSourceInput, segment.SourceProfile] {
+	return mock.createSource
+}
+
+// UpdateSource returns the updateSource script.
+func (mock *Mock) UpdateSource() *connectormock.Mutation[segment.UpdateSourceInput, segment.SourceProfile] {
+	return mock.updateSource
+}
+
+// DeleteSource returns the deleteSource script.
+func (mock *Mock) DeleteSource() *connectormock.Mutation[segment.DeleteSourceInput, segment.DeletedSource] {
+	return mock.deleteSource
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetSource() sdkgo.Query[segment.GetSourceInput, segment.SourceProfile] {
 	return operations.mock.getSource
+}
+func (operations mockOperations) ListSources() sdkgo.Query[segment.ListSourcesInput, segment.SourcePage] {
+	return operations.mock.listSources
+}
+func (operations mockOperations) CreateSource() sdkgo.Mutation[segment.CreateSourceInput, segment.SourceProfile] {
+	return operations.mock.createSource
+}
+func (operations mockOperations) UpdateSource() sdkgo.Mutation[segment.UpdateSourceInput, segment.SourceProfile] {
+	return operations.mock.updateSource
+}
+func (operations mockOperations) DeleteSource() sdkgo.Mutation[segment.DeleteSourceInput, segment.DeletedSource] {
+	return operations.mock.deleteSource
 }
 
 // GetSourceFound selects the found branch: Segment returned the Source.
@@ -89,3 +133,140 @@ func GetSourceFoundDefault() connectormock.Case[segment.SourceProfile] {
 
 // GetSourceDefault is the manifest default, foundDefault, which New installs.
 func GetSourceDefault() connectormock.Case[segment.SourceProfile] { return GetSourceFoundDefault() }
+
+// ListSourcesListed selects the listed branch: Segment returned a page of Sources.
+func ListSourcesListed(value segment.SourcePage, failure *sdkgo.Failure) connectormock.Case[segment.SourcePage] {
+	return connectormock.Branch(segment.ListSourcesBranchListed, value, failure)
+}
+
+// ListSourcesProviderRejected selects the providerRejected branch: Segment definitively rejected the list request.
+func ListSourcesProviderRejected(value segment.SourcePage, failure *sdkgo.Failure) connectormock.Case[segment.SourcePage] {
+	return connectormock.Branch(segment.ListSourcesBranchProviderRejected, value, failure)
+}
+
+// ListSourcesInvalidResponse selects the invalidResponse branch: Segment returned malformed or oversized list JSON.
+func ListSourcesInvalidResponse(value segment.SourcePage, failure *sdkgo.Failure) connectormock.Case[segment.SourcePage] {
+	return connectormock.Branch(segment.ListSourcesBranchInvalidResponse, value, failure)
+}
+
+// ListSourcesDefect selects the defect branch: Pagination or connection credentials are invalid.
+func ListSourcesDefect(value segment.SourcePage, failure *sdkgo.Failure) connectormock.Case[segment.SourcePage] {
+	return connectormock.Branch(segment.ListSourcesBranchDefect, value, failure)
+}
+
+// ListSourcesRetry asks Dex to retry the listSources Step, after the delay when it is positive.
+func ListSourcesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[segment.SourcePage] {
+	return connectormock.Retry[segment.SourcePage](failure, after)
+}
+
+// ListSourcesListedDefault is the manifest mock listedDefault: A page of Source identities without write keys.
+func ListSourcesListedDefault() connectormock.Case[segment.SourcePage] {
+	value := connectormock.MustDecodeOutput[segment.SourcePage](`{"sources":[{"id":"source123","slug":"my-source","name":"My Source"}],"currentCursor":"MA==","totalEntries":1}`)
+	return connectormock.Branch(segment.ListSourcesBranchListed, value, nil)
+}
+
+// ListSourcesDefault is the manifest default, listedDefault, which New installs.
+func ListSourcesDefault() connectormock.Case[segment.SourcePage] { return ListSourcesListedDefault() }
+
+// CreateSourceCreated selects the created branch: Segment created the Source and returned its identity.
+func CreateSourceCreated(value segment.SourceProfile, failure *sdkgo.Failure) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Branch(segment.CreateSourceBranchCreated, value, failure)
+}
+
+// CreateSourceProviderRejected selects the providerRejected branch: Segment definitively rejected the first create request.
+func CreateSourceProviderRejected(value segment.SourceProfile, failure *sdkgo.Failure) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Branch(segment.CreateSourceBranchProviderRejected, value, failure)
+}
+
+// CreateSourceUncertain returns an uncertain createSource outcome.
+func CreateSourceUncertain(value segment.SourceProfile, failure sdkgo.Failure) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSourceDefect selects the defect branch: Source input or connection credentials are invalid.
+func CreateSourceDefect(value segment.SourceProfile, failure *sdkgo.Failure) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Branch(segment.CreateSourceBranchDefect, value, failure)
+}
+
+// CreateSourceRetry asks Dex to retry the createSource Step, after the delay when it is positive.
+func CreateSourceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Retry[segment.SourceProfile](failure, after)
+}
+
+// CreateSourceCreatedDefault is the manifest mock createdDefault: A Source was created without exposing a write key.
+func CreateSourceCreatedDefault() connectormock.Case[segment.SourceProfile] {
+	value := connectormock.MustDecodeOutput[segment.SourceProfile](`{"id":"source123","slug":"my-source","name":"My Source"}`)
+	return connectormock.Branch(segment.CreateSourceBranchCreated, value, nil)
+}
+
+// CreateSourceDefault is the manifest default, createdDefault, which New installs.
+func CreateSourceDefault() connectormock.Case[segment.SourceProfile] {
+	return CreateSourceCreatedDefault()
+}
+
+// UpdateSourceUpdated selects the updated branch: Segment updated the Source.
+func UpdateSourceUpdated(value segment.SourceProfile, failure *sdkgo.Failure) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Branch(segment.UpdateSourceBranchUpdated, value, failure)
+}
+
+// UpdateSourceNotFound selects the notFound branch: Segment did not expose the Source.
+func UpdateSourceNotFound(value segment.SourceProfile, failure *sdkgo.Failure) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Branch(segment.UpdateSourceBranchNotFound, value, failure)
+}
+
+// UpdateSourceProviderRejected selects the providerRejected branch: Segment definitively rejected the update.
+func UpdateSourceProviderRejected(value segment.SourceProfile, failure *sdkgo.Failure) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Branch(segment.UpdateSourceBranchProviderRejected, value, failure)
+}
+
+// UpdateSourceDefect selects the defect branch: Source input or connection credentials are invalid.
+func UpdateSourceDefect(value segment.SourceProfile, failure *sdkgo.Failure) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Branch(segment.UpdateSourceBranchDefect, value, failure)
+}
+
+// UpdateSourceRetry asks Dex to retry the updateSource Step, after the delay when it is positive.
+func UpdateSourceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[segment.SourceProfile] {
+	return connectormock.Retry[segment.SourceProfile](failure, after)
+}
+
+// UpdateSourceUpdatedDefault is the manifest mock updatedDefault: A Source display name was updated.
+func UpdateSourceUpdatedDefault() connectormock.Case[segment.SourceProfile] {
+	value := connectormock.MustDecodeOutput[segment.SourceProfile](`{"id":"source123","slug":"my-source","name":"Updated Source"}`)
+	return connectormock.Branch(segment.UpdateSourceBranchUpdated, value, nil)
+}
+
+// UpdateSourceDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSourceDefault() connectormock.Case[segment.SourceProfile] {
+	return UpdateSourceUpdatedDefault()
+}
+
+// DeleteSourceDeleted selects the deleted branch: Segment deleted the Source or it was already absent.
+func DeleteSourceDeleted(value segment.DeletedSource, failure *sdkgo.Failure) connectormock.Case[segment.DeletedSource] {
+	return connectormock.Branch(segment.DeleteSourceBranchDeleted, value, failure)
+}
+
+// DeleteSourceProviderRejected selects the providerRejected branch: Segment definitively rejected the deletion.
+func DeleteSourceProviderRejected(value segment.DeletedSource, failure *sdkgo.Failure) connectormock.Case[segment.DeletedSource] {
+	return connectormock.Branch(segment.DeleteSourceBranchProviderRejected, value, failure)
+}
+
+// DeleteSourceDefect selects the defect branch: Source ID or connection credentials are invalid.
+func DeleteSourceDefect(value segment.DeletedSource, failure *sdkgo.Failure) connectormock.Case[segment.DeletedSource] {
+	return connectormock.Branch(segment.DeleteSourceBranchDefect, value, failure)
+}
+
+// DeleteSourceRetry asks Dex to retry the deleteSource Step, after the delay when it is positive.
+func DeleteSourceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[segment.DeletedSource] {
+	return connectormock.Retry[segment.DeletedSource](failure, after)
+}
+
+// DeleteSourceDeletedDefault is the manifest mock deletedDefault: The Source was deleted.
+func DeleteSourceDeletedDefault() connectormock.Case[segment.DeletedSource] {
+	value := connectormock.MustDecodeOutput[segment.DeletedSource](`{"sourceId":"source123"}`)
+	return connectormock.Branch(segment.DeleteSourceBranchDeleted, value, nil)
+}
+
+// DeleteSourceDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSourceDefault() connectormock.Case[segment.DeletedSource] {
+	return DeleteSourceDeletedDefault()
+}

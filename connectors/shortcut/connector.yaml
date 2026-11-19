@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: shortcut
   displayName: Shortcut
-  description: Read story metadata from Shortcut REST API v3.
+  description: Read, search, create, update, and delete Shortcut stories through REST API v3.
   company: Shortcut
   categories: [project-management, developer-tools]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: shortcut
   languages:
@@ -81,3 +81,84 @@ spec:
           branch: notFound
           description: The requested story is absent.
           failure: {kind: NOT_FOUND, message: Shortcut did not find the story.}
+    - name: searchStories
+      goName: SearchStories
+      inputType: SearchStoriesInput
+      outputType: SearchStoriesOutput
+      kind: query
+      description: Search one bounded page of Shortcut stories by query text.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Shortcut returned a story search page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Shortcut rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shortcut returned malformed search JSON., optional: true}
+        - {id: defect, goName: Defect, description: Search input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One matching story is returned.
+          output: {stories: [{storyId: "12345", name: Example story, storyType: feature, workflowStateId: "678", archived: false}], total: 1}
+    - name: createStory
+      goName: CreateStory
+      inputType: CreateStoryInput
+      outputType: StoryMetadata
+      kind: mutation
+      description: Create a Shortcut story in a workflow state.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Shortcut created the story.}
+        - {id: providerRejected, goName: ProviderRejected, description: Shortcut rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The story create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Story input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One example story is created.
+          output: {storyId: "12345", name: Example story, storyType: feature, workflowStateId: "678", archived: false}
+    - name: updateStory
+      goName: UpdateStory
+      inputType: UpdateStoryInput
+      outputType: StoryMetadata
+      kind: mutation
+      description: Set absolute story title, workflow state, or archived fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Shortcut updated the story.}
+        - {id: notFound, goName: NotFound, description: Shortcut did not find the story., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shortcut rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shortcut returned malformed story JSON., optional: true}
+        - {id: defect, goName: Defect, description: Story input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example story is updated.
+          output: {storyId: "12345", name: Example story, storyType: feature, workflowStateId: "678", archived: false}
+    - name: deleteStory
+      goName: DeleteStory
+      inputType: DeleteStoryInput
+      outputType: DeleteStoryOutput
+      kind: mutation
+      description: Delete a Shortcut story by its public ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Shortcut deleted the story.}
+        - {id: notFound, goName: NotFound, description: Shortcut did not find the story., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shortcut rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: Story ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example story is deleted.
+          output: {storyId: "12345"}

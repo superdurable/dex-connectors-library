@@ -288,6 +288,1191 @@
       },
       "name": "getStory-transportFailure",
       "operation": "getStory"
+    },
+    {
+      "callId": "b25d8a3b-6054-4fba-995a-f6d9e9c6e6b1",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":12345,\"name\":\"Example story\",\"story_type\":\"feature\",\"workflow_state_id\":678,\"archived\":false}],\"next\":\"more\",\"total\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/stories",
+          "query": {
+            "detail": [
+              "slim"
+            ],
+            "next": [
+              "cursor"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "query": [
+              "release"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "next": "more",
+          "stories": [
+            {
+              "archived": false,
+              "name": "Example story",
+              "storyId": "12345",
+              "storyType": "feature",
+              "workflowStateId": "678"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "next": "cursor",
+        "pageSize": 2,
+        "query": "release"
+      },
+      "name": "searchStories-found",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "b25d8a3b-6054-4fba-995a-f6d9e9c6e6b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/stories",
+          "query": {
+            "detail": [
+              "slim"
+            ],
+            "page_size": [
+              "25"
+            ],
+            "query": [
+              "release"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "stories": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "release"
+      },
+      "name": "searchStories-providerRejected",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "b25d8a3b-6054-4fba-995a-f6d9e9c6e6b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/stories",
+          "query": {
+            "detail": [
+              "slim"
+            ],
+            "page_size": [
+              "25"
+            ],
+            "query": [
+              "release"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "stories": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "release"
+      },
+      "name": "searchStories-invalidResponse",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "b25d8a3b-6054-4fba-995a-f6d9e9c6e6b4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/stories",
+          "query": {
+            "detail": [
+              "slim"
+            ],
+            "page_size": [
+              "25"
+            ],
+            "query": [
+              "release"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "release"
+      },
+      "name": "searchStories-rateLimited",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "b25d8a3b-6054-4fba-995a-f6d9e9c6e6b5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/stories",
+          "query": {
+            "detail": [
+              "slim"
+            ],
+            "page_size": [
+              "25"
+            ],
+            "query": [
+              "release"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "release"
+      },
+      "name": "searchStories-serverUnavailable",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "b25d8a3b-6054-4fba-995a-f6d9e9c6e6b6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/stories",
+          "query": {
+            "detail": [
+              "slim"
+            ],
+            "page_size": [
+              "25"
+            ],
+            "query": [
+              "release"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "release"
+      },
+      "name": "searchStories-transportFailure",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "exchanges": [
+        {
+          "body": "{\"id\":12345,\"name\":\"Example story\",\"story_type\":\"feature\",\"workflow_state_id\":678,\"archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/stories",
+          "requestBody": {
+            "name": "Example story",
+            "story_type": "feature",
+            "workflow_state_id": 678
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+          "providerId": "12345",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "archived": false,
+          "name": "Example story",
+          "storyId": "12345",
+          "storyType": "feature",
+          "workflowStateId": "678"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "input": {
+        "name": "Example story",
+        "storyType": "feature",
+        "workflowStateId": "678"
+      },
+      "name": "createStory-created",
+      "operation": "createStory"
+    },
+    {
+      "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/stories",
+          "requestBody": {
+            "name": "Example story",
+            "story_type": "feature",
+            "workflow_state_id": 678
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "input": {
+        "name": "Example story",
+        "storyType": "feature",
+        "workflowStateId": "678"
+      },
+      "name": "createStory-providerRejected",
+      "operation": "createStory"
+    },
+    {
+      "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/stories",
+          "requestBody": {
+            "name": "Example story",
+            "story_type": "feature",
+            "workflow_state_id": 678
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "input": {
+        "name": "Example story",
+        "storyType": "feature",
+        "workflowStateId": "678"
+      },
+      "name": "createStory-invalidResponse",
+      "operation": "createStory"
+    },
+    {
+      "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/stories",
+          "requestBody": {
+            "name": "Example story",
+            "story_type": "feature",
+            "workflow_state_id": 678
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "input": {
+        "name": "Example story",
+        "storyType": "feature",
+        "workflowStateId": "678"
+      },
+      "name": "createStory-rateLimited",
+      "operation": "createStory"
+    },
+    {
+      "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/stories",
+          "requestBody": {
+            "name": "Example story",
+            "story_type": "feature",
+            "workflow_state_id": 678
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "input": {
+        "name": "Example story",
+        "storyType": "feature",
+        "workflowStateId": "678"
+      },
+      "name": "createStory-serverUnavailable",
+      "operation": "createStory"
+    },
+    {
+      "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/stories",
+          "requestBody": {
+            "name": "Example story",
+            "story_type": "feature",
+            "workflow_state_id": 678
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "input": {
+        "name": "Example story",
+        "storyType": "feature",
+        "workflowStateId": "678"
+      },
+      "name": "createStory-transportFailure",
+      "operation": "createStory"
+    },
+    {
+      "callId": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "exchanges": [
+        {
+          "body": "{\"id\":12345,\"name\":\"Example story\",\"story_type\":\"feature\",\"workflow_state_id\":678,\"archived\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/stories/12345",
+          "requestBody": {
+            "archived": true,
+            "name": "Example story",
+            "workflow_state_id": 678
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "archived": true,
+          "name": "Example story",
+          "storyId": "12345",
+          "storyType": "feature",
+          "workflowStateId": "678"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "input": {
+        "archived": true,
+        "name": "Example story",
+        "storyId": "12345",
+        "workflowStateId": "678"
+      },
+      "name": "updateStory-updated",
+      "operation": "updateStory"
+    },
+    {
+      "callId": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/stories/12345",
+          "requestBody": {
+            "name": "Example story"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "input": {
+        "name": "Example story",
+        "storyId": "12345"
+      },
+      "name": "updateStory-notFound",
+      "operation": "updateStory"
+    },
+    {
+      "callId": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/stories/12345",
+          "requestBody": {
+            "name": "Example story"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "input": {
+        "name": "Example story",
+        "storyId": "12345"
+      },
+      "name": "updateStory-providerRejected",
+      "operation": "updateStory"
+    },
+    {
+      "callId": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/stories/12345",
+          "requestBody": {
+            "name": "Example story"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "input": {
+        "name": "Example story",
+        "storyId": "12345"
+      },
+      "name": "updateStory-invalidResponse",
+      "operation": "updateStory"
+    },
+    {
+      "callId": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/stories/12345",
+          "requestBody": {
+            "name": "Example story"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "input": {
+        "name": "Example story",
+        "storyId": "12345"
+      },
+      "name": "updateStory-rateLimited",
+      "operation": "updateStory"
+    },
+    {
+      "callId": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/stories/12345",
+          "requestBody": {
+            "name": "Example story"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "input": {
+        "name": "Example story",
+        "storyId": "12345"
+      },
+      "name": "updateStory-serverUnavailable",
+      "operation": "updateStory"
+    },
+    {
+      "callId": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/stories/12345",
+          "requestBody": {
+            "name": "Example story"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "906f36e3-a68c-5b3d-83c2-702bf8ef74d8",
+      "input": {
+        "name": "Example story",
+        "storyId": "12345"
+      },
+      "name": "updateStory-transportFailure",
+      "operation": "updateStory"
+    },
+    {
+      "callId": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "storyId": "12345"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "deleteStory-deleted",
+      "operation": "deleteStory"
+    },
+    {
+      "callId": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "storyId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "deleteStory-notFound",
+      "operation": "deleteStory"
+    },
+    {
+      "callId": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "storyId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "deleteStory-providerRejected",
+      "operation": "deleteStory"
+    },
+    {
+      "callId": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "deleteStory-rateLimited",
+      "operation": "deleteStory"
+    },
+    {
+      "callId": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "deleteStory-serverUnavailable",
+      "operation": "deleteStory"
+    },
+    {
+      "callId": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0366573-1bc3-5b06-80e9-36a55764f26b",
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "deleteStory-transportFailure",
+      "operation": "deleteStory"
+    },
+    {
+      "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "138ce572-83a6-5670-b261-05537b9cfcc4",
+      "input": {
+        "name": "Example story",
+        "storyType": "feature",
+        "workflowStateId": "678"
+      },
+      "name": "createStory-uncertain",
+      "operation": "createStory",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

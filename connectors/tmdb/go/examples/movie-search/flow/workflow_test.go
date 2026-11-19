@@ -26,3 +26,14 @@ func TestFlowIdentityAndMapping(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, tmdb.Connection{}, mockConnection)
 }
+
+func TestTVFlowIdentityAndMapping(t *testing.T) {
+	require.Equal(t, "TMDBTVSearch", dex.GetFinalFlowType(NewTVFlow(tmdb.Connection{})))
+	require.Equal(t, "PrepareTVRequest", dex.GetFinalStepType[TVRequest](prepareTVRequest{}))
+	require.Equal(t, "CompleteTVRequest", dex.GetFinalStepType[tmdb.SearchTVResult](completeTVRequest{}))
+	request := TVRequest(tmdb.SearchTVInput{Query: "Breaking Bad", Page: 1})
+	require.Equal(t, tmdb.SearchTVInput{Query: "Breaking Bad", Page: 1}, tmdb.SearchTVInput(request))
+	wait, err := prepareTVRequest{}.WaitFor(nil, request)
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}
