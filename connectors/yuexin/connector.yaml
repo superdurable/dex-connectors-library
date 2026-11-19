@@ -8,6 +8,8 @@ metadata:
   categories: [ai, developer-tools]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-yuexin", operations: [listModels], triggers: []}
   provider: yuexin
   codegen:
     go:
