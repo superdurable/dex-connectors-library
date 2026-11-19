@@ -5,11 +5,11 @@ package gowu
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,10 +43,10 @@ func (operation GetAccessClientOperation) Invoke(call sdkgo.Call, _ GetAccessCli
 		return accessBranch(GetAccessClientBranchDefect, sdkgo.FailureAuthentication, "Gowu credentials are unavailable or invalid")
 	}
 	nonceBytes := make([]byte, 16)
-	if _, err := rand.Read(nonceBytes); err != nil {
+	if _, err := io.ReadFull(operation.client.nonceReader, nonceBytes); err != nil {
 		return accessRetry(sdkgo.FailureAvailability, "Gowu request nonce is unavailable", 0)
 	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().Unix(), 10)
 	nonce := hex.EncodeToString(nonceBytes)
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, operation.client.baseURL+"/v1/access-clients/me", nil)
 	if err != nil {
@@ -63,7 +63,7 @@ func (operation GetAccessClientOperation) Invoke(call sdkgo.Call, _ GetAccessCli
 		return accessRetry(sdkgo.FailureAvailability, "Gowu application request failed", 0)
 	}
 	defer func() { _ = response.Body.Close() }()
-	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), operation.client.now())
 	if response.StatusCode == http.StatusTooManyRequests {
 		return accessRetry(sdkgo.FailureRateLimit, "Gowu rate limited application query", retryAfter)
 	}
