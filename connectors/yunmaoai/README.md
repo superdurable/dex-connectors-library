@@ -9,3 +9,5 @@ Start at the [云猫 registration page](https://api.yunmaoai.com/sign-up), then 
 ## Example
 
 The [runnable Flow](go/examples/list-models/) starts with `{}` and completes with a typed `ListModelsOutput`. Its default mock returns one model. Live 云猫 authorization, model visibility and response variation remain unverified without a user-controlled Dex Web Connection.
+
+The [TypeScript package](typescript/README.md) implements `listModels` with a [runnable Dex Flow](typescript/examples/model-list/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.
