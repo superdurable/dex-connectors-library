@@ -414,14 +414,14 @@ func newCalendarClient(t *testing.T, providerURL string) *outlookcalendar.Client
 
 type calendarDexContext struct {
 	context.Context
-	step      string
-	mutex     sync.Mutex
-	heartbeat json.RawMessage
-	attemptNo int32
+	step              string
+	attempt           int32
+	previousHeartbeat []byte
+	recordedHeartbeat []byte
 }
 
 func newCalendarDexContext(step string) *calendarDexContext {
-	return &calendarDexContext{Context: context.Background(), step: step}
+	return &calendarDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 func (*calendarDexContext) FlowID() string                        { return "calendar-flow" }
 func (*calendarDexContext) RunID() string                         { return "run" }
@@ -430,27 +430,23 @@ func (context *calendarDexContext) StepExecutionID() string       { return conte
 func (*calendarDexContext) FromStepExecutionID() string           { return "" }
 func (*calendarDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
 func (*calendarDexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
-func (context *calendarDexContext) Attempt() int32                { return max(context.attemptNo, 1) }
+func (context *calendarDexContext) Attempt() int32                { return context.attempt }
 func (*calendarDexContext) HasTimerFired() bool                   { return false }
 func (*calendarDexContext) HasTimerFiredByIndex(int) bool         { return false }
 func (*calendarDexContext) WaitForMethodFailed() bool             { return false }
 func (context *calendarDexContext) RecordHeartbeat(value any) error {
-	context.mutex.Lock()
-	defer context.mutex.Unlock()
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	context.heartbeat = encoded
+	context.recordedHeartbeat = encoded
 	return nil
 }
-func (context *calendarDexContext) GetLastHeartbeatValue(target any) (bool, error) {
-	context.mutex.Lock()
-	defer context.mutex.Unlock()
-	if len(context.heartbeat) == 0 {
+func (context *calendarDexContext) GetLastHeartbeatValue(value any) (bool, error) {
+	if len(context.previousHeartbeat) == 0 {
 		return false, nil
 	}
-	return true, json.Unmarshal(context.heartbeat, target)
+	return true, json.Unmarshal(context.previousHeartbeat, value)
 }
 func (*calendarDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*calendarDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }

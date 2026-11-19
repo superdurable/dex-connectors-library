@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listBoards/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[miro.BoardsPage](`{"boards":[{"id":"uXjVOD6LSME=","name":"Example board"}],"offset":0,"total":1}`)
+			return err
+		}},
+		{name: "listBoardItems/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[miro.BoardItemsPage](`{"items":[{"id":"item-1","type":"sticky_note"}],"cursor":""}`)
+			return err
+		}},
+		{name: "getBoardItem/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[miro.BoardItemMetadata](`{"id":"item-1","type":"sticky_note"}`)
+			return err
+		}},
+		{name: "listBoardMembers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[miro.BoardMembersPage](`{"members":[{"id":"member-1","role":"viewer"}],"offset":0,"total":1}`)
+			return err
+		}},
 		{name: "getBoard/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[miro.BoardMetadata](`{"id":"uXjVOD6LSME=","name":"Example board"}`)
 			return err
@@ -30,6 +46,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListBoards().Definition().Operation.OperationID != "listBoards" {
+		t.Errorf("listBoards mock has another definition")
+	}
+	if mock.ListBoardItems().Definition().Operation.OperationID != "listBoardItems" {
+		t.Errorf("listBoardItems mock has another definition")
+	}
+	if mock.GetBoardItem().Definition().Operation.OperationID != "getBoardItem" {
+		t.Errorf("getBoardItem mock has another definition")
+	}
+	if mock.ListBoardMembers().Definition().Operation.OperationID != "listBoardMembers" {
+		t.Errorf("listBoardMembers mock has another definition")
+	}
 	if mock.GetBoard().Definition().Operation.OperationID != "getBoard" {
 		t.Errorf("getBoard mock has another definition")
 	}

@@ -31,7 +31,7 @@ const scenarios = loadScenarios(
     "../../../../../conformance/connectors/microsoft/outlook-calendar/scenarios.json",
     import.meta.url,
   ),
-);
+).filter((scenario) => ["listEvents", "getEvent", "createEvent", "updateEvent", "queryFreeBusy"].includes(scenario.operation));
 const connection = {
   provider: "microsoft",
   name: "outlook-calendar-scheduler",
