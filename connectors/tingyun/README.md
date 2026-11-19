@@ -5,3 +5,7 @@ This connector reads the monitored mobile App list through the [official Tingyun
 The [official API overview](https://wukongdoc.tingyun.com/app/api/) documents an HTTPS platform host such as `https://wukong2.tingyun.com`, and the `authorization: token <accessToken>` header. Sign in to your Tingyun platform, hover over the lower-left account name, open **账户管理 > API**, and generate an accessToken. Enter its platform origin and the secret token in Dex Web Connections. The connector accepts only HTTPS `*.tingyun.com` hosts and disables redirects; private hosts are outside this version.
 
 The [runnable Flow](go/examples/list-applications/README.md) uses the static `tingyun` connection. Real accessToken authorization and Dex Web form interaction remain unverified.
+
+## TypeScript
+
+`@superdurable/connector-tingyun` provides the `listApplications` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
