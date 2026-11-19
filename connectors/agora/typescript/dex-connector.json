@@ -1,0 +1,52 @@
+{
+  "connectorId": "agora",
+  "releaseTag": "connectors/agora/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-agora",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListRunningAgentsStep",
+      "kind": "query",
+      "operationId": "listRunningAgents",
+      "inputType": "ListRunningAgentsInput",
+      "description": "Read one page of currently running Conversational AI agents from the preceding two hours.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListRunningAgentsInput has no parameters; the connection identifies the project.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
