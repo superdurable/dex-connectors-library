@@ -11,3 +11,7 @@ Provider contract: [official developer documentation](https://www.dimleap.cn/doc
 ## Python
 
 The [Python package](python/README.md) implements `listModels` and includes a [runnable Dex Flow](python/examples/model_catalog/README.md). Its 17 provider scenarios replay Go-recorded requests, outputs, and retry decisions. No live Dimleap Key has been authorized for this port; the catalog is dynamic.
+
+## TypeScript
+
+The [TypeScript package](typescript/README.md) implements `listModels` with a [runnable Dex Flow](typescript/examples/basic/README.md). Its provider scenarios replay the same 17 Go-recorded requests and outcomes. Live provider authorization remains unverified.

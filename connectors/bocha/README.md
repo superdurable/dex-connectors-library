@@ -7,3 +7,5 @@ Create an API Key at the [Bocha Open Platform](https://open.bochaai.com/api-keys
 Run the [example Flow](go/examples/search-web/) using its generated mock or a user-controlled connection. Live search and billing behavior are unverified without a user-controlled Key.
 
 The [Python package](python/README.md) implements the same `searchWeb` Query with Go-recorded provider conformance scenarios and a runnable Dex Flow.
+
+The [TypeScript package](typescript/README.md) implements `searchWeb` with the same Go-recorded scenarios and a [runnable Dex Flow](typescript/examples/basic/README.md). Live provider authorization and billing remain unverified.

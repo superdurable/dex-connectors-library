@@ -7,3 +7,5 @@ This Go connector reads public website title, keywords, description, and IP for 
 The [runnable Dex Flow](go/examples/site-tdk/README.md) shows setup and typed output. The logo embeds the unchanged [official Chinaz API logo](https://csstools.chinaz.com/tools/images/public/logos/logo-api.png). Live authorization and production TDK results remain unverified.
 
 The [Python package](python/README.md) implements the same `getSiteTDK` Query with Go-recorded multipart request conformance scenarios and a runnable Dex Flow.
+
+The [TypeScript package](typescript/README.md) implements `getSiteTDK` with the same Go-recorded multipart scenarios and a [runnable Dex Flow](typescript/examples/basic/README.md). Live authorization remains unverified.

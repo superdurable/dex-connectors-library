@@ -11,6 +11,7 @@ spec:
   provider: baishancloud
   languages:
     python: {version: v0.1.0, operations: [describeDomain], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-baishancloud", operations: [describeDomain], triggers: []}
   codegen:
     go:
       package: baishancloud
