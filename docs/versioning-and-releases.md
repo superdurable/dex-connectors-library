@@ -313,7 +313,9 @@ releases are GitHub-first:
    `PYTHON_GITHUB_FIRST_RELEASE_LIMIT` repository variable or the manual
    workflow's `github_first_release_limit` input to change that cap; packages
    beyond it are deferred with `github_release_cap`.
-2. **PyPI pending.** Every selection run checks every completed
+2. **PyPI pending.** The separate `Upload Pending PyPI Releases` workflow runs
+   hourly or by manual dispatch with its own concurrency group, so it cannot
+   delay new GitHub/npm language releases. Every run checks every completed
    `connectors/**/python/vX.Y.Z` release in the GitHub release inventory
    against PyPI, not only the current manifest versions, so a version bump
    never abandons an earlier pending upload. Each tag's package name comes
@@ -323,10 +325,10 @@ releases are GitHub-first:
    time, then tag) first; earlier pending uploads also take new-project slots
    before newer ones. A later version of a project queued in the same run
    shares its slot. A failed PyPI or tag lookup schedules no upload and is
-   reported as `pypi_pending` with `registry_lookup_failure`. A tag counts when
+   reported in the plan summary with `registry_lookup_failure`. A tag counts when
    its part before `/python/vX.Y.Z` is a valid connector directory under the
-   same rules as `catalog.yaml`, such as `connectors/acme/chat_api`. Push,
-   scheduled, and drain runs consider every connector. A manual run with
+   same rules as `catalog.yaml`, such as `connectors/acme/chat_api`. Scheduled
+   runs consider every connector. A manual run of this workflow with
    `connector_directory` uploads only that exact directory's pending versions,
    all of them, so nested sibling connectors and the backlog cannot take its
    new-project slot.
@@ -352,10 +354,10 @@ exists to compare; delete the incomplete release to rebuild it. Registry-backed
 repairs still replace incomplete GitHub assets with archives that match PyPI or
 npm.
 
-The upload job tries at most three new PyPI projects per run by default, one at
+The pending PyPI workflow tries at most three new PyPI projects per run by default, one at
 a time; uploads to existing projects are not capped. Set the
 `PYPI_FIRST_PUBLISH_LIMIT` repository variable or the manual workflow's
-`first_publish_limit` input to change that cap; `0` pauses new PyPI projects
+`first_publish_limit` input on that workflow to change that cap; `0` pauses new PyPI projects
 while uploads to existing projects continue. If PyPI responds
 `429 Too many new projects created`, the job retries after 20, 60, and 120
 seconds, then reports the upload as still pending without failing the run.
@@ -423,25 +425,28 @@ artifacts. A mismatch fails without creating a tag. Concurrent push and
 scheduled runs can cancel a queued run, so check
 the release summary for remaining work; the next scheduled run selects pending
 Go releases again.
-The `summarize-language` job writes published, `pypi_pending`, deferred, and
-failed tags plus the pending count to its job summary and `result` JSON output.
-A `pypi_pending` tag has a complete GitHub release whose PyPI upload is still
-due, with a reason such as `github_first_release`, `first_publish_cap`,
-`project_creation_limit`, or `registry_lookup_failure`. A published tag with
+The main workflow's `summarize-language` job writes published, `pypi_pending`,
+deferred, and failed tags plus the pending count to its job summary and `result`
+JSON output. Its `pypi_pending` tag has a new complete GitHub release whose
+PyPI upload is still due, with reason `github_first_release`. The separate
+pending PyPI workflow summarizes its own uploads and deferrals, including
+`first_publish_cap`, `project_creation_limit`, and `registry_lookup_failure`.
+A published tag with
 reason `already_complete` was complete before its publish job ran. A deferred tag has no complete GitHub release yet,
 with a reason such as `github_release_cap`, `go_release_deferred`,
 `registry_lookup_failure`, or `matrix_limit`. To recover
-manually, run `Release Connectors and Catalog` on `main` with the affected
-`connector_directory`; leave `dry_run` disabled. For a broad backlog, set
-`drain_first_publishes` on a manual run or wait for the next hourly run. A
-manual drain also releases pending Go versions. If a registry upload succeeded
+manually, run `Upload Pending PyPI Releases` on `main` with the affected
+`connector_directory`, or leave it empty for the whole backlog. Its plan
+summary lists queued tags and deferred tags with reasons. For Go or new
+language releases, use `Release Connectors and Catalog`; a manual drain also
+releases pending Go versions. If a registry upload succeeded
 but GitHub release creation failed, the scheduled run can repair an identical
 rebuild. If the archive differs, rerun the original workflow at its source
 commit as described below.
 
-Catalog deployment still requires successful release jobs, except
-`upload-pending-pypi`: the catalog build reads PyPI state itself, so a failed
-PyPI upload fails the run without blocking the catalog. Its event gate is:
+Catalog deployment still requires successful release jobs. The catalog build
+reads PyPI state itself, so a pending PyPI upload cannot block deployment.
+Its event gate is:
 
 | Event | Pending Go selected | Language published | Deploy catalog |
 | --- | --- | --- | --- |

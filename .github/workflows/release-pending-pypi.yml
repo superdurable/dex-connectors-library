@@ -1,0 +1,204 @@
+name: Upload Pending PyPI Releases
+
+on:
+  schedule:
+    - cron: '43 * * * *'
+  workflow_dispatch:
+    inputs:
+      connector_directory:
+        description: Upload only this connector directory's pending Python releases; leave empty for all
+        required: false
+        type: string
+      first_publish_limit:
+        description: Maximum new PyPI projects to try in this run
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pending-pypi
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      pypi_pending_matrix: ${{ steps.matrix.outputs.pypi_pending_matrix }}
+      pypi_pending_count: ${{ steps.matrix.outputs.pypi_pending_count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read complete GitHub releases and creation times
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 script/release/github_release_inventory.py --output "${RUNNER_TEMP}/release-inventory.json" \
+            --created-at-output "${RUNNER_TEMP}/release-created-at.json"
+      - name: Select pending PyPI uploads
+        id: matrix
+        env:
+          GH_RELEASE_INVENTORY_PATH: ${{ runner.temp }}/release-inventory.json
+          GH_RELEASE_CREATED_AT_PATH: ${{ runner.temp }}/release-created-at.json
+          FIRST_PUBLISH_LIMIT: ${{ inputs.first_publish_limit || vars.PYPI_FIRST_PUBLISH_LIMIT || '3' }}
+          REPAIR_DIRECTORY: ${{ inputs.connector_directory }}
+        run: |
+          arguments=()
+          if [ -n "${REPAIR_DIRECTORY}" ]; then
+            arguments+=(--pending-upload-directory "${REPAIR_DIRECTORY}")
+          fi
+          python3 script/release/language_publish.py select-pending-pypi \
+            --github-output "${GITHUB_OUTPUT}" \
+            --selection-output "${RUNNER_TEMP}/pending-pypi-selection.json" \
+            --first-publish-limit "${FIRST_PUBLISH_LIMIT}" \
+            "${arguments[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pending-pypi-selection
+          path: ${{ runner.temp }}/pending-pypi-selection.json
+          retention-days: 1
+
+  upload-pending-pypi:
+    needs: [plan]
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.pypi_pending_count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.plan.outputs.pypi_pending_matrix) }}
+    env:
+      TAG_PREFIX: ${{ matrix.tag_prefix }}
+      RELEASE_VERSION: ${{ matrix.version }}
+      PACKAGE_NAME: ${{ matrix.package }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+      - name: Defer after this run hits the PyPI project-creation limit
+        id: first-limit
+        if: matrix.first_publish == true
+        run: |
+          python3 script/release/language_publish.py check-project-limit \
+            --repository "${GITHUB_REPOSITORY}" --run-id "${GITHUB_RUN_ID}" \
+            --github-output "${GITHUB_OUTPUT}"
+      - name: Download and verify the GitHub release archives
+        if: steps.first-limit.outputs.status != 'deferred'
+        run: |
+          tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          git show-ref --verify --quiet "refs/tags/${tag}" || { echo "Language tag is missing: ${tag}" >&2; exit 1; }
+          git merge-base --is-ancestor "${tag}" HEAD || { echo "Language tag is not reachable from main: ${tag}" >&2; exit 1; }
+          dist="${RUNNER_TEMP}/pypi-work/dist"
+          mkdir -p "${dist}"
+          # Narrow patterns leave out connector-release.json.sha256 and connector-ui.tgz.sha256.
+          gh release download "${tag}" --repo "${GITHUB_REPOSITORY}" --dir "${dist}" \
+            --pattern '*.whl' --pattern '*.whl.sha256' --pattern '*.tar.gz' --pattern '*.tar.gz.sha256' \
+            --pattern 'language-release.json' --pattern 'language-release.json.sha256'
+          python3 script/release/language_publish.py verify-release-archives \
+            --directory "${dist}" --tag "${tag}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
+            --source-sha "$(git rev-parse "${tag}^{commit}")"
+          python3 script/release/component_release.py verify-language-artifacts \
+            --language python --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
+            --asset "$(echo "${dist}"/*.whl)" --asset "$(echo "${dist}"/*.tar.gz)"
+      - name: Upload the GitHub release archives to PyPI
+        id: python-publish
+        if: steps.first-limit.outputs.status != 'deferred'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
+          dist="${RUNNER_TEMP}/pypi-work/dist"
+          arguments=(--asset "$(echo "${dist}"/*.whl)" --asset "$(echo "${dist}"/*.tar.gz)")
+          python3 script/release/component_release.py verify-pypi-artifacts \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
+          python3 script/release/language_publish.py publish-pypi \
+            --github-output "${GITHUB_OUTPUT}" "${dist}"/*.whl "${dist}"/*.tar.gz
+          if [ "$(sed -n 's/^status=//p' "${GITHUB_OUTPUT}" | tail -1)" != deferred ]; then
+            python3 script/release/component_release.py verify-pypi-artifacts \
+              --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --require-all --wait-seconds 120 "${arguments[@]}"
+          fi
+      - name: Replace the pending PyPI text in the release notes
+        if: steps.python-publish.outputs.status == 'published'
+        # The pending text stays accurate after upload, so a failed edit only warns.
+        continue-on-error: true
+        run: |
+          tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          notes="${RUNNER_TEMP}/pypi-work/notes"
+          mkdir -p "${notes}"
+          gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" --json body --jq .body > "${notes}/current.md"
+          python3 script/release/language_publish.py published-pypi-notes \
+            --notes "${notes}/current.md" --output "${notes}/published.md" \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}"
+          if ! cmp -s "${notes}/current.md" "${notes}/published.md"; then
+            gh release edit "${tag}" --repo "${GITHUB_REPOSITORY}" --notes-file "${notes}/published.md"
+          fi
+      - name: Record the PyPI project-creation limit for this run
+        if: matrix.first_publish == true && steps.python-publish.outputs.status == 'deferred'
+        run: touch "${RUNNER_TEMP}/pypi-project-limit"
+      - uses: actions/upload-artifact@v4
+        if: matrix.first_publish == true && steps.python-publish.outputs.status == 'deferred'
+        with:
+          name: pypi-project-limit-${{ github.run_id }}
+          path: ${{ runner.temp }}/pypi-project-limit
+          retention-days: 1
+          overwrite: true
+      - name: Record PyPI upload result
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          PYPI_STATUS: ${{ steps.python-publish.outputs.status || steps.first-limit.outputs.status }}
+        run: |
+          status=failed
+          reason=""
+          if [ "${JOB_STATUS}" = success ] && [ "${PYPI_STATUS}" = published ]; then
+            status=published
+          elif [ "${JOB_STATUS}" = success ] && [ "${PYPI_STATUS}" = deferred ]; then
+            status=pypi_pending
+            reason=project_creation_limit
+          fi
+          mkdir -p "${RUNNER_TEMP}/release-result"
+          RESULT_STATUS="${status}" RESULT_REASON="${reason}" python3 -c 'import json,os; print(json.dumps({"tag":os.environ["TAG_PREFIX"]+os.environ["RELEASE_VERSION"],"status":os.environ["RESULT_STATUS"],"reason":os.environ["RESULT_REASON"]}))' \
+            > "${RUNNER_TEMP}/release-result/release-result.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: language-result-pypi-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/release-result/release-result.json
+          retention-days: 1
+
+  summarize-pending-pypi:
+    needs: [plan, upload-pending-pypi]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: pending-pypi-selection
+          path: ${{ runner.temp }}/selection
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.pypi_pending_count != '0'
+        continue-on-error: true
+        with:
+          pattern: language-result-pypi-*
+          path: ${{ runner.temp }}/language-results
+      - name: Summarize uploads and deferrals
+        run: |
+          mkdir -p "${RUNNER_TEMP}/language-results"
+          python3 script/release/language_publish.py summarize \
+            --selection "${RUNNER_TEMP}/selection/pending-pypi-selection.json" \
+            --results-directory "${RUNNER_TEMP}/language-results" \
+            --github-output "${GITHUB_OUTPUT}"

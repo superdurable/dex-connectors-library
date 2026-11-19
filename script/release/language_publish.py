@@ -207,7 +207,8 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
                             release_package=None,
                             project_exists=has_registry_project,
                             pypi_release_exists=has_pypi_release_files,
-                            pending_upload_directory: str | None = None) -> dict[str, object]:
+                            pending_upload_directory: str | None = None,
+                            include_pending_pypi: bool = True) -> dict[str, object]:
     """Queue Python first releases for GitHub first and completed releases missing from PyPI for upload.
 
     ``pending_upload_directory`` limits pending uploads to that exact connector directory.
@@ -228,7 +229,7 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
     pypi_pending = select_pending_pypi_uploads(
         completed, first_publish_limit, deferred, release_created_at=release_created_at or {},
         release_package=release_package or read_release_package, project_exists=project_exists,
-        pypi_release_exists=pypi_release_exists, pending_upload_directory=pending_upload_directory)
+        pypi_release_exists=pypi_release_exists, pending_upload_directory=pending_upload_directory) if include_pending_pypi else []
     github_first_count = 0
     for item in items:
         if is_release_complete(item, completed):
@@ -379,6 +380,19 @@ def write_selection_outputs(output_path: Path, selection: dict[str, object],
         output.write(f"language_count={len(built)}\n")
         output.write(f"language_matrix={json.dumps({'include': built}, separators=(',', ':'))}\n")
         output.write(f"pending_count={selection['pending_count']}\n")
+
+
+def write_pending_pypi_selection_outputs(output_path: Path, pending: list[dict[str, str]],
+                                         deferred: list[dict[str, str]]) -> None:
+    """Write the standalone PyPI retry matrix and the reason for each deferred release."""
+    with output_path.open("a", encoding="utf-8") as output:
+        output.write(f"pypi_pending_matrix={json.dumps({'include': pending}, separators=(',', ':'))}\n")
+        output.write(f"pypi_pending_count={len(pending)}\n")
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
+            summary.write("## Pending PyPI uploads\n\n")
+            summary.write(f"- queued: {len(pending)} — {', '.join(item['tag_prefix'] + item['version'] for item in pending) or 'none'}\n")
+            summary.write(f"- deferred: {len(deferred)} — {', '.join(item['tag_prefix'] + item['version'] + ' (' + item['defer_reason'] + ')' for item in deferred) or 'none'}\n")
 
 
 def is_project_creation_limit(message: str) -> bool:
@@ -832,6 +846,13 @@ def main() -> int:
     select_parser.add_argument("--go-release-limit", type=int, default=GO_RELEASE_LIMIT)
     select_parser.add_argument("--pending-upload-directory",
                                help="upload only this connector directory's pending PyPI versions")
+    select_parser.add_argument("--skip-pending-pypi", action="store_true",
+                               help="leave historical PyPI retries to the standalone workflow")
+    pending_parser = commands.add_parser("select-pending-pypi")
+    pending_parser.add_argument("--github-output", type=Path, required=True)
+    pending_parser.add_argument("--selection-output", type=Path, required=True)
+    pending_parser.add_argument("--first-publish-limit", type=int, default=PYPI_FIRST_PUBLISH_LIMIT)
+    pending_parser.add_argument("--pending-upload-directory")
     repairs_parser = commands.add_parser("select-connector-release-repairs")
     repairs_parser.add_argument("--connectorctl", required=True, help="main's connectorctl binary")
     repairs_parser.add_argument("--github-output", type=Path, required=True)
@@ -921,7 +942,8 @@ def main() -> int:
                                                     completed_tags=completed_tags,
                                                     deferred_go_directories=deferred_go_directories,
                                                     release_created_at=read_release_created_at(),
-                                                    pending_upload_directory=args.pending_upload_directory)
+                                                    pending_upload_directory=args.pending_upload_directory,
+                                                    include_pending_pypi=not args.skip_pending_pypi)
             selection["go_deferred"] = go_selection["deferred"]
             write_selection_outputs(args.github_output, selection, go_selection)
             if os.environ.get("GITHUB_STEP_SUMMARY"):
@@ -934,6 +956,23 @@ def main() -> int:
                   f"{len(selection['first'])} first publishes, {len(selection['github_first'])} GitHub-first "
                   f"Python releases, {len(selection['pypi_pending'])} pending PyPI uploads, "
                   f"{len(selection['deferred'])} deferred")
+        elif args.command == "select-pending-pypi":
+            if args.first_publish_limit < 0:
+                raise ValueError("PyPI first publish limit must not be negative")
+            if args.pending_upload_directory is not None and not is_connector_directory(args.pending_upload_directory):
+                raise ValueError(f"pending upload directory is not a connector directory: {args.pending_upload_directory}")
+            deferred: list[dict[str, str]] = []
+            pending = select_pending_pypi_uploads(
+                list_completed_language_tags(), args.first_publish_limit, deferred,
+                release_created_at=read_release_created_at(), release_package=read_release_package,
+                project_exists=has_registry_project, pypi_release_exists=has_pypi_release_files,
+                pending_upload_directory=args.pending_upload_directory)
+            defer_beyond_matrix_limit([pending], deferred)
+            write_pending_pypi_selection_outputs(args.github_output, pending, deferred)
+            args.selection_output.write_text(json.dumps({"updates": [], "first": [], "github_first": [],
+                                                         "pypi_pending": pending, "deferred": deferred}) + "\n",
+                                             encoding="utf-8")
+            print(f"Pending PyPI uploads: {len(pending)} queued, {len(deferred)} deferred")
         elif args.command == "select-connector-release-repairs":
             try:
                 inventory = read_release_inventory()

@@ -236,6 +236,22 @@ class SelectReleaseMatricesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "GitHub first release limit must be positive"):
             language_publish.select_release_matrices([], 1, github_release_limit=0)
 
+    def test_main_release_skips_historical_pypi_lookups(self) -> None:
+        selection = select([], 3, completed_tags={tag("pending")}, include_pending_pypi=False,
+                           release_package=lambda _directory, _tag: self.fail("historical tag was read"))
+        self.assertEqual([], selection["pypi_pending"])
+        self.assertEqual(0, selection["pending_count"])
+
+    def test_standalone_pypi_summary_names_deferred_reasons(self) -> None:
+        pending = [dict(item("queued"), github_released=True)]
+        deferred = [dict(item("capped"), github_released=True, defer_reason="first_publish_cap")]
+        with tempfile.TemporaryDirectory() as temporary:
+            output, summary = Path(temporary) / "output", Path(temporary) / "summary"
+            with patch.dict(os.environ, GITHUB_STEP_SUMMARY=str(summary)):
+                language_publish.write_pending_pypi_selection_outputs(output, pending, deferred)
+            self.assertIn("pypi_pending_count=1", output.read_text())
+            self.assertIn("connectors/capped/python/v0.1.0 (first_publish_cap)", summary.read_text())
+
     def test_lookup_failure_defers_one_language_without_stopping_others(self) -> None:
         def project_exists(_language, package):
             if package == "dex-connector-unavailable":
@@ -551,7 +567,7 @@ class VerifyReleaseArchivesTests(unittest.TestCase):
                 self.verify(directory)
 
     def test_pending_upload_downloads_skip_connector_release_assets(self) -> None:
-        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-pending-pypi.yml").read_text(
             encoding="utf-8")
         upload_job = workflow.split("\n  upload-pending-pypi:\n", 1)[1].split("\n\n  ", 1)[0]
         download = upload_job.split("gh release download", 1)[1].split("python3", 1)[0]
@@ -754,12 +770,14 @@ class SummaryTests(unittest.TestCase):
 class WorkflowTests(unittest.TestCase):
     workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
         encoding="utf-8")
+    pending_workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-pending-pypi.yml").read_text(
+        encoding="utf-8")
 
     def job(self, name: str) -> str:
         return self.workflow.split(f"\n  {name}:\n", 1)[1].split("\n\n  ", 1)[0]
 
     def test_pypi_only_upload_reuses_github_release_bytes(self) -> None:
-        upload_job = self.job("upload-pending-pypi")
+        upload_job = self.pending_workflow.split("\n  upload-pending-pypi:\n", 1)[1]
         self.assertIn("gh release download", upload_job)
         self.assertIn("verify-release-archives", upload_job)
         self.assertIn("verify-language-artifacts", upload_job)
@@ -769,15 +787,23 @@ class WorkflowTests(unittest.TestCase):
             self.assertNotIn(rebuild_marker, upload_job)
         self.assertIn("max-parallel: 1", upload_job)
 
+    def test_pending_pypi_has_separate_workflow_concurrency(self) -> None:
+        self.assertIn("group: release-connectors-and-catalog", self.workflow)
+        self.assertIn("group: release-pending-pypi", self.pending_workflow)
+        self.assertNotIn("upload-pending-pypi:", self.workflow)
+        self.assertIn("select-pending-pypi", self.pending_workflow)
+        self.assertIn("--skip-pending-pypi", self.job("plan"))
+        self.assertIn("cron: '43 * * * *'", self.pending_workflow)
+        self.assertIn("--pending-upload-directory", self.pending_workflow)
+
     def test_new_release_jobs_gate_the_summary_and_catalog(self) -> None:
         for job in ("summarize-language", "build-catalog"):
             needs = self.job(job).split("needs: [", 1)[1].split("]", 1)[0]
             self.assertIn("publish-language-github-first", needs)
-            self.assertIn("upload-pending-pypi", needs)
+            self.assertNotIn("upload-pending-pypi", needs)
         catalog_job = self.job("build-catalog")
         self.assertIn("needs.plan.outputs.github_first_count == '0'", catalog_job)
-        self.assertNotIn("needs.upload-pending-pypi.result", catalog_job,
-                         "the catalog reads PyPI itself, so a failed upload must not block deployment")
+        self.assertNotIn("needs.upload-pending-pypi.result", catalog_job)
         self.assertIn("--pypi-published-language-tags", catalog_job)
 
     def test_github_first_release_writes_completion_marker_with_pending_notes(self) -> None:
@@ -818,7 +844,7 @@ class WorkflowTests(unittest.TestCase):
         plan_job = self.job("plan")
         step = plan_job.split("      - name: Build pending or targeted repair matrix\n", 1)[1].split("      - ", 1)[0]
         script = textwrap.dedent(step.split("        run: |\n", 1)[1])
-        cases = ((("workflow_dispatch", "connectors/target", "false"), ["--pending-upload-directory", "connectors/target"]),
+        cases = ((("workflow_dispatch", "connectors/target", "false"), []),
                  (("schedule", "", "false"), []), (("workflow_dispatch", "", "true"), []), (("push", "", "false"), []))
         for (event_name, repair_directory, drain), expected_scope in cases:
             with self.subTest(event_name=event_name, drain=drain), tempfile.TemporaryDirectory() as temporary:
@@ -837,7 +863,7 @@ class WorkflowTests(unittest.TestCase):
                 self.assertEqual("select", select_arguments[1])
                 self.assertEqual("15", select_arguments[select_arguments.index("--go-release-limit") + 1])
                 scope = select_arguments[select_arguments.index("--github-release-limit") + 2:]
-                self.assertEqual(expected_scope, scope)
+                self.assertEqual(["--skip-pending-pypi"], scope)
 
     def run_guard(self, temporary: Path, *, release_assets: list[str] | None, built_source_sha: str | None,
                   existing_archive: bytes | None = None, pypi_status: str = "deferred") -> subprocess.CompletedProcess:
@@ -1224,6 +1250,8 @@ class AttachMissingReleaseAssetsTests(unittest.TestCase):
 
 class ConnectorReleaseWorkflowTests(unittest.TestCase):
     workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
+        encoding="utf-8")
+    pending_workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-pending-pypi.yml").read_text(
         encoding="utf-8")
     candidate_workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-candidate.yml").read_text(
         encoding="utf-8")
