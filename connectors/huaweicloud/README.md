@@ -5,3 +5,5 @@ This connector runs the read-only [List Projects Accessible to an IAM User](http
 Create an IAM user with a password. A HUAWEI ID password cannot directly obtain this token. In Dex Web Connections, supply the account name, IAM username, and IAM password from the Huawei Cloud console. The IAM API lists only projects where that user has accessible resources; an empty list is a valid result. Credential errors select `providerRejected`; rate limits and temporary service errors retry. This connector does not cache tokens, so each attempt requests a fresh token.
 
 The runnable [list-projects example](go/examples/list-projects/README.md) demonstrates the generated operation-specific Step and static `huaweicloud` connection. Real Huawei Cloud authorization remains to be tested with a user-controlled Dex Web Connection.
+
+The [TypeScript package](typescript/README.md) implements `listAccessibleProjects` and includes a [runnable Dex Flow](typescript/examples/basic/README.md). Local scenarios replay the Go provider contract; live Huawei Cloud IAM authorization remains unverified.
