@@ -15,7 +15,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay, static_credentials  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/google/tag-manager/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/google/tag-manager/scenarios.json")
+    if scenario["operation"] in {"listAccounts", "listContainers", "listTags"}
+]
 CONNECTION = sdk.ConnectionRef("google-tag-manager", "google-tag-manager")
 
 

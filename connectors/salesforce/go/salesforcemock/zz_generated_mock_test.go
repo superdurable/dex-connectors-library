@@ -64,6 +64,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[salesforce.UpdateRecordOutput](`{"providerErrors":[{"errorCode":"INSUFFICIENT_ACCESS","fields":[]}]}`)
 			return err
 		}},
+		{name: "deleteRecord/deletedContact/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[salesforce.DeleteRecordOutput](`{"id":"003RM000001AbcdYAC"}`)
+			return err
+		}},
+		{name: "createRecord/createdContact/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[salesforce.CreateRecordOutput](`{"id":"003RM000001AbcdYAC"}`)
+			return err
+		}},
+		{name: "createRecord/rejectedContactCreate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[salesforce.CreateRecordOutput](`{"providerErrors":[{"errorCode":"REQUIRED_FIELD_MISSING","fields":["LastName"]}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -85,5 +97,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdateRecord().Definition().Operation.OperationID != "updateRecord" {
 		t.Errorf("updateRecord mock has another definition")
+	}
+	if mock.DeleteRecord().Definition().Operation.OperationID != "deleteRecord" {
+		t.Errorf("deleteRecord mock has another definition")
+	}
+	if mock.CreateRecord().Definition().Operation.OperationID != "createRecord" {
+		t.Errorf("createRecord mock has another definition")
 	}
 }

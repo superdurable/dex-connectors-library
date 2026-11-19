@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Replay the Go-recorded Amazon SNS provider scenarios."""
 
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,7 +16,17 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/amazon/sns/scenarios.json")
+PACKAGE_MANIFEST = json.loads(
+    (ROOT / "connectors/amazon/sns/python/src/dex_connectors/amazon_sns/dex-connector.json").read_text()
+)
+SUPPORTED_OPERATIONS = {
+    factory["operationId"] for factory in PACKAGE_MANIFEST["factories"] if "operationId" in factory
+}
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/amazon/sns/scenarios.json")
+    if scenario["operation"] in SUPPORTED_OPERATIONS
+]
 CONNECTION = sdk.ConnectionRef("amazon-sns", "amazon-sns")
 TEST_CREDENTIALS = amazon_sns.Credentials(
     sdk.SecretString("AKIASNSCONNECTOR"), sdk.SecretString("sns-test-secret"), sdk.SecretString("")

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: microsoft-todo
   displayName: Microsoft To Do
-  description: Read the signed-in user's task lists and tasks through Microsoft Graph.
+  description: Read the signed-in user's task lists, tasks, and linked resources through Microsoft Graph.
   company: Microsoft
   categories: [productivity]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: microsoft
   languages:
@@ -82,6 +82,90 @@ spec:
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, invalid_request, invalid_scope, interaction_required, consent_required]
         additionalParameters: {scope: Tasks.Read offline_access}
   operations:
+    - name: getTaskList
+      goName: GetTaskList
+      inputType: GetTaskListInput
+      outputType: TaskList
+      kind: query
+      description: Read one To Do task list by its stable Graph ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: retrieved, goName: Retrieved, description: Graph returned the task list.}
+        - {id: notFound, goName: NotFound, description: The task list was absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      mocks:
+        - name: retrievedDefault
+          branch: retrieved
+          default: true
+          description: One sample task list is returned.
+          output: {id: sample-list-1, displayName: Tasks}
+    - name: getTask
+      goName: GetTask
+      inputType: GetTaskInput
+      outputType: Task
+      kind: query
+      description: Read one To Do task by its list and task IDs.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: retrieved, goName: Retrieved, description: Graph returned the task.}
+        - {id: notFound, goName: NotFound, description: The task was absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      mocks:
+        - name: retrievedDefault
+          branch: retrieved
+          default: true
+          description: One sample task is returned.
+          output: {id: sample-task-1, title: Review request, status: notStarted}
+    - name: listLinkedResources
+      goName: ListLinkedResources
+      inputType: ListLinkedResourcesInput
+      outputType: LinkedResourcesPage
+      kind: query
+      description: Read the linked resources attached to one To Do task.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Graph returned linked resources.}
+        - {id: notFound, goName: NotFound, description: The task was absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample linked resource is returned.
+          output: {resources: [{id: sample-resource-1, displayName: Source item, applicationName: Example, externalId: item-1, webUrl: 'https://example.com/item-1'}]}
+    - name: getLinkedResource
+      goName: GetLinkedResource
+      inputType: GetLinkedResourceInput
+      outputType: LinkedResource
+      kind: query
+      description: Read one linked resource attached to a To Do task.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: retrieved, goName: Retrieved, description: Graph returned the linked resource.}
+        - {id: notFound, goName: NotFound, description: The linked resource was absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      mocks:
+        - name: retrievedDefault
+          branch: retrieved
+          default: true
+          description: One sample linked resource is returned.
+          output: {id: sample-resource-1, displayName: Source item, applicationName: Example, externalId: item-1, webUrl: 'https://example.com/item-1'}
     - name: listTaskLists
       goName: ListTaskLists
       inputType: ListTaskListsInput
@@ -90,7 +174,7 @@ spec:
       description: Read all pages of the signed-in person's To Do task lists, within a bounded collection limit.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Graph returned task lists.}
         - {id: providerRejected, goName: ProviderRejected, description: Graph conclusively rejected the request., optional: true}
@@ -110,7 +194,7 @@ spec:
       description: Read all pages of tasks in a selected To Do list, within a bounded collection limit.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Graph returned the tasks.}
         - {id: notFound, goName: NotFound, description: The task list was absent or inaccessible., optional: true}

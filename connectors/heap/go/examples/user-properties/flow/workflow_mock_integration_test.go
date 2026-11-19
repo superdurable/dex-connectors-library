@@ -63,16 +63,26 @@ func TestUserPropertiesUsesMockWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	calls := mock.SetUserProperties().Calls()
 	require.Len(t, calls, 1)
+	require.Len(t, mock.TrackEvent().Calls(), 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "member-1", calls[0].Input.Identity)
 }
 
 func TestUserPropertiesRetriesProvider503WithRealDex(t *testing.T) {
-	var requests atomic.Int32
+	var propertyRequests atomic.Int32
+	var eventRequests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		require.Equal(t, "/api/add_user_properties", request.URL.Path)
-		if requests.Add(1) == 1 {
-			writer.WriteHeader(http.StatusServiceUnavailable)
+		switch request.URL.Path {
+		case "/api/add_user_properties":
+			if propertyRequests.Add(1) == 1 {
+				writer.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+		case "/api/track":
+			eventRequests.Add(1)
+		default:
+			t.Errorf("unexpected Heap path %s", request.URL.Path)
+			writer.WriteHeader(http.StatusNotFound)
 			return
 		}
 		writer.WriteHeader(http.StatusOK)
@@ -113,5 +123,6 @@ func TestUserPropertiesRetriesProvider503WithRealDex(t *testing.T) {
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	require.Equal(t, int32(2), requests.Load())
+	require.Equal(t, int32(2), propertyRequests.Load())
+	require.Equal(t, int32(1), eventRequests.Load())
 }

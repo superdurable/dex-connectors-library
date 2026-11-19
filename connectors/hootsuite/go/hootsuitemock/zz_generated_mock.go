@@ -18,6 +18,8 @@ import (
 // Mock is a scripted hootsuite connection. Script each operation through its accessor.
 type Mock struct {
 	connection         hootsuite.Connection
+	getMessage         *connectormock.Query[hootsuite.GetMessageInput, hootsuite.OutboundMessage]
+	deleteMessage      *connectormock.Mutation[hootsuite.DeleteMessageInput, hootsuite.DeletedMessage]
 	listSocialProfiles *connectormock.Query[hootsuite.ListSocialProfilesInput, hootsuite.SocialProfilesPage]
 	listScheduledPosts *connectormock.Query[hootsuite.ListScheduledPostsInput, hootsuite.ScheduledPostsPage]
 	schedulePost       *connectormock.Mutation[hootsuite.SchedulePostInput, hootsuite.ScheduledPostReceipt]
@@ -28,10 +30,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getMessage:         connectormock.NewQuery[hootsuite.GetMessageInput, hootsuite.OutboundMessage](t, hootsuite.GetMessageDefinition),
+		deleteMessage:      connectormock.NewMutation[hootsuite.DeleteMessageInput, hootsuite.DeletedMessage](t, hootsuite.DeleteMessageDefinition),
 		listSocialProfiles: connectormock.NewQuery[hootsuite.ListSocialProfilesInput, hootsuite.SocialProfilesPage](t, hootsuite.ListSocialProfilesDefinition),
 		listScheduledPosts: connectormock.NewQuery[hootsuite.ListScheduledPostsInput, hootsuite.ScheduledPostsPage](t, hootsuite.ListScheduledPostsDefinition),
 		schedulePost:       connectormock.NewMutation[hootsuite.SchedulePostInput, hootsuite.ScheduledPostReceipt](t, hootsuite.SchedulePostDefinition),
 	}
+	mock.getMessage.Default(GetMessageDefault())
+	mock.deleteMessage.Default(DeleteMessageDefault())
 	mock.listSocialProfiles.Default(ListSocialProfilesDefault())
 	mock.listScheduledPosts.Default(ListScheduledPostsDefault())
 	mock.schedulePost.Default(SchedulePostDefault())
@@ -45,6 +51,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() hootsuite.Connection { return mock.connection }
+
+// GetMessage returns the getMessage script.
+func (mock *Mock) GetMessage() *connectormock.Query[hootsuite.GetMessageInput, hootsuite.OutboundMessage] {
+	return mock.getMessage
+}
+
+// DeleteMessage returns the deleteMessage script.
+func (mock *Mock) DeleteMessage() *connectormock.Mutation[hootsuite.DeleteMessageInput, hootsuite.DeletedMessage] {
+	return mock.deleteMessage
+}
 
 // ListSocialProfiles returns the listSocialProfiles script.
 func (mock *Mock) ListSocialProfiles() *connectormock.Query[hootsuite.ListSocialProfilesInput, hootsuite.SocialProfilesPage] {
@@ -63,6 +79,12 @@ func (mock *Mock) SchedulePost() *connectormock.Mutation[hootsuite.SchedulePostI
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetMessage() sdkgo.Query[hootsuite.GetMessageInput, hootsuite.OutboundMessage] {
+	return operations.mock.getMessage
+}
+func (operations mockOperations) DeleteMessage() sdkgo.Mutation[hootsuite.DeleteMessageInput, hootsuite.DeletedMessage] {
+	return operations.mock.deleteMessage
+}
 func (operations mockOperations) ListSocialProfiles() sdkgo.Query[hootsuite.ListSocialProfilesInput, hootsuite.SocialProfilesPage] {
 	return operations.mock.listSocialProfiles
 }
@@ -71,6 +93,78 @@ func (operations mockOperations) ListScheduledPosts() sdkgo.Query[hootsuite.List
 }
 func (operations mockOperations) SchedulePost() sdkgo.Mutation[hootsuite.SchedulePostInput, hootsuite.ScheduledPostReceipt] {
 	return operations.mock.schedulePost
+}
+
+// GetMessageFound selects the found branch: Hootsuite returned the outbound message.
+func GetMessageFound(value hootsuite.OutboundMessage, failure *sdkgo.Failure) connectormock.Case[hootsuite.OutboundMessage] {
+	return connectormock.Branch(hootsuite.GetMessageBranchFound, value, failure)
+}
+
+// GetMessageNotFound selects the notFound branch: The message ID does not exist.
+func GetMessageNotFound(value hootsuite.OutboundMessage, failure *sdkgo.Failure) connectormock.Case[hootsuite.OutboundMessage] {
+	return connectormock.Branch(hootsuite.GetMessageBranchNotFound, value, failure)
+}
+
+// GetMessageProviderRejected selects the providerRejected branch: Hootsuite rejected the lookup.
+func GetMessageProviderRejected(value hootsuite.OutboundMessage, failure *sdkgo.Failure) connectormock.Case[hootsuite.OutboundMessage] {
+	return connectormock.Branch(hootsuite.GetMessageBranchProviderRejected, value, failure)
+}
+
+// GetMessageInvalidResponse selects the invalidResponse branch: Hootsuite returned unusable message JSON.
+func GetMessageInvalidResponse(value hootsuite.OutboundMessage, failure *sdkgo.Failure) connectormock.Case[hootsuite.OutboundMessage] {
+	return connectormock.Branch(hootsuite.GetMessageBranchInvalidResponse, value, failure)
+}
+
+// GetMessageDefect selects the defect branch: Local message ID or connection credentials are invalid.
+func GetMessageDefect(value hootsuite.OutboundMessage, failure *sdkgo.Failure) connectormock.Case[hootsuite.OutboundMessage] {
+	return connectormock.Branch(hootsuite.GetMessageBranchDefect, value, failure)
+}
+
+// GetMessageRetry asks Dex to retry the getMessage Step, after the delay when it is positive.
+func GetMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hootsuite.OutboundMessage] {
+	return connectormock.Retry[hootsuite.OutboundMessage](failure, after)
+}
+
+// GetMessageFoundDefault is the manifest mock foundDefault: One scheduled message was retrieved.
+func GetMessageFoundDefault() connectormock.Case[hootsuite.OutboundMessage] {
+	value := connectormock.MustDecodeOutput[hootsuite.OutboundMessage](`{"id":"4138476039","state":"SCHEDULED","socialProfileId":"115185509","scheduledSendTime":"2026-11-15T14:00:00Z"}`)
+	return connectormock.Branch(hootsuite.GetMessageBranchFound, value, nil)
+}
+
+// GetMessageDefault is the manifest default, foundDefault, which New installs.
+func GetMessageDefault() connectormock.Case[hootsuite.OutboundMessage] {
+	return GetMessageFoundDefault()
+}
+
+// DeleteMessageDeleted selects the deleted branch: The message is absent after the delete request.
+func DeleteMessageDeleted(value hootsuite.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[hootsuite.DeletedMessage] {
+	return connectormock.Branch(hootsuite.DeleteMessageBranchDeleted, value, failure)
+}
+
+// DeleteMessageProviderRejected selects the providerRejected branch: Hootsuite refused deletion in the current message state.
+func DeleteMessageProviderRejected(value hootsuite.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[hootsuite.DeletedMessage] {
+	return connectormock.Branch(hootsuite.DeleteMessageBranchProviderRejected, value, failure)
+}
+
+// DeleteMessageDefect selects the defect branch: Local message ID or connection credentials are invalid.
+func DeleteMessageDefect(value hootsuite.DeletedMessage, failure *sdkgo.Failure) connectormock.Case[hootsuite.DeletedMessage] {
+	return connectormock.Branch(hootsuite.DeleteMessageBranchDefect, value, failure)
+}
+
+// DeleteMessageRetry asks Dex to retry the deleteMessage Step, after the delay when it is positive.
+func DeleteMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hootsuite.DeletedMessage] {
+	return connectormock.Retry[hootsuite.DeletedMessage](failure, after)
+}
+
+// DeleteMessageDeletedDefault is the manifest mock deletedDefault: One scheduled message was deleted.
+func DeleteMessageDeletedDefault() connectormock.Case[hootsuite.DeletedMessage] {
+	value := connectormock.MustDecodeOutput[hootsuite.DeletedMessage](`{"id":"4138476039"}`)
+	return connectormock.Branch(hootsuite.DeleteMessageBranchDeleted, value, nil)
+}
+
+// DeleteMessageDefault is the manifest default, deletedDefault, which New installs.
+func DeleteMessageDefault() connectormock.Case[hootsuite.DeletedMessage] {
+	return DeleteMessageDeletedDefault()
 }
 
 // ListSocialProfilesListed selects the listed branch: Hootsuite returned the visible profiles.

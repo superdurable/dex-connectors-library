@@ -24,7 +24,8 @@ import (
 func TestProjectDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := azuredevopsmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	queryFlow := NewQueryWorkItemsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, queryFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -58,4 +59,14 @@ func TestProjectDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, 20, output.Top)
 	require.Zero(t, output.Skip)
 	require.Len(t, mock.ListProjects().Calls(), 1)
+	queryID := "azuredevops-query-workitems-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, queryFlow, queryID, azuredevops.QueryWorkItemsInput{Project: "Example", WIQL: "SELECT [System.Id] FROM WorkItems", Top: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	queryResult, err := client.WaitForFlow(ctx, queryID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, queryResult.Status, queryResult.ErrorMessage)
+	var workItemIDs azuredevops.WorkItemIDs
+	require.NoError(t, queryResult.DecodeSingleOutput(&workItemIDs))
+	require.Equal(t, []int64{144}, workItemIDs.IDs)
+	require.Len(t, mock.QueryWorkItems().Calls(), 1)
 }

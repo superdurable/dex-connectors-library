@@ -16,6 +16,70 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getTag/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/tags/42","name":"Example tag"}`)
+			return err
+		}},
+		{name: "listTriggers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/triggers/42","name":"Example trigger"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getTrigger/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/triggers/42","name":"Example trigger"}`)
+			return err
+		}},
+		{name: "listVariables/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/variables/42","name":"Example variable"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getVariable/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/variables/42","name":"Example variable"}`)
+			return err
+		}},
+		{name: "listFolders/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/folders/42","name":"Example folder"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getFolder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/folders/42","name":"Example folder"}`)
+			return err
+		}},
+		{name: "listTemplates/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/templates/42","name":"Example template"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getTemplate/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/templates/42","name":"Example template"}`)
+			return err
+		}},
+		{name: "listEnvironments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/environments/42","name":"Example environment"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getEnvironment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/environments/42","name":"Example environment"}`)
+			return err
+		}},
+		{name: "getVersion/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/versions/42","name":"Example containerVersion"}`)
+			return err
+		}},
+		{name: "getAccount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456","name":"Example Account"}`)
+			return err
+		}},
+		{name: "getContainer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/42","name":"Example container"}`)
+			return err
+		}},
+		{name: "listWorkspaces/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/42","name":"Example workspace"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getWorkspace/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/42","name":"Example workspace"}`)
+			return err
+		}},
 		{name: "listAccounts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[tagmanager.AccountsPage](`{"accounts":[{"path":"accounts/123456","name":"Example Account"}],"nextPageToken":""}`)
 			return err
@@ -38,6 +102,54 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetTag().Definition().Operation.OperationID != "getTag" {
+		t.Errorf("getTag mock has another definition")
+	}
+	if mock.ListTriggers().Definition().Operation.OperationID != "listTriggers" {
+		t.Errorf("listTriggers mock has another definition")
+	}
+	if mock.GetTrigger().Definition().Operation.OperationID != "getTrigger" {
+		t.Errorf("getTrigger mock has another definition")
+	}
+	if mock.ListVariables().Definition().Operation.OperationID != "listVariables" {
+		t.Errorf("listVariables mock has another definition")
+	}
+	if mock.GetVariable().Definition().Operation.OperationID != "getVariable" {
+		t.Errorf("getVariable mock has another definition")
+	}
+	if mock.ListFolders().Definition().Operation.OperationID != "listFolders" {
+		t.Errorf("listFolders mock has another definition")
+	}
+	if mock.GetFolder().Definition().Operation.OperationID != "getFolder" {
+		t.Errorf("getFolder mock has another definition")
+	}
+	if mock.ListTemplates().Definition().Operation.OperationID != "listTemplates" {
+		t.Errorf("listTemplates mock has another definition")
+	}
+	if mock.GetTemplate().Definition().Operation.OperationID != "getTemplate" {
+		t.Errorf("getTemplate mock has another definition")
+	}
+	if mock.ListEnvironments().Definition().Operation.OperationID != "listEnvironments" {
+		t.Errorf("listEnvironments mock has another definition")
+	}
+	if mock.GetEnvironment().Definition().Operation.OperationID != "getEnvironment" {
+		t.Errorf("getEnvironment mock has another definition")
+	}
+	if mock.GetVersion().Definition().Operation.OperationID != "getVersion" {
+		t.Errorf("getVersion mock has another definition")
+	}
+	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
+		t.Errorf("getAccount mock has another definition")
+	}
+	if mock.GetContainer().Definition().Operation.OperationID != "getContainer" {
+		t.Errorf("getContainer mock has another definition")
+	}
+	if mock.ListWorkspaces().Definition().Operation.OperationID != "listWorkspaces" {
+		t.Errorf("listWorkspaces mock has another definition")
+	}
+	if mock.GetWorkspace().Definition().Operation.OperationID != "getWorkspace" {
+		t.Errorf("getWorkspace mock has another definition")
+	}
 	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
 		t.Errorf("listAccounts mock has another definition")
 	}

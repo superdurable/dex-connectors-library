@@ -17,10 +17,26 @@ import (
 
 // Mock is a scripted google-tag-manager connection. Script each operation through its accessor.
 type Mock struct {
-	connection     tagmanager.Connection
-	listAccounts   *connectormock.Query[tagmanager.ListAccountsInput, tagmanager.AccountsPage]
-	listContainers *connectormock.Query[tagmanager.ListContainersInput, tagmanager.ContainersPage]
-	listTags       *connectormock.Query[tagmanager.ListTagsInput, tagmanager.TagsPage]
+	connection       tagmanager.Connection
+	getTag           *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	listTriggers     *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage]
+	getTrigger       *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	listVariables    *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage]
+	getVariable      *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	listFolders      *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage]
+	getFolder        *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	listTemplates    *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage]
+	getTemplate      *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	listEnvironments *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage]
+	getEnvironment   *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	getVersion       *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	getAccount       *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	getContainer     *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	listWorkspaces   *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage]
+	getWorkspace     *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource]
+	listAccounts     *connectormock.Query[tagmanager.ListAccountsInput, tagmanager.AccountsPage]
+	listContainers   *connectormock.Query[tagmanager.ListContainersInput, tagmanager.ContainersPage]
+	listTags         *connectormock.Query[tagmanager.ListTagsInput, tagmanager.TagsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,10 +44,42 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listAccounts:   connectormock.NewQuery[tagmanager.ListAccountsInput, tagmanager.AccountsPage](t, tagmanager.ListAccountsDefinition),
-		listContainers: connectormock.NewQuery[tagmanager.ListContainersInput, tagmanager.ContainersPage](t, tagmanager.ListContainersDefinition),
-		listTags:       connectormock.NewQuery[tagmanager.ListTagsInput, tagmanager.TagsPage](t, tagmanager.ListTagsDefinition),
+		getTag:           connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetTagDefinition),
+		listTriggers:     connectormock.NewQuery[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage](t, tagmanager.ListTriggersDefinition),
+		getTrigger:       connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetTriggerDefinition),
+		listVariables:    connectormock.NewQuery[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage](t, tagmanager.ListVariablesDefinition),
+		getVariable:      connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetVariableDefinition),
+		listFolders:      connectormock.NewQuery[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage](t, tagmanager.ListFoldersDefinition),
+		getFolder:        connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetFolderDefinition),
+		listTemplates:    connectormock.NewQuery[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage](t, tagmanager.ListTemplatesDefinition),
+		getTemplate:      connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetTemplateDefinition),
+		listEnvironments: connectormock.NewQuery[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage](t, tagmanager.ListEnvironmentsDefinition),
+		getEnvironment:   connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetEnvironmentDefinition),
+		getVersion:       connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetVersionDefinition),
+		getAccount:       connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetAccountDefinition),
+		getContainer:     connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetContainerDefinition),
+		listWorkspaces:   connectormock.NewQuery[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage](t, tagmanager.ListWorkspacesDefinition),
+		getWorkspace:     connectormock.NewQuery[tagmanager.ResourcePathInput, tagmanager.TagManagerResource](t, tagmanager.GetWorkspaceDefinition),
+		listAccounts:     connectormock.NewQuery[tagmanager.ListAccountsInput, tagmanager.AccountsPage](t, tagmanager.ListAccountsDefinition),
+		listContainers:   connectormock.NewQuery[tagmanager.ListContainersInput, tagmanager.ContainersPage](t, tagmanager.ListContainersDefinition),
+		listTags:         connectormock.NewQuery[tagmanager.ListTagsInput, tagmanager.TagsPage](t, tagmanager.ListTagsDefinition),
 	}
+	mock.getTag.Default(GetTagDefault())
+	mock.listTriggers.Default(ListTriggersDefault())
+	mock.getTrigger.Default(GetTriggerDefault())
+	mock.listVariables.Default(ListVariablesDefault())
+	mock.getVariable.Default(GetVariableDefault())
+	mock.listFolders.Default(ListFoldersDefault())
+	mock.getFolder.Default(GetFolderDefault())
+	mock.listTemplates.Default(ListTemplatesDefault())
+	mock.getTemplate.Default(GetTemplateDefault())
+	mock.listEnvironments.Default(ListEnvironmentsDefault())
+	mock.getEnvironment.Default(GetEnvironmentDefault())
+	mock.getVersion.Default(GetVersionDefault())
+	mock.getAccount.Default(GetAccountDefault())
+	mock.getContainer.Default(GetContainerDefault())
+	mock.listWorkspaces.Default(ListWorkspacesDefault())
+	mock.getWorkspace.Default(GetWorkspaceDefault())
 	mock.listAccounts.Default(ListAccountsDefault())
 	mock.listContainers.Default(ListContainersDefault())
 	mock.listTags.Default(ListTagsDefault())
@@ -45,6 +93,86 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() tagmanager.Connection { return mock.connection }
+
+// GetTag returns the getTag script.
+func (mock *Mock) GetTag() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getTag
+}
+
+// ListTriggers returns the listTriggers script.
+func (mock *Mock) ListTriggers() *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return mock.listTriggers
+}
+
+// GetTrigger returns the getTrigger script.
+func (mock *Mock) GetTrigger() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getTrigger
+}
+
+// ListVariables returns the listVariables script.
+func (mock *Mock) ListVariables() *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return mock.listVariables
+}
+
+// GetVariable returns the getVariable script.
+func (mock *Mock) GetVariable() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getVariable
+}
+
+// ListFolders returns the listFolders script.
+func (mock *Mock) ListFolders() *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return mock.listFolders
+}
+
+// GetFolder returns the getFolder script.
+func (mock *Mock) GetFolder() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getFolder
+}
+
+// ListTemplates returns the listTemplates script.
+func (mock *Mock) ListTemplates() *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return mock.listTemplates
+}
+
+// GetTemplate returns the getTemplate script.
+func (mock *Mock) GetTemplate() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getTemplate
+}
+
+// ListEnvironments returns the listEnvironments script.
+func (mock *Mock) ListEnvironments() *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return mock.listEnvironments
+}
+
+// GetEnvironment returns the getEnvironment script.
+func (mock *Mock) GetEnvironment() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getEnvironment
+}
+
+// GetVersion returns the getVersion script.
+func (mock *Mock) GetVersion() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getVersion
+}
+
+// GetAccount returns the getAccount script.
+func (mock *Mock) GetAccount() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getAccount
+}
+
+// GetContainer returns the getContainer script.
+func (mock *Mock) GetContainer() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getContainer
+}
+
+// ListWorkspaces returns the listWorkspaces script.
+func (mock *Mock) ListWorkspaces() *connectormock.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return mock.listWorkspaces
+}
+
+// GetWorkspace returns the getWorkspace script.
+func (mock *Mock) GetWorkspace() *connectormock.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return mock.getWorkspace
+}
 
 // ListAccounts returns the listAccounts script.
 func (mock *Mock) ListAccounts() *connectormock.Query[tagmanager.ListAccountsInput, tagmanager.AccountsPage] {
@@ -63,6 +191,54 @@ func (mock *Mock) ListTags() *connectormock.Query[tagmanager.ListTagsInput, tagm
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetTag() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getTag
+}
+func (operations mockOperations) ListTriggers() sdkgo.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return operations.mock.listTriggers
+}
+func (operations mockOperations) GetTrigger() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getTrigger
+}
+func (operations mockOperations) ListVariables() sdkgo.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return operations.mock.listVariables
+}
+func (operations mockOperations) GetVariable() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getVariable
+}
+func (operations mockOperations) ListFolders() sdkgo.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return operations.mock.listFolders
+}
+func (operations mockOperations) GetFolder() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getFolder
+}
+func (operations mockOperations) ListTemplates() sdkgo.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return operations.mock.listTemplates
+}
+func (operations mockOperations) GetTemplate() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getTemplate
+}
+func (operations mockOperations) ListEnvironments() sdkgo.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return operations.mock.listEnvironments
+}
+func (operations mockOperations) GetEnvironment() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getEnvironment
+}
+func (operations mockOperations) GetVersion() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getVersion
+}
+func (operations mockOperations) GetAccount() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getAccount
+}
+func (operations mockOperations) GetContainer() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getContainer
+}
+func (operations mockOperations) ListWorkspaces() sdkgo.Query[tagmanager.ListChildResourcesInput, tagmanager.TagManagerResourcesPage] {
+	return operations.mock.listWorkspaces
+}
+func (operations mockOperations) GetWorkspace() sdkgo.Query[tagmanager.ResourcePathInput, tagmanager.TagManagerResource] {
+	return operations.mock.getWorkspace
+}
 func (operations mockOperations) ListAccounts() sdkgo.Query[tagmanager.ListAccountsInput, tagmanager.AccountsPage] {
 	return operations.mock.listAccounts
 }
@@ -71,6 +247,580 @@ func (operations mockOperations) ListContainers() sdkgo.Query[tagmanager.ListCon
 }
 func (operations mockOperations) ListTags() sdkgo.Query[tagmanager.ListTagsInput, tagmanager.TagsPage] {
 	return operations.mock.listTags
+}
+
+// GetTagFound selects the found branch: Google returned the resource.
+func GetTagFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTagBranchFound, value, failure)
+}
+
+// GetTagProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func GetTagProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTagBranchProviderRejected, value, failure)
+}
+
+// GetTagInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func GetTagInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTagBranchInvalidResponse, value, failure)
+}
+
+// GetTagDefect selects the defect branch: The resource path or connection credentials are invalid.
+func GetTagDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTagBranchDefect, value, failure)
+}
+
+// GetTagRetry asks Dex to retry the getTag Step, after the delay when it is positive.
+func GetTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetTagFoundDefault is the manifest mock foundDefault: One example tag identity is returned.
+func GetTagFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/tags/42","name":"Example tag"}`)
+	return connectormock.Branch(tagmanager.GetTagBranchFound, value, nil)
+}
+
+// GetTagDefault is the manifest default, foundDefault, which New installs.
+func GetTagDefault() connectormock.Case[tagmanager.TagManagerResource] { return GetTagFoundDefault() }
+
+// ListTriggersListed selects the listed branch: Google returned a resource page.
+func ListTriggersListed(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListTriggersBranchListed, value, failure)
+}
+
+// ListTriggersProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func ListTriggersProviderRejected(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListTriggersBranchProviderRejected, value, failure)
+}
+
+// ListTriggersInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func ListTriggersInvalidResponse(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListTriggersBranchInvalidResponse, value, failure)
+}
+
+// ListTriggersDefect selects the defect branch: The resource path or connection credentials are invalid.
+func ListTriggersDefect(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListTriggersBranchDefect, value, failure)
+}
+
+// ListTriggersRetry asks Dex to retry the listTriggers Step, after the delay when it is positive.
+func ListTriggersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Retry[tagmanager.TagManagerResourcesPage](failure, after)
+}
+
+// ListTriggersListedDefault is the manifest mock listedDefault: One example trigger identity is returned.
+func ListTriggersListedDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/triggers/42","name":"Example trigger"}],"nextPageToken":""}`)
+	return connectormock.Branch(tagmanager.ListTriggersBranchListed, value, nil)
+}
+
+// ListTriggersDefault is the manifest default, listedDefault, which New installs.
+func ListTriggersDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return ListTriggersListedDefault()
+}
+
+// GetTriggerFound selects the found branch: Google returned the resource.
+func GetTriggerFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTriggerBranchFound, value, failure)
+}
+
+// GetTriggerProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func GetTriggerProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTriggerBranchProviderRejected, value, failure)
+}
+
+// GetTriggerInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func GetTriggerInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTriggerBranchInvalidResponse, value, failure)
+}
+
+// GetTriggerDefect selects the defect branch: The resource path or connection credentials are invalid.
+func GetTriggerDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTriggerBranchDefect, value, failure)
+}
+
+// GetTriggerRetry asks Dex to retry the getTrigger Step, after the delay when it is positive.
+func GetTriggerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetTriggerFoundDefault is the manifest mock foundDefault: One example trigger identity is returned.
+func GetTriggerFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/triggers/42","name":"Example trigger"}`)
+	return connectormock.Branch(tagmanager.GetTriggerBranchFound, value, nil)
+}
+
+// GetTriggerDefault is the manifest default, foundDefault, which New installs.
+func GetTriggerDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetTriggerFoundDefault()
+}
+
+// ListVariablesListed selects the listed branch: Google returned a resource page.
+func ListVariablesListed(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListVariablesBranchListed, value, failure)
+}
+
+// ListVariablesProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func ListVariablesProviderRejected(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListVariablesBranchProviderRejected, value, failure)
+}
+
+// ListVariablesInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func ListVariablesInvalidResponse(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListVariablesBranchInvalidResponse, value, failure)
+}
+
+// ListVariablesDefect selects the defect branch: The resource path or connection credentials are invalid.
+func ListVariablesDefect(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListVariablesBranchDefect, value, failure)
+}
+
+// ListVariablesRetry asks Dex to retry the listVariables Step, after the delay when it is positive.
+func ListVariablesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Retry[tagmanager.TagManagerResourcesPage](failure, after)
+}
+
+// ListVariablesListedDefault is the manifest mock listedDefault: One example variable identity is returned.
+func ListVariablesListedDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/variables/42","name":"Example variable"}],"nextPageToken":""}`)
+	return connectormock.Branch(tagmanager.ListVariablesBranchListed, value, nil)
+}
+
+// ListVariablesDefault is the manifest default, listedDefault, which New installs.
+func ListVariablesDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return ListVariablesListedDefault()
+}
+
+// GetVariableFound selects the found branch: Google returned the resource.
+func GetVariableFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetVariableBranchFound, value, failure)
+}
+
+// GetVariableProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func GetVariableProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetVariableBranchProviderRejected, value, failure)
+}
+
+// GetVariableInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func GetVariableInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetVariableBranchInvalidResponse, value, failure)
+}
+
+// GetVariableDefect selects the defect branch: The resource path or connection credentials are invalid.
+func GetVariableDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetVariableBranchDefect, value, failure)
+}
+
+// GetVariableRetry asks Dex to retry the getVariable Step, after the delay when it is positive.
+func GetVariableRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetVariableFoundDefault is the manifest mock foundDefault: One example variable identity is returned.
+func GetVariableFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/variables/42","name":"Example variable"}`)
+	return connectormock.Branch(tagmanager.GetVariableBranchFound, value, nil)
+}
+
+// GetVariableDefault is the manifest default, foundDefault, which New installs.
+func GetVariableDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetVariableFoundDefault()
+}
+
+// ListFoldersListed selects the listed branch: Google returned a resource page.
+func ListFoldersListed(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListFoldersBranchListed, value, failure)
+}
+
+// ListFoldersProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func ListFoldersProviderRejected(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListFoldersBranchProviderRejected, value, failure)
+}
+
+// ListFoldersInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func ListFoldersInvalidResponse(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListFoldersBranchInvalidResponse, value, failure)
+}
+
+// ListFoldersDefect selects the defect branch: The resource path or connection credentials are invalid.
+func ListFoldersDefect(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListFoldersBranchDefect, value, failure)
+}
+
+// ListFoldersRetry asks Dex to retry the listFolders Step, after the delay when it is positive.
+func ListFoldersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Retry[tagmanager.TagManagerResourcesPage](failure, after)
+}
+
+// ListFoldersListedDefault is the manifest mock listedDefault: One example folder identity is returned.
+func ListFoldersListedDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/folders/42","name":"Example folder"}],"nextPageToken":""}`)
+	return connectormock.Branch(tagmanager.ListFoldersBranchListed, value, nil)
+}
+
+// ListFoldersDefault is the manifest default, listedDefault, which New installs.
+func ListFoldersDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return ListFoldersListedDefault()
+}
+
+// GetFolderFound selects the found branch: Google returned the resource.
+func GetFolderFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetFolderBranchFound, value, failure)
+}
+
+// GetFolderProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func GetFolderProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetFolderBranchProviderRejected, value, failure)
+}
+
+// GetFolderInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func GetFolderInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetFolderBranchInvalidResponse, value, failure)
+}
+
+// GetFolderDefect selects the defect branch: The resource path or connection credentials are invalid.
+func GetFolderDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetFolderBranchDefect, value, failure)
+}
+
+// GetFolderRetry asks Dex to retry the getFolder Step, after the delay when it is positive.
+func GetFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetFolderFoundDefault is the manifest mock foundDefault: One example folder identity is returned.
+func GetFolderFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/folders/42","name":"Example folder"}`)
+	return connectormock.Branch(tagmanager.GetFolderBranchFound, value, nil)
+}
+
+// GetFolderDefault is the manifest default, foundDefault, which New installs.
+func GetFolderDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetFolderFoundDefault()
+}
+
+// ListTemplatesListed selects the listed branch: Google returned a resource page.
+func ListTemplatesListed(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListTemplatesBranchListed, value, failure)
+}
+
+// ListTemplatesProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func ListTemplatesProviderRejected(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListTemplatesBranchProviderRejected, value, failure)
+}
+
+// ListTemplatesInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func ListTemplatesInvalidResponse(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListTemplatesBranchInvalidResponse, value, failure)
+}
+
+// ListTemplatesDefect selects the defect branch: The resource path or connection credentials are invalid.
+func ListTemplatesDefect(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListTemplatesBranchDefect, value, failure)
+}
+
+// ListTemplatesRetry asks Dex to retry the listTemplates Step, after the delay when it is positive.
+func ListTemplatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Retry[tagmanager.TagManagerResourcesPage](failure, after)
+}
+
+// ListTemplatesListedDefault is the manifest mock listedDefault: One example template identity is returned.
+func ListTemplatesListedDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/1/templates/42","name":"Example template"}],"nextPageToken":""}`)
+	return connectormock.Branch(tagmanager.ListTemplatesBranchListed, value, nil)
+}
+
+// ListTemplatesDefault is the manifest default, listedDefault, which New installs.
+func ListTemplatesDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return ListTemplatesListedDefault()
+}
+
+// GetTemplateFound selects the found branch: Google returned the resource.
+func GetTemplateFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTemplateBranchFound, value, failure)
+}
+
+// GetTemplateProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func GetTemplateProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTemplateBranchProviderRejected, value, failure)
+}
+
+// GetTemplateInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func GetTemplateInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTemplateBranchInvalidResponse, value, failure)
+}
+
+// GetTemplateDefect selects the defect branch: The resource path or connection credentials are invalid.
+func GetTemplateDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetTemplateBranchDefect, value, failure)
+}
+
+// GetTemplateRetry asks Dex to retry the getTemplate Step, after the delay when it is positive.
+func GetTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetTemplateFoundDefault is the manifest mock foundDefault: One example template identity is returned.
+func GetTemplateFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/1/templates/42","name":"Example template"}`)
+	return connectormock.Branch(tagmanager.GetTemplateBranchFound, value, nil)
+}
+
+// GetTemplateDefault is the manifest default, foundDefault, which New installs.
+func GetTemplateDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetTemplateFoundDefault()
+}
+
+// ListEnvironmentsListed selects the listed branch: Google returned a resource page.
+func ListEnvironmentsListed(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListEnvironmentsBranchListed, value, failure)
+}
+
+// ListEnvironmentsProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func ListEnvironmentsProviderRejected(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListEnvironmentsBranchProviderRejected, value, failure)
+}
+
+// ListEnvironmentsInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func ListEnvironmentsInvalidResponse(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListEnvironmentsBranchInvalidResponse, value, failure)
+}
+
+// ListEnvironmentsDefect selects the defect branch: The resource path or connection credentials are invalid.
+func ListEnvironmentsDefect(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListEnvironmentsBranchDefect, value, failure)
+}
+
+// ListEnvironmentsRetry asks Dex to retry the listEnvironments Step, after the delay when it is positive.
+func ListEnvironmentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Retry[tagmanager.TagManagerResourcesPage](failure, after)
+}
+
+// ListEnvironmentsListedDefault is the manifest mock listedDefault: One example environment identity is returned.
+func ListEnvironmentsListedDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/environments/42","name":"Example environment"}],"nextPageToken":""}`)
+	return connectormock.Branch(tagmanager.ListEnvironmentsBranchListed, value, nil)
+}
+
+// ListEnvironmentsDefault is the manifest default, listedDefault, which New installs.
+func ListEnvironmentsDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return ListEnvironmentsListedDefault()
+}
+
+// GetEnvironmentFound selects the found branch: Google returned the resource.
+func GetEnvironmentFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetEnvironmentBranchFound, value, failure)
+}
+
+// GetEnvironmentProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func GetEnvironmentProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetEnvironmentBranchProviderRejected, value, failure)
+}
+
+// GetEnvironmentInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func GetEnvironmentInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetEnvironmentBranchInvalidResponse, value, failure)
+}
+
+// GetEnvironmentDefect selects the defect branch: The resource path or connection credentials are invalid.
+func GetEnvironmentDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetEnvironmentBranchDefect, value, failure)
+}
+
+// GetEnvironmentRetry asks Dex to retry the getEnvironment Step, after the delay when it is positive.
+func GetEnvironmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetEnvironmentFoundDefault is the manifest mock foundDefault: One example environment identity is returned.
+func GetEnvironmentFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/environments/42","name":"Example environment"}`)
+	return connectormock.Branch(tagmanager.GetEnvironmentBranchFound, value, nil)
+}
+
+// GetEnvironmentDefault is the manifest default, foundDefault, which New installs.
+func GetEnvironmentDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetEnvironmentFoundDefault()
+}
+
+// GetVersionFound selects the found branch: Google returned the resource.
+func GetVersionFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetVersionBranchFound, value, failure)
+}
+
+// GetVersionProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func GetVersionProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetVersionBranchProviderRejected, value, failure)
+}
+
+// GetVersionInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized JSON.
+func GetVersionInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetVersionBranchInvalidResponse, value, failure)
+}
+
+// GetVersionDefect selects the defect branch: The resource path or connection credentials are invalid.
+func GetVersionDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetVersionBranchDefect, value, failure)
+}
+
+// GetVersionRetry asks Dex to retry the getVersion Step, after the delay when it is positive.
+func GetVersionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetVersionFoundDefault is the manifest mock foundDefault: One example containerVersion identity is returned.
+func GetVersionFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/versions/42","name":"Example containerVersion"}`)
+	return connectormock.Branch(tagmanager.GetVersionBranchFound, value, nil)
+}
+
+// GetVersionDefault is the manifest default, foundDefault, which New installs.
+func GetVersionDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetVersionFoundDefault()
+}
+
+// GetAccountFound selects the found branch: Google returned the account.
+func GetAccountFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetAccountBranchFound, value, failure)
+}
+
+// GetAccountProviderRejected selects the providerRejected branch: Google definitively rejected the account lookup.
+func GetAccountProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetAccountBranchProviderRejected, value, failure)
+}
+
+// GetAccountInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized account JSON.
+func GetAccountInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetAccountBranchInvalidResponse, value, failure)
+}
+
+// GetAccountDefect selects the defect branch: The account path or connection credentials are invalid.
+func GetAccountDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetAccountBranchDefect, value, failure)
+}
+
+// GetAccountRetry asks Dex to retry the getAccount Step, after the delay when it is positive.
+func GetAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetAccountFoundDefault is the manifest mock foundDefault: One example Tag Manager account is returned.
+func GetAccountFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456","name":"Example Account"}`)
+	return connectormock.Branch(tagmanager.GetAccountBranchFound, value, nil)
+}
+
+// GetAccountDefault is the manifest default, foundDefault, which New installs.
+func GetAccountDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetAccountFoundDefault()
+}
+
+// GetContainerFound selects the found branch: Google returned the container.
+func GetContainerFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetContainerBranchFound, value, failure)
+}
+
+// GetContainerProviderRejected selects the providerRejected branch: Google definitively rejected the container lookup.
+func GetContainerProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetContainerBranchProviderRejected, value, failure)
+}
+
+// GetContainerInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized container JSON.
+func GetContainerInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetContainerBranchInvalidResponse, value, failure)
+}
+
+// GetContainerDefect selects the defect branch: The container path or connection credentials are invalid.
+func GetContainerDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetContainerBranchDefect, value, failure)
+}
+
+// GetContainerRetry asks Dex to retry the getContainer Step, after the delay when it is positive.
+func GetContainerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetContainerFoundDefault is the manifest mock foundDefault: One example container identity is returned.
+func GetContainerFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/42","name":"Example container"}`)
+	return connectormock.Branch(tagmanager.GetContainerBranchFound, value, nil)
+}
+
+// GetContainerDefault is the manifest default, foundDefault, which New installs.
+func GetContainerDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetContainerFoundDefault()
+}
+
+// ListWorkspacesListed selects the listed branch: Google returned a workspace page.
+func ListWorkspacesListed(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListWorkspacesBranchListed, value, failure)
+}
+
+// ListWorkspacesProviderRejected selects the providerRejected branch: Google definitively rejected the workspace list.
+func ListWorkspacesProviderRejected(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListWorkspacesBranchProviderRejected, value, failure)
+}
+
+// ListWorkspacesInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized workspace JSON.
+func ListWorkspacesInvalidResponse(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListWorkspacesBranchInvalidResponse, value, failure)
+}
+
+// ListWorkspacesDefect selects the defect branch: The container path, page token, or credentials are invalid.
+func ListWorkspacesDefect(value tagmanager.TagManagerResourcesPage, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Branch(tagmanager.ListWorkspacesBranchDefect, value, failure)
+}
+
+// ListWorkspacesRetry asks Dex to retry the listWorkspaces Step, after the delay when it is positive.
+func ListWorkspacesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return connectormock.Retry[tagmanager.TagManagerResourcesPage](failure, after)
+}
+
+// ListWorkspacesListedDefault is the manifest mock listedDefault: One example workspace identity is returned.
+func ListWorkspacesListedDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResourcesPage](`{"resources":[{"path":"accounts/123456/containers/987654/workspaces/42","name":"Example workspace"}],"nextPageToken":""}`)
+	return connectormock.Branch(tagmanager.ListWorkspacesBranchListed, value, nil)
+}
+
+// ListWorkspacesDefault is the manifest default, listedDefault, which New installs.
+func ListWorkspacesDefault() connectormock.Case[tagmanager.TagManagerResourcesPage] {
+	return ListWorkspacesListedDefault()
+}
+
+// GetWorkspaceFound selects the found branch: Google returned the workspace.
+func GetWorkspaceFound(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetWorkspaceBranchFound, value, failure)
+}
+
+// GetWorkspaceProviderRejected selects the providerRejected branch: Google definitively rejected the workspace lookup.
+func GetWorkspaceProviderRejected(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetWorkspaceBranchProviderRejected, value, failure)
+}
+
+// GetWorkspaceInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized workspace JSON.
+func GetWorkspaceInvalidResponse(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetWorkspaceBranchInvalidResponse, value, failure)
+}
+
+// GetWorkspaceDefect selects the defect branch: The workspace path or connection credentials are invalid.
+func GetWorkspaceDefect(value tagmanager.TagManagerResource, failure *sdkgo.Failure) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Branch(tagmanager.GetWorkspaceBranchDefect, value, failure)
+}
+
+// GetWorkspaceRetry asks Dex to retry the getWorkspace Step, after the delay when it is positive.
+func GetWorkspaceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tagmanager.TagManagerResource] {
+	return connectormock.Retry[tagmanager.TagManagerResource](failure, after)
+}
+
+// GetWorkspaceFoundDefault is the manifest mock foundDefault: One example workspace identity is returned.
+func GetWorkspaceFoundDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	value := connectormock.MustDecodeOutput[tagmanager.TagManagerResource](`{"path":"accounts/123456/containers/987654/workspaces/42","name":"Example workspace"}`)
+	return connectormock.Branch(tagmanager.GetWorkspaceBranchFound, value, nil)
+}
+
+// GetWorkspaceDefault is the manifest default, foundDefault, which New installs.
+func GetWorkspaceDefault() connectormock.Case[tagmanager.TagManagerResource] {
+	return GetWorkspaceFoundDefault()
 }
 
 // ListAccountsListed selects the listed branch: Google returned an account page.

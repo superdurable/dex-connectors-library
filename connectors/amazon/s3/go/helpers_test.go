@@ -6,7 +6,6 @@ package s3_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -103,8 +102,9 @@ func requireRetry(t *testing.T, err error, kind sdkgo.FailureKind) *sdkgo.RetryE
 // fakeDexContext is a Step-execution dex.Context without a Dex Server; every attempt shares the Step ID.
 type fakeDexContext struct {
 	context.Context
-	step    string
-	attempt int32
+	step      string
+	attempt   int32
+	heartbeat json.RawMessage
 }
 
 func newDexContext(step string) *fakeDexContext {
@@ -113,7 +113,7 @@ func newDexContext(step string) *fakeDexContext {
 
 // nextAttempt is the following attempt of the same Step execution, which shares its Call ID.
 func (context *fakeDexContext) nextAttempt() *fakeDexContext {
-	return &fakeDexContext{Context: context.Context, step: context.step, attempt: context.attempt + 1}
+	return &fakeDexContext{Context: context.Context, step: context.step, attempt: context.attempt + 1, heartbeat: context.heartbeat}
 }
 
 func (*fakeDexContext) FlowID() string                                  { return "s3-flow" }
@@ -130,9 +130,18 @@ func (*fakeDexContext) WaitForMethodFailed() bool                       { return
 func (*fakeDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*fakeDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
 func (*fakeDexContext) RecordEvent(string, any) error                   { return nil }
-func (*fakeDexContext) RecordHeartbeat(any) error                       { return nil }
-func (*fakeDexContext) GetLastHeartbeatValue(any) (bool, error) {
-	return false, errors.New("no heartbeat")
+func (context *fakeDexContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err == nil {
+		context.heartbeat = encoded
+	}
+	return err
+}
+func (context *fakeDexContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
 }
 
 var _ dex.Context = (*fakeDexContext)(nil)

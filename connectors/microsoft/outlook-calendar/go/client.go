@@ -238,6 +238,32 @@ func (client *Client) QueryFreeBusy() QueryFreeBusyOperation {
 	return QueryFreeBusyOperation{client: client}
 }
 
+// ListCalendars returns the listCalendars Query bound to this client.
+func (client *Client) ListCalendars() ListCalendarsOperation {
+	return ListCalendarsOperation{client: client}
+}
+
+// GetCalendar returns the getCalendar Query bound to this client.
+func (client *Client) GetCalendar() GetCalendarOperation { return GetCalendarOperation{client: client} }
+
+// DeleteEvent returns the deleteEvent Mutation bound to this client.
+func (client *Client) DeleteEvent() DeleteEventOperation { return DeleteEventOperation{client: client} }
+
+// CreateCalendar returns the createCalendar Mutation bound to this client.
+func (client *Client) CreateCalendar() CreateCalendarOperation {
+	return CreateCalendarOperation{client: client}
+}
+
+// UpdateCalendar returns the updateCalendar Mutation bound to this client.
+func (client *Client) UpdateCalendar() UpdateCalendarOperation {
+	return UpdateCalendarOperation{client: client}
+}
+
+// DeleteCalendar returns the deleteCalendar Mutation bound to this client.
+func (client *Client) DeleteCalendar() DeleteCalendarOperation {
+	return DeleteCalendarOperation{client: client}
+}
+
 // resolveCredentials returns the call's credentials and the Graph path of the mailbox they reach.
 // isRetryable reports a failure isTerminalCredentialError does not name, which a later attempt may clear.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (credentials Credentials, mailboxRoot string, failure *sdkgo.Failure, isRetryable bool) {
@@ -428,8 +454,9 @@ func validateNextLink(nextLink string) error {
 	if err != nil || parsed.Scheme != "https" || parsed.Host != graphHost || parsed.User != nil || parsed.Fragment != "" {
 		return errors.New("pageToken must be the nextPageToken of a previous page, an https://graph.microsoft.com URL")
 	}
-	if !strings.HasPrefix(parsed.Path, "/v1.0/") || !strings.HasSuffix(strings.ToLower(parsed.Path), "/calendarview") {
-		return errors.New("pageToken must continue a Microsoft Graph v1.0 calendarView listing")
+	if !strings.HasPrefix(parsed.Path, "/v1.0/") ||
+		(!strings.HasSuffix(strings.ToLower(parsed.Path), "/calendarview") && !strings.HasSuffix(strings.ToLower(parsed.Path), "/calendars")) {
+		return errors.New("pageToken must continue a Microsoft Graph v1.0 calendarView or calendars listing")
 	}
 	return nil
 }

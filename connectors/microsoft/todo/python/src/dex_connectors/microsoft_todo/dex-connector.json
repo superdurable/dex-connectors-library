@@ -1,6 +1,6 @@
 {
   "connectorId": "microsoft-todo",
-  "releaseTag": "connectors/microsoft/todo/go/v0.1.0",
+  "releaseTag": "connectors/microsoft/todo/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-microsoft-todo",

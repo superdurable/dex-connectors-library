@@ -23,7 +23,8 @@ import (
 func TestEventTrackUsesMockWithRealDex(t *testing.T) {
 	mock := mixpanelmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	profileFlow := NewProfileFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, profileFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -60,4 +61,13 @@ func TestEventTrackUsesMockWithRealDex(t *testing.T) {
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "member-1", calls[0].Input.DistinctID)
+	profileFlowID := "mixpanel-profile-query-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, profileFlow, profileFlowID, ProfileRequest{DistinctID: "member-1"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	profileResult, err := client.WaitForFlow(ctx, profileFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, profileResult.Status, profileResult.ErrorMessage)
+	profileCalls := mock.QueryProfiles().Calls()
+	require.Len(t, profileCalls, 1)
+	require.Equal(t, "member-1", profileCalls[0].Input.DistinctID)
 }

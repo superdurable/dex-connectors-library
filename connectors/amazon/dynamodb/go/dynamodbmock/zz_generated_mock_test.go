@@ -20,6 +20,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[dynamodb.ItemResult](`{"exists":true,"item":{"pk":{"S":"example"}}}`)
 			return err
 		}},
+		{name: "putItem/writtenDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dynamodb.ItemWriteResult](`{"applied":true}`)
+			return err
+		}},
+		{name: "updateItem/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dynamodb.ItemWriteResult](`{"applied":true}`)
+			return err
+		}},
+		{name: "deleteItem/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dynamodb.ItemWriteResult](`{"applied":true}`)
+			return err
+		}},
+		{name: "scanItems/scannedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dynamodb.ItemPage](`{"items":[{"pk":{"S":"example"}}],"count":1,"lastEvaluatedKey":{}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +48,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetItem().Definition().Operation.OperationID != "getItem" {
 		t.Errorf("getItem mock has another definition")
+	}
+	if mock.PutItem().Definition().Operation.OperationID != "putItem" {
+		t.Errorf("putItem mock has another definition")
+	}
+	if mock.UpdateItem().Definition().Operation.OperationID != "updateItem" {
+		t.Errorf("updateItem mock has another definition")
+	}
+	if mock.DeleteItem().Definition().Operation.OperationID != "deleteItem" {
+		t.Errorf("deleteItem mock has another definition")
+	}
+	if mock.ScanItems().Definition().Operation.OperationID != "scanItems" {
+		t.Errorf("scanItems mock has another definition")
 	}
 }

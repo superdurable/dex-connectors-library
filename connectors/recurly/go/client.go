@@ -6,9 +6,11 @@ package recurly
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -65,6 +67,24 @@ type providerResponse struct {
 	status     int
 	retryAfter time.Duration
 	err        error
+}
+
+func isDefiniteRecurlyRefusal(response providerResponse) bool {
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var rejection struct {
+		Error struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(response.body, &rejection) == nil &&
+		strings.TrimSpace(rejection.Error.Type) != "" && strings.TrimSpace(rejection.Error.Message) != ""
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {

@@ -40,11 +40,19 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	TrackEvent() sdkgo.Mutation[TrackEventInput, EventTracked]
+	SetAccountProperties() sdkgo.Mutation[SetAccountPropertiesInput, AccountPropertiesResult]
 	SetUserProperties() sdkgo.Mutation[SetUserPropertiesInput, UserPropertiesResult]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) TrackEvent() sdkgo.Mutation[TrackEventInput, EventTracked] {
+	return operations.client.TrackEvent()
+}
+func (operations clientOperations) SetAccountProperties() sdkgo.Mutation[SetAccountPropertiesInput, AccountPropertiesResult] {
+	return operations.client.SetAccountProperties()
+}
 func (operations clientOperations) SetUserProperties() sdkgo.Mutation[SetUserPropertiesInput, UserPropertiesResult] {
 	return operations.client.SetUserProperties()
 }
@@ -181,6 +189,148 @@ func (config Config) Validate() error {
 
 func (credentials Credentials) Validate() error {
 	return nil
+}
+
+const TrackEventBranchTracked sdkgo.BranchID = "tracked"
+const TrackEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrackEventBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const TrackEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrackEventDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trackEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrackEventBranchTracked, Description: "Heap accepted the event."},
+		{ID: TrackEventBranchProviderRejected, Description: "Heap conclusively rejected the event.", Optional: true},
+		{ID: TrackEventBranchInvalidResponse, Description: "Heap returned an oversized or unreadable confirmation.", Optional: true},
+		{ID: TrackEventBranchDefect, Description: "Local event input or app ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type TrackEventResult = sdkgo.MutationResult[EventTracked]
+
+type TrackEventStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=heap"`
+	operationID                       struct{}                                           `connector:"operationId=trackEvent"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) TrackEventInput                           `connector:"mapToOperationInput"`
+	Tracked                           sdkgo.Target[TrackEventResult]                     `connector:"branch=tracked"`
+	ProviderRejected                  sdkgo.Target[TrackEventResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[TrackEventResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[TrackEventResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EventTracked]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewTrackEventStep[IN any](config TrackEventStepConfig[IN]) sdkgo.MutationStep[IN, TrackEventInput, EventTracked] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("heap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TrackEventInput, EventTracked]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrackEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrackEventResult] {
+			branches := make([]sdkgo.BranchTarget[TrackEventResult], 0, 4)
+			if config.Tracked.HasStep() {
+				branches = append(branches, config.Tracked.BranchTarget(TrackEventBranchTracked))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrackEventBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(TrackEventBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrackEventBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetAccountPropertiesBranchAccepted sdkgo.BranchID = "accepted"
+const SetAccountPropertiesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetAccountPropertiesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SetAccountPropertiesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetAccountPropertiesDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setAccountProperties"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetAccountPropertiesBranchAccepted, Description: "Heap accepted the account properties."},
+		{ID: SetAccountPropertiesBranchProviderRejected, Description: "Heap conclusively rejected the account update.", Optional: true},
+		{ID: SetAccountPropertiesBranchInvalidResponse, Description: "Heap returned an oversized or unreadable confirmation.", Optional: true},
+		{ID: SetAccountPropertiesBranchDefect, Description: "Local account input or app ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SetAccountPropertiesResult = sdkgo.MutationResult[AccountPropertiesResult]
+
+type SetAccountPropertiesStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                      `connector:"connectorId=heap"`
+	operationID                       struct{}                                                      `connector:"operationId=setAccountProperties"`
+	StepType                          string                                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                        Connection                                                    `connector:"connection"`
+	ConnectionName                    string                                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetAccountPropertiesInput                            `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[SetAccountPropertiesResult]                      `connector:"branch=accepted"`
+	ProviderRejected                  sdkgo.Target[SetAccountPropertiesResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SetAccountPropertiesResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SetAccountPropertiesResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountPropertiesResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewSetAccountPropertiesStep[IN any](config SetAccountPropertiesStepConfig[IN]) sdkgo.MutationStep[IN, SetAccountPropertiesInput, AccountPropertiesResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("heap connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetAccountPropertiesInput, AccountPropertiesResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetAccountProperties(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetAccountPropertiesResult] {
+			branches := make([]sdkgo.BranchTarget[SetAccountPropertiesResult], 0, 4)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(SetAccountPropertiesBranchAccepted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetAccountPropertiesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SetAccountPropertiesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetAccountPropertiesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const SetUserPropertiesBranchAccepted sdkgo.BranchID = "accepted"

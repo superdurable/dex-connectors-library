@@ -11,6 +11,7 @@ spec:
   provider: apifox
   languages:
     python: {version: v0.1.0, operations: [getProjectAPISummary], triggers: []}
+    typescript: {version: v0.1.0, operations: [getProjectAPISummary], triggers: []}
   codegen:
     go:
       package: apifox

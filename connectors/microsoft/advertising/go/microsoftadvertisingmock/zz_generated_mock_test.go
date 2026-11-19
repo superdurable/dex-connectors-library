@@ -16,6 +16,82 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listAds/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdsPage](`{"ads":[{"id":"55","status":"Paused","finalUrl":"https://example.com"}]}`)
+			return err
+		}},
+		{name: "getAd/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdSummary](`{"id":"55","status":"Paused","finalUrl":"https://example.com"}`)
+			return err
+		}},
+		{name: "createResponsiveSearchAd/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdMutationResult](`{"adId":"55"}`)
+			return err
+		}},
+		{name: "updateAd/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdMutationResult](`{"adId":"55"}`)
+			return err
+		}},
+		{name: "deleteAd/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdMutationResult](`{"adId":"55"}`)
+			return err
+		}},
+		{name: "listKeywords/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordsPage](`{"keywords":[{"id":"44","text":"example shoes","matchType":"Exact","status":"Paused"}]}`)
+			return err
+		}},
+		{name: "getKeyword/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordSummary](`{"id":"44","text":"example shoes","matchType":"Exact","status":"Paused"}`)
+			return err
+		}},
+		{name: "createKeyword/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+			return err
+		}},
+		{name: "updateKeyword/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+			return err
+		}},
+		{name: "deleteKeyword/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.KeywordMutationResult](`{"keywordId":"44"}`)
+			return err
+		}},
+		{name: "listAdGroups/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupsPage](`{"adGroups":[{"id":"33","name":"Example","status":"Paused"}]}`)
+			return err
+		}},
+		{name: "getAdGroup/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupSummary](`{"id":"33","name":"Example","status":"Paused"}`)
+			return err
+		}},
+		{name: "createAdGroup/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupMutationResult](`{"adGroupId":"33"}`)
+			return err
+		}},
+		{name: "updateAdGroup/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupMutationResult](`{"adGroupId":"33"}`)
+			return err
+		}},
+		{name: "deleteAdGroup/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.AdGroupMutationResult](`{"adGroupId":"33"}`)
+			return err
+		}},
+		{name: "getCampaign/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignSummary](`{"id":"98765","name":"Sample Search","campaignType":"Search","status":"Active"}`)
+			return err
+		}},
+		{name: "createCampaign/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+			return err
+		}},
+		{name: "updateCampaign/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+			return err
+		}},
+		{name: "deleteCampaign/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignMutationResult](`{"campaignId":"98765"}`)
+			return err
+		}},
 		{name: "listCampaigns/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[microsoftadvertising.CampaignsPage](`{"campaigns":[{"id":"123456789","name":"Sample Search","campaignType":"Search","status":"Active"}]}`)
 			return err
@@ -30,6 +106,63 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListAds().Definition().Operation.OperationID != "listAds" {
+		t.Errorf("listAds mock has another definition")
+	}
+	if mock.GetAd().Definition().Operation.OperationID != "getAd" {
+		t.Errorf("getAd mock has another definition")
+	}
+	if mock.CreateResponsiveSearchAd().Definition().Operation.OperationID != "createResponsiveSearchAd" {
+		t.Errorf("createResponsiveSearchAd mock has another definition")
+	}
+	if mock.UpdateAd().Definition().Operation.OperationID != "updateAd" {
+		t.Errorf("updateAd mock has another definition")
+	}
+	if mock.DeleteAd().Definition().Operation.OperationID != "deleteAd" {
+		t.Errorf("deleteAd mock has another definition")
+	}
+	if mock.ListKeywords().Definition().Operation.OperationID != "listKeywords" {
+		t.Errorf("listKeywords mock has another definition")
+	}
+	if mock.GetKeyword().Definition().Operation.OperationID != "getKeyword" {
+		t.Errorf("getKeyword mock has another definition")
+	}
+	if mock.CreateKeyword().Definition().Operation.OperationID != "createKeyword" {
+		t.Errorf("createKeyword mock has another definition")
+	}
+	if mock.UpdateKeyword().Definition().Operation.OperationID != "updateKeyword" {
+		t.Errorf("updateKeyword mock has another definition")
+	}
+	if mock.DeleteKeyword().Definition().Operation.OperationID != "deleteKeyword" {
+		t.Errorf("deleteKeyword mock has another definition")
+	}
+	if mock.ListAdGroups().Definition().Operation.OperationID != "listAdGroups" {
+		t.Errorf("listAdGroups mock has another definition")
+	}
+	if mock.GetAdGroup().Definition().Operation.OperationID != "getAdGroup" {
+		t.Errorf("getAdGroup mock has another definition")
+	}
+	if mock.CreateAdGroup().Definition().Operation.OperationID != "createAdGroup" {
+		t.Errorf("createAdGroup mock has another definition")
+	}
+	if mock.UpdateAdGroup().Definition().Operation.OperationID != "updateAdGroup" {
+		t.Errorf("updateAdGroup mock has another definition")
+	}
+	if mock.DeleteAdGroup().Definition().Operation.OperationID != "deleteAdGroup" {
+		t.Errorf("deleteAdGroup mock has another definition")
+	}
+	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
+		t.Errorf("getCampaign mock has another definition")
+	}
+	if mock.CreateCampaign().Definition().Operation.OperationID != "createCampaign" {
+		t.Errorf("createCampaign mock has another definition")
+	}
+	if mock.UpdateCampaign().Definition().Operation.OperationID != "updateCampaign" {
+		t.Errorf("updateCampaign mock has another definition")
+	}
+	if mock.DeleteCampaign().Definition().Operation.OperationID != "deleteCampaign" {
+		t.Errorf("deleteCampaign mock has another definition")
+	}
 	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
 		t.Errorf("listCampaigns mock has another definition")
 	}

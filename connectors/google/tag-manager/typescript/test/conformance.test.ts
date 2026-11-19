@@ -8,7 +8,8 @@ import { TagManagerClient } from '../src/client.js';
 import { ListAccountsInputSchema, ListContainersInputSchema, ListTagsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/tag-manager/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/tag-manager/scenarios.json', import.meta.url))
+  .filter(scenario => ['listAccounts', 'listContainers', 'listTags'].includes(scenario.operation));
 const connection = { provider: 'google-tag-manager', name: 'google-tag-manager' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTagManager));
 

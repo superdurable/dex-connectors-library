@@ -18,6 +18,7 @@ const (
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "pinterest"
 	operationStepType = "CallListPins"
+	boardStepType     = "CallListBoards"
 )
 
 var pinsAttribute = dex.DefineAttribute[pinterest.PinsPage]("pinterest-page")
@@ -45,6 +46,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Pinterest", Explanation: "List pins available to the authorized Pinterest customer."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
+			Listed:              sdkgo.GoTo(savePins{}),
+		})),
+		dex.DefineStep(savePins{}),
+		dex.DefineStep(pinterest.NewListBoardsStep(pinterest.ListBoardsStepConfig[pinterest.ListBoardsInput]{
+			StepType: boardStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Pinterest", Explanation: "List boards available to the authorized Pinterest customer."},
+			Connection:          flow.connection,
+			MapToOperationInput: func(input pinterest.ListBoardsInput) pinterest.ListBoardsInput { return input },
 			Listed:              sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
@@ -103,17 +112,32 @@ func (startRequest) Execute(_ dex.Context, input pinterest.ListPinsInput) (*dex.
 }
 
 // dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:explanation text:"Save the Pin page before reading the account's boards."
+type savePins struct {
 	dex.StepDefaultsNoWaitFor[pinterest.ListPinsResult]
 }
 
-func (completeResult) GetStepType() string { return "CompleteListPins" }
-func (completeResult) Execute(ctx dex.Context, result pinterest.ListPinsResult) (*dex.StepDecision, error) {
+func (savePins) GetStepType() string { return "SaveListedPins" }
+func (savePins) Execute(ctx dex.Context, result pinterest.ListPinsResult) (*dex.StepDecision, error) {
 	if err := pinsAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(result.Value), nil
+	return dex.GoTo(sdkgo.StepRef[pinterest.ListBoardsInput](boardStepType), pinterest.ListBoardsInput{}), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete after the board read, retaining the Pin page as the Flow result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[pinterest.ListBoardsResult]
+}
+
+func (completeResult) GetStepType() string { return "CompleteListPins" }
+func (completeResult) Execute(ctx dex.Context, _ pinterest.ListBoardsResult) (*dex.StepDecision, error) {
+	pins, err := pinsAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(pins), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

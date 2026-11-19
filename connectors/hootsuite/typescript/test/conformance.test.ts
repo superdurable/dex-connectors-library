@@ -8,7 +8,8 @@ import { HootsuiteClient } from '../src/client.js';
 import { ListSocialProfilesInputSchema, ListScheduledPostsInputSchema, SchedulePostInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, invokeProductionMutation, loadScenarios, replay, scenarioCall, type ExchangeRecorder, type HeartbeatContext, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hootsuite/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hootsuite/scenarios.json', import.meta.url))
+  .filter(scenario => ['listSocialProfiles', 'listScheduledPosts', 'schedulePost'].includes(scenario.operation));
 const connection = { provider: 'hootsuite', name: 'hootsuite' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeHootsuite));
 

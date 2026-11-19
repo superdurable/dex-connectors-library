@@ -108,12 +108,11 @@ func (operation CaptureEventOperation) Invoke(call sdkgo.Call, input CaptureEven
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		return captureRetry(sdkgo.FailureAvailability, "PostHog capture is temporarily unavailable", retryAfter)
 	}
-	if response.StatusCode != http.StatusOK && !isDefiniteRefusalStatus(response.StatusCode) {
-		// The event uuid deduplicates a resend, so an unknown answer retries.
-		return captureRetry(sdkgo.FailureAvailability, "PostHog answered capture with HTTP "+strconv.Itoa(response.StatusCode)+", so its outcome is unknown", retryAfter)
-	}
 	if response.StatusCode != http.StatusOK {
-		return captureFailure(CaptureEventBranchProviderRejected, posthogRejectionKind(response.StatusCode), "PostHog rejected capture with HTTP "+strconv.Itoa(response.StatusCode))
+		if isDefiniteCaptureRefusal(response, operation.client.maxResponseBytes) {
+			return captureFailure(CaptureEventBranchProviderRejected, posthogRejectionKind(response.StatusCode), "PostHog rejected capture with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return captureRetry(sdkgo.FailureAvailability, "PostHog capture outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

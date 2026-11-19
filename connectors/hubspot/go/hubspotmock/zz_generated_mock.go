@@ -22,6 +22,8 @@ type Mock struct {
 	getObject     *connectormock.Query[hubspot.GetObjectInput, hubspot.CRMObject]
 	upsertObject  *connectormock.Mutation[hubspot.UpsertObjectInput, hubspot.UpsertedObject]
 	updateObject  *connectormock.Mutation[hubspot.UpdateObjectInput, hubspot.CRMObject]
+	createObject  *connectormock.Mutation[hubspot.CreateObjectInput, hubspot.CRMObject]
+	deleteObject  *connectormock.Mutation[hubspot.DeleteObjectInput, hubspot.DeletedObject]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,11 +35,15 @@ func New(t testing.TB, connectionName string) *Mock {
 		getObject:     connectormock.NewQuery[hubspot.GetObjectInput, hubspot.CRMObject](t, hubspot.GetObjectDefinition),
 		upsertObject:  connectormock.NewMutation[hubspot.UpsertObjectInput, hubspot.UpsertedObject](t, hubspot.UpsertObjectDefinition),
 		updateObject:  connectormock.NewMutation[hubspot.UpdateObjectInput, hubspot.CRMObject](t, hubspot.UpdateObjectDefinition),
+		createObject:  connectormock.NewMutation[hubspot.CreateObjectInput, hubspot.CRMObject](t, hubspot.CreateObjectDefinition),
+		deleteObject:  connectormock.NewMutation[hubspot.DeleteObjectInput, hubspot.DeletedObject](t, hubspot.DeleteObjectDefinition),
 	}
 	mock.searchObjects.Default(SearchObjectsDefault())
 	mock.getObject.Default(GetObjectDefault())
 	mock.upsertObject.Default(UpsertObjectDefault())
 	mock.updateObject.Default(UpdateObjectDefault())
+	mock.createObject.Default(CreateObjectDefault())
+	mock.deleteObject.Default(DeleteObjectDefault())
 	connection, err := hubspot.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "hubspot", Name: connectionName})
 	if err != nil {
 		t.Fatalf("hubspot mock connection: %v", err)
@@ -69,6 +75,16 @@ func (mock *Mock) UpdateObject() *connectormock.Mutation[hubspot.UpdateObjectInp
 	return mock.updateObject
 }
 
+// CreateObject returns the createObject script.
+func (mock *Mock) CreateObject() *connectormock.Mutation[hubspot.CreateObjectInput, hubspot.CRMObject] {
+	return mock.createObject
+}
+
+// DeleteObject returns the deleteObject script.
+func (mock *Mock) DeleteObject() *connectormock.Mutation[hubspot.DeleteObjectInput, hubspot.DeletedObject] {
+	return mock.deleteObject
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchObjects() sdkgo.Query[hubspot.SearchObjectsInput, hubspot.ObjectPage] {
@@ -82,6 +98,12 @@ func (operations mockOperations) UpsertObject() sdkgo.Mutation[hubspot.UpsertObj
 }
 func (operations mockOperations) UpdateObject() sdkgo.Mutation[hubspot.UpdateObjectInput, hubspot.CRMObject] {
 	return operations.mock.updateObject
+}
+func (operations mockOperations) CreateObject() sdkgo.Mutation[hubspot.CreateObjectInput, hubspot.CRMObject] {
+	return operations.mock.createObject
+}
+func (operations mockOperations) DeleteObject() sdkgo.Mutation[hubspot.DeleteObjectInput, hubspot.DeletedObject] {
+	return operations.mock.deleteObject
 }
 
 // SearchObjectsSearched selects the searched branch: HubSpot returned one bounded page of matching records; the page may be empty.
@@ -296,3 +318,73 @@ func UpdateObjectUpdateRejected() connectormock.Case[hubspot.CRMObject] {
 
 // UpdateObjectDefault is the manifest default, advancedDeal, which New installs.
 func UpdateObjectDefault() connectormock.Case[hubspot.CRMObject] { return UpdateObjectAdvancedDeal() }
+
+// CreateObjectCreated selects the created branch: HubSpot created the CRM record.
+func CreateObjectCreated(value hubspot.CRMObject, failure *sdkgo.Failure) connectormock.Case[hubspot.CRMObject] {
+	return connectormock.Branch(hubspot.CreateObjectBranchCreated, value, failure)
+}
+
+// CreateObjectConflict selects the conflict branch: A unique property conflicts with an existing record.
+func CreateObjectConflict(value hubspot.CRMObject, failure *sdkgo.Failure) connectormock.Case[hubspot.CRMObject] {
+	return connectormock.Branch(hubspot.CreateObjectBranchConflict, value, failure)
+}
+
+// CreateObjectProviderRejected selects the providerRejected branch: HubSpot conclusively rejected the create.
+func CreateObjectProviderRejected(value hubspot.CRMObject, failure *sdkgo.Failure) connectormock.Case[hubspot.CRMObject] {
+	return connectormock.Branch(hubspot.CreateObjectBranchProviderRejected, value, failure)
+}
+
+// CreateObjectDefect selects the defect branch: The local input or connection is invalid.
+func CreateObjectDefect(value hubspot.CRMObject, failure *sdkgo.Failure) connectormock.Case[hubspot.CRMObject] {
+	return connectormock.Branch(hubspot.CreateObjectBranchDefect, value, failure)
+}
+
+// CreateObjectUncertain returns an uncertain createObject outcome.
+func CreateObjectUncertain(value hubspot.CRMObject, failure sdkgo.Failure) connectormock.Case[hubspot.CRMObject] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateObjectRetry asks Dex to retry the createObject Step, after the delay when it is positive.
+func CreateObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hubspot.CRMObject] {
+	return connectormock.Retry[hubspot.CRMObject](failure, after)
+}
+
+// CreateObjectCreatedDeal is the manifest mock createdDeal: HubSpot created a new sales deal.
+func CreateObjectCreatedDeal() connectormock.Case[hubspot.CRMObject] {
+	value := connectormock.MustDecodeOutput[hubspot.CRMObject](`{"objectType":"deals","id":"9100","properties":{"dealname":"New consulting project","dealstage":"appointmentscheduled","pipeline":"default"},"createdAt":"2026-10-25T10:05:00Z","updatedAt":"2026-10-25T10:05:00Z"}`)
+	return connectormock.Branch(hubspot.CreateObjectBranchCreated, value, nil)
+}
+
+// CreateObjectDefault is the manifest default, createdDeal, which New installs.
+func CreateObjectDefault() connectormock.Case[hubspot.CRMObject] { return CreateObjectCreatedDeal() }
+
+// DeleteObjectDeleted selects the deleted branch: The record is archived or was already absent.
+func DeleteObjectDeleted(value hubspot.DeletedObject, failure *sdkgo.Failure) connectormock.Case[hubspot.DeletedObject] {
+	return connectormock.Branch(hubspot.DeleteObjectBranchDeleted, value, failure)
+}
+
+// DeleteObjectProviderRejected selects the providerRejected branch: HubSpot conclusively rejected the archive.
+func DeleteObjectProviderRejected(value hubspot.DeletedObject, failure *sdkgo.Failure) connectormock.Case[hubspot.DeletedObject] {
+	return connectormock.Branch(hubspot.DeleteObjectBranchProviderRejected, value, failure)
+}
+
+// DeleteObjectDefect selects the defect branch: The local input or connection is invalid.
+func DeleteObjectDefect(value hubspot.DeletedObject, failure *sdkgo.Failure) connectormock.Case[hubspot.DeletedObject] {
+	return connectormock.Branch(hubspot.DeleteObjectBranchDefect, value, failure)
+}
+
+// DeleteObjectRetry asks Dex to retry the deleteObject Step, after the delay when it is positive.
+func DeleteObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hubspot.DeletedObject] {
+	return connectormock.Retry[hubspot.DeletedObject](failure, after)
+}
+
+// DeleteObjectArchivedDeal is the manifest mock archivedDeal: HubSpot archived the selected deal.
+func DeleteObjectArchivedDeal() connectormock.Case[hubspot.DeletedObject] {
+	value := connectormock.MustDecodeOutput[hubspot.DeletedObject](`{"objectType":"deals","objectId":"9100"}`)
+	return connectormock.Branch(hubspot.DeleteObjectBranchDeleted, value, nil)
+}
+
+// DeleteObjectDefault is the manifest default, archivedDeal, which New installs.
+func DeleteObjectDefault() connectormock.Case[hubspot.DeletedObject] {
+	return DeleteObjectArchivedDeal()
+}

@@ -5,6 +5,7 @@
 package dynamics365sales
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -109,6 +110,12 @@ type providerResponse struct {
 }
 
 func (client *Client) queryContacts(call sdkgo.Call, emailAddress string) providerResponse {
+	filter := "emailaddress1 eq '" + strings.ReplaceAll(emailAddress, "'", "''") + "'"
+	query := url.Values{"$select": {"contactid,fullname,emailaddress1"}, "$filter": {filter}, "$top": {"2"}}
+	return client.requestDataverse(call, http.MethodGet, "/api/data/v9.2/contacts?"+query.Encode(), nil, "", nil)
+}
+
+func (client *Client) requestDataverse(call sdkgo.Call, method, path string, body []byte, contentType string, headers http.Header) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -134,9 +141,7 @@ func (client *Client) queryContacts(call sdkgo.Call, emailAddress string) provid
 	if json.Unmarshal(tokenResponse.body, &token) != nil || token.TokenType != "Bearer" || !providerhttp.IsHeaderSafeCredential(token.AccessToken) {
 		return providerResponse{status: http.StatusOK, err: errInvalidToken}
 	}
-	filter := "emailaddress1 eq '" + strings.ReplaceAll(emailAddress, "'", "''") + "'"
-	query := url.Values{"$select": {"contactid,fullname,emailaddress1"}, "$filter": {filter}, "$top": {"2"}}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.environmentURL+"/api/data/v9.2/contacts?"+query.Encode(), nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.environmentURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
@@ -144,6 +149,14 @@ func (client *Client) queryContacts(call sdkgo.Call, emailAddress string) provid
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("OData-Version", "4.0")
 	request.Header.Set("OData-MaxVersion", "4.0")
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+	for name, values := range headers {
+		for _, value := range values {
+			request.Header.Add(name, value)
+		}
+	}
 	return client.send(request)
 }
 

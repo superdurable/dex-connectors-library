@@ -18,7 +18,9 @@ import (
 // Mock is a scripted plaid connection. Script each operation through its accessor.
 type Mock struct {
 	connection  plaid.Connection
+	getItem     *connectormock.Query[plaid.GetItemInput, plaid.ItemSummary]
 	getAccounts *connectormock.Query[plaid.GetAccountsInput, plaid.AccountsSnapshot]
+	removeItem  *connectormock.Mutation[plaid.RemoveItemInput, plaid.ItemRemoval]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getItem:     connectormock.NewQuery[plaid.GetItemInput, plaid.ItemSummary](t, plaid.GetItemDefinition),
 		getAccounts: connectormock.NewQuery[plaid.GetAccountsInput, plaid.AccountsSnapshot](t, plaid.GetAccountsDefinition),
+		removeItem:  connectormock.NewMutation[plaid.RemoveItemInput, plaid.ItemRemoval](t, plaid.RemoveItemDefinition),
 	}
+	mock.getItem.Default(GetItemDefault())
 	mock.getAccounts.Default(GetAccountsDefault())
+	mock.removeItem.Default(RemoveItemDefault())
 	connection, err := plaid.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "plaid", Name: connectionName})
 	if err != nil {
 		t.Fatalf("plaid mock connection: %v", err)
@@ -40,16 +46,71 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() plaid.Connection { return mock.connection }
 
+// GetItem returns the getItem script.
+func (mock *Mock) GetItem() *connectormock.Query[plaid.GetItemInput, plaid.ItemSummary] {
+	return mock.getItem
+}
+
 // GetAccounts returns the getAccounts script.
 func (mock *Mock) GetAccounts() *connectormock.Query[plaid.GetAccountsInput, plaid.AccountsSnapshot] {
 	return mock.getAccounts
 }
 
+// RemoveItem returns the removeItem script.
+func (mock *Mock) RemoveItem() *connectormock.Mutation[plaid.RemoveItemInput, plaid.ItemRemoval] {
+	return mock.removeItem
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetItem() sdkgo.Query[plaid.GetItemInput, plaid.ItemSummary] {
+	return operations.mock.getItem
+}
 func (operations mockOperations) GetAccounts() sdkgo.Query[plaid.GetAccountsInput, plaid.AccountsSnapshot] {
 	return operations.mock.getAccounts
 }
+func (operations mockOperations) RemoveItem() sdkgo.Mutation[plaid.RemoveItemInput, plaid.ItemRemoval] {
+	return operations.mock.removeItem
+}
+
+// GetItemFound selects the found branch: Plaid returned the linked Item.
+func GetItemFound(value plaid.ItemSummary, failure *sdkgo.Failure) connectormock.Case[plaid.ItemSummary] {
+	return connectormock.Branch(plaid.GetItemBranchFound, value, failure)
+}
+
+// GetItemNotFound selects the notFound branch: Plaid did not expose the Item.
+func GetItemNotFound(value plaid.ItemSummary, failure *sdkgo.Failure) connectormock.Case[plaid.ItemSummary] {
+	return connectormock.Branch(plaid.GetItemBranchNotFound, value, failure)
+}
+
+// GetItemProviderRejected selects the providerRejected branch: Plaid conclusively rejected the lookup.
+func GetItemProviderRejected(value plaid.ItemSummary, failure *sdkgo.Failure) connectormock.Case[plaid.ItemSummary] {
+	return connectormock.Branch(plaid.GetItemBranchProviderRejected, value, failure)
+}
+
+// GetItemInvalidResponse selects the invalidResponse branch: Plaid returned malformed or oversized Item JSON.
+func GetItemInvalidResponse(value plaid.ItemSummary, failure *sdkgo.Failure) connectormock.Case[plaid.ItemSummary] {
+	return connectormock.Branch(plaid.GetItemBranchInvalidResponse, value, failure)
+}
+
+// GetItemDefect selects the defect branch: Connection credentials are unavailable or invalid.
+func GetItemDefect(value plaid.ItemSummary, failure *sdkgo.Failure) connectormock.Case[plaid.ItemSummary] {
+	return connectormock.Branch(plaid.GetItemBranchDefect, value, failure)
+}
+
+// GetItemRetry asks Dex to retry the getItem Step, after the delay when it is positive.
+func GetItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[plaid.ItemSummary] {
+	return connectormock.Retry[plaid.ItemSummary](failure, after)
+}
+
+// GetItemFoundDefault is the manifest mock foundDefault: One sample Item is linked.
+func GetItemFoundDefault() connectormock.Case[plaid.ItemSummary] {
+	value := connectormock.MustDecodeOutput[plaid.ItemSummary](`{"itemId":"item_123456","institutionId":"ins_109508","products":["auth"]}`)
+	return connectormock.Branch(plaid.GetItemBranchFound, value, nil)
+}
+
+// GetItemDefault is the manifest default, foundDefault, which New installs.
+func GetItemDefault() connectormock.Case[plaid.ItemSummary] { return GetItemFoundDefault() }
 
 // GetAccountsFound selects the found branch: Plaid returned the Item's accounts.
 func GetAccountsFound(value plaid.AccountsSnapshot, failure *sdkgo.Failure) connectormock.Case[plaid.AccountsSnapshot] {
@@ -91,3 +152,32 @@ func GetAccountsFoundDefault() connectormock.Case[plaid.AccountsSnapshot] {
 func GetAccountsDefault() connectormock.Case[plaid.AccountsSnapshot] {
 	return GetAccountsFoundDefault()
 }
+
+// RemoveItemRemoved selects the removed branch: Plaid removed the Item or confirmed it was already absent.
+func RemoveItemRemoved(value plaid.ItemRemoval, failure *sdkgo.Failure) connectormock.Case[plaid.ItemRemoval] {
+	return connectormock.Branch(plaid.RemoveItemBranchRemoved, value, failure)
+}
+
+// RemoveItemProviderRejected selects the providerRejected branch: Plaid conclusively rejected the removal.
+func RemoveItemProviderRejected(value plaid.ItemRemoval, failure *sdkgo.Failure) connectormock.Case[plaid.ItemRemoval] {
+	return connectormock.Branch(plaid.RemoveItemBranchProviderRejected, value, failure)
+}
+
+// RemoveItemDefect selects the defect branch: Connection credentials are unavailable or invalid.
+func RemoveItemDefect(value plaid.ItemRemoval, failure *sdkgo.Failure) connectormock.Case[plaid.ItemRemoval] {
+	return connectormock.Branch(plaid.RemoveItemBranchDefect, value, failure)
+}
+
+// RemoveItemRetry asks Dex to retry the removeItem Step, after the delay when it is positive.
+func RemoveItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[plaid.ItemRemoval] {
+	return connectormock.Retry[plaid.ItemRemoval](failure, after)
+}
+
+// RemoveItemRemovedDefault is the manifest mock removedDefault: The linked Item is disconnected.
+func RemoveItemRemovedDefault() connectormock.Case[plaid.ItemRemoval] {
+	value := connectormock.MustDecodeOutput[plaid.ItemRemoval](`{"removed":true}`)
+	return connectormock.Branch(plaid.RemoveItemBranchRemoved, value, nil)
+}
+
+// RemoveItemDefault is the manifest default, removedDefault, which New installs.
+func RemoveItemDefault() connectormock.Case[plaid.ItemRemoval] { return RemoveItemRemovedDefault() }

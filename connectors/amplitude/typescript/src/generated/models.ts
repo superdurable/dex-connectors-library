@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Dashboard REST API HTTPS root. Blank uses the displayed US-region default; override with https://analytics.eu.amplitude.com for EU data residency or a verified regional host. Do not include path, query, or credentials. */
   baseUrl?: string;
-  /** Maximum duration of one user search as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
+  /** Maximum duration of one Amplitude API request as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete user-search JSON response in bytes as a positive integer. Blank uses the displayed default; increase if a project returns many matches. */
+  /** Maximum complete Amplitude API response in bytes as a positive integer. Blank uses the displayed default; increase if a project returns many matches. */
   maxResponseBytes?: number;
 }
 

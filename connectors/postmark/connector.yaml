@@ -6,7 +6,7 @@ metadata:
   description: Read and act through the Postmark public API.
   company: Postmark
   categories: [communication, developer-tools]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: postmark
   languages:
@@ -142,3 +142,648 @@ spec:
         messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
         subject: Welcome
         status: Sent
+  - name: sendEmail
+    goName: SendEmail
+    inputType: SendEmailInput
+    outputType: SentEmail
+    kind: mutation
+    description: Send one transactional email with a durable dispatch fence and call-specific read-back marker.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: sent
+      goName: Sent
+      description: Postmark accepted the email.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark definitively refused the email.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: The capped send could not be confirmed from Postmark activity.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local email input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      dispatchFence: true
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: sendEmailDefault
+      branch: sent
+      description: Postmark accepted one transactional email.
+      default: true
+      output:
+        messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
+        to: recipient@example.com
+  - name: listTemplates
+    goName: ListTemplates
+    inputType: ListTemplatesInput
+    outputType: TemplatePage
+    kind: query
+    description: ListTemplates through the Postmark server-token Templates API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: ListTemplates listed outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: ListTemplates providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: ListTemplates invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: ListTemplates defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listTemplatesDefault
+      branch: listed
+      description: Representative Postmark template response.
+      default: true
+      output:
+        totalCount: 1
+        templates:
+        - templateId: 1234
+          name: Welcome
+          alias: welcome-v1
+          active: true
+  - name: getTemplate
+    goName: GetTemplate
+    inputType: GetTemplateInput
+    outputType: Template
+    kind: query
+    description: GetTemplate through the Postmark server-token Templates API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: GetTemplate found outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: GetTemplate providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: GetTemplate invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: GetTemplate defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getTemplateDefault
+      branch: found
+      description: Representative Postmark template response.
+      default: true
+      output:
+        templateId: 1234
+        name: Welcome
+        alias: welcome-v1
+        active: true
+  - name: createTemplate
+    goName: CreateTemplate
+    inputType: CreateTemplateInput
+    outputType: Template
+    kind: mutation
+    description: CreateTemplate through the Postmark server-token Templates API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: created
+      goName: Created
+      description: CreateTemplate created outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: CreateTemplate providerRejected outcome.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: CreateTemplate uncertain outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: CreateTemplate defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      repeatOnUnknown: limited
+      dispatchFence: true
+      maxSends: 3
+    mocks:
+    - name: createTemplateDefault
+      branch: created
+      description: Representative Postmark template response.
+      default: true
+      output:
+        templateId: 1234
+        name: Welcome
+        alias: dex-1234
+        active: true
+  - name: updateTemplate
+    goName: UpdateTemplate
+    inputType: UpdateTemplateInput
+    outputType: Template
+    kind: mutation
+    description: UpdateTemplate through the Postmark server-token Templates API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: updated
+      goName: Updated
+      description: UpdateTemplate updated outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: UpdateTemplate providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: UpdateTemplate invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: UpdateTemplate defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: updateTemplateDefault
+      branch: updated
+      description: Representative Postmark template response.
+      default: true
+      output:
+        templateId: 1234
+        name: Welcome revised
+        alias: welcome-v1
+        active: true
+  - name: deleteTemplate
+    goName: DeleteTemplate
+    inputType: DeleteTemplateInput
+    outputType: DeletedTemplate
+    kind: mutation
+    description: DeleteTemplate through the Postmark server-token Templates API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: deleted
+      goName: Deleted
+      description: DeleteTemplate deleted outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: DeleteTemplate providerRejected outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: DeleteTemplate defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: deleteTemplateDefault
+      branch: deleted
+      description: Representative Postmark template response.
+      default: true
+      output:
+        deleted: true
+  - name: listBounces
+    goName: ListBounces
+    inputType: ListBouncesInput
+    outputType: BouncePage
+    kind: query
+    description: ListBounces through the Postmark server-token Bounce API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Postmark returned the requested bounce outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listBouncesDefault
+      branch: listed
+      description: Representative Postmark bounce response.
+      default: true
+      output:
+        totalCount: 1
+        bounces:
+        - id: 692560173
+          type: HardBounce
+          email: recipient@example.com
+          inactive: true
+          canActivate: true
+  - name: getBounce
+    goName: GetBounce
+    inputType: GetBounceInput
+    outputType: Bounce
+    kind: query
+    description: GetBounce through the Postmark server-token Bounce API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Postmark returned the requested bounce outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getBounceDefault
+      branch: found
+      description: Representative Postmark bounce response.
+      default: true
+      output:
+        id: 692560173
+        type: HardBounce
+        email: recipient@example.com
+        inactive: true
+        canActivate: true
+  - name: activateBounce
+    goName: ActivateBounce
+    inputType: ActivateBounceInput
+    outputType: Bounce
+    kind: mutation
+    description: ActivateBounce through the Postmark server-token Bounce API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: activated
+      goName: Activated
+      description: Postmark returned the requested bounce outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: activateBounceDefault
+      branch: activated
+      description: Representative Postmark bounce response.
+      default: true
+      output:
+        id: 692560173
+        type: HardBounce
+        email: recipient@example.com
+        inactive: false
+        canActivate: true
+  - name: listSuppressions
+    goName: ListSuppressions
+    inputType: ListSuppressionsInput
+    outputType: SuppressionPage
+    kind: query
+    description: ListSuppressions through the Postmark server-token Suppressions API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Postmark confirmed the suppression outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listSuppressionsDefault
+      branch: listed
+      description: Representative Postmark suppression response.
+      default: true
+      output:
+        suppressions:
+        - emailAddress: recipient@example.com
+          suppressionReason: ManualSuppression
+          origin: Customer
+  - name: createSuppression
+    goName: CreateSuppression
+    inputType: CreateSuppressionInput
+    outputType: SuppressionAction
+    kind: mutation
+    description: CreateSuppression through the Postmark server-token Suppressions API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: suppressed
+      goName: Suppressed
+      description: Postmark confirmed the suppression outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: createSuppressionDefault
+      branch: suppressed
+      description: Representative Postmark suppression response.
+      default: true
+      output:
+        emailAddress: recipient@example.com
+        status: Suppressed
+  - name: deleteSuppression
+    goName: DeleteSuppression
+    inputType: DeleteSuppressionInput
+    outputType: SuppressionAction
+    kind: mutation
+    description: DeleteSuppression through the Postmark server-token Suppressions API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: deleted
+      goName: Deleted
+      description: Postmark confirmed the suppression outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: deleteSuppressionDefault
+      branch: deleted
+      description: Representative Postmark suppression response.
+      default: true
+      output:
+        emailAddress: recipient@example.com
+        status: Deleted
+  - name: sendEmailWithTemplate
+    goName: SendEmailWithTemplate
+    inputType: SendEmailWithTemplateInput
+    outputType: SentEmail
+    kind: mutation
+    description: Send one transactional email using a Postmark template alias and model.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: sent
+      goName: Sent
+      description: Postmark accepted the templated email.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark definitively refused the templated email.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: The capped send could not be confirmed from outbound activity.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local template input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      dispatchFence: true
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: sendEmailWithTemplateDefault
+      branch: sent
+      description: Postmark accepted one templated email.
+      default: true
+      output:
+        messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
+        to: recipient@example.com
+  - name: listInboundMessages
+    goName: ListInboundMessages
+    inputType: ListInboundMessagesInput
+    outputType: InboundMessagePage
+    kind: query
+    description: ListInboundMessages through the Postmark server-token Messages API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Postmark returned the requested inbound outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listInboundMessagesDefault
+      branch: listed
+      description: Representative Postmark inbound response.
+      default: true
+      output:
+        totalCount: 1
+        inboundMessages:
+        - messageId: cc5727a0-ea30-4e79-baea-aa43c9628ac4
+          from: sender@example.com
+          to: inbox@example.com
+          subject: Request
+          status: Processed
+  - name: getInboundMessageDetails
+    goName: GetInboundMessageDetails
+    inputType: GetInboundMessageDetailsInput
+    outputType: InboundMessage
+    kind: query
+    description: GetInboundMessageDetails through the Postmark server-token Messages API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Postmark returned the requested inbound outcome.
+    - id: notFound
+      goName: NotFound
+      description: Postmark notFound outcome.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getInboundMessageDetailsDefault
+      branch: found
+      description: Representative Postmark inbound response.
+      default: true
+      output:
+        messageId: cc5727a0-ea30-4e79-baea-aa43c9628ac4
+        from: sender@example.com
+        to: inbox@example.com
+        subject: Request
+        status: Processed
+  - name: bypassInboundMessage
+    goName: BypassInboundMessage
+    inputType: InboundMessageActionInput
+    outputType: InboundMessageAction
+    kind: mutation
+    description: BypassInboundMessage through the Postmark server-token Messages API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: bypassed
+      goName: Bypassed
+      description: Postmark returned the requested inbound outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: Postmark uncertain outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      dispatchFence: true
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: bypassInboundMessageDefault
+      branch: bypassed
+      description: Representative Postmark inbound response.
+      default: true
+      output:
+        messageId: cc5727a0-ea30-4e79-baea-aa43c9628ac4
+        accepted: true
+  - name: retryInboundMessage
+    goName: RetryInboundMessage
+    inputType: InboundMessageActionInput
+    outputType: InboundMessageAction
+    kind: mutation
+    description: RetryInboundMessage through the Postmark server-token Messages API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: retried
+      goName: Retried
+      description: Postmark returned the requested inbound outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: Postmark uncertain outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      dispatchFence: true
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: retryInboundMessageDefault
+      branch: retried
+      description: Representative Postmark inbound response.
+      default: true
+      output:
+        messageId: cc5727a0-ea30-4e79-baea-aa43c9628ac4
+        accepted: true

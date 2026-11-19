@@ -24,7 +24,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, _ string,
 	client, err := New(Config{}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listTaskLists": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTaskLists(), reference),
-		"listTasks":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTasks(), reference),
+		"listTaskLists":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTaskLists(), reference),
+		"listTasks":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTasks(), reference),
+		"getTaskList":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTaskList(), reference),
+		"getTask":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTask(), reference),
+		"listLinkedResources": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLinkedResources(), reference),
+		"getLinkedResource":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLinkedResource(), reference),
 	}}
 }

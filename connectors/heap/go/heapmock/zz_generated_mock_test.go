@@ -16,6 +16,11 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "trackEvent/trackedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[heap.EventTracked](`{"accepted":true}`); return err }},
+		{name: "setAccountProperties/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[heap.AccountPropertiesResult](`{"accepted":true}`)
+			return err
+		}},
 		{name: "setUserProperties/acceptedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[heap.UserPropertiesResult](`{"accepted":true}`)
 			return err
@@ -30,6 +35,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.TrackEvent().Definition().Operation.OperationID != "trackEvent" {
+		t.Errorf("trackEvent mock has another definition")
+	}
+	if mock.SetAccountProperties().Definition().Operation.OperationID != "setAccountProperties" {
+		t.Errorf("setAccountProperties mock has another definition")
+	}
 	if mock.SetUserProperties().Definition().Operation.OperationID != "setUserProperties" {
 		t.Errorf("setUserProperties mock has another definition")
 	}

@@ -23,6 +23,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) { context.lastHeartbeat = raw })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = prior + int32(attempt) },
 		actions: map[string]conformanceOperationInvocation{
+			"listMessages":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListMessages(), gmailConnection),
+			"listThreads":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListThreads(), gmailConnection),
+			"getThread":      newConformanceQueryInvocation(t, scenario.Input, context, client.GetThread(), gmailConnection),
+			"listLabels":     newConformanceQueryInvocation(t, scenario.Input, context, client.ListLabels(), gmailConnection),
+			"getLabel":       newConformanceQueryInvocation(t, scenario.Input, context, client.GetLabel(), gmailConnection),
 			"getMessage":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetMessage(), gmailConnection),
 			"sendMessage":    newConformanceMutationInvocation(t, scenario.Input, context, client.SendMessage(), gmailConnection, scenario.CallID),
 			"replyToMessage": newConformanceMutationInvocation(t, scenario.Input, context, client.ReplyToMessage(), gmailConnection, scenario.CallID),

@@ -190,7 +190,7 @@ func runQuery[T any](client *Client, call sdkgo.Call, operation, path string, su
 		return sdkgo.NewQueryRetry[T](newFailure(operation, sdkgo.FailureRateLimit, "provider rate limited the request"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewQueryRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
-	case operation == "getMessageDetails" && response.StatusCode == http.StatusUnprocessableEntity:
+	case (operation == "getMessageDetails" || operation == "getInboundMessageDetails") && response.StatusCode == http.StatusUnprocessableEntity:
 		if response.Header.Get("X-PM-ApiErrorCode") == "701" {
 			return queryFailure[T](operation, notFound, sdkgo.FailureNotFound, "Postmark message was not found")
 		}
@@ -249,20 +249,26 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 		}
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is processing the same request"), 0)
 	case response.StatusCode == http.StatusNotFound && notFound != "":
-		return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
+		if isDefinitePostmarkRefusal(response, client.maxResponseBytes) {
+			return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
+		}
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureTransport, "provider write outcome is unknown"), 0)
 	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted:
-		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
+		if isDefinitePostmarkRefusal(response, client.maxResponseBytes) {
+			return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureTransport, "provider write outcome is unknown"), 0)
 	}
 	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return mutationFailure[T](operation, invalid, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider response was interrupted"), 0)
 	}
 	value, err := decode(content)
 	if err != nil {
-		return mutationFailure[T](operation, invalid, sdkgo.FailureProtocol, "provider response is incomplete or malformed")
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureProtocol, "provider response is incomplete or malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
 }
@@ -279,4 +285,23 @@ func mutationFailure[T any](operation string, branch sdkgo.BranchID, kind sdkgo.
 }
 func newFailure(operation string, kind sdkgo.FailureKind, message string) sdkgo.Failure {
 	return sdkgo.Failure{Kind: kind, Provider: "postmark", Operation: operation, Message: message}
+}
+
+func isDefinitePostmarkRefusal(response *http.Response, maximumBytes int64) bool {
+	switch response.StatusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, maximumBytes)
+	if err != nil {
+		return false
+	}
+	var rejection struct {
+		ErrorCode int    `json:"ErrorCode"`
+		Message   string `json:"Message"`
+	}
+	return json.Unmarshal(body, &rejection) == nil && rejection.ErrorCode != 0 && strings.TrimSpace(rejection.Message) != ""
 }

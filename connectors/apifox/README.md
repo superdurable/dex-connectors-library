@@ -10,3 +10,9 @@ The connector fixes the documented API version to `2024-03-28`. No live account 
 
 The [Python package](python/README.md) implements `getProjectAPISummary` with
 a runnable Dex Flow and Go-recorded provider conformance scenarios.
+
+## TypeScript
+
+The [TypeScript package](typescript/README.md) implements
+`getProjectAPISummary` with a runnable Dex Flow and Go-recorded provider
+conformance scenarios.
