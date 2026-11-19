@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: kokoniworld
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-kokoniworld", operations: [listModels], triggers: []}
   codegen:
     go:
       package: kokoniworld
