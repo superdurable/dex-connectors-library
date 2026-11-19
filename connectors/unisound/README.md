@@ -7,3 +7,5 @@ This connector lists predefined text-to-speech voices from [Unisound MaaS](https
 Sign in at [Unisound MaaS](https://maas.unisound.com/docs/guide/quickstart), complete developer verification, then open 控制台 > 按量计费 > API Key 管理 > 创建 API Key. Copy the secret API Key into Dex Web Connections. The U Plan Key is distinct from the on-demand Key; use one authorized for voice catalog access. Leave timeout and maximum response size blank to use the displayed defaults.
 
 Run the [example Flow](go/examples/list-system-voices/) with `{}` input. The checked-in mock returns one system voice. Live Unisound authorization and catalog behavior require a user-provided Key and have not been verified here.
+
+Python v0.1.0: [package and runnable example](python/README.md).
