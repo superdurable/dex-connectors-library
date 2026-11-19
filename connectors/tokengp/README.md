@@ -9,3 +9,7 @@ Sign in to [TokenGP Keys](https://www.tokengp.com/keys), choose **Create Key**, 
 ## Go
 
 The [model catalog Flow](go/examples/model-catalog/) is a runnable Worker with static Dex Web connection name `tokengp`. `listed` completes the Flow; optional branches fail unless an application wires a business response. Transient failures retry safely. The local mock integration uses synthetic model data and a real Dex Worker and Client. Live authorization and accessible model IDs remain unverified without a user-controlled connection.
+
+## Python
+
+The [Python package](python/) exposes the same Query and branch contract as Go. Its [runnable example](python/examples/query/) uses static connection name `tokengp`. The package replays Go-recorded provider scenarios and the example verifies retry and persistence with a real Dex Worker and Client. Live provider authorization has not been verified.

@@ -11,3 +11,7 @@ Follow the [Open Platform quick start](https://www.tianxiagongchang.com/open/doc
 ## Example
 
 The [account status Flow](go/examples/account-status/) is a runnable Worker with static Dex connection name `tianxiagongchang`. Its mock uses synthetic application and credit values and is verified against a real Dex Worker and Client. Live key authorization and account status remain unverified until a user configures a provider connection.
+
+## Python
+
+The [Python package](python/) exposes the same Query and branch contract as Go. Its [runnable example](python/examples/query/) uses static connection name `tianxiagongchang`. The package replays Go-recorded provider scenarios and the example verifies retry and persistence with a real Dex Worker and Client. Live provider authorization has not been verified.
