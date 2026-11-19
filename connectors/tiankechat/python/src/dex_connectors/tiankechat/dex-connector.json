@@ -1,0 +1,65 @@
+{
+  "connectorId": "tiankechat",
+  "releaseTag": "connectors/tiankechat/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-tiankechat",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_knowledge_entries_step",
+      "kind": "query",
+      "operationId": "listKnowledgeEntries",
+      "inputType": "ListKnowledgeEntriesInput",
+      "description": "Read one page of knowledge entry metadata.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListKnowledgeEntriesInput selects one knowledge page. Zero page and limit use 1 and 20.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the number of entries to request, from 1 to 100; zero uses 20.",
+            "type": "integer"
+          },
+          "page": {
+            "description": "Page is the one-based page number; zero selects the first page.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "page"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
