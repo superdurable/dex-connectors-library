@@ -1,0 +1,52 @@
+{
+  "connectorId": "quanshi",
+  "releaseTag": "connectors/quanshi/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-quanshi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListRoomsStep",
+      "kind": "query",
+      "operationId": "listRooms",
+      "inputType": "ListRoomsInput",
+      "description": "List meeting rooms visible to the derived administrator.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListRoomsInput requests the rooms visible to the administrator derived from the token.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
