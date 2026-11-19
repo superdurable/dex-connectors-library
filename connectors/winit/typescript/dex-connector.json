@@ -1,0 +1,52 @@
+{
+  "connectorId": "winit",
+  "releaseTag": "connectors/winit/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-winit",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListWarehousesStep",
+      "kind": "query",
+      "operationId": "listWarehouses",
+      "inputType": "ListWarehousesInput",
+      "description": "List overseas warehouse IDs, codes, and names without order or customer data.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListWarehousesInput selects all warehouses visible to the authorized seller account.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
