@@ -10,6 +10,8 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listAccessibleProjects], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-huaweicloud", operations: [listAccessibleProjects], triggers: []}
+
   provider: huaweicloud
   codegen:
     go:

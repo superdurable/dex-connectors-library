@@ -11,3 +11,5 @@ The connector POSTs to the production HTTPS gateway with a body array and comput
 The [waybill-trace example](go/examples/waybill-trace/README.md) starts `JDLogisticsWaybillTrace` with `{"waybillNo":"JDX009866825381"}`. Its static ConnectionName is `jdlogistics`. The real Dex integration test runs the same Flow with a generated mock. Live authorization and provider tracking remain unverified.
 
 The [Python package](python/README.md) implements the same Query with Go-recorded conformance and a [runnable Flow](python/examples/waybill_trace/README.md).
+
+The [TypeScript package](typescript/README.md) implements `queryWaybillTrace` and includes a [runnable Dex Flow](typescript/examples/basic/README.md). Local scenarios replay the Go provider contract; live JD Logistics authorization remains unverified.
