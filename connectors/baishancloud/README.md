@@ -9,3 +9,5 @@ See the [runnable Dex Flow](go/examples/domain-detail/README.md) for local mock 
 The logo is the original [BaishanCloud portal SVG](https://cdn.portal.baishan.com/theme/manage/images/bsc-logo.svg).
 
 The [Python package](python/README.md) implements the same Query with Go-recorded conformance and a [runnable Flow](python/examples/domain_detail/README.md).
+
+The [TypeScript package](typescript/README.md) implements `describeDomain` with the same Go-recorded scenarios and a [runnable Dex Flow](typescript/examples/basic/README.md). Live provider authorization remains unverified.
