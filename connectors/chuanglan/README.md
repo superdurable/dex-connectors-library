@@ -8,6 +8,13 @@ The default endpoint is the East China `smssh1` node. Chuanglan [node guidance](
 
 [Run the balance Flow](go/examples/balance/README.md). Its checked-in mock is synthetic; live balance lookup has not been verified without a user-controlled account in Dex Web Connections.
 
+## Python package
+
+The [Python v0.1.0 package](python/README.md) implements `getBalance` with the
+same Go-recorded provider outcomes. Its [runnable Flow](python/examples/balance/README.md)
+queries through a real Dex Worker and Client and keeps the API account and
+password out of persisted results. The local integration test uses inert
+credentials and a fake provider; live Chuanglan authorization remains unverified.
 ## TypeScript package
 
 The `@superdurable/connector-chuanglan` package implements `getBalance` with the same request and outcomes as Go. Its [runnable balance Flow](typescript/examples/balance/README.md) passed a real local Dex Worker, Client, retry, and persistence test against a provider stand-in. Eleven Go-recorded scenarios verify exact provider requests and outcomes. A live Chuanglan account lookup remains unverified.

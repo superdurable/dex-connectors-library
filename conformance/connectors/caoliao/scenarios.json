@@ -1,0 +1,593 @@
+{
+  "connector": "caoliao",
+  "scenarios": [
+    {
+      "callId": "71c87695-c88f-546a-a222-a314b2abbcd1",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"list\":[{\"name\":\"巡逻点-1\",\"coding\":\"qk3mJHJ\",\"private\":\"omit\"}],\"next_page_token\":\"next-2\",\"total\":3334}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "next-2",
+          "qrCodes": [
+            {
+              "coding": "qk3mJHJ",
+              "name": "巡逻点-1"
+            }
+          ],
+          "total": 3334
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-listed",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "3937e948-a93f-5ac2-8321-7105004cfadf",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"list\":[],\"next_page_token\":\"\",\"total\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "",
+          "qrCodes": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": ""
+      },
+      "name": "listQRCodes-empty",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "d804c281-3bb3-5635-89ac-f84d276a93ef",
+      "exchanges": [
+        {
+          "body": "{\"code\":401,\"message\":\"secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPageToken": "",
+          "qrCodes": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-providerRejected",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "6f552635-cc87-56be-8cea-87d47f29f51a",
+      "exchanges": [
+        {
+          "body": "{\"code\":403,\"error_code\":100315,\"message\":\"secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPageToken": "",
+          "qrCodes": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-businessRejected",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "0da0ae87-e09e-5587-9f92-35026de9a7ae",
+      "exchanges": [
+        {
+          "body": "{\"code\":429,\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-businessRateLimit",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "ecd7f8dd-f3ee-5fc6-8726-2e5e9eceda84",
+      "exchanges": [
+        {
+          "body": "{\"code\":502,\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-businessAvailability",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "5d20df88-099e-559e-bf13-f5554db19dbe",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "qrCodes": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-invalidResponse",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "ca0684c1-af5f-573d-b978-01ea49d3be20",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"list\":[{\"name\":\"\",\"coding\":\"bad\"}],\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "qrCodes": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-invalidMetadata",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "f7885e69-17db-5c44-b578-d384a9f1e776",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPageToken": "",
+          "qrCodes": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-defect",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "e8c29e15-482a-5b27-a881-09790fa1f5ca",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": "",
+          "qrCodes": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": -1,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-invalidInput",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "750a1bcd-cb99-5aca-84db-e571690ac9f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-rateLimit429",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "12395827-518a-5281-adde-84e0b0d93a50",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-availability503",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "df299371-6ef1-5d89-b423-ad404e0f9d7c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-transportFailure",
+      "operation": "listQRCodes"
+    },
+    {
+      "callId": "789102ae-4653-530c-bd07-4b30aaed7f2e",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"list\":[{\"name\":\"巡逻点-1\",\"coding\":\"qk3mJHJ\",\"private\":\"omit\"}],\"next_page_token\":\"next-2\",\"total\":3334}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/rpc/qrcodes/list",
+          "requestBody": {
+            "page_size": 2,
+            "page_token": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer caoliao-test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "nextPageToken": "",
+          "qrCodes": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-1"
+      },
+      "name": "listQRCodes-oversized",
+      "operation": "listQRCodes"
+    }
+  ],
+  "schemaVersion": 1
+}
