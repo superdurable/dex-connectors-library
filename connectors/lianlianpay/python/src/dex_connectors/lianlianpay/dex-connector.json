@@ -1,0 +1,60 @@
+{
+  "connectorId": "lianlianpay",
+  "releaseTag": "connectors/lianlianpay/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-lianlianpay",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_query_payment_status_step",
+      "kind": "query",
+      "operationId": "queryPaymentStatus",
+      "inputType": "QueryPaymentStatusInput",
+      "description": "Read the processing status of a known merchant payment order without exposing payer details.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryPaymentStatusInput identifies a payment order owned by the authorized merchant.",
+        "properties": {
+          "merchantOrderId": {
+            "description": "MerchantOrderID is the merchant's unique order number, at most 32 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "merchantOrderId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

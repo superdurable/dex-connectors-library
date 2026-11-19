@@ -5,9 +5,11 @@
 package pingcap
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -15,10 +17,12 @@ import (
 // Option supplies a non-serializable client dependency to New.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ httpClient *http.Client }
+type nonceReaderOption struct{ reader io.Reader }
 
 func (option httpClientOption) applyClientOption(client *Client) {
 	client.httpClient = option.httpClient
 }
+func (option nonceReaderOption) applyClientOption(client *Client) { client.nonceReader = option.reader }
 
 // WithHTTPClient supplies an HTTP client for a proxy or provider test. Redirects are disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -29,6 +33,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	nonceReader      io.Reader
 }
 
 // New validates configuration without contacting TiDB Cloud. Rotated credentials take effect on the next call.
@@ -47,7 +52,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("PingCAP base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, nonceReader: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("PingCAP client option is required")

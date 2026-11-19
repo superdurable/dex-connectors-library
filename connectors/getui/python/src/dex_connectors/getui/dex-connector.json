@@ -1,0 +1,60 @@
+{
+  "connectorId": "getui",
+  "releaseTag": "connectors/getui/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-getui",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_daily_push_report_step",
+      "kind": "query",
+      "operationId": "getDailyPushReport",
+      "inputType": "GetDailyPushReportInput",
+      "description": "Read one app's prior-day aggregate push request and delivery counts.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetDailyPushReportInput selects a historical date in YYYY-MM-DD format.",
+        "properties": {
+          "date": {
+            "description": "Date is a prior calendar date in YYYY-MM-DD format.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
