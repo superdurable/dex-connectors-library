@@ -1,0 +1,61 @@
+{
+  "connectorId": "sfexpress",
+  "releaseTag": "connectors/sfexpress/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-sfexpress",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newQueryRoutesStep",
+      "kind": "query",
+      "operationId": "queryRoutes",
+      "inputType": "QueryRoutesInput",
+      "description": "Query standard route event times and codes for one owned SF Express waybill, omitting remarks and locations.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryRoutesInput identifies one SF Express waybill owned by the application.",
+        "properties": {
+          "waybillNumber": {
+            "description": "SF Express waybill number, 8 to 30 uppercase letters or digits.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "waybillNumber"
+        ],
+        "type": "object"
+      },
+      "outputType": "RouteQueryResult"
+    }
+  ]
+}

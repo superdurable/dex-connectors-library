@@ -8,6 +8,8 @@ metadata:
   categories: [ecommerce]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-sfexpress", operations: [queryRoutes], triggers: []}
   provider: sfexpress
   codegen:
     go:
