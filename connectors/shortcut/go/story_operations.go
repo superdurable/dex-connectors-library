@@ -162,6 +162,9 @@ func (operation CreateStoryOperation) Invoke(call sdkgo.Call, input CreateStoryI
 		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("createStory", sdkgo.FailureAvailability, "Shortcut create dispatch could not be checkpointed"), 0)
 	}
 	if errors.Is(response.err, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return shortcutCreateUnknown(call, decision.MaximumPriorSends, response)
+		}
 		return storyMutationBranch(CreateStoryBranchDefect, "createStory", sdkgo.FailureAuthentication, "Shortcut credentials are unavailable")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
@@ -169,17 +172,47 @@ func (operation CreateStoryOperation) Invoke(call sdkgo.Call, input CreateStoryI
 		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("createStory", sdkgo.FailureRateLimit, "Shortcut temporarily refused story creation"), response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 || response.err != nil {
-		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("createStory", sdkgo.FailureAvailability, "Shortcut story creation outcome is unknown"), response.retryAfter)
+		return shortcutCreateUnknown(call, decision.MaximumPriorSends, response)
 	}
 	if response.status != http.StatusCreated && response.status != http.StatusOK {
-		return storyMutationBranch(CreateStoryBranchProviderRejected, "createStory", sdkgo.FailureProviderRejection, "Shortcut rejected story creation")
+		if isDefiniteShortcutRefusal(response) && decision.MaximumPriorSends == 0 {
+			_ = fence.RecordCanResend()
+			return storyMutationBranch(CreateStoryBranchProviderRejected, "createStory", sdkgo.FailureProviderRejection, "Shortcut rejected story creation")
+		}
+		return shortcutCreateUnknown(call, decision.MaximumPriorSends, response)
 	}
 	story, decodeErr := decodeReturnedStory(response.body)
 	if decodeErr != nil {
-		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("createStory", sdkgo.FailureProtocol, "Shortcut accepted creation but returned no usable story ID"), 0)
+		return shortcutCreateUnknown(call, decision.MaximumPriorSends, response)
 	}
 	_ = fence.RecordProviderID(story.StoryID) // A lost checkpoint forbids a resend.
 	return sdkgo.NewMutationBranch(CreateStoryBranchCreated, story, nil, storyReceipt(call, story.StoryID))
+}
+
+func isDefiniteShortcutRefusal(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		Message string `json:"message"`
+		ID      int64  `json:"id"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && body.Message != "" && body.ID == 0
+}
+
+func shortcutCreateUnknown(call sdkgo.Call, priorSends int32, response providerResponse) sdkgo.MutationAttempt[StoryMetadata] {
+	failure := storyOperationFailure("createStory", sdkgo.FailureAvailability, "Shortcut story creation outcome is unknown")
+	if priorSends+1 < call.MaxSends() {
+		return sdkgo.NewMutationRetry[StoryMetadata](failure, response.retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(StoryMetadata{}, failure, sdkgo.Receipt{})
 }
 
 // UpdateStoryInput sets absolute fields on one existing story.
@@ -251,11 +284,11 @@ func (operation UpdateStoryOperation) Invoke(call sdkgo.Call, input UpdateStoryI
 		return storyMutationBranch(UpdateStoryBranchProviderRejected, "updateStory", sdkgo.FailureProviderRejection, "Shortcut rejected the update")
 	}
 	if response.err != nil {
-		return storyMutationBranch(UpdateStoryBranchInvalidResponse, "updateStory", sdkgo.FailureProtocol, "Shortcut update response is invalid")
+		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("updateStory", sdkgo.FailureProtocol, "Shortcut update response is invalid"), 0)
 	}
 	story, err := decodeStory(response.body, input.StoryID)
 	if err != nil {
-		return storyMutationBranch(UpdateStoryBranchInvalidResponse, "updateStory", sdkgo.FailureProtocol, "Shortcut returned invalid story JSON")
+		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("updateStory", sdkgo.FailureProtocol, "Shortcut returned invalid story JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateStoryBranchUpdated, story, nil, storyReceipt(call, story.StoryID))
 }

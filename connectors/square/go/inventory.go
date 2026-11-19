@@ -159,14 +159,14 @@ func (operation SetInventoryPhysicalCountOperation) Invoke(call sdkgo.Call, inpu
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return sdkgo.NewMutationBranch(SetInventoryPhysicalCountBranchInvalidResponse, InventoryCounts{}, failureFor("setInventoryPhysicalCount", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[InventoryCounts](*failureFor("setInventoryPhysicalCount", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[InventoryCounts](*failureFor("setInventoryPhysicalCount", sdkgo.FailureAvailability, "provider inventory response was interrupted"), 0)
 	}
 	counts, err := decodeInventoryCounts(responseBody)
 	if err != nil || len(counts.Counts) == 0 {
-		return sdkgo.NewMutationBranch(SetInventoryPhysicalCountBranchInvalidResponse, InventoryCounts{}, failureFor("setInventoryPhysicalCount", sdkgo.FailureProtocol, "provider returned invalid inventory JSON"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[InventoryCounts](*failureFor("setInventoryPhysicalCount", sdkgo.FailureProtocol, "provider returned invalid inventory JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(SetInventoryPhysicalCountBranchReconciled, counts, nil, sdkgo.Receipt{})
 }

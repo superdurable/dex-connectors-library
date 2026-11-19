@@ -118,7 +118,11 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 		return retryOrUncertainCampaignCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "campaign create outcome unknown", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return campaignWriteBranch(CreateCampaignBranchProviderRejected, "createCampaign", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		if decision.MaximumPriorSends == 0 && isDefiniteTikTokRefusal(response) {
+			_ = fence.RecordCanResend()
+			return campaignWriteBranch(CreateCampaignBranchProviderRejected, "createCampaign", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return retryOrUncertainCampaignCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "campaign create outcome unknown", response.retryAfter)
 	}
 	var envelope struct {
 		Code *int `json:"code"`
@@ -139,7 +143,7 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 		return retryOrUncertainCampaignCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "campaign create outcome unknown", response.retryAfter)
 	}
 	if *envelope.Code != 0 {
-		return campaignWriteBranch(CreateCampaignBranchProviderRejected, "createCampaign", sdkgo.FailureProviderRejection, "TikTok rejected campaign create with code "+strconv.Itoa(*envelope.Code))
+		return retryOrUncertainCampaignCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "campaign create outcome unknown", response.retryAfter)
 	}
 	if !validDecimalID(envelope.Data.CampaignID) {
 		return retryOrUncertainCampaignCreate(call, decision.MaximumPriorSends, sdkgo.FailureProtocol, "campaign ID was not confirmed", 0)
@@ -197,7 +201,7 @@ func (operation UpdateCampaignOperation) Invoke(call sdkgo.Call, input UpdateCam
 		return campaignWriteBranch(UpdateCampaignBranchProviderRejected, "updateCampaign", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return campaignWriteBranch(UpdateCampaignBranchInvalidResponse, "updateCampaign", sdkgo.FailureResponseTooLarge, "TikTok response exceeded limit")
+		return sdkgo.NewMutationRetry[CampaignWriteResult](campaignWriteFailure("updateCampaign", sdkgo.FailureResponseTooLarge, "TikTok response exceeded limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[CampaignWriteResult](campaignWriteFailure("updateCampaign", sdkgo.FailureTransport, "TikTok response interrupted"), 0)
@@ -206,7 +210,7 @@ func (operation UpdateCampaignOperation) Invoke(call sdkgo.Call, input UpdateCam
 		Code *int `json:"code"`
 	}
 	if json.Unmarshal(response.body, &envelope) != nil || envelope.Code == nil {
-		return campaignWriteBranch(UpdateCampaignBranchInvalidResponse, "updateCampaign", sdkgo.FailureProtocol, "TikTok update JSON invalid")
+		return sdkgo.NewMutationRetry[CampaignWriteResult](campaignWriteFailure("updateCampaign", sdkgo.FailureProtocol, "TikTok update JSON invalid"), 0)
 	}
 	if *envelope.Code == tiktokCodeRateLimited {
 		return sdkgo.NewMutationRetry[CampaignWriteResult](campaignWriteFailure("updateCampaign", sdkgo.FailureRateLimit, "TikTok rate limited update"), response.retryAfter)

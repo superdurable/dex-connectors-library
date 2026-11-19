@@ -192,11 +192,12 @@ func (operation CreateCollectorOperation) Invoke(call sdkgo.Call, input CreateCo
 		}
 		return sdkgo.NewMutationRetry[CollectorMetadata](failure, response.retryAfter)
 	}
-	if response.err == errCredential {
-		return surveyMutationBranch(CreateCollectorBranchDefect, CollectorMetadata{}, "createCollector", sdkgo.FailureAuthentication, "connection credentials are unavailable")
-	}
-	if response.status >= 400 {
+	if isDefiniteSurveyRefusal(response) && decision.MaximumPriorSends == 0 {
+		_ = fence.RecordCanResend()
 		return surveyMutationBranch(CreateCollectorBranchProviderRejected, CollectorMetadata{}, "createCollector", surveyFailureKind(response), "SurveyMonkey rejected the collector create")
+	}
+	if response.err == errCredential || response.status >= 400 {
+		return collectorCreateRetryOrUncertain(call, decision, "collector create outcome is unknown")
 	}
 	if response.status != http.StatusCreated && response.status != http.StatusOK {
 		return collectorCreateRetryOrUncertain(call, decision, "collector create response was not confirmed")
@@ -246,11 +247,11 @@ func (operation UpdateCollectorOperation) Invoke(call sdkgo.Call, input UpdateCo
 		return surveyMutationBranch(UpdateCollectorBranchProviderRejected, CollectorMetadata{}, "updateCollector", surveyFailureKind(response), "SurveyMonkey rejected the collector update")
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return surveyMutationBranch(UpdateCollectorBranchInvalidResponse, CollectorMetadata{}, "updateCollector", sdkgo.FailureResponseTooLarge, "collector response exceeded the limit")
+		return sdkgo.NewMutationRetry[CollectorMetadata](queryFailure("updateCollector", sdkgo.FailureResponseTooLarge, "collector response exceeded the limit"), 0)
 	}
 	collector, err := decodeCollectorMetadata(response.body)
 	if err != nil {
-		return surveyMutationBranch(UpdateCollectorBranchInvalidResponse, CollectorMetadata{}, "updateCollector", sdkgo.FailureProtocol, "collector response was invalid")
+		return sdkgo.NewMutationRetry[CollectorMetadata](queryFailure("updateCollector", sdkgo.FailureProtocol, "collector response was invalid"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateCollectorBranchUpdated, collector, nil, sdkgo.Receipt{})
 }

@@ -138,14 +138,18 @@ func createSheet(call sdkgo.Call, client *Client, name, primaryColumnTitle, path
 		return sdkgo.NewMutationRetry[SheetSummary](sheetFailure(operationID, sdkgo.FailureRateLimit, "Smartsheet temporarily refused the sheet"), response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 || response.err != nil {
-		return sdkgo.NewMutationRetry[SheetSummary](sheetFailure(operationID, sdkgo.FailureAvailability, "Smartsheet sheet creation outcome is unknown"), response.retryAfter)
+		return sheetCreateUnknown[SheetSummary](call, decision.MaximumPriorSends, operationID, response)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		return sheetSummaryBranch(rejectedBranch, operationID, sdkgo.FailureProviderRejection, "Smartsheet rejected sheet creation")
+		if isDefiniteSheetRefusal(response) && decision.MaximumPriorSends == 0 {
+			_ = fence.RecordCanResend()
+			return sheetSummaryBranch(rejectedBranch, operationID, sdkgo.FailureProviderRejection, "Smartsheet rejected sheet creation")
+		}
+		return sheetCreateUnknown[SheetSummary](call, decision.MaximumPriorSends, operationID, response)
 	}
 	summary, decodeErr := decodeSheetSummaryResult(response.body)
 	if decodeErr != nil {
-		return sdkgo.NewMutationRetry[SheetSummary](sheetFailure(operationID, sdkgo.FailureProtocol, "Smartsheet accepted the sheet but returned no usable ID"), 0)
+		return sheetCreateUnknown[SheetSummary](call, decision.MaximumPriorSends, operationID, response)
 	}
 	_ = fence.RecordProviderID(strconv.FormatInt(summary.ID, 10)) // A lost checkpoint forbids resend.
 	return sdkgo.NewMutationBranch(createdBranch, summary, nil, sheetReceipt(call, strconv.FormatInt(summary.ID, 10)))
@@ -198,7 +202,7 @@ func (operation UpdateSheetOperation) Invoke(call sdkgo.Call, input UpdateSheetI
 	}
 	summary, decodeErr := decodeSheetSummaryResult(response.body)
 	if decodeErr != nil {
-		return sheetSummaryBranch(UpdateSheetBranchInvalidResponse, "updateSheet", sdkgo.FailureProtocol, "Smartsheet returned invalid sheet JSON")
+		return sdkgo.NewMutationRetry[SheetSummary](sheetFailure("updateSheet", sdkgo.FailureProtocol, "Smartsheet returned invalid sheet JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateSheetBranchUpdated, summary, nil, sheetReceipt(call, strconv.FormatInt(summary.ID, 10)))
 }
@@ -251,7 +255,7 @@ func (operation DeleteSheetOperation) Invoke(call sdkgo.Call, input DeleteSheetI
 		return deleteSheetBranch(DeleteSheetBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected sheet deletion")
 	}
 	if !validSuccessEnvelope(response.body) {
-		return deleteSheetBranch(DeleteSheetBranchInvalidResponse, sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation")
+		return sdkgo.NewMutationRetry[DeleteSheetOutput](sheetFailure("deleteSheet", sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteSheetBranchDeleted, DeleteSheetOutput{SheetID: input.SheetID}, nil, sheetReceipt(call, strconv.FormatInt(input.SheetID, 10)))
 }

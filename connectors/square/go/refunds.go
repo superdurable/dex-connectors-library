@@ -164,14 +164,14 @@ func (operation RefundPaymentOperation) Invoke(call sdkgo.Call, input RefundPaym
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return sdkgo.NewMutationBranch(RefundPaymentBranchInvalidResponse, Refund{}, failureFor("refundPayment", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Refund](*failureFor("refundPayment", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[Refund](*failureFor("refundPayment", sdkgo.FailureAvailability, "provider refund response was interrupted"), 0)
 	}
 	refund, err := decodeRefund(body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(RefundPaymentBranchInvalidResponse, Refund{}, failureFor("refundPayment", sdkgo.FailureProtocol, "provider returned invalid JSON"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Refund](*failureFor("refundPayment", sdkgo.FailureProtocol, "provider returned invalid JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(RefundPaymentBranchRefunded, refund, nil, sdkgo.Receipt{})
 }

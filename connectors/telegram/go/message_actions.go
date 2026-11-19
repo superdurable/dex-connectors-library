@@ -198,32 +198,35 @@ func invokeMessageAction(call sdkgo.Call, client *Client, operation string, para
 		return chatMutationBranch(defect, MessageActionResult{}, operation, sdkgo.FailureAuthentication, "bot token unavailable")
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return chatMutationBranch(invalid, MessageActionResult{}, operation, sdkgo.FailureResponseTooLarge, "Bot API response exceeded limit")
+		return sdkgo.NewMutationRetry[MessageActionResult](botFailure(operation, sdkgo.FailureResponseTooLarge, "Bot API response exceeded limit"), 0)
 	}
 	envelope, err := decodeBotEnvelope(response.body)
 	if err != nil {
-		return chatMutationBranch(invalid, MessageActionResult{}, operation, sdkgo.FailureProtocol, "Bot API response invalid")
+		return sdkgo.NewMutationRetry[MessageActionResult](botFailure(operation, sdkgo.FailureProtocol, "Bot API response invalid"), 0)
 	}
 	if !envelope.OK {
 		if response.status == http.StatusBadRequest && strings.Contains(strings.ToLower(envelope.Description), alreadyDoneDescription) {
 			return sdkgo.NewMutationBranch(success, MessageActionResult{ChatID: chatID, MessageID: messageID}, nil, sdkgo.Receipt{})
 		}
-		return chatMutationBranch(rejected, MessageActionResult{}, operation, botRejectionKind(response.status), "Telegram rejected message action")
+		if isDefiniteBotActionRefusal(response.status, envelope) {
+			return chatMutationBranch(rejected, MessageActionResult{}, operation, botRejectionKind(response.status), "Telegram rejected message action")
+		}
+		return sdkgo.NewMutationRetry[MessageActionResult](botFailure(operation, sdkgo.FailureAvailability, "Telegram message action outcome unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return chatMutationBranch(invalid, MessageActionResult{}, operation, sdkgo.FailureProtocol, "Bot API status inconsistent")
+		return sdkgo.NewMutationRetry[MessageActionResult](botFailure(operation, sdkgo.FailureProtocol, "Bot API status inconsistent"), 0)
 	}
 	if expectsMessage {
 		var result struct {
 			MessageID int64 `json:"message_id"`
 		}
 		if json.Unmarshal(envelope.Result, &result) != nil || result.MessageID != messageID {
-			return chatMutationBranch(invalid, MessageActionResult{}, operation, sdkgo.FailureProtocol, "edited message identity invalid")
+			return sdkgo.NewMutationRetry[MessageActionResult](botFailure(operation, sdkgo.FailureProtocol, "edited message identity invalid"), 0)
 		}
 	} else {
 		var confirmed bool
 		if json.Unmarshal(envelope.Result, &confirmed) != nil || !confirmed {
-			return chatMutationBranch(invalid, MessageActionResult{}, operation, sdkgo.FailureProtocol, "Bot API confirmation invalid")
+			return sdkgo.NewMutationRetry[MessageActionResult](botFailure(operation, sdkgo.FailureProtocol, "Bot API confirmation invalid"), 0)
 		}
 	}
 	return sdkgo.NewMutationBranch(success, MessageActionResult{ChatID: chatID, MessageID: messageID}, nil, sdkgo.Receipt{})

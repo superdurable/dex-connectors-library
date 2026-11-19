@@ -216,11 +216,12 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 		}
 		return sdkgo.NewMutationRetry[ProjectID](failure, response.retryAfter)
 	}
-	if response.err == errCredential {
-		return taskMutationBranch(CreateProjectBranchDefect, ProjectID{}, "createProject", sdkgo.FailureAuthentication, "credentials unavailable")
-	}
-	if response.status >= 400 {
+	if isDefiniteTeamworkRefusal(response) && decision.MaximumPriorSends == 0 {
+		_ = fence.RecordCanResend()
 		return taskMutationBranch(CreateProjectBranchProviderRejected, ProjectID{}, "createProject", sdkgo.FailureProviderRejection, "Teamwork rejected project create")
+	}
+	if response.err == errCredential || response.status >= 400 {
+		return projectCreateRetryOrUncertain(call, decision.MaximumPriorSends, "project create outcome unknown")
 	}
 	if response.status != http.StatusCreated {
 		return projectCreateRetryOrUncertain(call, decision.MaximumPriorSends, "project create response unconfirmed")
@@ -272,13 +273,13 @@ func (operation UpdateProjectOperation) Invoke(call sdkgo.Call, input UpdateProj
 		return taskMutationBranch(UpdateProjectBranchProviderRejected, ProjectID{}, "updateProject", sdkgo.FailureProviderRejection, "Teamwork rejected project update")
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return taskMutationBranch(UpdateProjectBranchInvalidResponse, ProjectID{}, "updateProject", sdkgo.FailureResponseTooLarge, "project response exceeded limit")
+		return sdkgo.NewMutationRetry[ProjectID](taskOperationFailure("updateProject", sdkgo.FailureResponseTooLarge, "project response exceeded limit"), 0)
 	}
 	var wire struct {
 		Status string `json:"STATUS"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.Status != "OK" {
-		return taskMutationBranch(UpdateProjectBranchInvalidResponse, ProjectID{}, "updateProject", sdkgo.FailureProtocol, "project response invalid")
+		return sdkgo.NewMutationRetry[ProjectID](taskOperationFailure("updateProject", sdkgo.FailureProtocol, "project response invalid"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateProjectBranchUpdated, ProjectID{ID: input.ProjectID}, nil, sdkgo.Receipt{})
 }

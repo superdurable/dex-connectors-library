@@ -938,7 +938,7 @@
       "callId": "73fa0922-f591-5f06-9ff0-80f9ea8e3d28",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Invalid API token\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -966,8 +966,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "73fa0922-f591-5f06-9ff0-80f9ea8e3d28",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -1365,14 +1364,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2614,7 +2609,7 @@
       "callId": "03e41fd8-908b-5e7e-be4a-4f9bc2f2b73e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Invalid API token\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2643,8 +2638,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "03e41fd8-908b-5e7e-be4a-4f9bc2f2b73e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -3055,14 +3049,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

@@ -127,7 +127,11 @@ func (operation CreateAdOperation) Invoke(call sdkgo.Call, input CreateAdInput) 
 		return retryOrUncertainAdCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "ad create outcome unknown", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return adWriteBranch(CreateAdBranchProviderRejected, "createAd", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		if decision.MaximumPriorSends == 0 && isDefiniteTikTokRefusal(response) {
+			_ = fence.RecordCanResend()
+			return adWriteBranch(CreateAdBranchProviderRejected, "createAd", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return retryOrUncertainAdCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "ad create outcome unknown", response.retryAfter)
 	}
 	var envelope struct {
 		Code *int `json:"code"`
@@ -148,7 +152,7 @@ func (operation CreateAdOperation) Invoke(call sdkgo.Call, input CreateAdInput) 
 		return retryOrUncertainAdCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "ad create outcome unknown", response.retryAfter)
 	}
 	if *envelope.Code != 0 {
-		return adWriteBranch(CreateAdBranchProviderRejected, "createAd", sdkgo.FailureProviderRejection, "TikTok rejected ad create with code "+strconv.Itoa(*envelope.Code))
+		return retryOrUncertainAdCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "ad create outcome unknown", response.retryAfter)
 	}
 	if len(envelope.Data.AdIDs) != 1 || !validDecimalID(envelope.Data.AdIDs[0]) {
 		return retryOrUncertainAdCreate(call, decision.MaximumPriorSends, sdkgo.FailureProtocol, "ad ID was not confirmed", 0)
@@ -207,7 +211,7 @@ func (operation UpdateAdOperation) Invoke(call sdkgo.Call, input UpdateAdInput) 
 		return adWriteBranch(UpdateAdBranchProviderRejected, "updateAd", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return adWriteBranch(UpdateAdBranchInvalidResponse, "updateAd", sdkgo.FailureResponseTooLarge, "TikTok response exceeded limit")
+		return sdkgo.NewMutationRetry[AdWriteResult](adWriteFailure("updateAd", sdkgo.FailureResponseTooLarge, "TikTok response exceeded limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[AdWriteResult](adWriteFailure("updateAd", sdkgo.FailureTransport, "TikTok response interrupted"), 0)
@@ -216,7 +220,7 @@ func (operation UpdateAdOperation) Invoke(call sdkgo.Call, input UpdateAdInput) 
 		Code *int `json:"code"`
 	}
 	if json.Unmarshal(response.body, &envelope) != nil || envelope.Code == nil {
-		return adWriteBranch(UpdateAdBranchInvalidResponse, "updateAd", sdkgo.FailureProtocol, "TikTok update JSON invalid")
+		return sdkgo.NewMutationRetry[AdWriteResult](adWriteFailure("updateAd", sdkgo.FailureProtocol, "TikTok update JSON invalid"), 0)
 	}
 	if *envelope.Code == tiktokCodeRateLimited {
 		return sdkgo.NewMutationRetry[AdWriteResult](adWriteFailure("updateAd", sdkgo.FailureRateLimit, "TikTok rate limited update"), response.retryAfter)

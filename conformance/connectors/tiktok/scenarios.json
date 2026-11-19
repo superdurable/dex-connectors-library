@@ -2168,8 +2168,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "fdcc718e-d3db-5348-bc01-b6723dac7458",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""
@@ -2694,13 +2693,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2991,8 +2987,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "27302df0-e624-59c6-90c8-1ca35a1ab537",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""
@@ -3646,13 +3641,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3953,8 +3945,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e5645583-d487-5e22-9142-6147ea8050c3",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""
@@ -4621,13 +4612,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

@@ -95,7 +95,7 @@ func (operation CreateRowOperation) Invoke(call sdkgo.Call, input CreateRowInput
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return sdkgo.NewMutationRetry[CreateRowOutput](*failure("createRow", sdkgo.FailureAvailability, "insert was not dispatched"), 0)
 		}
-		return createRowUncertain("insert outcome is unknown")
+		return createRowRetry("insert outcome is unknown")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -104,17 +104,18 @@ func (operation CreateRowOperation) Invoke(call sdkgo.Call, input CreateRowInput
 		return sdkgo.NewMutationRetry[CreateRowOutput](*response.failure, response.retryAfter)
 	}
 	if response.retry {
-		return sdkgo.NewMutationRetry[CreateRowOutput](*response.failure, response.retryAfter)
+		return createRowRetry("insert outcome is unknown")
 	}
 	if response.failure != nil {
-		if response.branch == "providerRejected" {
+		if response.branch == "providerRejected" && decision.MaximumPriorSends == 0 && isDefiniteSupabaseRefusal(response) {
+			_ = fence.RecordCanResend()
 			return sdkgo.NewMutationBranch(CreateRowBranchProviderRejected, CreateRowOutput{}, response.failure, sdkgo.Receipt{})
 		}
-		return sdkgo.NewMutationRetry[CreateRowOutput](*failure("createRow", sdkgo.FailureProtocol, "insert response could not be confirmed"), 0)
+		return createRowRetry("insert response could not be confirmed")
 	}
 	var rows []json.RawMessage
 	if json.Unmarshal(response.body, &rows) != nil || len(rows) != 1 {
-		return sdkgo.NewMutationRetry[CreateRowOutput](*failure("createRow", sdkgo.FailureProtocol, "insert response did not contain one row"), 0)
+		return createRowRetry("insert response did not contain one row")
 	}
 	return sdkgo.NewMutationBranch(CreateRowBranchCreated, CreateRowOutput{Data: rows[0]}, nil, sdkgo.Receipt{})
 }
@@ -155,4 +156,20 @@ func createRowFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message str
 
 func createRowUncertain(message string) sdkgo.MutationAttempt[CreateRowOutput] {
 	return sdkgo.NewMutationUncertain(CreateRowOutput{}, *failure("createRow", sdkgo.FailureAvailability, message), sdkgo.Receipt{})
+}
+
+func createRowRetry(message string) sdkgo.MutationAttempt[CreateRowOutput] {
+	return sdkgo.NewMutationRetry[CreateRowOutput](*failure("createRow", sdkgo.FailureAvailability, message), 0)
+}
+
+func isDefiniteSupabaseRefusal(response providerResponse) bool {
+	if !isDefiniteRefusalStatus(response.status) {
+		return false
+	}
+	var body struct {
+		Code    string          `json:"code"`
+		Message string          `json:"message"`
+		Data    json.RawMessage `json:"data"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && body.Code != "" && body.Message != "" && len(body.Data) == 0
 }

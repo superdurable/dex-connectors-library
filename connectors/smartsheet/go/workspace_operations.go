@@ -160,14 +160,18 @@ func (operation CreateWorkspaceOperation) Invoke(call sdkgo.Call, input CreateWo
 		return sdkgo.NewMutationRetry[WorkspaceSummary](sheetFailure("createWorkspace", sdkgo.FailureRateLimit, "Smartsheet temporarily refused the workspace"), response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 || response.err != nil {
-		return sdkgo.NewMutationRetry[WorkspaceSummary](sheetFailure("createWorkspace", sdkgo.FailureAvailability, "workspace creation outcome is unknown"), response.retryAfter)
+		return sheetCreateUnknown[WorkspaceSummary](call, decision.MaximumPriorSends, "createWorkspace", response)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		return workspaceMutationBranch(CreateWorkspaceBranchProviderRejected, "createWorkspace", sdkgo.FailureProviderRejection, "Smartsheet rejected workspace creation")
+		if isDefiniteSheetRefusal(response) && decision.MaximumPriorSends == 0 {
+			_ = fence.RecordCanResend()
+			return workspaceMutationBranch(CreateWorkspaceBranchProviderRejected, "createWorkspace", sdkgo.FailureProviderRejection, "Smartsheet rejected workspace creation")
+		}
+		return sheetCreateUnknown[WorkspaceSummary](call, decision.MaximumPriorSends, "createWorkspace", response)
 	}
 	workspace, decodeErr := decodeWorkspaceResult(response.body)
 	if decodeErr != nil {
-		return sdkgo.NewMutationRetry[WorkspaceSummary](sheetFailure("createWorkspace", sdkgo.FailureProtocol, "Smartsheet accepted the workspace but returned no usable ID"), 0)
+		return sheetCreateUnknown[WorkspaceSummary](call, decision.MaximumPriorSends, "createWorkspace", response)
 	}
 	_ = fence.RecordProviderID(strconv.FormatInt(workspace.ID, 10)) // A lost checkpoint forbids resend.
 	return sdkgo.NewMutationBranch(CreateWorkspaceBranchCreated, workspace, nil, sheetReceipt(call, strconv.FormatInt(workspace.ID, 10)))
@@ -224,7 +228,7 @@ func (operation UpdateWorkspaceOperation) Invoke(call sdkgo.Call, input UpdateWo
 	}
 	workspace, decodeErr := decodeWorkspaceResult(response.body)
 	if decodeErr != nil {
-		return workspaceMutationBranch(UpdateWorkspaceBranchInvalidResponse, "updateWorkspace", sdkgo.FailureProtocol, "Smartsheet returned invalid workspace JSON")
+		return sdkgo.NewMutationRetry[WorkspaceSummary](sheetFailure("updateWorkspace", sdkgo.FailureProtocol, "Smartsheet returned invalid workspace JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateWorkspaceBranchUpdated, workspace, nil, sheetReceipt(call, strconv.FormatInt(workspace.ID, 10)))
 }
@@ -281,7 +285,7 @@ func (operation DeleteWorkspaceOperation) Invoke(call sdkgo.Call, input DeleteWo
 		return workspaceDeleteBranch(DeleteWorkspaceBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected workspace deletion")
 	}
 	if !validSuccessEnvelope(response.body) {
-		return workspaceDeleteBranch(DeleteWorkspaceBranchInvalidResponse, sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation")
+		return sdkgo.NewMutationRetry[DeleteWorkspaceOutput](sheetFailure("deleteWorkspace", sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteWorkspaceBranchDeleted, DeleteWorkspaceOutput{WorkspaceID: input.WorkspaceID}, nil, sheetReceipt(call, strconv.FormatInt(input.WorkspaceID, 10)))
 }

@@ -118,14 +118,18 @@ func (operation AddRowOperation) Invoke(call sdkgo.Call, input AddRowInput) sdkg
 		return sdkgo.NewMutationRetry[SheetRow](rowFailure("addRow", sdkgo.FailureRateLimit, "Smartsheet temporarily refused the row"), response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 || response.err != nil {
-		return sdkgo.NewMutationRetry[SheetRow](rowFailure("addRow", sdkgo.FailureAvailability, "Smartsheet row creation outcome is unknown"), response.retryAfter)
+		return sheetCreateUnknown[SheetRow](call, decision.MaximumPriorSends, "addRow", response)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		return rowMutationBranch(AddRowBranchProviderRejected, "addRow", sdkgo.FailureProviderRejection, "Smartsheet rejected the row")
+		if isDefiniteSheetRefusal(response) && decision.MaximumPriorSends == 0 {
+			_ = fence.RecordCanResend()
+			return rowMutationBranch(AddRowBranchProviderRejected, "addRow", sdkgo.FailureProviderRejection, "Smartsheet rejected the row")
+		}
+		return sheetCreateUnknown[SheetRow](call, decision.MaximumPriorSends, "addRow", response)
 	}
 	row, decodeErr := decodeRowResult(response.body)
 	if decodeErr != nil {
-		return sdkgo.NewMutationRetry[SheetRow](rowFailure("addRow", sdkgo.FailureProtocol, "Smartsheet accepted the row but returned no usable ID"), 0)
+		return sheetCreateUnknown[SheetRow](call, decision.MaximumPriorSends, "addRow", response)
 	}
 	_ = fence.RecordProviderID(strconv.FormatInt(row.ID, 10)) // A lost checkpoint forbids a resend.
 	return sdkgo.NewMutationBranch(AddRowBranchAdded, row, nil, rowReceipt(call, strconv.FormatInt(row.ID, 10)))
@@ -180,7 +184,7 @@ func (operation UpdateRowOperation) Invoke(call sdkgo.Call, input UpdateRowInput
 	}
 	row, decodeErr := decodeRowResult(response.body)
 	if decodeErr != nil {
-		return rowMutationBranch(UpdateRowBranchInvalidResponse, "updateRow", sdkgo.FailureProtocol, "Smartsheet returned an invalid row")
+		return sdkgo.NewMutationRetry[SheetRow](rowFailure("updateRow", sdkgo.FailureProtocol, "Smartsheet returned an invalid row"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateRowBranchUpdated, row, nil, rowReceipt(call, strconv.FormatInt(row.ID, 10)))
 }
@@ -236,7 +240,7 @@ func (operation DeleteRowOperation) Invoke(call sdkgo.Call, input DeleteRowInput
 		return deleteRowBranch(DeleteRowBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected row deletion")
 	}
 	if !validSuccessEnvelope(response.body) {
-		return deleteRowBranch(DeleteRowBranchInvalidResponse, sdkgo.FailureProtocol, "Smartsheet returned invalid delete confirmation")
+		return sdkgo.NewMutationRetry[DeleteRowOutput](rowFailure("deleteRow", sdkgo.FailureProtocol, "Smartsheet returned invalid delete confirmation"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteRowBranchDeleted, DeleteRowOutput{RowID: input.RowID}, nil, rowReceipt(call, strconv.FormatInt(input.RowID, 10)))
 }

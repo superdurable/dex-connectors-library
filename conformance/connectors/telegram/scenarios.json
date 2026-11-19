@@ -1970,13 +1970,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "chatId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2256,13 +2253,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "chatId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2556,13 +2550,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "chatId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2856,13 +2847,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "answered": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3156,13 +3144,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "answered": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3731,14 +3716,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "chatId": "",
-          "messageId": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4102,14 +4083,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "chatId": "",
-          "messageId": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4455,14 +4432,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "chatId": "",
-          "messageId": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4808,14 +4781,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "chatId": "",
-          "messageId": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5159,13 +5128,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "chatId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5430,8 +5396,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e1299d58-ad44-579b-ae3b-4eabf7584c8c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": 0,
@@ -5870,8 +5835,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6628e9c8-7a7d-564f-8163-07a53d993463",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": 0,
@@ -6310,8 +6274,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "0b9a493e-0b78-56b2-8f78-1227b34b45e8",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": 0,
@@ -6750,8 +6713,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9bda12a9-0720-5196-afa4-abab615da299",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": 0,
@@ -7183,8 +7145,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9b86501c-adf1-502b-9c66-62f7b365877b",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": 0,
@@ -7599,8 +7560,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "0540e517-3b75-53d7-a1ba-eea1adcce722",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": 0,
@@ -8039,8 +7999,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "db16cc58-2ec3-5100-9649-5a43064046fe",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "chatId": 0,
@@ -8492,8 +8451,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "4a7e3c9a-a8f4-50e8-b64b-6b13135b621a",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messages": []

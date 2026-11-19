@@ -124,11 +124,15 @@ func (operation CreateSurveyOperation) Invoke(call sdkgo.Call, input CreateSurve
 		}
 		return sdkgo.NewMutationRetry[SurveyMetadata](failure, response.retryAfter)
 	}
-	if response.err == errCredential {
-		return surveyMutationBranch(CreateSurveyBranchDefect, SurveyMetadata{}, "createSurvey", sdkgo.FailureAuthentication, "connection credentials are unavailable")
-	}
-	if response.status >= 400 {
+	if isDefiniteSurveyRefusal(response) && decision.MaximumPriorSends == 0 {
+		_ = fence.RecordCanResend()
 		return surveyMutationBranch(CreateSurveyBranchProviderRejected, SurveyMetadata{}, "createSurvey", surveyFailureKind(response), "SurveyMonkey rejected the survey create")
+	}
+	if response.err == errCredential || response.status >= 400 {
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return createSurveyUncertain("survey create outcome is unknown")
+		}
+		return sdkgo.NewMutationRetry[SurveyMetadata](queryFailure("createSurvey", sdkgo.FailureAvailability, "survey create outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusCreated && response.status != http.StatusOK {
 		if decision.MaximumPriorSends+1 >= call.MaxSends() {
@@ -180,11 +184,11 @@ func (operation UpdateSurveyOperation) Invoke(call sdkgo.Call, input UpdateSurve
 		return surveyMutationBranch(UpdateSurveyBranchProviderRejected, SurveyMetadata{}, "updateSurvey", surveyFailureKind(response), "SurveyMonkey rejected the survey update with HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return surveyMutationBranch(UpdateSurveyBranchInvalidResponse, SurveyMetadata{}, "updateSurvey", sdkgo.FailureResponseTooLarge, "survey response exceeded the limit")
+		return sdkgo.NewMutationRetry[SurveyMetadata](queryFailure("updateSurvey", sdkgo.FailureResponseTooLarge, "survey response exceeded the limit"), 0)
 	}
 	survey, err := decodeSurveyMetadata(response.body)
 	if err != nil {
-		return surveyMutationBranch(UpdateSurveyBranchInvalidResponse, SurveyMetadata{}, "updateSurvey", sdkgo.FailureProtocol, "survey response was invalid")
+		return sdkgo.NewMutationRetry[SurveyMetadata](queryFailure("updateSurvey", sdkgo.FailureProtocol, "survey response was invalid"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateSurveyBranchUpdated, survey, nil, sdkgo.Receipt{})
 }
@@ -277,6 +281,24 @@ func surveyFailureKind(response surveyHTTPResponse) sdkgo.FailureKind {
 		return sdkgo.FailureAuthorization
 	}
 	return sdkgo.FailureProviderRejection
+}
+
+func isDefiniteSurveyRefusal(response surveyHTTPResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		Error string `json:"error"`
+		ID    string `json:"id"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && body.Error != "" && body.ID == ""
 }
 
 func surveyMutationBranch[T any](branch sdkgo.BranchID, value T, operation string, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[T] {

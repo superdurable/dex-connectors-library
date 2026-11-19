@@ -265,18 +265,21 @@ func invokeChatAction(call sdkgo.Call, client *Client, operation string, paramet
 		return chatMutationBranch(defect, ChatActionResult{}, operation, sdkgo.FailureAuthentication, "bot token unavailable")
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return chatMutationBranch(invalid, ChatActionResult{}, operation, sdkgo.FailureResponseTooLarge, "Bot API response exceeded limit")
+		return sdkgo.NewMutationRetry[ChatActionResult](botFailure(operation, sdkgo.FailureResponseTooLarge, "Bot API response exceeded limit"), 0)
 	}
 	envelope, err := decodeBotEnvelope(response.body)
 	if err != nil {
-		return chatMutationBranch(invalid, ChatActionResult{}, operation, sdkgo.FailureProtocol, "Bot API response invalid")
+		return sdkgo.NewMutationRetry[ChatActionResult](botFailure(operation, sdkgo.FailureProtocol, "Bot API response invalid"), 0)
 	}
 	if !envelope.OK {
-		return chatMutationBranch(rejected, ChatActionResult{}, operation, botRejectionKind(response.status), "Telegram rejected chat action")
+		if isDefiniteBotActionRefusal(response.status, envelope) {
+			return chatMutationBranch(rejected, ChatActionResult{}, operation, botRejectionKind(response.status), "Telegram rejected chat action")
+		}
+		return sdkgo.NewMutationRetry[ChatActionResult](botFailure(operation, sdkgo.FailureAvailability, "Telegram chat action outcome unknown"), response.retryAfter)
 	}
 	var confirmed bool
 	if response.status != http.StatusOK || json.Unmarshal(envelope.Result, &confirmed) != nil || !confirmed {
-		return chatMutationBranch(invalid, ChatActionResult{}, operation, sdkgo.FailureProtocol, "Bot API confirmation invalid")
+		return sdkgo.NewMutationRetry[ChatActionResult](botFailure(operation, sdkgo.FailureProtocol, "Bot API confirmation invalid"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, ChatActionResult{ChatID: chatID}, nil, sdkgo.Receipt{})
 }
@@ -285,6 +288,11 @@ type botEnvelope struct {
 	OK          bool            `json:"ok"`
 	Result      json.RawMessage `json:"result"`
 	Description string          `json:"description"`
+	ErrorCode   int             `json:"error_code"`
+}
+
+func isDefiniteBotActionRefusal(status int, envelope botEnvelope) bool {
+	return isDefiniteRefusalStatus(status) && envelope.ErrorCode == status && envelope.Description != "" && len(envelope.Result) == 0
 }
 
 func decodeBotEnvelope(body []byte) (botEnvelope, error) {

@@ -671,23 +671,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "archived": false,
-          "name": "",
-          "storyId": "",
-          "storyType": "",
-          "workflowStateId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -730,7 +723,7 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "PROTOCOL",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "138ce572-83a6-5670-b261-05537b9cfcc4",
@@ -1079,17 +1072,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "archived": false,
-          "name": "",
-          "storyId": "",
-          "storyType": "",
-          "workflowStateId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

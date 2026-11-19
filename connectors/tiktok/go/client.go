@@ -7,6 +7,7 @@ package tiktok
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -66,6 +67,25 @@ type providerResponse struct {
 	status     int
 	retryAfter time.Duration
 	err        error
+}
+
+func isDefiniteTikTokRefusal(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var envelope struct {
+		Code    *int            `json:"code"`
+		Message string          `json:"message"`
+		Data    json.RawMessage `json:"data"`
+	}
+	return json.Unmarshal(response.body, &envelope) == nil && envelope.Code != nil && *envelope.Code != 0 && envelope.Message != "" && len(envelope.Data) == 0
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {

@@ -665,23 +665,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 2,
           "callId": "5675dac0-6a9e-548b-bc50-cacb732835ff",
           "sendCount": 2,
           "state": "claimed"
         },
-        "output": {
-          "id": "",
-          "name": "",
-          "slug": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "5675dac0-6a9e-548b-bc50-cacb732835ff",
       "input": {

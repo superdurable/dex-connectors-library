@@ -276,14 +276,14 @@ func executeOrderMutation(client *Client, call sdkgo.Call, write orderWriteReque
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return sdkgo.NewMutationBranch(write.invalidBranch, Order{}, failureFor(write.operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Order](*failureFor(write.operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[Order](*failureFor(write.operation, sdkgo.FailureAvailability, "provider order response was interrupted"), 0)
 	}
 	order, err := decodeOrder(responseBody)
 	if err != nil {
-		return sdkgo.NewMutationBranch(write.invalidBranch, Order{}, failureFor(write.operation, sdkgo.FailureProtocol, "provider returned invalid JSON"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Order](*failureFor(write.operation, sdkgo.FailureProtocol, "provider returned invalid JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(write.successBranch, order, nil, sdkgo.Receipt{})
 }

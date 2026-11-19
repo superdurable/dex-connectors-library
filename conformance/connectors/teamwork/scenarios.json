@@ -643,7 +643,7 @@
       "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"STATUS\":\"ERROR\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -673,8 +673,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "cd5d4681-36f7-52d1-aedc-172d25da36d6",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -1127,15 +1126,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2118,7 +2112,7 @@
       "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"STATUS\":\"ERROR\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2148,8 +2142,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "748bfde9-c436-5801-b22e-2e6dc28d9a8f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": ""
@@ -2586,13 +2579,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

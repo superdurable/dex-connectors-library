@@ -139,18 +139,21 @@ func invokeBotAnswer(call sdkgo.Call, client *Client, operation string, paramete
 		return chatMutationBranch(defect, AnsweredQuery{}, operation, sdkgo.FailureAuthentication, "bot token unavailable")
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return chatMutationBranch(invalid, AnsweredQuery{}, operation, sdkgo.FailureResponseTooLarge, "Bot API response exceeded limit")
+		return sdkgo.NewMutationRetry[AnsweredQuery](botFailure(operation, sdkgo.FailureResponseTooLarge, "Bot API response exceeded limit"), 0)
 	}
 	envelope, err := decodeBotEnvelope(response.body)
 	if err != nil {
-		return chatMutationBranch(invalid, AnsweredQuery{}, operation, sdkgo.FailureProtocol, "Bot API response invalid")
+		return sdkgo.NewMutationRetry[AnsweredQuery](botFailure(operation, sdkgo.FailureProtocol, "Bot API response invalid"), 0)
 	}
 	if !envelope.OK {
-		return chatMutationBranch(rejected, AnsweredQuery{}, operation, botRejectionKind(response.status), "Telegram rejected query answer")
+		if isDefiniteBotActionRefusal(response.status, envelope) {
+			return chatMutationBranch(rejected, AnsweredQuery{}, operation, botRejectionKind(response.status), "Telegram rejected query answer")
+		}
+		return sdkgo.NewMutationRetry[AnsweredQuery](botFailure(operation, sdkgo.FailureAvailability, "Telegram query answer outcome unknown"), response.retryAfter)
 	}
 	var confirmed bool
 	if response.status != http.StatusOK || json.Unmarshal(envelope.Result, &confirmed) != nil || !confirmed {
-		return chatMutationBranch(invalid, AnsweredQuery{}, operation, sdkgo.FailureProtocol, "Bot API confirmation invalid")
+		return sdkgo.NewMutationRetry[AnsweredQuery](botFailure(operation, sdkgo.FailureProtocol, "Bot API confirmation invalid"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, AnsweredQuery{Answered: true}, nil, sdkgo.Receipt{})
 }

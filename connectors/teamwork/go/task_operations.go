@@ -168,11 +168,15 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 		}
 		return sdkgo.NewMutationRetry[TaskSummary](failure, response.retryAfter)
 	}
-	if response.err == errCredential {
-		return taskMutationBranch(CreateTaskBranchDefect, TaskSummary{}, "createTask", sdkgo.FailureAuthentication, "credentials unavailable")
-	}
-	if response.status >= 400 {
+	if isDefiniteTeamworkRefusal(response) && decision.MaximumPriorSends == 0 {
+		_ = fence.RecordCanResend()
 		return taskMutationBranch(CreateTaskBranchProviderRejected, TaskSummary{}, "createTask", sdkgo.FailureProviderRejection, "Teamwork rejected task create")
+	}
+	if response.err == errCredential || response.status >= 400 {
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return sdkgo.NewMutationUncertain(TaskSummary{}, taskOperationFailure("createTask", sdkgo.FailureAvailability, "task create outcome unknown"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[TaskSummary](taskOperationFailure("createTask", sdkgo.FailureAvailability, "task create outcome unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
 		if decision.MaximumPriorSends+1 >= call.MaxSends() {
@@ -227,11 +231,11 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 		return taskMutationBranch(UpdateTaskBranchProviderRejected, TaskSummary{}, "updateTask", sdkgo.FailureProviderRejection, "Teamwork rejected task update")
 	}
 	if response.err != nil {
-		return taskMutationBranch(UpdateTaskBranchInvalidResponse, TaskSummary{}, "updateTask", sdkgo.FailureResponseTooLarge, "task response exceeded limit")
+		return sdkgo.NewMutationRetry[TaskSummary](taskOperationFailure("updateTask", sdkgo.FailureResponseTooLarge, "task response exceeded limit"), 0)
 	}
 	task, err := decodeTask(response.body, input.TaskID)
 	if err != nil {
-		return taskMutationBranch(UpdateTaskBranchInvalidResponse, TaskSummary{}, "updateTask", sdkgo.FailureProtocol, "task response invalid")
+		return sdkgo.NewMutationRetry[TaskSummary](taskOperationFailure("updateTask", sdkgo.FailureProtocol, "task response invalid"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, task, nil, sdkgo.Receipt{})
 }
@@ -283,6 +287,24 @@ func decodeCreatedTask(body []byte) (TaskSummary, error) {
 		return TaskSummary{}, errors.New("created task identity missing")
 	}
 	return TaskSummary{ID: strconv.FormatInt(wire.Task.ID, 10), Name: wire.Task.Name, Status: wire.Task.Status}, nil
+}
+
+func isDefiniteTeamworkRefusal(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		Status string `json:"STATUS"`
+		ID     string `json:"id"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && body.Status == "ERROR" && body.ID == ""
 }
 
 func taskResponseRetry(operation string, response providerResponse) (bool, sdkgo.Failure) {

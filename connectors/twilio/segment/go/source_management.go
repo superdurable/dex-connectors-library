@@ -61,7 +61,7 @@ func (operation CreateSourceOperation) Invoke(call sdkgo.Call, input CreateSourc
 	credentials, credentialErr := operation.client.credentials.Resolve(call)
 	if credentialErr != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(SourceProfile{}, managementFailure("createSource", sdkgo.FailureAuthentication, "earlier source creation may have succeeded and credentials are unavailable"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SourceProfile](managementFailure("createSource", sdkgo.FailureAuthentication, "earlier source creation cannot be confirmed while credentials are unavailable"), 0)
 		}
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[SourceProfile](managementFailure("createSource", sdkgo.FailureAvailability, "source no-send checkpoint failed"), 0)
@@ -102,10 +102,15 @@ func (operation CreateSourceOperation) Invoke(call sdkgo.Call, input CreateSourc
 		return sdkgo.NewMutationUncertain(SourceProfile{}, failure, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusCreated && response.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(SourceProfile{}, managementFailure("createSource", sdkgo.FailureProviderRejection, "an earlier source creation may have succeeded"), sdkgo.Receipt{})
+		if decision.MaximumPriorSends == 0 && isDefiniteSegmentRefusal(response) {
+			_ = fence.RecordCanResend()
+			return sourceMutationBranch[SourceProfile]("createSource", CreateSourceBranchProviderRejected, sdkgo.FailureProviderRejection, "Segment rejected source creation")
 		}
-		return sourceMutationBranch[SourceProfile]("createSource", CreateSourceBranchProviderRejected, sdkgo.FailureProviderRejection, "Segment rejected source creation")
+		failure := managementFailure("createSource", sdkgo.FailureAvailability, "Segment source creation outcome is unknown")
+		if canResendUnknown {
+			return sdkgo.NewMutationRetry[SourceProfile](failure, response.retryAfter)
+		}
+		return sdkgo.NewMutationUncertain(SourceProfile{}, failure, sdkgo.Receipt{})
 	}
 	var envelope struct {
 		Data struct {
@@ -131,6 +136,24 @@ func (operation CreateSourceOperation) Invoke(call sdkgo.Call, input CreateSourc
 		return sdkgo.NewMutationRetry[SourceProfile](managementFailure("createSource", sdkgo.FailureAvailability, "source result checkpoint is unavailable"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateSourceBranchCreated, profile, nil, sdkgo.Receipt{ProviderObjectID: profile.ID})
+}
+
+func isDefiniteSegmentRefusal(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var envelope struct {
+		Message string          `json:"message"`
+		Data    json.RawMessage `json:"data"`
+	}
+	return json.Unmarshal(response.body, &envelope) == nil && envelope.Message != "" && len(envelope.Data) == 0
 }
 
 // ListSourcesInput selects a page of Sources in the token's Workspace.

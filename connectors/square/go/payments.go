@@ -211,14 +211,14 @@ func executePaymentWrite(client *Client, call sdkgo.Call, write paymentWriteRequ
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return sdkgo.NewMutationBranch(write.invalidBranch, Payment{}, failureFor(write.operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Payment](*failureFor(write.operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return confirmPaymentWrite(client, call, write, "provider response was interrupted")
 	}
 	payment, err := decodeGetPaymentResponse(body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(write.invalidBranch, Payment{}, failureFor(write.operation, sdkgo.FailureProtocol, "provider returned invalid JSON"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Payment](*failureFor(write.operation, sdkgo.FailureProtocol, "provider returned invalid JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(write.successBranch, payment, nil, sdkgo.Receipt{})
 }

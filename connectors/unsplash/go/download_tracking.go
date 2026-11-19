@@ -66,6 +66,9 @@ func (operation TrackPhotoDownloadOperation) Invoke(call sdkgo.Call, input Track
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.AccessKey.Reveal()) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[TrackedPhotoDownload](*unsplashFailure(name, sdkgo.FailureAuthentication, "earlier download tracking outcome cannot be confirmed"), 0)
+		}
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[TrackedPhotoDownload](*unsplashFailure(name, sdkgo.FailureTransport, "download tracking checkpoint is unavailable"), 0)
 		}
@@ -93,7 +96,7 @@ func (operation TrackPhotoDownloadOperation) Invoke(call sdkgo.Call, input Track
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return sdkgo.NewMutationRetry[TrackedPhotoDownload](*unsplashFailure(name, sdkgo.FailureTransport, "download tracking dispatch checkpoint is unavailable"), 0)
 		}
-		return sdkgo.NewMutationRetry[TrackedPhotoDownload](*unsplashFailure(name, sdkgo.FailureTransport, "download tracking outcome is unknown"), 0)
+		return trackPhotoDownloadUnknown(call, decision.MaximumPriorSends, sdkgo.FailureTransport, "download tracking outcome is unknown", 0)
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -105,21 +108,23 @@ func (operation TrackPhotoDownloadOperation) Invoke(call sdkgo.Call, input Track
 		}
 		return sdkgo.NewMutationRetry[TrackedPhotoDownload](*unsplashFailure(name, kind, "Unsplash is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
-		return sdkgo.NewMutationBranch(TrackPhotoDownloadBranchNotFound, TrackedPhotoDownload{}, unsplashFailure(name, sdkgo.FailureNotFound, "Unsplash photo was not found"), sdkgo.Receipt{})
-	}
-	if response.status >= 400 && response.status < 500 && response.status != http.StatusRequestTimeout {
+	if isDefiniteDownloadRefusal(response) && decision.MaximumPriorSends == 0 {
+		// A lost checkpoint cannot resend a terminal refusal.
+		_ = fence.RecordCanResend()
+		if response.status == http.StatusNotFound {
+			return sdkgo.NewMutationBranch(TrackPhotoDownloadBranchNotFound, TrackedPhotoDownload{}, unsplashFailure(name, sdkgo.FailureNotFound, "Unsplash photo was not found"), sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationBranch(TrackPhotoDownloadBranchProviderRejected, TrackedPhotoDownload{}, unsplashFailure(name, unsplashFailureKind(response.status), "Unsplash rejected download tracking with HTTP "+strconv.Itoa(response.status)), sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
-		return sdkgo.NewMutationRetry[TrackedPhotoDownload](*unsplashFailure(name, sdkgo.FailureAvailability, "download tracking outcome is unknown"), response.retryAfter)
+		return trackPhotoDownloadUnknown(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "download tracking outcome is unknown", response.retryAfter)
 	}
 	if response.readError != nil {
-		return sdkgo.NewMutationUncertain(TrackedPhotoDownload{}, *unsplashFailure(name, sdkgo.FailureProtocol, "Unsplash recorded the download but its response could not be read"), sdkgo.Receipt{})
+		return trackPhotoDownloadUnknown(call, decision.MaximumPriorSends, sdkgo.FailureProtocol, "Unsplash download response could not be read", 0)
 	}
 	var tracked TrackedPhotoDownload
 	if json.Unmarshal(response.body, &tracked) != nil || !validHTTPS(tracked.URL) {
-		return sdkgo.NewMutationUncertain(TrackedPhotoDownload{}, *unsplashFailure(name, sdkgo.FailureProtocol, "Unsplash recorded the download but returned an invalid URL"), sdkgo.Receipt{})
+		return trackPhotoDownloadUnknown(call, decision.MaximumPriorSends, sdkgo.FailureProtocol, "Unsplash download response has an invalid URL", 0)
 	}
 	return sdkgo.NewMutationBranch(TrackPhotoDownloadBranchTracked, tracked, nil, sdkgo.Receipt{})
 }
@@ -129,4 +134,30 @@ type downloadTrackingResponse struct {
 	body       []byte
 	readError  error
 	retryAfter time.Duration
+}
+
+func isDefiniteDownloadRefusal(response *downloadTrackingResponse) bool {
+	if response.readError != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var errorResponse struct {
+		Errors []string `json:"errors"`
+		URL    string   `json:"url"`
+	}
+	return json.Unmarshal(response.body, &errorResponse) == nil && len(errorResponse.Errors) > 0 && errorResponse.URL == ""
+}
+
+func trackPhotoDownloadUnknown(call sdkgo.Call, priorSends int32, kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[TrackedPhotoDownload] {
+	failure := *unsplashFailure("trackPhotoDownload", kind, message)
+	if priorSends+1 < call.MaxSends() {
+		return sdkgo.NewMutationRetry[TrackedPhotoDownload](failure, retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(TrackedPhotoDownload{}, failure, sdkgo.Receipt{})
 }

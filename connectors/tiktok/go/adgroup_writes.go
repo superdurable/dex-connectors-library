@@ -137,7 +137,11 @@ func (operation CreateAdgroupOperation) Invoke(call sdkgo.Call, input CreateAdgr
 		return retryOrUncertainAdgroupCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "adgroup create outcome unknown", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return adgroupWriteBranch(CreateAdgroupBranchProviderRejected, "createAdgroup", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		if decision.MaximumPriorSends == 0 && isDefiniteTikTokRefusal(response) {
+			_ = fence.RecordCanResend()
+			return adgroupWriteBranch(CreateAdgroupBranchProviderRejected, "createAdgroup", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return retryOrUncertainAdgroupCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "adgroup create outcome unknown", response.retryAfter)
 	}
 	var envelope struct {
 		Code *int `json:"code"`
@@ -158,7 +162,7 @@ func (operation CreateAdgroupOperation) Invoke(call sdkgo.Call, input CreateAdgr
 		return retryOrUncertainAdgroupCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "adgroup create outcome unknown", response.retryAfter)
 	}
 	if *envelope.Code != 0 {
-		return adgroupWriteBranch(CreateAdgroupBranchProviderRejected, "createAdgroup", sdkgo.FailureProviderRejection, "TikTok rejected adgroup create with code "+strconv.Itoa(*envelope.Code))
+		return retryOrUncertainAdgroupCreate(call, decision.MaximumPriorSends, sdkgo.FailureAvailability, "adgroup create outcome unknown", response.retryAfter)
 	}
 	if !validDecimalID(envelope.Data.AdgroupID) {
 		return retryOrUncertainAdgroupCreate(call, decision.MaximumPriorSends, sdkgo.FailureProtocol, "adgroup ID was not confirmed", 0)
@@ -216,7 +220,7 @@ func (operation UpdateAdgroupOperation) Invoke(call sdkgo.Call, input UpdateAdgr
 		return adgroupWriteBranch(UpdateAdgroupBranchProviderRejected, "updateAdgroup", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return adgroupWriteBranch(UpdateAdgroupBranchInvalidResponse, "updateAdgroup", sdkgo.FailureResponseTooLarge, "TikTok response exceeded limit")
+		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureResponseTooLarge, "TikTok response exceeded limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureTransport, "TikTok response interrupted"), 0)
@@ -225,7 +229,7 @@ func (operation UpdateAdgroupOperation) Invoke(call sdkgo.Call, input UpdateAdgr
 		Code *int `json:"code"`
 	}
 	if json.Unmarshal(response.body, &envelope) != nil || envelope.Code == nil {
-		return adgroupWriteBranch(UpdateAdgroupBranchInvalidResponse, "updateAdgroup", sdkgo.FailureProtocol, "TikTok update JSON invalid")
+		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureProtocol, "TikTok update JSON invalid"), 0)
 	}
 	if *envelope.Code == tiktokCodeRateLimited {
 		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureRateLimit, "TikTok rate limited update"), response.retryAfter)

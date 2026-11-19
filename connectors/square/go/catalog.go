@@ -274,14 +274,14 @@ func (operation UpsertCatalogObjectOperation) Invoke(call sdkgo.Call, input Upse
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return sdkgo.NewMutationBranch(UpsertCatalogObjectBranchInvalidResponse, CatalogObject{}, failureFor("upsertCatalogObject", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CatalogObject](*failureFor("upsertCatalogObject", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[CatalogObject](*failureFor("upsertCatalogObject", sdkgo.FailureAvailability, "provider catalog upsert response was interrupted"), 0)
 	}
 	object, err := decodeCatalogObject(responseBody)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpsertCatalogObjectBranchInvalidResponse, CatalogObject{}, failureFor("upsertCatalogObject", sdkgo.FailureProtocol, "provider returned invalid JSON"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CatalogObject](*failureFor("upsertCatalogObject", sdkgo.FailureProtocol, "provider returned invalid JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpsertCatalogObjectBranchUpserted, object, nil, sdkgo.Receipt{})
 }
@@ -321,7 +321,7 @@ func (operation DeleteCatalogObjectOperation) Invoke(call sdkgo.Call, input Dele
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return sdkgo.NewMutationBranch(DeleteCatalogObjectBranchInvalidResponse, DeletedCatalogObjects{}, failureFor("deleteCatalogObject", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[DeletedCatalogObjects](*failureFor("deleteCatalogObject", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[DeletedCatalogObjects](*failureFor("deleteCatalogObject", sdkgo.FailureAvailability, "provider catalog deletion response was interrupted"), 0)
@@ -330,7 +330,7 @@ func (operation DeleteCatalogObjectOperation) Invoke(call sdkgo.Call, input Dele
 		DeletedObjectIDs []string `json:"deleted_object_ids"`
 	}
 	if err := json.Unmarshal(responseBody, &result); err != nil || len(result.DeletedObjectIDs) == 0 {
-		return sdkgo.NewMutationBranch(DeleteCatalogObjectBranchInvalidResponse, DeletedCatalogObjects{}, failureFor("deleteCatalogObject", sdkgo.FailureProtocol, "provider returned invalid JSON"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[DeletedCatalogObjects](*failureFor("deleteCatalogObject", sdkgo.FailureProtocol, "provider returned invalid JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteCatalogObjectBranchDeleted, DeletedCatalogObjects{DeletedObjectIDs: result.DeletedObjectIDs}, nil, sdkgo.Receipt{})
 }

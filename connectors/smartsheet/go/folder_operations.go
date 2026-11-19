@@ -161,14 +161,18 @@ func createFolder(call sdkgo.Call, client *Client, path, name string, definition
 		return sdkgo.NewMutationRetry[FolderSummary](sheetFailure(operationID, sdkgo.FailureRateLimit, "Smartsheet temporarily refused the folder"), response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 || response.err != nil {
-		return sdkgo.NewMutationRetry[FolderSummary](sheetFailure(operationID, sdkgo.FailureAvailability, "folder creation outcome is unknown"), response.retryAfter)
+		return sheetCreateUnknown[FolderSummary](call, decision.MaximumPriorSends, operationID, response)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		return folderMutationBranch(rejectedBranch, operationID, sdkgo.FailureProviderRejection, "Smartsheet rejected folder creation")
+		if isDefiniteSheetRefusal(response) && decision.MaximumPriorSends == 0 {
+			_ = fence.RecordCanResend()
+			return folderMutationBranch(rejectedBranch, operationID, sdkgo.FailureProviderRejection, "Smartsheet rejected folder creation")
+		}
+		return sheetCreateUnknown[FolderSummary](call, decision.MaximumPriorSends, operationID, response)
 	}
 	folder, decodeErr := decodeFolderResult(response.body)
 	if decodeErr != nil {
-		return sdkgo.NewMutationRetry[FolderSummary](sheetFailure(operationID, sdkgo.FailureProtocol, "Smartsheet accepted the folder but returned no usable ID"), 0)
+		return sheetCreateUnknown[FolderSummary](call, decision.MaximumPriorSends, operationID, response)
 	}
 	_ = fence.RecordProviderID(strconv.FormatInt(folder.ID, 10)) // A lost checkpoint forbids resend.
 	return sdkgo.NewMutationBranch(createdBranch, folder, nil, sheetReceipt(call, strconv.FormatInt(folder.ID, 10)))
@@ -221,7 +225,7 @@ func (operation UpdateFolderOperation) Invoke(call sdkgo.Call, input UpdateFolde
 	}
 	folder, decodeErr := decodeFolderResult(response.body)
 	if decodeErr != nil {
-		return folderMutationBranch(UpdateFolderBranchInvalidResponse, "updateFolder", sdkgo.FailureProtocol, "Smartsheet returned invalid folder JSON")
+		return sdkgo.NewMutationRetry[FolderSummary](sheetFailure("updateFolder", sdkgo.FailureProtocol, "Smartsheet returned invalid folder JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateFolderBranchUpdated, folder, nil, sheetReceipt(call, strconv.FormatInt(folder.ID, 10)))
 }
@@ -274,7 +278,7 @@ func (operation DeleteFolderOperation) Invoke(call sdkgo.Call, input DeleteFolde
 		return folderDeleteBranch(DeleteFolderBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected folder deletion")
 	}
 	if !validSuccessEnvelope(response.body) {
-		return folderDeleteBranch(DeleteFolderBranchInvalidResponse, sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation")
+		return sdkgo.NewMutationRetry[DeleteFolderOutput](sheetFailure("deleteFolder", sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteFolderBranchDeleted, DeleteFolderOutput{FolderID: input.FolderID}, nil, sheetReceipt(call, strconv.FormatInt(input.FolderID, 10)))
 }

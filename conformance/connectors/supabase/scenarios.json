@@ -1484,13 +1484,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "data": null
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1903,13 +1900,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "data": null
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2211,7 +2205,7 @@
       "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
       "exchanges": [
         {
-          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "body": "{\"code\":\"PGRST301\",\"message\":\"SECRET SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2246,8 +2240,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "65b6854b-53f2-542d-9c0e-ab1a1ced24b5",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "data": null

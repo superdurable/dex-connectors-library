@@ -160,14 +160,18 @@ func (operation AddColumnOperation) Invoke(call sdkgo.Call, input AddColumnInput
 		return sdkgo.NewMutationRetry[ColumnSummary](sheetFailure("addColumn", sdkgo.FailureRateLimit, "Smartsheet temporarily refused the column"), response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 || response.err != nil {
-		return sdkgo.NewMutationRetry[ColumnSummary](sheetFailure("addColumn", sdkgo.FailureAvailability, "column creation outcome is unknown"), response.retryAfter)
+		return sheetCreateUnknown[ColumnSummary](call, decision.MaximumPriorSends, "addColumn", response)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		return columnMutationBranch(AddColumnBranchProviderRejected, "addColumn", sdkgo.FailureProviderRejection, "Smartsheet rejected column creation")
+		if isDefiniteSheetRefusal(response) && decision.MaximumPriorSends == 0 {
+			_ = fence.RecordCanResend()
+			return columnMutationBranch(AddColumnBranchProviderRejected, "addColumn", sdkgo.FailureProviderRejection, "Smartsheet rejected column creation")
+		}
+		return sheetCreateUnknown[ColumnSummary](call, decision.MaximumPriorSends, "addColumn", response)
 	}
 	column, decodeErr := decodeColumnResult(response.body, true)
 	if decodeErr != nil {
-		return sdkgo.NewMutationRetry[ColumnSummary](sheetFailure("addColumn", sdkgo.FailureProtocol, "Smartsheet accepted the column but returned no usable ID"), 0)
+		return sheetCreateUnknown[ColumnSummary](call, decision.MaximumPriorSends, "addColumn", response)
 	}
 	_ = fence.RecordProviderID(strconv.FormatInt(column.ID, 10)) // A lost checkpoint forbids resend.
 	return sdkgo.NewMutationBranch(AddColumnBranchAdded, column, nil, sheetReceipt(call, strconv.FormatInt(column.ID, 10)))
@@ -222,7 +226,7 @@ func (operation UpdateColumnOperation) Invoke(call sdkgo.Call, input UpdateColum
 	}
 	column, decodeErr := decodeColumnResult(response.body, false)
 	if decodeErr != nil {
-		return columnMutationBranch(UpdateColumnBranchInvalidResponse, "updateColumn", sdkgo.FailureProtocol, "Smartsheet returned invalid column JSON")
+		return sdkgo.NewMutationRetry[ColumnSummary](sheetFailure("updateColumn", sdkgo.FailureProtocol, "Smartsheet returned invalid column JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateColumnBranchUpdated, column, nil, sheetReceipt(call, strconv.FormatInt(column.ID, 10)))
 }
@@ -277,7 +281,7 @@ func (operation DeleteColumnOperation) Invoke(call sdkgo.Call, input DeleteColum
 		return columnDeleteBranch(DeleteColumnBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected column deletion")
 	}
 	if !validSuccessEnvelope(response.body) {
-		return columnDeleteBranch(DeleteColumnBranchInvalidResponse, sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation")
+		return sdkgo.NewMutationRetry[DeleteColumnOutput](sheetFailure("deleteColumn", sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteColumnBranchDeleted, DeleteColumnOutput{ColumnID: input.ColumnID}, nil, sheetReceipt(call, strconv.FormatInt(input.ColumnID, 10)))
 }

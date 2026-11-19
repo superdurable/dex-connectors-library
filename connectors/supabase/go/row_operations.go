@@ -138,7 +138,7 @@ func (operation UpdateRowOperation) Invoke(call sdkgo.Call, input UpdateRowInput
 		return sdkgo.NewMutationBranch(response.branch, UpdateRowOutput{}, response.failure, sdkgo.Receipt{})
 	}
 	if !hasResponseShape(response.body, "array") {
-		return sdkgo.NewMutationBranch(UpdateRowBranchInvalidResponse, UpdateRowOutput{}, failure("updateRow", sdkgo.FailureProtocol, "provider returned an invalid row array"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[UpdateRowOutput](*failure("updateRow", sdkgo.FailureProtocol, "provider returned an invalid row array"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateRowBranchUpdated, UpdateRowOutput{Data: response.body}, nil, sdkgo.Receipt{})
 }
@@ -171,7 +171,7 @@ func (operation DeleteRowOperation) Invoke(call sdkgo.Call, input DeleteRowInput
 		return sdkgo.NewMutationBranch(response.branch, DeleteRowOutput{}, response.failure, sdkgo.Receipt{})
 	}
 	if !hasResponseShape(response.body, "array") {
-		return sdkgo.NewMutationBranch(DeleteRowBranchInvalidResponse, DeleteRowOutput{}, failure("deleteRow", sdkgo.FailureProtocol, "provider returned an invalid row array"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[DeleteRowOutput](*failure("deleteRow", sdkgo.FailureProtocol, "provider returned an invalid row array"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteRowBranchDeleted, DeleteRowOutput{Data: response.body}, nil, sdkgo.Receipt{})
 }

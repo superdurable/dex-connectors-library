@@ -67,6 +67,34 @@ type providerResponse struct {
 	err        error
 }
 
+func isDefiniteSheetRefusal(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		ErrorCode int             `json:"errorCode"`
+		Message   string          `json:"message"`
+		Result    json.RawMessage `json:"result"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && body.ErrorCode != 0 && body.Message != "" && len(body.Result) == 0
+}
+
+func sheetCreateUnknown[T any](call sdkgo.Call, priorSends int32, operation string, response providerResponse) sdkgo.MutationAttempt[T] {
+	failure := sheetFailure(operation, sdkgo.FailureAvailability, "Smartsheet create outcome is unknown")
+	if priorSends+1 < call.MaxSends() {
+		return sdkgo.NewMutationRetry[T](failure, response.retryAfter)
+	}
+	var empty T
+	return sdkgo.NewMutationUncertain(empty, failure, sdkgo.Receipt{})
+}
+
 func (client *Client) request(call sdkgo.Call, requestContext context.Context, method, path string, body []byte, isFenced bool) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {

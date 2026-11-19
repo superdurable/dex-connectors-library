@@ -203,7 +203,11 @@ func invokeMediaSend[T any](call sdkgo.Call, client *Client, method string, form
 		return retryUnknown(sdkgo.FailureAvailability, "Telegram send outcome unknown")
 	}
 	if response.status >= 400 {
-		return branch(rejected, sdkgo.FailureProviderRejection, "Telegram rejected HTTP "+strconv.Itoa(response.status))
+		if decision.MaximumPriorSends == 0 && isDefiniteMediaRefusal(response.body, response.status) {
+			_ = fence.RecordCanResend()
+			return branch(rejected, sdkgo.FailureProviderRejection, "Telegram rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return retryUnknown(sdkgo.FailureAvailability, "Telegram send outcome unknown")
 	}
 	var envelope struct {
 		OK        bool            `json:"ok"`
@@ -224,7 +228,11 @@ func invokeMediaSend[T any](call sdkgo.Call, client *Client, method string, form
 			return retryUnknown(sdkgo.FailureAvailability, "Telegram send outcome unknown")
 		}
 		if envelope.ErrorCode >= 400 {
-			return branch(rejected, sdkgo.FailureProviderRejection, "Telegram rejected the send")
+			if decision.MaximumPriorSends == 0 && isDefiniteMediaRefusal(response.body, envelope.ErrorCode) {
+				_ = fence.RecordCanResend()
+				return branch(rejected, sdkgo.FailureProviderRejection, "Telegram rejected the send")
+			}
+			return retryUnknown(sdkgo.FailureAvailability, "Telegram send outcome unknown")
 		}
 		return retryUnknown(sdkgo.FailureProtocol, "Telegram send response invalid")
 	}
@@ -287,6 +295,19 @@ func validMediaReference(media string) bool {
 		return false
 	}
 	return !strings.ContainsAny(media, " \t\n\r")
+}
+
+func isDefiniteMediaRefusal(body []byte, status int) bool {
+	if !isDefiniteRefusalStatus(status) {
+		return false
+	}
+	var envelope struct {
+		OK          bool            `json:"ok"`
+		ErrorCode   int             `json:"error_code"`
+		Description string          `json:"description"`
+		Result      json.RawMessage `json:"result"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && !envelope.OK && envelope.ErrorCode == status && envelope.Description != "" && len(envelope.Result) == 0
 }
 
 func validMediaCaption(caption string) bool {

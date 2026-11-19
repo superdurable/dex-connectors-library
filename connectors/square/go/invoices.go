@@ -312,14 +312,14 @@ func executeInvoiceMutation(client *Client, call sdkgo.Call, write invoiceWriteR
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return sdkgo.NewMutationBranch(write.invalidBranch, Invoice{}, failureFor(write.operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Invoice](*failureFor(write.operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[Invoice](*failureFor(write.operation, sdkgo.FailureAvailability, "provider invoice response was interrupted"), 0)
 	}
 	invoice, err := decodeInvoice(responseBody)
 	if err != nil {
-		return sdkgo.NewMutationBranch(write.invalidBranch, Invoice{}, failureFor(write.operation, sdkgo.FailureProtocol, "provider returned invalid invoice JSON"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Invoice](*failureFor(write.operation, sdkgo.FailureProtocol, "provider returned invalid invoice JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(write.successBranch, invoice, nil, sdkgo.Receipt{})
 }
@@ -356,14 +356,14 @@ func (operation DeleteInvoiceOperation) Invoke(call sdkgo.Call, input DeleteInvo
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return sdkgo.NewMutationBranch(DeleteInvoiceBranchInvalidResponse, DeletedInvoice{}, failureFor("deleteInvoice", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[DeletedInvoice](*failureFor("deleteInvoice", sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[DeletedInvoice](*failureFor("deleteInvoice", sdkgo.FailureAvailability, "provider invoice delete response was interrupted"), 0)
 	}
 	var deletedResponse map[string]any
 	if err := json.Unmarshal(responseBody, &deletedResponse); err != nil || deletedResponse == nil {
-		return sdkgo.NewMutationBranch(DeleteInvoiceBranchInvalidResponse, DeletedInvoice{}, failureFor("deleteInvoice", sdkgo.FailureProtocol, "provider returned invalid invoice JSON"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[DeletedInvoice](*failureFor("deleteInvoice", sdkgo.FailureProtocol, "provider returned invalid invoice JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteInvoiceBranchDeleted, DeletedInvoice{InvoiceID: input.InvoiceID}, nil, sdkgo.Receipt{})
 }

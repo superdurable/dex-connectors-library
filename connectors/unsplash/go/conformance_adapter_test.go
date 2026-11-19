@@ -51,7 +51,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &previous))
 		priorAttempt = previous.Attempt
 	}
-	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = int32(attempt+1) + priorAttempt }, actions: map[string]conformanceOperationInvocation{
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = int32(attempt) + priorAttempt }, actions: map[string]conformanceOperationInvocation{
 		"searchPhotos":         newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.SearchPhotos(), connection),
 		"getPhoto":             newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.GetPhoto(), connection),
 		"listPhotos":           newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ListPhotos(), connection),

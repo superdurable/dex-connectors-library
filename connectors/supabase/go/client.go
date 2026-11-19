@@ -159,6 +159,13 @@ func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Co
 		return providerResponse{branch: "notFound", failure: failure(operationID, sdkgo.FailureNotFound, "resource was not found")}
 	}
 	if response.StatusCode != successStatus && !(operationID == "upsertRows" && response.StatusCode == http.StatusOK) {
+		var refusalBody []byte
+		if operationID == "createRow" {
+			refusalBody, err = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+			if err != nil {
+				return providerResponse{status: response.StatusCode, retry: true, failure: failure(operationID, sdkgo.FailureProtocol, "provider rejection body could not be read")}
+			}
+		}
 		kind := sdkgo.FailureProviderRejection
 		if response.StatusCode == http.StatusUnauthorized {
 			kind = sdkgo.FailureAuthentication
@@ -167,7 +174,7 @@ func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Co
 		} else if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
 			kind = sdkgo.FailureValidation
 		}
-		return providerResponse{branch: "providerRejected", status: response.StatusCode, failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
+		return providerResponse{branch: "providerRejected", status: response.StatusCode, body: refusalBody, failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
