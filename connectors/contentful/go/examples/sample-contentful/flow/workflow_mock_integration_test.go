@@ -24,7 +24,8 @@ import (
 func TestMockDefaultCompletesWithRealDex(t *testing.T) {
 	mock := contentfulmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	assetFlow := NewAssetFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, assetFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -63,4 +64,15 @@ func TestMockDefaultCompletesWithRealDex(t *testing.T) {
 	calls := mock.GetEntry().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, input, calls[0].Input)
+	assetInput := contentful.GetAssetInput{SpaceID: "space123", EnvironmentID: "master", AssetID: "asset-meridian"}
+	assetFlowID := "contentful-asset-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, assetFlow, assetFlowID, assetInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	assetResult, err := client.WaitForFlow(ctx, assetFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, assetResult.Status, assetResult.ErrorMessage)
+	var assetOutput contentful.ContentfulReadOutput
+	require.NoError(t, assetResult.DecodeSingleOutput(&assetOutput))
+	require.Contains(t, string(assetOutput.Data), "asset-meridian")
+	require.Len(t, mock.GetAsset().Calls(), 1)
 }

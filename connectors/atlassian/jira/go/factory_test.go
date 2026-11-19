@@ -47,19 +47,20 @@ func TestCreateIssueFactoryRequiresOnlyTheHappyPath(t *testing.T) {
 	})
 }
 
-// TestOnlyUnkeyedWritesAreUncertainAndSync records the duplicate-dispatch decision per operation.
-func TestOnlyUnkeyedWritesAreUncertainAndSync(t *testing.T) {
+// TestOnlyUnkeyedWritesAreUncertainAndFencedWritesAreSync records the duplicate-dispatch decision per operation.
+func TestOnlyUnkeyedWritesAreUncertainAndFencedWritesAreSync(t *testing.T) {
 	for _, test := range []struct {
 		operation    string
 		branches     []sdkgo.BranchDefinition
 		defaults     sdkgo.StepDefaults
 		hasUncertain bool
+		isFenced     bool
 	}{
-		{"searchIssues", jira.SearchIssuesDefinition.Branches, jira.SearchIssuesDefinition.StepDefaults, false},
-		{"getIssue", jira.GetIssueDefinition.Branches, jira.GetIssueDefinition.StepDefaults, false},
-		{"createIssue", jira.CreateIssueDefinition.Branches, jira.CreateIssueDefinition.StepDefaults, true},
-		{"transitionIssue", jira.TransitionIssueDefinition.Branches, jira.TransitionIssueDefinition.StepDefaults, false},
-		{"addComment", jira.AddCommentDefinition.Branches, jira.AddCommentDefinition.StepDefaults, true},
+		{"searchIssues", jira.SearchIssuesDefinition.Branches, jira.SearchIssuesDefinition.StepDefaults, false, false},
+		{"getIssue", jira.GetIssueDefinition.Branches, jira.GetIssueDefinition.StepDefaults, false, false},
+		{"createIssue", jira.CreateIssueDefinition.Branches, jira.CreateIssueDefinition.StepDefaults, true, true},
+		{"transitionIssue", jira.TransitionIssueDefinition.Branches, jira.TransitionIssueDefinition.StepDefaults, false, true},
+		{"addComment", jira.AddCommentDefinition.Branches, jira.AddCommentDefinition.StepDefaults, true, true},
 	} {
 		required, hasUncertain := 0, false
 		for _, branch := range test.branches {
@@ -73,10 +74,10 @@ func TestOnlyUnkeyedWritesAreUncertainAndSync(t *testing.T) {
 		require.Equal(t, 1, required, test.operation)
 		require.Equal(t, test.hasUncertain, hasUncertain, test.operation)
 		expectedDurability := dex.StepDurabilityAsync
-		if test.hasUncertain {
+		if test.isFenced {
 			expectedDurability = dex.StepDurabilitySync
 		}
-		require.Equal(t, expectedDurability, test.defaults.ExecuteDurability, "%s: an async fallback attempt would resend an unkeyed write", test.operation)
+		require.Equal(t, expectedDurability, test.defaults.ExecuteDurability, "%s: an async fallback attempt would lose the dispatch checkpoint", test.operation)
 	}
 }
 

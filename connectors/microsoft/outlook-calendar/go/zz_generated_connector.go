@@ -451,20 +451,24 @@ const CreateEventBranchCreated sdkgo.BranchID = "created"
 const CreateEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const CreateEventBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const CreateEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateEventBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 
 var CreateEventDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createEvent"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateEventBranchCreated, Description: "The event that carries the Step's idempotency key exists."},
 		{ID: CreateEventBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the event.", Optional: true},
-		{ID: CreateEventBranchInvalidResponse, Description: "Microsoft Graph returned an invalid or oversized event response.", Optional: true},
+		{ID: CreateEventBranchInvalidResponse, Description: "The marker lookup before any send returned a malformed or oversized answer, so nothing was sent; an unusable POST answer is read back or selects uncertain instead.", Optional: true},
 		{ID: CreateEventBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: CreateEventBranchUncertain, Description: "An earlier send may have created the event, the marker lookup cannot confirm it, and the send cap allows no further POST.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateEventResult = sdkgo.MutationResult[CreateEventOutput]
@@ -483,8 +487,11 @@ type CreateEventStepConfig[IN any] struct {
 	ProviderRejected                  sdkgo.Target[CreateEventResult]                         `connector:"branch=providerRejected,optional"`
 	InvalidResponse                   sdkgo.Target[CreateEventResult]                         `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[CreateEventResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateEventResult]                         `connector:"branch=uncertain,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateEventOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.MutationStep[IN, CreateEventInput, CreateEventOutput] {
@@ -500,7 +507,7 @@ func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.Mutation
 		Operation:       config.Connection.operations.CreateEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateEventResult] {
-			branches := make([]sdkgo.BranchTarget[CreateEventResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[CreateEventResult], 0, 5)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateEventBranchCreated))
 			}
@@ -513,10 +520,14 @@ func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.Mutation
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateEventBranchDefect))
 			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateEventBranchUncertain))
+			}
 			return branches
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -532,7 +543,7 @@ var UpdateEventDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateEventBranchUpdated, Description: "The event holds the requested values."},
 		{ID: UpdateEventBranchNotFound, Description: "The event does not exist, is cancelled, or is not visible to the connection.", Optional: true},
 		{ID: UpdateEventBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the event change.", Optional: true},
-		{ID: UpdateEventBranchInvalidResponse, Description: "Microsoft Graph returned an invalid or oversized event response.", Optional: true},
+		{ID: UpdateEventBranchInvalidResponse, Description: "Retained for compatibility and no longer selected: an invalid or oversized response now retries from the read.", Optional: true},
 		{ID: UpdateEventBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -540,6 +551,7 @@ var UpdateEventDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateEventResult = sdkgo.MutationResult[UpdateEventOutput]
@@ -561,6 +573,8 @@ type UpdateEventStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateEventResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateEventOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateEventStep[IN any](config UpdateEventStepConfig[IN]) sdkgo.MutationStep[IN, UpdateEventInput, UpdateEventOutput] {

@@ -70,7 +70,8 @@ def _encode(value: EncodeRequestInput, workspace_id: str) -> EncodedRequest:
     output_config: dict[str, object] = {}
     if request.reasoning_effort:
         output_config["effort"] = rules.reasoning_efforts[ReasoningEffort(request.reasoning_effort)]
-    if request.structured_output:
+    # The JSON object mode carries the schema in the instructions the pipeline already extended.
+    if request.structured_output and rules.structured_output.mode == StructuredOutputMode.JSON_SCHEMA:
         output = request.structured_output
         schema = dict(output.schema)
         if output.description and not schema.get("description"):
@@ -214,6 +215,28 @@ async def _stream(chunks: AsyncIterator[bytes], write_text_delta: Callable[[str]
 
 def new_claude_wire_format(workspace_id: str) -> WireFormat:
     """Return the Claude Messages dialect for one workspace."""
+    features = RequestFeatures(True, True, True, True, True)
+    return _messages_wire_format("anthropic", features, _rules, workspace_id)
+
+
+def _anthropic_compatible_rules(_model: str) -> ModelRequestRules:
+    return ModelRequestRules(
+        temperature_range(0, 1), {}, StructuredOutputRules(StructuredOutputMode.JSON_OBJECT_WITH_INSTRUCTION)
+    )
+
+
+def new_anthropic_compatible_wire_format() -> WireFormat:
+    """Return the Messages dialect for a gateway: no effort, and structured output by instruction."""
+    features = RequestFeatures(True, True, True, True, False)
+    return _messages_wire_format("anthropic-compatible", features, _anthropic_compatible_rules, "")
+
+
+def _messages_wire_format(
+    provider_name: str,
+    features: RequestFeatures,
+    rules_for_model: Callable[[str], ModelRequestRules],
+    workspace_id: str,
+) -> WireFormat:
     error_rules = (
         ErrorRule(0, "enforced_spend_limit_reached", quota_exhausted_outcome()),
         ErrorRule(0, "billing_error", quota_exhausted_outcome()),
@@ -225,11 +248,11 @@ def new_claude_wire_format(workspace_id: str) -> WireFormat:
         ErrorRule(0, "rate_limit_error", retry_outcome(FailureKind.RATE_LIMIT)),
     )
     return WireFormat(
-        "anthropic",
+        provider_name,
         ModelIDRule.BODY,
-        RequestFeatures(True, True, True, True, True),
+        features,
         CredentialHeader("Authorization", "Bearer "),
-        _rules,
+        rules_for_model,
         lambda value: _encode(value, workspace_id),
         _decode,
         _stream,

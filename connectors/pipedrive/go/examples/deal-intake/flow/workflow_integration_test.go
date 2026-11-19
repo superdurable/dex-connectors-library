@@ -162,17 +162,15 @@ func TestSlowDealUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	t.Logf("slow update: updates=%d", provider.count("dealUpdate"))
 }
 
-func TestLostDealCreateResponseSelectsUncertainAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostDealCreateResponseIsResentBelowTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakePipedrive(t)
 	provider.losesFirstDealCreateResponse = true
 	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
 
-	result := harness.waitForFlow(t, harness.startIntake(t, "lost-deal", integrationLead()))
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("dealCreate"), "an unconfirmed create is never resent")
-	require.Equal(t, 1, provider.dealCount(), "Pipedrive did create the deal, which a person must now find")
+	intake := harness.runIntake(t, "lost-deal", integrationLead())
+	require.Equal(t, PhaseCompleted, intake.Phase, "the limited create resends an unknown outcome below the send cap")
+	require.Equal(t, 2, provider.count("dealCreate"))
+	require.Equal(t, 2, provider.dealCount(), "the lost first create also took effect; a limited create accepts that duplicate")
 }
 
 func TestLostPersonCreateResponseIsReadBackInsteadOfCreatedAgainWithRealDex(t *testing.T) {
@@ -189,9 +187,9 @@ func TestLostPersonCreateResponseIsReadBackInsteadOfCreatedAgainWithRealDex(t *t
 	require.Equal(t, 1, provider.personCount())
 }
 
-// TestLostWorkerDuringDealCreateSelectsUncertainWithoutResendingWithRealDex replaces the Worker while
-// Pipedrive holds the create; the next attempt finds the dispatch checkpoint and sends nothing.
-func TestLostWorkerDuringDealCreateSelectsUncertainWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringDealCreateCountsTheClaimAndResendsBelowTheSendCapWithRealDex replaces the
+// Worker while Pipedrive holds the create; the next attempt counts the claimed send and resends once.
+func TestLostWorkerDuringDealCreateCountsTheClaimAndResendsBelowTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakePipedrive(t)
 	provider.holdsFirstDealCreate = make(chan struct{})
 	harness := newIntakeHarness(t, provider, slowRequestTimeout)
@@ -202,11 +200,9 @@ func TestLostWorkerDuringDealCreateSelectsUncertainWithoutResendingWithRealDex(t
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstDealCreate)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("dealCreate"), "the attempt on the new Worker did not resend the create")
+	require.Equal(t, 2, provider.count("dealCreate"), "the attempt on the new Worker resent the create once")
 }
 
 func TestBurstLimitedDealCreateWaitsAndCreatesOneDealWithRealDex(t *testing.T) {

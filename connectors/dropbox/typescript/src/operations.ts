@@ -181,15 +181,35 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadedFi
     if (content.toString('base64') !== input.contentBase64) return uploadFailure('defect', 'VALIDATION', 'upload content must be bounded Base64');
     if (content.length > this.client.maxUploadBytes) return uploadFailure('defect', 'VALIDATION', 'upload content must be bounded Base64');
     const exchange = await this.client.upload(call, input.path, content);
-    if (exchange.error === 'credential') return uploadFailure('defect', 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
+    if (exchange.error === 'credential' && exchange.status === 0) {
+      // An earlier attempt may have stored the file, so defect would misreport it.
+      if ((call.context?.attempt ?? 1) > 1) return uploadRetry('AUTHENTICATION', 'connection credentials are unavailable or invalid after a possible earlier upload');
+      return uploadFailure('defect', 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
+    }
+    if (exchange.error === 'credential') return uploadRetry('PROTOCOL', 'Dropbox echoed the access token, so the overwrite is repeated', exchange.retryAfterMs);
     if (exchange.error === 'refresh') return uploadRetry('AVAILABILITY', 'Dropbox credentials could not be refreshed');
     if (exchange.error === 'request') return uploadRetry('TRANSPORT', 'Dropbox upload request failed');
     if (exchange.status === 429) return uploadRetry('RATE_LIMIT', 'Dropbox rate limited the upload', exchange.retryAfterMs);
     if (exchange.status === 408 || exchange.status >= 500) return uploadRetry('AVAILABILITY', 'Dropbox upload is temporarily unavailable', exchange.retryAfterMs);
-    if (exchange.status !== 200) return uploadFailure('providerRejected', 'PROVIDER_REJECTION', `Dropbox rejected HTTP ${exchange.status}`);
-    if (exchange.error === 'tooLarge') return uploadFailure('invalidResponse', 'RESPONSE_TOO_LARGE', 'Dropbox upload metadata exceeded the configured limit');
+    if (exchange.status !== 200 && isDefiniteUploadRefusal(exchange)) return uploadFailure('providerRejected', 'PROVIDER_REJECTION', `Dropbox rejected HTTP ${exchange.status}`);
+    if (exchange.status !== 200) return uploadRetry('PROTOCOL', `Dropbox answered the overwrite with unsettled HTTP ${exchange.status}`, exchange.retryAfterMs);
+    // The overwrite is absolute, so an unusable 2xx body repeats it instead of selecting invalidResponse.
+    if (exchange.error === 'tooLarge') return uploadRetry('RESPONSE_TOO_LARGE', 'Dropbox upload metadata exceeded the configured limit');
     if (exchange.error) return uploadRetry('TRANSPORT', 'Dropbox upload response was interrupted');
     try { return newMutationBranch('uploaded', { file: decodeEntry(objectBody(exchange.body), true) }); }
-    catch { return uploadFailure('invalidResponse', 'PROTOCOL', 'Dropbox returned invalid upload metadata'); }
+    catch { return uploadRetry('PROTOCOL', 'Dropbox returned invalid upload metadata'); }
   }
+}
+
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** An allowlisted status or Dropbox's documented 409 error, when the fully read body describes no stored file. */
+function isDefiniteUploadRefusal(exchange: DropboxExchange): boolean {
+  if (exchange.error) return false;
+  let wire: unknown;
+  try { wire = JSON.parse(Buffer.from(exchange.body).toString('utf8')); } catch { wire = undefined; }
+  const fields = wire && typeof wire === 'object' && !Array.isArray(wire) ? wire as { id?: unknown; error_summary?: unknown } : undefined;
+  if (fields && fields.id !== undefined && fields.id !== null && fields.id !== '') return false;
+  if (definiteRefusalStatuses.has(exchange.status)) return true;
+  return exchange.status === 409 && typeof fields?.error_summary === 'string' && fields.error_summary !== '';
 }

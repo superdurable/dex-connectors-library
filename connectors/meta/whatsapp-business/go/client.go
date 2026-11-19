@@ -59,6 +59,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 }
 
 var errCredential = errors.New("WhatsApp Business credential unavailable")
+
+// errCredentialUnavailable reports a transient credential failure before the request was sent.
+var errCredentialUnavailable = errors.New("WhatsApp Business credential temporarily unavailable")
 var errRequest = errors.New("WhatsApp Business request failed")
 
 type graphResponse struct {
@@ -70,6 +73,9 @@ type graphResponse struct {
 
 func (client *Client) get(call sdkgo.Call, path string) graphResponse {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return graphResponse{err: errCredentialUnavailable}
+	}
 	if err != nil || credentials.Validate() != nil {
 		return graphResponse{err: errCredential}
 	}
@@ -126,12 +132,14 @@ func (graphErr graphError) isThrottled() bool {
 	return graphErr.code >= 80000 && graphErr.code <= 80014
 }
 
-// isGraphThrottleResponse reads a bounded error body; unreadable bodies keep status-based handling.
-func isGraphThrottleResponse(response *http.Response, maxResponseBytes int64) bool {
-	body, err := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
-	if err != nil {
-		return false
-	}
+// isGraphThrottleBody reports whether an error body carries a Graph throttling code.
+func isGraphThrottleBody(body []byte) bool {
 	graphErr, ok := decodeGraphError(body)
 	return ok && graphErr.isThrottled()
+}
+
+// isGraphTransientBody reports whether an error body sets is_transient, Meta's sign that it did not process the request.
+func isGraphTransientBody(body []byte) bool {
+	graphErr, ok := decodeGraphError(body)
+	return ok && graphErr.isTransient
 }

@@ -20,7 +20,7 @@ export const TrackEventBranch = {
 export const TrackEventBranchImported = TrackEventBranch.Imported;
 /** Mixpanel rejected the event or credentials. */
 export const TrackEventBranchProviderRejected = TrackEventBranch.ProviderRejected;
-/** Mixpanel returned malformed or oversized data. */
+/** Kept for compatibility and no longer selected: a malformed or oversized import confirmation now retries, because the $insert_id makes a resend safe. */
 export const TrackEventBranchInvalidResponse = TrackEventBranch.InvalidResponse;
 /** Local input or credentials are invalid. */
 export const TrackEventBranchDefect = TrackEventBranch.Defect;
@@ -30,7 +30,7 @@ export const TrackEventDefinition: MutationDefinition = {
   branches: [
     { id: "imported", description: "Mixpanel accepted the event for ingestion." },
     { id: "providerRejected", description: "Mixpanel rejected the event or credentials.", optional: true },
-    { id: "invalidResponse", description: "Mixpanel returned malformed or oversized data.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: a malformed or oversized import confirmation now retries, because the $insert_id makes a resend safe.", optional: true },
     { id: "defect", description: "Local input or credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

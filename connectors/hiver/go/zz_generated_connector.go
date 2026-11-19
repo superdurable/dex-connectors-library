@@ -504,7 +504,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchUpdated, Description: "The conversation, read back after the change, holds the requested status, assignee, and tags."},
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation or shared inbox does not exist or is not visible to the API key.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", Optional: true},
-		{ID: UpdateConversationBranchInvalidResponse, Description: "Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied.", Optional: true},
+		{ID: UpdateConversationBranchInvalidResponse, Description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized lookup or answer repeats the absolute change.", Optional: true},
 		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -534,6 +534,8 @@ type UpdateConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateConversationResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateConversationOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateConversationStep[IN any](config UpdateConversationStepConfig[IN]) sdkgo.MutationStep[IN, UpdateConversationInput, UpdateConversationOutput] {
@@ -584,7 +586,7 @@ var AddNoteDefinition = sdkgo.MutationDefinition{
 		{ID: AddNoteBranchAdded, Description: "Hiver added the note and returned it."},
 		{ID: AddNoteBranchNotFound, Description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", Optional: true},
 		{ID: AddNoteBranchProviderRejected, Description: "Hiver conclusively rejected the note; nothing was added.", Optional: true},
-		{ID: AddNoteBranchUncertain, Description: "The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", Optional: true},
+		{ID: AddNoteBranchUncertain, Description: "The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note, or a refusal status whose body carries a note ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", Optional: true},
 		{ID: AddNoteBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -668,7 +670,7 @@ var CreateSharedDraftDefinition = sdkgo.MutationDefinition{
 		{ID: CreateSharedDraftBranchCreated, Description: "Hiver created the shared draft and returned its ID."},
 		{ID: CreateSharedDraftBranchNotFound, Description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", Optional: true},
 		{ID: CreateSharedDraftBranchProviderRejected, Description: "Hiver conclusively rejected the draft; no draft was created.", Optional: true},
-		{ID: CreateSharedDraftBranchUncertain, Description: "The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", Optional: true},
+		{ID: CreateSharedDraftBranchUncertain, Description: "The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft, or a refusal status whose body carries a draft ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", Optional: true},
 		{ID: CreateSharedDraftBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

@@ -28,8 +28,9 @@ Flow per new conversation, and the Flow uses every Intercom operation:
    Flow completes as `leftOpen` and writes nothing;
 8. `ReplyToDuplicate` calls `replyToConversation` once, as the admin chosen
    with the `adminPicker`, pointing the customer to the earlier conversation.
-   `RecordDuplicateReply` records the reply. An unconfirmed reply fails the
-   Flow without resending;
+   `RecordDuplicateReply` records the reply. An unconfirmed reply is read
+   back before any resend, and fails the Flow on `uncertain` only at the send
+   cap;
 9. `CloseDuplicate` calls `updateConversationState` to close the new
    conversation as the same admin, and `CompleteAnsweredDuplicate` completes
    as `answeredAndClosed`.
@@ -79,7 +80,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/intercom/connector.y
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intercom/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intercom/go \
-  --version v0.23.0 --tag connectors/intercom/go/v0.23.0 \
+  --version v0.23.1 --tag connectors/intercom/go/v0.23.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/intercom-release/connector-ui.tgz --ui-digest /tmp/intercom-release/connector-ui.tgz.sha256 \
   --output /tmp/intercom-release/connector-release.json \
@@ -217,12 +218,13 @@ bearer token and `Intercom-Version: 2.16`:
 - a conversation without an earlier one is left open, and an answered one is
   skipped before any lookup;
 - a reply produces one request and one comment;
-- a reply whose response was lost is found in the conversation and never
-  resent;
-- a reply answered 503 without being applied fails on the unwired `uncertain`
-  branch and is never resent;
+- a reply whose response was lost is found in the conversation by the next
+  attempt's read-back and not resent;
+- a reply answered 503 without being applied is resent, and the Flow
+  completes with one comment;
 - a Worker lost while Intercom holds the reply leaves the next attempt to read
-  the conversation, then fail on `uncertain` without resending;
+  the conversation, find nothing yet, and resend below the send cap; the held
+  first send then also lands, the duplicate the `limited` tier accepts;
 - a Worker lost after Intercom applies a close is replaced; the new attempt
   reads `closed` and does not send a redundant close;
 - a rate-limited search waits for `X-RateLimit-Reset`;

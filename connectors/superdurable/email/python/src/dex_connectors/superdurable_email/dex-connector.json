@@ -1,10 +1,10 @@
 {
   "connectorId": "email",
-  "releaseTag": "connectors/superdurable/email/go/v0.23.0",
+  "releaseTag": "connectors/superdurable/email/go/v0.23.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-superdurable-email",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -174,7 +174,7 @@
       "kind": "mutation",
       "operationId": "sendMessage",
       "inputType": "SendMessageInput",
-      "description": "Send one plain-text message over SMTP with a Message-ID derived from the Step's idempotency key. SMTP has no idempotency, so the Step runs with sync durability and submits at most once per Step execution.",
+      "description": "Send one plain-text message over SMTP with a Message-ID derived from the Step's idempotency key. SMTP has no idempotency, so the Step runs with sync durability and counts its submissions in a checkpoint; a submission whose answer was lost is sent again, with the same Message-ID, while the send cap allows.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -257,7 +257,7 @@
       "kind": "mutation",
       "operationId": "replyToMessage",
       "inputType": "ReplyToMessageInput",
-      "description": "Reply to one IMAP message over SMTP with In-Reply-To, References, and a Re subject so mail clients thread it, submitting at most once per Step execution like sendMessage.",
+      "description": "Reply to one IMAP message over SMTP with In-Reply-To, References, and a Re subject so mail clients thread it, counting its submissions and resending one whose answer was lost while the send cap allows, like sendMessage.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

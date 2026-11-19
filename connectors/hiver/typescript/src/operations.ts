@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { newFence } from '@superdurable/connectors-sdk/singledispatch';
 import type { HiverClient, HiverExchange, HiverRequest } from './client.js';
 import { AddNoteDefinition, CreateSharedDraftDefinition, GetConversationDefinition, ListConversationsDefinition, ListInboxesDefinition, UpdateConversationDefinition } from './generated/definitions.js';
 import type { AddNoteInput, AddNoteOutput, ConversationDetails, CreateSharedDraftInput, GetConversationInput, ListConversationsInput, ListConversationsOutput, ListInboxesInput, ListInboxesOutput, SharedDraft, Tag, UpdateConversationInput, UpdateConversationOutput } from './generated/models.js';
@@ -85,11 +85,16 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
   /** Invoke one repeat-safe change. */
   async invoke(call: Call, input: UpdateConversationInput): Promise<MutationAttempt<UpdateConversationOutput>> {
     try { validateUpdate(input); } catch (error) { return mutationDefect('updateConversation', emptyUpdate, error); }
-    const key = await this.client.resolveKey(call);
-    if (!key) return mutationCredentialFailure('updateConversation', emptyUpdate);
+    const credential = await this.client.resolveKeyOrFailure(call);
+    if (credential.kind !== 'resolved') {
+      // defect would hide an earlier possible PATCH; repeating the absolute change is harmless.
+      if (credential.kind === 'transient' || call.context.attempt > 1) return newMutationRetry(failure('updateConversation', 'AUTHENTICATION', 'connection credentials are unavailable'));
+      return mutationCredentialFailure('updateConversation', emptyUpdate);
+    }
+    const key = credential.key;
     const output: UpdateConversationOutput = { conversation: emptyDetails.conversation };
     if (input.assigneeEmail) {
-      const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/users/search`, query: new URLSearchParams({ email: input.assigneeEmail }) });
+      const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/users/search`, query: new URLSearchParams({ email: input.assigneeEmail }), isPreWriteLookup: true });
       const terminal = updateOutcome(this.client, call, result, input.conversationId);
       if (terminal) return terminal;
     if (result.kind !== 'success') throw new Error('unclassified Hiver exchange');
@@ -101,7 +106,7 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
         }).filter(Boolean))];
         if (matches.length !== 1) return newMutationBranch('providerRejected', emptyUpdate, this.client.receipt(call, result.response, input.conversationId), failure('updateConversation', 'VALIDATION', `assigneeEmail matches ${matches.length} users of the shared inbox instead of one; the change was not sent`));
         output.assigneeUserId = matches[0]!;
-      } catch (error) { return mutationInvalid(this.client, call, result, 'updateConversation', emptyUpdate, `Hiver returned an invalid user search page: ${message(error)}`, input.conversationId); }
+      } catch (error) { return retryUnknownLookup(`Hiver returned an invalid user search page: ${message(error)}`); }
     }
     if (input.applyTagNames?.length || input.removeTagNames?.length) {
       const tags: Tag[] = [];
@@ -109,13 +114,13 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
       let isComplete = false;
       let lastResult: HiverExchange | undefined;
       for (let pageIndex = 0; pageIndex < 5; pageIndex++) {
-        const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/tags`, query: pageQuery(token, 100) });
+        const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/tags`, query: pageQuery(token, 100), isPreWriteLookup: true });
         const terminal = updateOutcome(this.client, call, result, input.conversationId);
         if (terminal) return terminal;
     if (result.kind !== 'success') throw new Error('unclassified Hiver exchange');
         lastResult = result;
         try { const page = decodeListPage(result.response.body); tags.push(...page.results.map(decodeTag)); token = page.nextPageToken; isComplete = !token; }
-        catch (error) { return mutationInvalid(this.client, call, result, 'updateConversation', emptyUpdate, `Hiver returned an invalid tag page: ${message(error)}`, input.conversationId); }
+        catch (error) { return retryUnknownLookup(`Hiver returned an invalid tag page: ${message(error)}`); }
         if (isComplete || [...(input.applyTagNames ?? []), ...(input.removeTagNames ?? [])].every(name => tags.some(tag => tag.name === name))) break;
       }
       const missing = isComplete ? 'is not a tag of the shared inbox' : 'is not among the tags on the first 5 pages Hiver returned';
@@ -129,19 +134,21 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     if (input.assigneeEmail) change.assignee = { email: input.assigneeEmail };
     if (output.appliedTags?.length || output.removedTags?.length) change.tags = { ...(output.appliedTags?.length ? { to_apply: output.appliedTags.map(tag => tag.id) } : {}), ...(output.removedTags?.length ? { to_remove: output.removedTags.map(tag => tag.id) } : {}) };
     const write = await this.client.exchange(call, 'updateConversation', key, { method: 'PATCH', path: conversationPath(input.inboxId, input.conversationId), json: change });
+    // The change is absolute, so an unknown outcome repeats it.
+    if (write.kind === 'invalid' || (write.kind === 'rejected' && !definiteRefusalStatuses.has(write.status ?? 0))) return newMutationRetry(write.failure, write.retryAfterMs);
     const writeTerminal = updateOutcome(this.client, call, write, input.conversationId);
     if (writeTerminal) return writeTerminal;
     if (write.kind !== 'success') throw new Error('unclassified Hiver exchange');
     const read = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: conversationPath(input.inboxId, input.conversationId) });
-    const readTerminal = updateOutcome(this.client, call, read, input.conversationId, true);
-    if (readTerminal) return readTerminal;
-    if (read.kind !== 'success') throw new Error('unclassified Hiver exchange');
-    try {
-      output.conversation = decodeConversation(decodeSingleData(read.response.body), input.inboxId).conversation;
-      const missing = unappliedChange(input, output);
-      if (missing) return newMutationRetry(failure('updateConversation', 'CONFLICT', `Hiver accepted the change but the conversation read back does not show its ${missing} yet`));
-      return newMutationBranch('updated', output, this.client.receipt(call, read.response, output.conversation.id));
-    } catch (error) { return mutationInvalid(this.client, call, read, 'updateConversation', emptyUpdate, `Hiver accepted the change but returned an invalid conversation: ${message(error)}`, input.conversationId); }
+    // Hiver accepted the absolute change, so an unconfirmed read-back repeats it.
+    if (read.kind !== 'success') return newMutationRetry({ ...read.failure, message: `Hiver accepted the change but the read-back failed: ${read.failure.message}` }, read.retryAfterMs);
+    let conversation: UpdateConversationOutput['conversation'];
+    try { conversation = decodeConversation(decodeSingleData(read.response.body), input.inboxId).conversation; }
+    catch (error) { return newMutationRetry(failure('updateConversation', 'PROTOCOL', `Hiver accepted the change but returned an invalid conversation: ${message(error)}`)); }
+    output.conversation = conversation;
+    const missing = unappliedChange(input, output);
+    if (missing) return newMutationRetry(failure('updateConversation', 'CONFLICT', `Hiver accepted the change but the conversation read back does not show its ${missing} yet`));
+    return newMutationBranch('updated', output, this.client.receipt(call, read.response, output.conversation.id));
   }
 }
 
@@ -152,9 +159,9 @@ export class AddNoteOperation implements Mutation<AddNoteInput, AddNoteOutput> {
   /** Correlate the fenced write to the Dex Call ID. */ idempotencyKey(callId: string): string { return callId; }
   /** Invoke one fenced note creation. */
   async invoke(call: Call, input: AddNoteInput): Promise<MutationAttempt<AddNoteOutput>> {
-    return invokeFenced(call, this.client, 'addNote', emptyNote, () => { requireHiverID('inboxId', input.inboxId); requireHiverID('conversationId', input.conversationId); validateText('content', input.content, 65_536); },
+    return invokeFenced(call, this.client, AddNoteDefinition, emptyNote, () => { requireHiverID('inboxId', input.inboxId); requireHiverID('conversationId', input.conversationId); validateText('content', input.content, 65_536); },
       { method: 'POST', path: `${conversationPath(input.inboxId, input.conversationId)}/notes`, form: [['content', input.content]] },
-      body => ({ note: decodeNote(body) }), output => output.note.id, 'added', 'Hiver accepted the note but returned an invalid note');
+      body => ({ note: decodeNote(body) }), output => output.note.id, 'id', 'added', 'Hiver accepted the note but returned an invalid note');
   }
 }
 
@@ -165,14 +172,14 @@ export class CreateSharedDraftOperation implements Mutation<CreateSharedDraftInp
   /** Correlate the fenced write to the Dex Call ID. */ idempotencyKey(callId: string): string { return callId; }
   /** Invoke one fenced draft creation. */
   async invoke(call: Call, input: CreateSharedDraftInput): Promise<MutationAttempt<SharedDraft>> {
-    return invokeFenced(call, this.client, 'createSharedDraft', emptyDraft, () => {
+    return invokeFenced(call, this.client, CreateSharedDraftDefinition, emptyDraft, () => {
       requireHiverID('inboxId', input.inboxId);
       if (Boolean(input.hiverMessageId) === Boolean(input.gmailMessageId)) throw new Error('exactly one of hiverMessageId and gmailMessageId is required');
       if (input.hiverMessageId) requireHiverID('hiverMessageId', input.hiverMessageId);
       if (input.gmailMessageId && !/^[A-Za-z0-9]{1,64}$/.test(input.gmailMessageId) && !/^<[\x21-\x3B\x3D\x3F-\x7E]{1,994}>$/.test(input.gmailMessageId)) throw new Error('gmailMessageId must be a Gmail message ID or an SMTP Message-ID such as <abc123@mail.gmail.com>');
       validateText('body', input.body, 65_536);
     }, { method: 'POST', path: `${inboxPath(input.inboxId)}/conversations/shared-drafts`, form: [['body', input.body], input.hiverMessageId ? ['hiver_message_id', input.hiverMessageId] : ['gmail_message_id', input.gmailMessageId!]] },
-    decodeSharedDraft, output => output.id, 'created', 'Hiver accepted the draft but returned an invalid shared draft');
+    decodeSharedDraft, output => output.id, 'shared_draft_id', 'created', 'Hiver accepted the draft but returned an invalid shared draft');
   }
 }
 
@@ -183,20 +190,22 @@ function mutationDefect<T>(operation: string, zero: T, error: unknown): Mutation
 function queryCredentialFailure<T>(operation: string, zero: T): QueryAttempt<T> { return newQueryBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
 function mutationCredentialFailure<T>(operation: string, zero: T): MutationAttempt<T> { return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
 function queryInvalid<T>(client: HiverClient, call: Call, result: HiverExchange & { kind: 'success' }, operation: string, zero: T, detail: string, objectId = ''): QueryAttempt<T> { return newQueryBranch('invalidResponse', zero, client.receipt(call, result.response, objectId), failure(operation, 'PROTOCOL', detail)); }
-function mutationInvalid<T>(client: HiverClient, call: Call, result: HiverExchange & { kind: 'success' }, operation: string, zero: T, detail: string, objectId = ''): MutationAttempt<T> { return newMutationBranch('invalidResponse', zero, client.receipt(call, result.response, objectId), failure(operation, 'PROTOCOL', detail)); }
 function queryOutcome<T>(client: HiverClient, call: Call, result: HiverExchange, zero: T, objectId: string, notFoundBranch: string): QueryAttempt<T> | undefined {
   if (result.kind === 'success') return undefined;
   if (['rateLimited', 'notSent', 'unavailable'].includes(result.kind)) return newQueryRetry(result.failure, result.retryAfterMs);
   const branch = result.kind === 'notFound' ? notFoundBranch : result.kind === 'invalid' ? 'invalidResponse' : result.kind === 'defect' ? 'defect' : 'providerRejected';
   return newQueryBranch(branch, zero, client.receipt(call, result.response, objectId), result.failure);
 }
-function updateOutcome(client: HiverClient, call: Call, result: HiverExchange, objectId: string, isReadBack = false): MutationAttempt<UpdateConversationOutput> | undefined {
+/** Map an updateConversation lookup or write: an earlier attempt's PATCH may have applied, so only a definite answer selects a branch. */
+function updateOutcome(client: HiverClient, call: Call, result: HiverExchange, objectId: string): MutationAttempt<UpdateConversationOutput> | undefined {
   if (result.kind === 'success') return undefined;
-  if (['rateLimited', 'notSent', 'unavailable'].includes(result.kind)) return newMutationRetry(result.failure, result.retryAfterMs);
-  const branch = result.kind === 'notFound' ? 'notFound' : result.kind === 'invalid' || isReadBack && result.kind === 'rejected' ? 'invalidResponse' : result.kind === 'defect' ? 'defect' : 'providerRejected';
-  const cause = isReadBack && result.kind === 'rejected' ? { ...result.failure, message: `Hiver accepted the change but rejected the read-back: ${result.failure.message}` } : result.failure;
-  return newMutationBranch(branch, emptyUpdate, client.receipt(call, result.response, objectId), cause);
+  const isUnknown = result.kind === 'invalid' || (result.kind === 'rejected' && !definiteRefusalStatuses.has(result.status ?? 0));
+  if (isUnknown || ['rateLimited', 'notSent', 'unavailable'].includes(result.kind)) return newMutationRetry(result.failure, result.retryAfterMs);
+  const branch = result.kind === 'notFound' ? 'notFound' : result.kind === 'invalid' ? 'invalidResponse' : result.kind === 'defect' ? 'defect' : 'providerRejected';
+  return newMutationBranch(branch, emptyUpdate, client.receipt(call, result.response, objectId), result.failure);
 }
+/** Retry an invalid pre-write lookup answer; invalidResponse stays declared but is not selected. */
+function retryUnknownLookup(detail: string): MutationAttempt<UpdateConversationOutput> { return newMutationRetry(failure('updateConversation', 'PROTOCOL', detail)); }
 function validatePage(pageToken?: string, pageSize?: number): void {
   if (pageSize !== undefined && pageSize !== 0 && (!Number.isInteger(pageSize) || pageSize < 10 || pageSize > 100)) throw new Error('pageSize must be zero or from 10 to 100');
   if (pageToken && (Buffer.byteLength(pageToken) > 4096 || !/^[A-Za-z0-9+/=_.-]+$/.test(pageToken))) throw new Error('pageToken must be a next-page token exactly as Hiver returned it');
@@ -248,40 +257,106 @@ function unappliedChange(input: UpdateConversationInput, output: UpdateConversat
   return '';
 }
 
-async function invokeFenced<T>(call: Call, client: HiverClient, operation: string, zero: T, validate: () => void, request: HiverRequest,
-  decode: (body: Uint8Array) => T, objectId: (output: T) => string, successBranch: string, invalidMessage: string): Promise<MutationAttempt<T>> {
-  let fence: ReturnType<typeof newFence>;
-  try { fence = newFence(call, 30_000, { writeWindowFraction: 5 / 6 }); }
-  catch { return newMutationBranch('defect', zero, {}, failure(operation, 'LOCAL_DEFECT', 'single-dispatch fence could not start')); }
-  if (fence.decide().kind !== 'sendAllowed') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'an earlier attempt may have sent the request, so it is not sent again'), client.receipt(call));
+async function invokeFenced<T>(call: Call, client: HiverClient, definition: MutationDefinition, zero: T, validate: () => void, request: HiverRequest,
+  decode: (body: Uint8Array) => T, objectId: (output: T) => string, providerIdField: string, successBranch: string, invalidMessage: string): Promise<MutationAttempt<T>> {
+  const operation = definition.operation.operationId;
   try { validate(); } catch (error) { return mutationDefect(operation, zero, error); }
-  const key = await client.resolveKey(call);
-  if (!key) {
-    try { await fence.recordNotSent(); } catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
-    return newMutationRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
-  }
+  const operationMaxSends = definitionMaxSends(definition);
+  let fence: ReturnType<typeof newFence>;
+  try { fence = newFence(call, 30_000, { writeWindowFraction: 5 / 6, maxSends: operationMaxSends }); }
+  catch { return newMutationBranch('defect', zero, {}, failure(operation, 'LOCAL_DEFECT', 'single-dispatch fence could not start')); }
+  const decision = fence.decide();
+  // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+  if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'the single-dispatch checkpoint could not be read; nothing was sent in this attempt'));
+  // A saved provider ID proves Hiver accepted the write; Hiver has no note or draft read by ID.
+  if (decision.marker?.providerId) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', "Hiver accepted an earlier attempt's write, and its answer was lost"), client.receipt(call, undefined, decision.marker.providerId));
+  if (decision.kind === 'readBackRequired') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'earlier attempts may have sent the request and the send cap is reached, so it is not sent again'), client.receipt(call));
+  const priorSends = decision.priorSendUpperBound ?? 0;
+  // sendAllowed after a canResend marker can still count earlier possible sends.
+  const isFirstSend = decision.kind === 'sendAllowed' && priorSends === 0;
+  const canResendUnknownOutcome = priorSends + 1 < effectiveMaxSends(call, operationMaxSends);
+  const credential = await client.resolveKeyOrFailure(call);
+  if (credential.kind !== 'resolved') return credentialFailureBeforeDispatch(client, call, fence, isFirstSend, credential.kind === 'terminal', zero, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
+  const key = credential.key;
   if (!await client.waitForSlot(call.context.cancellationSignal, Date.now() + 15_000)) {
-    try { await fence.recordNotSent(); } catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
-    return newMutationRetry(failure(operation, 'AVAILABILITY', "the wait for the connection's next Hiver request slot ended; no request was sent"));
+    return retryBeforeDispatch(fence, isFirstSend, failure(operation, 'AVAILABILITY', "the wait for the connection's next Hiver request slot ended; no request was sent"));
   }
   let result: HiverExchange;
+  // Dispatch refused before sending, so nothing reached Hiver in this attempt.
   try { result = await fence.dispatch(signal => client.exchange(call, operation, key, { ...request, correlationCallId: call.id }, signal, true)); }
-  catch (error) {
-    if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Hiver write was not dispatched'));
-    return newMutationUncertain(zero, failure(operation, 'AVAILABILITY', 'Hiver write was not dispatched'), client.receipt(call));
-  }
-  const receipt = client.receipt(call, result.kind === 'success' ? result.response : result.response);
+  catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Hiver write was not dispatched')); }
+  const receipt = client.receipt(call, result.response);
   if (result.kind !== 'success') {
+    // Hiver accepted the write, but its answer is oversized, unreadable, or untrusted.
+    if (result.status !== undefined && result.status >= 200 && result.status < 300) return newMutationUncertain(zero, result.failure, receipt);
     if (result.kind === 'rateLimited' || result.kind === 'notSent' || result.status === 503) {
-      try { await fence.recordCanResend(); } catch { return newMutationUncertain(zero, failure(operation, 'AVAILABILITY', 'Dex did not record the safe retry checkpoint'), receipt); }
+      // A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
+      try { await fence.recordCanResend(); } catch { /* counted as a possible send */ }
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
-    if (result.kind === 'unavailable' || result.kind === 'invalid' || result.status === 409) return newMutationUncertain(zero, result.failure, receipt);
-    return newMutationBranch(result.kind === 'notFound' ? 'notFound' : result.kind === 'defect' ? 'defect' : 'providerRejected', zero, receipt, result.failure);
+    // A request that could not be built would fail the same way if resent.
+    if (result.kind === 'notFound' || result.kind === 'defect' || (result.kind === 'rejected' && definiteRefusalStatuses.has(result.status ?? 0))) {
+      const refusedProviderId = result.response ? acceptedProviderId(result.response.body, providerIdField) : '';
+      if (refusedProviderId) {
+        // The created object's ID shows the write may have been applied, so it is never resent.
+        try { await fence.recordProviderId(refusedProviderId); } catch { /* The claim marker already forbids a resend. */ }
+        return newMutationUncertain(zero, failure(operation, 'PROTOCOL', `Hiver answered HTTP ${result.status} with the ID of a created object, so the write may have been applied`), client.receipt(call, result.response, refusedProviderId));
+      }
+      if (!isFirstSend) return newMutationUncertain(zero, result.failure, receipt);
+      try { await fence.recordCanResend(); } catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Dex did not record the refusal checkpoint')); }
+      return newMutationBranch(result.kind === 'notFound' ? 'notFound' : result.kind === 'defect' ? 'defect' : 'providerRejected', zero, receipt, result.failure);
+    }
+    return resendOrUncertain(canResendUnknownOutcome, zero, result.failure, result.retryAfterMs, receipt);
   }
   let output: T;
   try { output = decode(result.response.body); }
-  catch (error) { return newMutationUncertain(zero, failure(operation, 'PROTOCOL', `${invalidMessage}: ${message(error)}`), receipt); }
+  catch (error) {
+    const invalid = failure(operation, 'PROTOCOL', `${invalidMessage}: ${message(error)}`);
+    const providerId = acceptedProviderId(result.response.body, providerIdField);
+    // The 2xx proves acceptance, so this write is never resent.
+    if (providerId) { try { await fence.recordProviderId(providerId); } catch { /* The claim marker already forbids a resend. */ } }
+    return newMutationUncertain(zero, invalid, client.receipt(call, result.response, providerId));
+  }
   try { await fence.recordProviderId(objectId(output)); } catch { /* Accepted result is known even if the optional identity checkpoint is lost. */ }
   return newMutationBranch(successBranch, output, client.receipt(call, result.response, objectId(output)));
+}
+
+/** Only these statuses prove Hiver applied nothing; any other non-2xx answer may have been applied. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+}
+
+/** Retry before Dispatch; after a possible earlier send nothing is recorded, so that send stays counted. */
+async function retryBeforeDispatch<T>(fence: ReturnType<typeof newFence>, isFirstSend: boolean, cause: Failure): Promise<MutationAttempt<T>> {
+  if (isFirstSend) {
+    try { await fence.recordNotSent(); } catch { return newMutationRetry(failure(cause.operation, 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
+  }
+  return newMutationRetry(cause);
+}
+
+/** Retry a transient credential failure; a terminal one selects defect only on a first send. */
+async function credentialFailureBeforeDispatch<T>(client: HiverClient, call: Call, fence: ReturnType<typeof newFence>, isFirstSend: boolean, isTerminal: boolean, zero: T, cause: Failure): Promise<MutationAttempt<T>> {
+  if (!isTerminal) return retryBeforeDispatch(fence, isFirstSend, cause);
+  // defect would hide the earlier possible send, so nothing is recorded.
+  if (!isFirstSend) return newMutationUncertain(zero, failure(cause.operation, cause.kind, 'an earlier attempt may have sent the request and the connection credentials are unusable'), client.receipt(call));
+  try { await fence.recordNotSent(); } catch { return newMutationRetry(failure(cause.operation, 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
+  return newMutationBranch('defect', zero, {}, cause);
+}
+
+/** Retry an unknown outcome while the send cap allows another send, else select uncertain. */
+function resendOrUncertain<T>(canResendUnknownOutcome: boolean, zero: T, cause: Failure, retryAfterMs: number, receipt: ReturnType<HiverClient['receipt']>): MutationAttempt<T> {
+  // The claim stays the last marker, so the next attempt counts this send.
+  return canResendUnknownOutcome ? newMutationRetry(cause, retryAfterMs) : newMutationUncertain(zero, cause, receipt);
+}
+
+/** Return the valid ID field of a single-data body, or an empty string. */
+function acceptedProviderId(body: Uint8Array, field: string): string {
+  try {
+    const providerId = wireID(decodeSingleData(body)[field]);
+    requireHiverID(field, providerId);
+    return providerId;
+  } catch { return ''; }
 }

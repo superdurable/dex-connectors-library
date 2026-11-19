@@ -17,10 +17,12 @@ const (
 	FlowType = "FreshBooksInvoiceLookup"
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "freshbooks"
+	listStepType      = "CallListInvoices"
 	operationStepType = "CallGetInvoice"
 )
 
 var invoiceAttribute = dex.DefineAttribute[freshbooks.Invoice]("freshbooks-invoice")
+var requestedInvoiceIDAttribute = dex.DefineAttribute[int64]("freshbooks-requested-invoice-id")
 
 // Flow runs GetInvoice once and completes with its typed output.
 type Flow struct {
@@ -34,12 +36,19 @@ func NewFlow(connection freshbooks.Connection) *Flow { return &Flow{connection: 
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{invoiceAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{invoiceAttribute, requestedInvoiceIDAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startRequest{}),
+		dex.DefineStep(freshbooks.NewListInvoicesStep(freshbooks.ListInvoicesStepConfig[freshbooks.ListInvoicesInput]{
+			StepType: listStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "FreshBooks", Explanation: "List invoices in the selected accounting account."},
+			Connection:  flow.connection, MapToOperationInput: MapToListInvoicesInput,
+			Listed: sdkgo.GoTo(afterInvoiceList{}),
+		})),
+		dex.DefineStep(afterInvoiceList{}),
 		dex.DefineStep(freshbooks.NewGetInvoiceStep(freshbooks.GetInvoiceStepConfig[freshbooks.GetInvoiceInput]{
 			StepType: operationStepType, ConnectionName: ConnectionName,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "FreshBooks", Explanation: "Read the selected accounting invoice with FreshBooks OAuth."},
@@ -90,6 +99,11 @@ func MapToOperationInput(input freshbooks.GetInvoiceInput) freshbooks.GetInvoice
 	return input
 }
 
+// MapToListInvoicesInput preserves the selected account and first page.
+func MapToListInvoicesInput(input freshbooks.ListInvoicesInput) freshbooks.ListInvoicesInput {
+	return input
+}
+
 // dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Pass the typed start input to the provider Step."
 type startRequest struct{ dex.StepDefaults }
@@ -98,8 +112,26 @@ func (startRequest) GetStepType() string { return "StartGetInvoice" }
 func (startRequest) WaitFor(dex.Context, freshbooks.GetInvoiceInput) (*dex.Wait, error) {
 	return dex.SkipWaitImmediately(), nil
 }
-func (startRequest) Execute(_ dex.Context, input freshbooks.GetInvoiceInput) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[freshbooks.GetInvoiceInput](operationStepType), input), nil
+func (startRequest) Execute(ctx dex.Context, input freshbooks.GetInvoiceInput) (*dex.StepDecision, error) {
+	if err := requestedInvoiceIDAttribute.Set(ctx, input.InvoiceID); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[freshbooks.ListInvoicesInput](listStepType), freshbooks.ListInvoicesInput{AccountID: input.AccountID, Page: 1}), nil
+}
+
+// dex:group group-id:provider group-label:"FreshBooks"
+// dex:explanation text:"Read the requested invoice after listing its account."
+type afterInvoiceList struct {
+	dex.StepDefaultsNoWaitFor[freshbooks.ListInvoicesResult]
+}
+
+func (afterInvoiceList) GetStepType() string { return "AfterInvoiceList" }
+func (afterInvoiceList) Execute(ctx dex.Context, result freshbooks.ListInvoicesResult) (*dex.StepDecision, error) {
+	invoiceID, err := requestedInvoiceIDAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[freshbooks.GetInvoiceInput](operationStepType), freshbooks.GetInvoiceInput{AccountID: result.Value.AccountID, InvoiceID: invoiceID}), nil
 }
 
 // dex:group group-id:result group-label:"Result"

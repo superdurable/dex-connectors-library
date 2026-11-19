@@ -4,7 +4,7 @@
 // Package front connects Dex applications to the Front Core API.
 //
 // Queries search conversations, read one conversation with its newest messages and internal comments,
-// and find a contact by email. The reply/comment mutation uses a single-dispatch fence that fails
+// and find, get, or list contacts. The reply/comment mutation uses a single-dispatch fence that fails
 // closed after an ambiguous send. Conversation status, assignee, and tag changes safely repeat.
 //
 // A connection holds one Front API token, sent as a bearer token only to https://api2.frontapp.com. The
@@ -215,8 +215,12 @@ func (client *Client) exchangeWithWritePreparation(
 		response.body = body
 		return frontExchange{outcome: exchangeSucceeded, response: response}
 	}
-	// Only the status decides a failure, so an unreadable error body changes nothing.
-	return client.classifyFailureStatus(response, operationID)
+	// The status decides a failure; writes also check whether the error body was readable.
+	result := client.classifyFailureStatus(response, operationID)
+	token := credentials.APIToken.Reveal()
+	isReflectingToken := token != "" && bytes.Contains(body, []byte(token))
+	result.isErrorBodyUnreadable = readErr != nil || closeErr != nil || isReflectingToken
+	return result
 }
 
 func (client *Client) buildRequest(

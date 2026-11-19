@@ -65,7 +65,10 @@ func (operation GetDocumentTextOperation) Invoke(call sdkgo.Call, input GetDocum
 	if !isDriveID(input.DocumentID) || !isFormatValid {
 		return sdkgo.NewQueryBranch(GetDocumentTextBranchDefect, GetDocumentTextOutput{}, docsFailurePointer(sdkgo.FailureValidation, getDocumentTextOperationID, "documentId must be a Google Docs document ID and format must be markdown or plainText"), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, getDocumentTextOperationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveWriteCredential(call, getDocumentTextOperationID)
+	if failure != nil && isCredentialFailureRetryable {
+		return sdkgo.NewQueryRetry[GetDocumentTextOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetDocumentTextBranchDefect, GetDocumentTextOutput{}, failure, sdkgo.Receipt{})
 	}

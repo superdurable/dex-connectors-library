@@ -28,13 +28,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, _ string,
 	var initialAttempt int32
 	if len(scenario.PriorHeartbeat) > 0 {
 		var prior struct {
-			Attempt int32 `json:"attempt"`
+			Attempt int32           `json:"attempt"`
+			Value   json.RawMessage `json:"value"`
 		}
 		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &prior))
 		initialAttempt = prior.Attempt
-		checkpoint, marshalErr := json.Marshal(map[string]any{"isDispatched": true, "dispatchedAt": fixedNow})
-		require.NoError(t, marshalErr)
-		context.heartbeatValue = checkpoint
+		context.heartbeatValue = prior.Value
 	}
 	config := docusign.Config{MaxDocumentBytes: 64}
 	if scenario.Name == "download-combined-document-too-large" {

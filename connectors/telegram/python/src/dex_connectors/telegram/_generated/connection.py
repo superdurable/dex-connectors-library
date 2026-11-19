@@ -71,6 +71,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.telegram.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Telegram Bot credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -80,14 +96,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Telegram Bot stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Telegram Bot stored credential does not match the connector credential fields")
         if set(material) - set(('bot_token',)):
-            raise ValueError("Telegram Bot stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Telegram Bot stored credential does not match the connector credential fields")
         bot_token = material.get("bot_token")
         if bot_token is not None and not (isinstance(bot_token, str)):
-            raise ValueError("Telegram Bot credential bot_token has an invalid type")
+            raise CredentialMaterialError("Telegram Bot credential bot_token has an invalid type")
         if not bot_token:
-            raise ValueError("Telegram Bot credential bot_token is required")
+            raise CredentialMaterialError("Telegram Bot credential bot_token is required")
         return Credentials(SecretString(bot_token))
 
 

@@ -1,8 +1,10 @@
 # Gorgias Python connector
 
-`dex-connector-gorgias` v0.2.0 implements the six Gorgias ticket and customer operations declared in [`connector.yaml`](../connector.yaml) for Dex Python applications: search tickets, get a ticket, find a customer by email, create a ticket, update a ticket, and add an internal note or public email reply. It also implements the `ticketChanged` poll Trigger. It requires `dex-connectors-sdk>=0.12.0`, which adds the poll Trigger kit.
+`dex-connector-gorgias` v0.2.1 implements the six Gorgias ticket and customer operations declared in [`connector.yaml`](../connector.yaml) for Dex Python applications: search tickets, get a ticket, find a customer by email, create a ticket, update a ticket, and add an internal note or public email reply. It also implements the `ticketChanged` poll Trigger. It requires `dex-connectors-sdk>=0.12.0`, which adds the poll Trigger kit.
 
 Use `new_project_connection(project, "gorgias")` to bind a Dex Web connection. The connection resolves the Gorgias email and API key on each provider call. `new_connection` accepts a configured `Client` for an application that supplies its own credential provider. Close an owned client after the Worker stops.
+
+`create_ticket` and `add_note` send under the SDK single-dispatch fence with the manifest send cap of three: after an unknown outcome the next attempt reads the write back by its external ID, resends while the cap allows, and selects `uncertain` only at the cap, as the [connector README](../README.md#duplicate-safety) describes. A 2xx is never resent, even when its body is unusable or breaks while it is read; it is read back once instead. Markers written by v0.2.0 are untrusted by the SDK fence, so a write in flight during the upgrade retries without sending until its retry budget runs out. `update_ticket` retries any outcome after a write that is not a definite refusal.
 
 The runnable `examples/triage_issue` Flow exercises ticket search and detail lookup. For provider behavior, supply a connection through Dex Web and run the example against a real Gorgias account. The local integration test uses a provider stand-in and does not establish live provider authorization.
 

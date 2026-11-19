@@ -1,14 +1,21 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, resolveCredentialAfterRejection, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SearchConversationsOperation, GetConversationOperation, ReplyToConversationOperation, UpdateConversationOperation, FindContactByEmailOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api2.frontapp.com';
 
 class InvalidFrontTokenError extends Error {}
+
+/** A credential failure another attempt cannot repair, including a token that failed local checks. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof InvalidFrontTokenError || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
 
 /** One Front request, with an already escaped path. */
 export interface FrontRequest {
@@ -24,6 +31,7 @@ export interface FrontExchange {
   /** Bounded HTTP response, when one arrived. */ response?: ProviderResponse;
   /** Secret-safe failure for unsuccessful exchanges. */ failure?: Failure;
   /** Provider-directed delay for a safe retry, in milliseconds. */ retryAfterMs: number;
+  /** A non-2xx body was oversized, failed to read, or reflected the token, so a write cannot rule out acceptance. */ isErrorBodyUnreadable?: boolean;
 }
 /** Transport replacement for deterministic provider tests. */
 export type FrontRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -68,7 +76,7 @@ export class FrontClient {
       if (!isHeaderSafeCredential(token)) throw new InvalidFrontTokenError();
       return { token };
     } catch (error) {
-      return { failure: this.failure('AUTHENTICATION', call.operation.operationId, 'the Front API token is unavailable, blank, or contains characters a header cannot carry'), terminal: error instanceof ReauthorizationRequiredError || error instanceof InvalidFrontTokenError };
+      return { failure: this.failure('AUTHENTICATION', call.operation.operationId, 'the Front API token is unavailable, blank, or contains characters a header cannot carry'), terminal: isTerminalCredentialError(error) };
     }
   }
 
@@ -105,10 +113,13 @@ export class FrontClient {
         addressPolicy: this.endpoint === defaultEndpoint ? 'publicHTTPS' : 'privateNetworkHTTP',
         timeoutMs: 25_000, signal: request.signal ?? call.context.cancellationSignal });
     } catch (error) {
-      if (error instanceof BodyTooLargeError) {
-        if (error.status && (error.status < 200 || error.status >= 300)) return this.classifyFailureStatus(error.status, error.headers ?? {}, operation);
-        return { outcome: 'invalid', ...(error.status ? { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() } } : {}), failure: this.failure('RESPONSE_TOO_LARGE', operation, 'the Front response exceeds the configured maxResponseBytes'), retryAfterMs: 0 };
-      }
+      const failedAfterHeaders = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error : undefined;
+      const headersOnly: ProviderResponse | undefined = failedAfterHeaders?.status ? { status: failedAfterHeaders.status, headers: failedAfterHeaders.headers ?? {}, body: new Uint8Array() } : undefined;
+      // Only the status decides a failure; a write also learns that its error body was unreadable.
+      if (headersOnly && (headersOnly.status < 200 || headersOnly.status >= 300)) return { ...this.classifyFailureStatus(headersOnly.status, headersOnly.headers, operation, headersOnly), isErrorBodyUnreadable: true };
+      if (error instanceof BodyTooLargeError) return { outcome: 'invalid', ...(headersOnly ? { response: headersOnly } : {}), failure: this.failure('RESPONSE_TOO_LARGE', operation, 'the Front response exceeds the configured maxResponseBytes'), retryAfterMs: 0 };
+      // The 2xx status survives, so a write Front accepted is never resent.
+      if (headersOnly) return { outcome: 'unconfirmed', response: headersOnly, failure: this.failure('TRANSPORT', operation, 'the Front response could not be read'), retryAfterMs: 0 };
       return { outcome: error instanceof ProviderTransportError && error.isProvablyNotSent ? 'notSent' : 'unconfirmed', failure: this.failure('TRANSPORT', operation, error instanceof ProviderTransportError && error.isProvablyNotSent ? 'Front could not be reached; no request was sent' : 'the Front request may have been sent, but no answer arrived'), retryAfterMs: 0 };
     }
     const status = response.status;
@@ -117,7 +128,9 @@ export class FrontClient {
       if (Buffer.from(response.body).includes(Buffer.from(token))) return { outcome: 'invalid', response, failure: this.failure('PROTOCOL', operation, 'the Front response reflected the API token'), retryAfterMs: 0 };
       return { outcome: 'succeeded', response, retryAfterMs: 0 };
     }
-    return this.classifyFailureStatus(status, response.headers, operation, response);
+    const failed = this.classifyFailureStatus(status, response.headers, operation, response);
+    // A token-reflecting refusal is untrusted, so it cannot rule out acceptance either.
+    return token !== '' && Buffer.from(response.body).includes(Buffer.from(token)) ? { ...failed, isErrorBodyUnreadable: true } : failed;
   }
 
   private classifyFailureStatus(status: number, headers: ProviderResponse['headers'], operation: string, response?: ProviderResponse): FrontExchange {

@@ -1,10 +1,10 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.27.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.28.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
-## TypeScript (v0.4.0)
+## TypeScript (v0.5.0)
 
 Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client examples, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`, and from 0.3.0 the `messageReceived` and `replyReceived` Triggers at parity with Go: one ordered poller per connection, durable project inboxes, and roots delivered before replies. The [thread reply example](typescript/examples/thread-reply/README.md) mirrors the Go `thread-reply` example. Its manifest-derived npm marker lets Dex CLI render the examples as strict TypeScript FDG 2.0 graphs.
 
@@ -141,11 +141,16 @@ first run ID, and the Flow start second; the safe correlation header carries
 the Call ID. Gmail documents no deduplication by `Message-ID`, so the connector
 uses that header for Sent Mail read-back:
 
-- A 2xx with a Gmail message ID is `sent`, with no search. When Gmail omits the
-  thread ID, one read of the message supplies it; if that read fails, a reply
-  reports the requested thread and a new message an empty thread ID.
+- A 2xx with a Gmail message ID is `sent`, with no search. A body names a
+  message ID when it is a JSON object whose `id` is a non-empty string, whatever
+  its other fields are, in Go, Python, and TypeScript alike. When Gmail omits
+  the thread ID or sends one that is not a string, one read of the message
+  supplies it; if that read fails, a reply reports the requested thread and a
+  new message an empty thread ID.
 - A 2xx whose body cannot be read, is oversized or invalid, or lacks an ID is
-  already accepted. The connector polls Sent Mail several times. A match
+  already accepted, including a body that breaks or stalls after the headers
+  arrived and a write deadline that ends after them. The connector polls Sent
+  Mail several times. A match
   supplies the IDs; otherwise `sent` has an empty `messageId` and the requested
   reply thread ID, or an empty thread ID for a new message. It never resends
   that accepted request.
@@ -164,17 +169,44 @@ uses that header for Sent Mail read-back:
   `maxSends: 3`. After a prior `claimed` dispatch whose outcome stayed unknown,
   a Sent Mail miss or failed search resends with the same `Message-ID` while
   fewer than `call.MaxSends()` sends may have taken effect, counting every
-  earlier attempt that may have sent. At that cap, a miss returns Retry without
-  another POST, and the Flow fails when the retry budget runs out; the
-  operations have no `uncertain` branch. A definite 4xx on a send with no
-  earlier possible send selects `providerRejected` and is never resent. After an
-  earlier possible send, a definite 4xx on the resend, or a reply source read
-  that is rejected or unusable, returns Retry instead, because the earlier send
-  may still be delivered; the claim stays, so later attempts read back and the
-  cap still bounds sends. A transient credential failure after an earlier
-  possible send also returns Retry without a `notSent` checkpoint; a failure
-  that needs reconnection, or invalid credential material, selects `defect`,
-  which agent hosts classify as unknown. Gmail does not deduplicate by
+  earlier attempt that may have sent. From Go v0.28.0, Python v0.5.0, and
+  TypeScript v0.5.0, both operations declare an optional `uncertain` branch:
+  when the final send the cap allows stays unknown and its Sent Mail poll finds
+  no match, or a later attempt at the cap, or with a saved message ID, cannot
+  confirm the send, the attempt selects `uncertain` without another POST.
+  Earlier versions returned Retry until the retry budget failed the Flow. A
+  confirmed read-back still selects `sent`. A POST status of 400, 401, 403, 404,
+  411, 413, 414, 415, or 422 proves Gmail refused the POST before processing
+  it, unless its body names a Gmail message. With no earlier possible send, it
+  records `canResend` and selects `providerRejected`, and is never resent. Any
+  other 4xx except 429, such as 408 or 409, an allowlisted status whose body is
+  unreadable, or an unreadable or untrusted checkpoint,
+  leaves the outcome unknown: below the cap it returns Retry and keeps the
+  claim, so the next attempt reads back Sent Mail and resends; on the final
+  send the cap allows it selects `uncertain`. From Go
+  v0.28.0, Python v0.5.0, and TypeScript v0.5.0, a non-2xx body whose `id` is a
+  non-empty string means Gmail may have sent the message: the ID is
+  checkpointed and read back with `format=minimal`, a match selects `sent`, and
+  otherwise the attempt returns Retry; later attempts read that ID back and
+  search Sent Mail but never resend it, and from Go v0.28.0 select `uncertain`
+  when neither confirms it. Every attempt with a checkpointed ID
+  reads it back by ID before searching Sent Mail. Before any possible send, a
+  transient credential failure records `notSent` and returns Retry; only
+  reauthorization, invalid credential material, a missing project object, an
+  unselected connection, or a broker rejection selects `defect`. After an
+  earlier possible send, an allowlisted 4xx on the resend, or an allowlisted 4xx
+  on the reply source read, selects `uncertain` instead, because it proves only
+  that this attempt failed while the earlier send may still be delivered. An
+  unusable reply source read Retries while the cap permits another send, so
+  later attempts read back, and selects `uncertain` when this attempt's send
+  would be the last the cap allows. After an earlier possible send, `defect` is
+  never selected: invalid input selects `uncertain`, a transient credential failure
+  returns Retry without a `notSent` checkpoint, and a credential failure that
+  needs reconnection selects `uncertain`, because no later attempt could read
+  back or resend. The same holds for a
+  failed pre-send search or reply source read after a `canResend` checkpoint
+  that still counts an earlier send: the attempt returns Retry and records
+  nothing, so the next attempt still reads back first. Gmail does not deduplicate by
   `Message-ID`, so an unknown outcome can deliver up to three copies when Sent
   Mail indexing lags an accepted send. An application changes one Step's cap
   with the factory's `MaxSends` field, from 1 (never resend) to 10.
@@ -193,7 +225,7 @@ terminal branch, including an early read-back and a provider rejection.
   before a connection existed return Retry.
 - A 503 polls Sent Mail like any other 5xx. A match is `sent`; a miss returns
   Retry and keeps the `claimed` checkpoint, so the next attempt reads back and
-  resends only below the send cap.
+  resends only below the send cap, or selects `uncertain` at the cap.
 
 A send or reply records a `claimed` heartbeat, with its `sendCount`, before the
 POST. Synchronous Execute durability carries that checkpoint across regular
@@ -203,11 +235,16 @@ retries. A 429 or proven undispatched transport failure can checkpoint
 describes 5xx responses, 503 included, as errors raised while processing the
 request, and Sent Mail search can lag an accepted send, so a 503 counts as a
 possible send. The manifest retry policy allows seven attempts within five
-minutes: three sends plus read-back retries after the cap. Gmail does not
+minutes: three sends, the Sent Mail search before each resend, and their
+rate-limit and credential retries. At the send cap, a Sent Mail search that
+finds no match, or that fails transiently, selects `uncertain` instead of
+Retry, because a failed Flow invites a person or agent to send again.
+Gmail does not
 dedupe by `Message-ID`; a lost heartbeat frame also cannot prove exactly-once
 delivery.
 The released v0.23.1 selected `uncertain` for an ambiguous send and did not
-search Sent Mail.
+search Sent Mail; from v0.28.0 `uncertain` is selected only after Sent Mail
+read-back at the send cap.
 The run-specific Message-ID reduces false matches when a Flow ID is reused or
 a Flow retries, although two runs with the same first run ID and Flow start
 second can still collide.
@@ -223,7 +260,8 @@ budget, and read-back and thread lookup end by five sixths; the remaining time
 covers the Result write. With the full 30 seconds, those boundaries are 17.5
 and 25 seconds. A reply's source read reserves at least a tenth of the budget
 for dispatch. If too little time remains, the attempt returns Retry before
-posting and attempts a `notSent` checkpoint. A dispatched request that times
+posting; a `notSent` checkpoint, when one is written, keeps the count of
+earlier possible sends. A dispatched request that times
 out searches Sent Mail; a later attempt can POST after its own search miss or
 failed search, following a `notSent` or `canResend` checkpoint, or a `claimed`
 one while below the send cap.
@@ -235,14 +273,17 @@ whether `messages.send` keeps the client-set `Message-ID` header, whether the
 documented query matches it, and how soon a sent message becomes searchable.
 Without a saved Gmail message ID, failure of either of the first two behaviors
 makes an ambiguous send resend up to the send cap, three sends by default, and
-then retry read-back until the Flow fails.
+then select `uncertain`.
 Live provider authorization and indexing latency remain unverified.
 
 Every operation uses `defect` for invalid local input, connection configuration,
-or Connector contract violations. A conclusive Gmail API refusal uses
+or Connector contract violations; a send or reply uses it only when no earlier
+send is possible. A conclusive Gmail API refusal uses
 `providerRejected`; message reads that return malformed or oversized data use
 `invalidResponse`. Safe query transport, rate-limit, and availability failures
-retry instead of producing a branch.
+retry instead of producing a branch. A send or reply that Sent Mail read-back
+cannot confirm at the send cap uses `uncertain`; applications wire it only to
+show a required business reaction, such as asking a person to check Sent Mail.
 
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.

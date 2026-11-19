@@ -16,8 +16,9 @@ approval, using every Asana operation:
    duplicate check, never the retry-safety mechanism;
 3. `CreateRequestTask` calls `asana.NewCreateTaskStep` with sync durability,
    creating the task in the picked section with its notes and due date.
-   `created` records the task gid. `uncertain` parks the Flow for operator
-   reconciliation before any second create;
+   An unknown outcome is resent up to the send cap of 3. `created` records the
+   task gid. `uncertain` parks the Flow for operator reconciliation before any
+   further create;
 4. `AssignRequestTask` calls `asana.NewUpdateTaskStep` to assign the task, set
    its due date, and move a reused task into the picked section; the update is
    repeatable, so it keeps async durability;
@@ -108,12 +109,14 @@ the Flow on a real Worker against a stateful fake Asana: a new task created
 once on the second page beside a near-duplicate, a mention, and a completed
 task, then assigned, moved, and commented; an open task with the request ID
 reused and moved out of intake; a rate-limited create retried after
-`Retry-After`; a create timeout reconciled by confirming a missing, a
-mismatched, and then the real task gid without a second create; a 5xx create
-created again only after operator approval; a delayed create and comment each
+`Retry-After`; a create timeout resent up to the send cap and reconciled by
+confirming a missing, a mismatched, and then a real task gid without another
+create; a 5xx create resent up to the send cap and created again only after
+operator approval; a delayed create and comment each
 sent once; an update interrupted by Worker loss whose replacement resends the same
 `PUT` and leaves the same task;
-a comment timeout that fails without a resend; a rejected create sent once;
+a comment timeout resent up to the send cap before the Flow fails; a rejected
+create sent once;
 and an assignee Asana rejects before an approval comment.
 
 ```bash

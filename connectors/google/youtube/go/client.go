@@ -39,6 +39,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -124,6 +125,8 @@ type providerResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isErrorBodyOversized reports a non-2xx body dropped for its size, which could hide an inserted item.
+	isErrorBodyOversized bool
 }
 
 // outcomeDisposition is the class of one unsuccessful exchange before an operation maps it to a branch.
@@ -140,6 +143,8 @@ const (
 	outcomeRetryUnprocessed
 	// outcomeWriteUnconfirmed is a fenced write that may have taken effect without a usable response.
 	outcomeWriteUnconfirmed
+	// outcomeAcceptedUnreadable is a fenced write YouTube accepted with a 2xx whose body could not be read.
+	outcomeAcceptedUnreadable
 )
 
 // providerOutcome is one unsuccessful exchange: a Retry or a terminal branch class.
@@ -148,6 +153,8 @@ type providerOutcome struct {
 	failure     sdkgo.Failure
 	retryAfter  time.Duration
 	receipt     sdkgo.Receipt
+	// isTransientCredentialFailure marks credentials that could not be resolved or refreshed, without a revoked grant.
+	isTransientCredentialFailure bool
 }
 
 // operationBranches names the branch each outcome selects for one operation.
@@ -247,9 +254,10 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	return response, &classified
 }
 
-// exchangeFencedWrite sends a write once through its fence. Only a rate-limit refusal or a
-// connection that never opened proves YouTube did not act, so only those are an unprocessed
-// Retry; any other failure after the claim, including HTTP 503, may have applied the write.
+// exchangeFencedWrite sends a write once through its fence. A rate-limit refusal, HTTP 503, or a
+// connection that never opened is an unprocessed Retry; any other failure after the claim may have
+// applied the write. A 2xx whose body cannot be read is accepted, never resent. Only a definite
+// refusal status or Google's quota reason stays a terminal outcome.
 func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, request providerRequest, objectID string, credential Credentials) (providerResponse, *providerOutcome) {
 	observation := &writeDispatchObservation{}
 	var response providerResponse
@@ -269,7 +277,9 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	case errors.Is(sendErr, errRequestNotBuilt):
 		return response, client.outcome(outcomeDefect, operation, sdkgo.FailureLocalDefect, errRequestNotBuilt.Error(), receipt)
 	case errors.Is(sendErr, errResponseTooLarge):
-		return response, client.outcome(outcomeWriteUnconfirmed, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+		return response, client.outcome(outcomeAcceptedUnreadable, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+	case sendErr != nil && response.statusCode >= 200 && response.statusCode < 300:
+		return response, client.outcome(outcomeAcceptedUnreadable, operation, sdkgo.FailureTransport, "YouTube accepted the insert but its response body could not be read", receipt)
 	case sendErr != nil && observation.isProvablyUndispatched():
 		return response, client.outcome(outcomeRetryUnprocessed, operation, sdkgo.FailureTransport, "YouTube could not be reached before sending", receipt)
 	case sendErr != nil:
@@ -279,13 +289,45 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	}
 	classified := classifyErrorResponse(operation, response, client.now())
 	classified.receipt = receipt
-	if classified.disposition == outcomeRetry {
+	switch {
+	case insertedItemID(response.body) != "":
+		// An item ID contradicts any other status, so YouTube stored the insert; it is read back, never resent.
+		classified.disposition = outcomeAcceptedUnreadable
+	case classified.disposition == outcomeRetry &&
+		(classified.failure.Kind == sdkgo.FailureRateLimit || response.statusCode == http.StatusServiceUnavailable):
+		classified.disposition = outcomeRetryUnprocessed
+	case classified.disposition == outcomeRetry:
 		classified.disposition = outcomeWriteUnconfirmed
-		if classified.failure.Kind == sdkgo.FailureRateLimit {
-			classified.disposition = outcomeRetryUnprocessed
-		}
+	case classified.disposition == outcomeQuotaExhausted:
+		// Google's quotaExceeded reason is an explicit refusal of the request.
+	case !isDefiniteRefusalStatus(response.statusCode) || response.isErrorBodyOversized:
+		// Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert,
+		// and an oversized refusal body might hide an item ID.
+		classified.disposition = outcomeWriteUnconfirmed
 	}
 	return response, &classified
+}
+
+// isDefiniteRefusalStatus reports a status that proves YouTube refused a write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// insertedItemID returns the playlist item ID an error response still carries, whatever its other fields hold.
+func insertedItemID(body []byte) string {
+	var item struct {
+		ID string `json:"id"`
+	}
+	if json.Unmarshal(body, &item) != nil {
+		return ""
+	}
+	return item.ID
 }
 
 // sendWithRefresh sends a request and, after a 401 from a refreshing source, refreshes once and resends.
@@ -346,6 +388,7 @@ func (client *Client) send(requestContext context.Context, credential Credential
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
 		if !isSuccess {
 			// An oversized error body still classifies by status alone.
+			response.isErrorBodyOversized = true
 			return response, nil
 		}
 		return response, errResponseTooLarge
@@ -413,12 +456,23 @@ func (observation *writeDispatchObservation) recordConnectionFailure() {
 // credentialOutcome separates a revoked grant from a missing or malformed access token.
 func (client *Client) credentialOutcome(operation string, credential Credentials, err error) *providerOutcome {
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		return client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "the YouTube connection must be authorized again", sdkgo.Receipt{})
-	case err != nil, !providerhttp.IsHeaderSafeCredential(credential.AccessToken.Reveal()):
+	case err != nil:
+		outcome := client.outcome(outcomeRetry, operation, sdkgo.FailureAuthentication, "YouTube connection credentials are temporarily unavailable", sdkgo.Receipt{})
+		outcome.isTransientCredentialFailure = true
+		return outcome
+	case !providerhttp.IsHeaderSafeCredential(credential.AccessToken.Reveal()):
 		return client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "YouTube connection credentials are unavailable or invalid", sdkgo.Receipt{})
 	}
 	return nil
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs; any other one is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) outcome(disposition outcomeDisposition, operation string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) *providerOutcome {

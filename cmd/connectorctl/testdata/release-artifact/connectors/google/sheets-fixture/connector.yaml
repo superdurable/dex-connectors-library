@@ -82,7 +82,7 @@ spec:
       idempotency: required
       branches:
         - {id: appended, goName: Appended, description: Rows were appended.}
-        - {id: uncertain, goName: Uncertain, description: Append outcome is unknown.}
+        - {id: uncertain, goName: Uncertain, description: Append outcome is unknown., optional: true}
         - {id: defect, goName: Defect, description: Local input is invalid., optional: true}
       authorization: required
       execution:

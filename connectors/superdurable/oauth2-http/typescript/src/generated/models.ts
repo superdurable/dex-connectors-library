@@ -47,22 +47,41 @@ export interface Credentials {
   refreshToken?: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new CredentialMaterialError("credential refresh_token has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+  if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
   credentials.oauthClientId = (fields["oauth_client_id"] ?? '') as string;
-  if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+  if (!fields["oauth_client_secret"]) throw new CredentialMaterialError("credential oauth_client_secret is required");
   credentials.oauthClientSecret = new SecretString((fields["oauth_client_secret"] ?? '') as string);
-  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+  if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
   credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
   credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
   return credentials;
@@ -70,19 +89,19 @@ export function decodeCredentials(value: unknown): Credentials {
 
 /** Decode shared credential fields for the connector. */
 export function decodeSharedCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new CredentialMaterialError("credential refresh_token has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+  if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
   credentials.oauthClientId = (fields["oauth_client_id"] ?? '') as string;
   credentials.oauthClientSecret = new SecretString((fields["oauth_client_secret"] ?? '') as string);
-  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+  if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
   credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
   credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
   return credentials;
@@ -127,6 +146,23 @@ export interface SendRequestOutput {
   /** IsBodyTruncated reports that the API sent more than maxBodyBytes bytes and the rest was dropped. */
   "bodyTruncated"?: boolean | undefined;
 }
+/** PostNonIdempotentInput describes one HTTP POST that must never be sent twice. */
+export interface PostNonIdempotentInput {
+  /** Path is the request path under the connection's apiBaseUrl. It starts with a single slash, may be
+   * percent-encoded, and carries no query, fragment, backslash, or .. segment. Set exactly one of Path and URL. */
+  "path"?: string | undefined;
+  /** URL is an absolute http or https URL with the scheme, host, and port of the connection's apiBaseUrl.
+   * Set exactly one of Path and URL. */
+  "url"?: string | undefined;
+  /** Query holds query parameters that are added to those already in URL. A name may repeat through several values. */
+  "query"?: { [key: string]: Array<string> | null } | undefined;
+  /** Headers holds extra request headers, such as Accept. Authorization, Cookie, Host, and the headers the
+   * transport owns select defect; the connector always sends Authorization: Bearer with the access token. */
+  "headers"?: { [key: string]: string } | undefined;
+  /** Body is the request body, sent as text and limited to the connection's maxBodyBytes. Content-Type
+   * defaults to application/json when Headers sets none. Blank sends an empty body. */
+  "body"?: string | undefined;
+}
 
 /** Runtime validator for SendRequestInput. */
 export const SendRequestInputSchema = z.strictObject({
@@ -147,3 +183,12 @@ export const SendRequestOutputSchema = z.strictObject({
   "bodyIsBase64": z.boolean().optional(),
   "bodyTruncated": z.boolean().optional(),
 }) satisfies z.ZodType<SendRequestOutput>;
+
+/** Runtime validator for PostNonIdempotentInput. */
+export const PostNonIdempotentInputSchema = z.strictObject({
+  "path": z.string().optional(),
+  "url": z.string().optional(),
+  "query": z.record(z.string(), z.array(z.string()).nullable()).optional(),
+  "headers": z.record(z.string(), z.string()).optional(),
+  "body": z.string().optional(),
+}) satisfies z.ZodType<PostNonIdempotentInput>;

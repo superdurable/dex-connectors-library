@@ -32,10 +32,25 @@ func TestQueryMappersBindOnlyPositionalParameters(t *testing.T) {
 	require.Equal(t, postgresql.QueryRowsInput{Statement: FindRecordedRefundStatement, Parameters: []any{"88213"}}, find)
 
 	reconcile := flow.MapToFindRefundByIdempotencyKeyInput(postgresql.ExecuteStatementResult{
-		Branch: postgresql.ExecuteStatementBranchUncertain, Receipt: sdkgo.Receipt{IdempotencyKey: "5f0c7a1e-8f6b-4d8a-9f3c-2d1e0b9a8c7d"},
+		Branch: postgresql.ExecuteStatementBranchCompleted, Receipt: sdkgo.Receipt{IdempotencyKey: "5f0c7a1e-8f6b-4d8a-9f3c-2d1e0b9a8c7d"},
 	})
 	require.Equal(t, FindRefundByIdempotencyKeyStatement, reconcile.Statement)
 	require.Equal(t, []any{"5f0c7a1e-8f6b-4d8a-9f3c-2d1e0b9a8c7d"}, reconcile.Parameters)
+}
+
+func TestMapToAddRefundToDailyTotalInputAddsTheRecordedAmountToOneRow(t *testing.T) {
+	flow := NewFlow(postgresql.Connection{})
+	input := flow.MapToAddRefundToDailyTotalInput(Outcome{Status: StatusRecorded, Refund: Refund{AmountUSD: "250.00"}})
+	require.Equal(t, AddRefundToDailyTotalStatement, input.Statement)
+	require.Equal(t, []any{"250.00"}, input.Parameters)
+	require.Zero(t, input.IdempotencyKeyPlaceholder)
+	require.Equal(t, int64(1), *input.MaxRowsAffected)
+}
+
+func TestCompleteDailyTotalFailsWithoutTheReturnedTotal(t *testing.T) {
+	decision, err := completeDailyTotal{}.Execute(nil, postgresql.ExecuteStatementNonIdempotentResult{Branch: postgresql.ExecuteStatementNonIdempotentBranchCompleted})
+	require.NoError(t, err)
+	require.Equal(t, dex.ForceFail("the daily total update returned no row"), decision)
 }
 
 func TestDecodeRefundReadsTheConnectorTypeMapping(t *testing.T) {
@@ -93,6 +108,7 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, decideRefundRecordingStepType, dex.GetFinalStepType[postgresql.QueryRowsResult](decideRefundRecording{}))
 	require.Equal(t, completeRefundRecordingStepType, dex.GetFinalStepType[postgresql.ExecuteStatementResult](completeRefundRecording{}))
 	require.Equal(t, completeReconciledRefundStepType, dex.GetFinalStepType[postgresql.QueryRowsResult](completeReconciledRefund{}))
+	require.Equal(t, completeDailyTotalStepType, dex.GetFinalStepType[postgresql.ExecuteStatementNonIdempotentResult](completeDailyTotal{}))
 	wait, err := recordRefundRequest{}.WaitFor(nil, Input{})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

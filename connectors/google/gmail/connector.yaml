@@ -6,16 +6,16 @@ metadata:
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
   categories: [communication]
-  version: v0.27.0
+  version: v0.28.0
 spec:
   provider: google
   languages:
     python:
-      version: v0.4.0
+      version: v0.5.0
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: [messageReceived, replyReceived]
     typescript:
-      version: v0.4.0
+      version: v0.5.0
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: [messageReceived, replyReceived]
   codegen:
@@ -259,12 +259,14 @@ spec:
         approval: recommended
         # No retry claim: Gmail has no idempotency key, so an unknown outcome is read back, then resent up to maxSends.
         # providerRejected follows a definite 4xx with no earlier possible send and is never resent.
-        # defect is also selected when the fence fails closed or credentials need reconnection after an earlier claimed POST.
-        branches: {providerRejected: rejected, defect: unknown}
+        # defect is selected only before any possible send; a fail-closed fence or transient credential failure retries.
+        # A send that Sent Mail read-back cannot confirm at the send cap is uncertain.
+        branches: {providerRejected: rejected, uncertain: unknown, defect: unknown}
         description: Send one new email from the connected Gmail account. Give the recipient email addresses, a one-line subject, and the plain-text body; an HTML body is optional.
       branches:
         - {id: sent, goName: Sent, description: "Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match."}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the message., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Gmail may have sent the message, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -272,7 +274,7 @@ spec:
         dispatchFence: true
         repeatOnUnknown: limited
         maxSends: 3
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends plus Sent Mail read-back retries after the cap, so an unconfirmed send fails the Flow instead of sending more copies."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends, the Sent Mail search before each resend, and their rate-limit and credential retries; at the cap, a Sent Mail search that finds no match or fails selects uncertain instead of Retry, because a failed Flow invites a duplicate send."}}
       mocks:
         - name: sentToCustomer
           branch: sent
@@ -286,6 +288,9 @@ spec:
         - name: connectionLost
           description: The connection closed after dispatch and Sent Mail found nothing; the next attempt searches again and resends with the same Message-ID while below the send cap.
           retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
+        - name: sendOutcomeUnknown
+          description: The connection closed after the final send the cap allows, and Sent Mail read-back found no match, so Gmail delivery cannot be confirmed.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Gmail confirmed the message.}}
         - name: noRecipients
           branch: defect
           description: The message has no recipient, so no request is sent.
@@ -305,13 +310,15 @@ spec:
         approval: recommended
         # No retry claim: Gmail has no idempotency key, so an unknown outcome is read back, then resent up to maxSends.
         # providerRejected follows a definite source-read or send 4xx and is never resent; invalidResponse follows the source read, before the POST.
-        # defect is also selected when the fence fails closed or credentials need reconnection after an earlier claimed POST.
-        branches: {providerRejected: rejected, invalidResponse: rejected, defect: unknown}
+        # defect is selected only before any possible send; a fail-closed fence or transient credential failure retries.
+        # A reply that Sent Mail read-back cannot confirm at the send cap is uncertain.
+        branches: {providerRejected: rejected, invalidResponse: rejected, uncertain: unknown, defect: unknown}
         description: Reply in its existing Gmail thread to one message in the connected mailbox, addressed to that message's Reply-To or sender. Give the Gmail message ID to answer and the plain-text reply body; an HTML body is optional.
       branches:
         - {id: sent, goName: Sent, description: "Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains."}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the reply., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned an invalid or oversized source message response before sending the reply., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Gmail may have sent the reply, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -319,7 +326,7 @@ spec:
         dispatchFence: true
         repeatOnUnknown: limited
         maxSends: 3
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends the reply with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends plus Sent Mail read-back retries after the cap, so an unconfirmed reply fails the Flow instead of sending more copies."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends the reply with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends, the Sent Mail search before each resend, and their rate-limit and credential retries; at the cap, a Sent Mail search that finds no match or fails selects uncertain instead of Retry, because a failed Flow invites a duplicate reply."}}
       mocks:
         - name: repliedInThread
           branch: sent
@@ -337,6 +344,9 @@ spec:
         - name: connectionLost
           description: The connection closed after dispatch and Sent Mail found nothing; the next attempt searches again and resends the reply with the same Message-ID while below the send cap.
           retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
+        - name: replyOutcomeUnknown
+          description: The connection closed after the final reply the cap allows, and Sent Mail read-back found no match, so Gmail delivery cannot be confirmed.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Gmail confirmed the reply.}}
         - name: emptyBody
           branch: defect
           description: The reply has no body, so no request is sent.

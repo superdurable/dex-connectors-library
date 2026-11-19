@@ -2,7 +2,13 @@
 # SPDX-License-Identifier: MIT
 """Single-dispatch markers and Dex heartbeat fence."""
 
-from .fence import CheckpointError, DispatchNotAllowedError, Fence, InsufficientAttemptTimeError
+from .fence import (
+    CheckpointError,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+    WriteWindowTimeoutError,
+)
 from .markers import (
     MAXIMUM_MAX_SENDS,
     MINIMUM_MAX_SENDS,
@@ -25,6 +31,7 @@ __all__ = [
     "InsufficientAttemptTimeError",
     "Marker",
     "State",
+    "WriteWindowTimeoutError",
     "decide_dispatch",
     "validate_max_sends",
 ]

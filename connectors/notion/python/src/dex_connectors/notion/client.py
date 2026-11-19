@@ -9,8 +9,19 @@ from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import quote
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -138,21 +149,23 @@ class Client:
         """Classify unavailable broker credentials separately from invalid tokens."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (CredentialBrokerUnavailableError, TimeoutError):
-            return (
-                None,
-                failure(
-                    operation, FailureKind.AUTHENTICATION, "Notion connection credentials are unavailable"
-                ),
-                True,
+        except Exception as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            is_terminal = is_credential_material_error(error) or isinstance(
+                error,
+                ReauthorizationRequiredError
+                | ObjectNotFoundError
+                | ConnectionNotSelectedError
+                | CredentialBrokerRejectedError,
             )
-        except Exception:
             return (
                 None,
                 failure(
                     operation, FailureKind.AUTHENTICATION, "Notion connection credentials are unavailable"
                 ),
-                False,
+                not is_terminal,
             )
         if not isinstance(credentials, Credentials) or not is_header_safe_credential(
             credentials.api_token.reveal()
@@ -173,8 +186,13 @@ class Client:
         payload: object | None = None,
         query: list[tuple[str, str]] | None = None,
         timeout: float = 20,
+        observed_statuses: list[int] | None = None,
     ) -> ProviderResponse:
-        """Send one request without redirects and read at most the configured body limit."""
+        """Send one request without redirects and read at most the configured body limit.
+
+        ``observed_statuses`` receives the HTTP status once headers arrive, before the body is read,
+        so a caller whose write window cuts the body read still knows the provider answered.
+        """
         headers = {
             "Authorization": f"Bearer {token}",
             "Notion-Version": NOTION_VERSION,
@@ -199,6 +217,8 @@ class Client:
             response, _ = await send_traced(self.http_client, request)
         except ProviderTransportError as error:
             return ProviderResponse(error=error)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         limit = self.max_response_bytes if 200 <= response.status_code < 300 else 65536
         try:
             body = await read_bounded_body(response, limit)
@@ -316,8 +336,16 @@ def classify_read(operation: str, response: ProviderResponse) -> Classification:
     return Classification("success")
 
 
+CONCLUSIVE_REJECTION_STATUSES = frozenset({400, 401, 403, 411, 413, 414, 415, 422})
+"""Statuses other than 404 that prove Notion refused a write; any other failure leaves it unknown."""
+
+
 def classify_write(operation: str, response: ProviderResponse, repeatable: bool) -> Classification:
-    """Classify a nonrepeatable create or an absolute repeatable update."""
+    """Classify a nonrepeatable create or an absolute repeatable update.
+
+    For a create, `uncertain` means the outcome is unknown and a capped resend may follow, while
+    `acceptedUnreadable` means a 2xx accepted it, so a resend would duplicate the page.
+    """
     if response.not_built:
         return Classification(
             "defect", failure(operation, FailureKind.LOCAL_DEFECT, "Notion request could not be built")
@@ -334,12 +362,13 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
     if 200 <= status < 300:
         if response.interrupted:
             return Classification(
-                "retry" if repeatable else "uncertain",
+                "retry" if repeatable else "acceptedUnreadable",
                 failure(operation, FailureKind.TRANSPORT, "Notion response was interrupted"),
             )
+        # Repeating an absolute write is safe, so its unusable accepted response retries.
         if response.too_large:
             return Classification(
-                "invalid" if repeatable else "uncertain",
+                "retry" if repeatable else "acceptedUnreadable",
                 failure(
                     operation,
                     FailureKind.RESPONSE_TOO_LARGE,
@@ -348,10 +377,21 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
             )
         if response.reflects_secret:
             return Classification(
-                "invalid" if repeatable else "uncertain",
+                "retry" if repeatable else "acceptedUnreadable",
                 failure(operation, FailureKind.PROTOCOL, "Notion response contains credential material"),
             )
         return Classification("accepted")
+    if status != 429 and (response.too_large or response.interrupted):
+        # An unreadable refusal cannot prove the write was refused.
+        return Classification(
+            "retry" if repeatable else "uncertain",
+            failure(
+                operation,
+                FailureKind.TRANSPORT,
+                f"Notion write outcome is unknown after an unreadable HTTP {status}",
+            ),
+            _retry_after(response),
+        )
     if (
         status == 429
         and _token(response.body, "/additional_data/rate_limit_reason") == "public_api_request_blocked"
@@ -359,11 +399,10 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
         return Classification(
             "rejected", failure(operation, FailureKind.PROVIDER_REJECTION, "Notion blocked this connection")
         )
-    if status in (429, 529) or status == 409:
-        kind = FailureKind.RATE_LIMIT if status != 409 else FailureKind.CONFLICT
+    if status == 429 or (repeatable and status == 529):
         return Classification(
             "retry",
-            failure(operation, kind, "Notion write is temporarily unavailable"),
+            failure(operation, FailureKind.RATE_LIMIT, "Notion write is temporarily unavailable"),
             _retry_after(response),
         )
     if status == 503 and not repeatable:
@@ -374,22 +413,28 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
             return Classification("committed", committed_id=parse_id(committed))
         except ValueError:
             pass
-    if repeatable and (status == 408 or status >= 500):
+    if repeatable and (status in (408, 409) or status >= 500):
+        kind = FailureKind.CONFLICT if status == 409 else FailureKind.AVAILABILITY
         return Classification(
             "retry",
-            failure(operation, FailureKind.AVAILABILITY, "Notion write is temporarily unavailable"),
+            failure(operation, kind, "Notion write is temporarily unavailable"),
             _retry_after(response),
         )
     if status == 404:
         return Classification("notFound", _rejection(operation, response))
-    if 400 <= status < 500 and status != 408:
+    if status in CONCLUSIVE_REJECTION_STATUSES:
         return Classification("rejected", _rejection(operation, response))
     if repeatable:
+        # Any other status leaves the write unknown; repeating it leaves the same state.
         return Classification(
-            "invalid", failure(operation, FailureKind.PROTOCOL, "Notion returned unexpected status")
+            "retry",
+            failure(operation, FailureKind.AVAILABILITY, "Notion write outcome is unknown"),
+            _retry_after(response),
         )
+    # The owner rules treat 409, 529, every 5xx without a saved ID, and other statuses as unknown.
+    kind = FailureKind.CONFLICT if status == 409 else FailureKind.AVAILABILITY
     return Classification(
-        "uncertain", failure(operation, FailureKind.AVAILABILITY, "Notion write outcome is unknown")
+        "uncertain", failure(operation, kind, "Notion write outcome is unknown"), _retry_after(response)
     )
 
 

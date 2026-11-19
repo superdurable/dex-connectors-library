@@ -54,4 +54,5 @@ ON DUPLICATE KEY UPDATE refund_id = LAST_INSERT_ID(refund_id)`
 		IdempotencyKeyPlaceholder: 4, MaxRowsAffected: &maxRowsAffected,
 	}, executions[0].Input)
 	require.Equal(t, mysql.ExecuteStatementBranchCompleted, executions[0].Branch)
+	require.Empty(t, mock.ExecuteStatementNonIdempotent().Calls(), "another Flow's refund is never added to the daily total again")
 }

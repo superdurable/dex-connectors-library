@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  definitionMaxSends,
   newMutationBranch,
   newMutationRetry,
   newMutationUncertain,
@@ -14,7 +15,15 @@ import {
   type MutationAttempt,
   type Query,
   type QueryAttempt,
+  type ReceiptDraft,
 } from "@superdurable/connectors-sdk";
+import {
+  CheckpointError,
+  DispatchNotAllowedError,
+  InsufficientTimeError,
+  newFence,
+  type Decision,
+} from "@superdurable/connectors-sdk/singledispatch";
 import {
   SearchConversationsDefinition,
   GetConversationDefinition,
@@ -276,23 +285,6 @@ function queryFailure<T>(
           ? "defect"
           : "providerRejected";
   return newQueryBranch(branch, empty, exchange.receipt, exchange.failure);
-}
-function mutationFailure<T>(
-  exchange: IntercomExchange,
-  empty: T,
-): MutationAttempt<T> | undefined {
-  if (exchange.outcome === "succeeded") return;
-  if (retryable(exchange))
-    return newMutationRetry(exchange.failure, exchange.retryAfterMs);
-  const branch =
-    exchange.outcome === "notFound"
-      ? "notFound"
-      : exchange.outcome === "invalid"
-        ? "invalidResponse"
-        : exchange.outcome === "defect"
-          ? "defect"
-          : "providerRejected";
-  return newMutationBranch(branch, empty, exchange.receipt, exchange.failure);
 }
 function rfc3339(value: string): number | undefined {
   const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,]\d+)?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
@@ -613,7 +605,7 @@ function newestAdminPart(candidates: Wire[]): Wire | undefined {
   return newest;
 }
 
-/** Add an admin reply at most once per Dex Step execution. */
+/** Add an admin reply under the send cap, reading back before every resend. */
 export class ReplyToConversationOperation
   implements Mutation<ReplyToConversationInput, ReplyToConversationOutput>
 {
@@ -628,7 +620,7 @@ export class ReplyToConversationOperation
   ): string {
     return callId;
   }
-  /** Invoke or reconcile one reply attempt. */ async invoke(
+  /** Fence the reply under the send cap, reading back before any resend. */ async invoke(
     call: Call,
     input: ReplyToConversationInput,
   ): Promise<MutationAttempt<ReplyToConversationOutput>> {
@@ -642,83 +634,130 @@ export class ReplyToConversationOperation
         zeroReceipt(),
         failure(this.client, operation, error),
       );
-    let marker: Wire | undefined;
+    const operationMaxSends = definitionMaxSends(ReplyToConversationDefinition);
+    let fence;
     try {
-      if (call.context.hasLastHeartbeatValue()) {
-        const previous = call.context.getLastHeartbeatValue();
-        if (previous != null) marker = obj(previous);
-      }
+      fence = newFence(
+        call,
+        ReplyToConversationDefinition.stepDefaults.executeMethodTimeoutMs ??
+          30_000,
+        { maxSends: operationMaxSends },
+      );
     } catch {
-      marker = { intercomReplyDispatchedAt: 0 };
+      return newMutationBranch(
+        "defect",
+        output,
+        zeroReceipt(),
+        this.client.failure(
+          operation,
+          "LOCAL_DEFECT",
+          "single dispatch fence could not be constructed",
+        ),
+      );
     }
-    if (marker) return this.reconcile(call, input, marker);
-    const dispatchedAt = Math.floor(this.client.now().getTime() / 1000);
-    try {
-      await call.context.recordHeartbeat({
-        intercomReplyDispatchedCallId: call.id,
-        intercomReplyDispatchedAt: dispatchedAt,
-      });
-    } catch {
+    const decision = fence.decide();
+    // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+    if (decision.kind === "failClosed")
       return newMutationRetry(
         this.client.failure(
           operation,
           "AVAILABILITY",
-          "Dex did not record the dispatch checkpoint; nothing was sent",
+          "dispatch checkpoint could not be read; nothing was sent in this attempt",
         ),
       );
+    const priorSends = decision.priorSendUpperBound ?? 0;
+    const hasPossibleEarlierSend = hasPossibleEarlierReplySend(decision);
+    const resolution = await this.client.resolveAccessTokenResolution(call);
+    if (!("accessToken" in resolution))
+      return replyCredentialFailureAttempt(
+        this.client,
+        hasPossibleEarlierSend,
+        resolution.isTransient,
+        output,
+        () => fence.recordNotSent(),
+      );
+    const token = resolution.accessToken;
+    if (hasPossibleEarlierSend) {
+      const readBack = await this.readBack(call, input, token);
+      if (readBack.outcome === "found")
+        return newMutationBranch(
+          "replied",
+          { ...readBack.output, wasAlreadyApplied: true },
+          readBack.receipt,
+        );
+      if (readBack.outcome === "retryable")
+        return newMutationRetry(readBack.failure, readBack.retryAfterMs);
+      if (
+        readBack.outcome !== "absent" ||
+        !canResendAfterAbsentReadBack(decision)
+      )
+        return newMutationUncertain(
+          readBack.output,
+          this.client.failure(
+            operation,
+            readBack.failure.kind,
+            `an earlier attempt of this Step may have sent the reply, and ${readBack.failure.message}`,
+          ),
+          readBack.receipt,
+        );
+      // The read-back found no matching part, so this attempt resends below the cap.
     }
-    const exchange = await this.client.exchange(
-      call,
-      operation,
-      "POST",
-      `/conversations/${input.conversationId}/reply`,
-      undefined,
-      {
-        message_type: input.messageType,
-        type: "admin",
-        admin_id: input.adminId,
-        body: escapeHTML(input.body),
-      },
-      input.conversationId,
-    );
-    if (
-      exchange.outcome === "notSent" ||
-      exchange.outcome === "rateLimited" ||
-      exchange.outcome === "defect"
-    ) {
-      try {
-        await call.context.recordHeartbeat(undefined);
-      } catch {
-        /* A retained checkpoint forces safe read-back next attempt. */
-      }
-    }
-    const bad = mutationFailure(exchange, output);
-    if (bad) return bad;
+    const isFirstSend = priorSends === 0;
+    const dispatchedAt = Math.floor(this.client.now().getTime() / 1000);
+    let exchange: IntercomExchange;
     try {
-      const wire = envelope(exchange, input.conversationId);
-      if (str(wire.state)) output.conversationState = str(wire.state);
-      const found =
-        matchingPart(wire, input, dispatchedAt - 300, true) ??
+      exchange = await fence.dispatch((signal) =>
+        this.client.exchange(
+          call,
+          operation,
+          "POST",
+          `/conversations/${input.conversationId}/reply`,
+          undefined,
+          {
+            message_type: input.messageType,
+            type: "admin",
+            admin_id: input.adminId,
+            body: escapeHTML(input.body),
+          },
+          input.conversationId,
+          { accessToken: token, signal },
+        ),
+      );
+    } catch (dispatchError) {
+      return replyDispatchErrorAttempt(this.client, operation, dispatchError);
+    }
+    exchange = withUntrustedRefusalAsUnknown(this.client, exchange, operation);
+    if (exchange.outcome !== "succeeded" && hasSuccessStatus(exchange))
+      // An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
+      return this.confirmAccepted(call, fence, input, token, exchange.failure);
+    const terminal = await classifySentReply(
+      this.client,
+      exchange,
+      output,
+      isFirstSend,
+      () => fence.recordCanResend(),
+    );
+    if (terminal) return terminal;
+    if (exchange.outcome !== "succeeded") throw new TypeError("unclassified exchange");
+    let wire: Wire;
+    let found: Wire | undefined;
+    try {
+      wire = envelope(exchange, input.conversationId);
+      found =
+        matchingPart(wire, input, dispatchedAt - replyReconciliationSkewSeconds, true) ??
         newestAdminPart(parts(wire).filter(
           (w) =>
             str(w.part_type) === input.messageType &&
             str(obj(w.author ?? {}).type) === "admin" &&
             id(obj(w.author ?? {}).id) === input.adminId &&
-            sec(w.created_at) >= dispatchedAt - 300,
+            sec(w.created_at) >= dispatchedAt - replyReconciliationSkewSeconds,
         ));
-      if (found) output.part = part(found);
-      return newMutationBranch(
-        "replied",
-        output,
-        output.part.id
-          ? { ...exchange.receipt, metadata: { partId: output.part.id } }
-          : exchange.receipt,
-      );
     } catch (error) {
-      return newMutationBranch(
-        "invalidResponse",
-        output,
-        exchange.receipt,
+      return this.confirmAccepted(
+        call,
+        fence,
+        input,
+        token,
         this.client.failure(
           operation,
           "PROTOCOL",
@@ -726,75 +765,361 @@ export class ReplyToConversationOperation
         ),
       );
     }
+    if (str(wire.state)) output.conversationState = str(wire.state);
+    if (!found) return newMutationBranch("replied", output, exchange.receipt);
+    try {
+      output.part = part(found);
+    } catch (error) {
+      return this.confirmAccepted(
+        call,
+        fence,
+        input,
+        token,
+        this.client.failure(
+          operation,
+          "PROTOCOL",
+          `Intercom accepted the reply but returned an invalid part: ${errorText(error)}`,
+        ),
+      );
+    }
+    return newMutationBranch("replied", output, {
+      ...exchange.receipt,
+      metadata: { partId: output.part.id },
+    });
   }
-  private async reconcile(
+  /** Never resend a 2xx; a retryable read-back saves an acceptance marker and retries. */
+  private async confirmAccepted(
+    call: Call,
+    fence: ReturnType<typeof newFence>,
+    input: ReplyToConversationInput,
+    accessToken: string,
+    answerFailure: Failure,
+  ): Promise<MutationAttempt<ReplyToConversationOutput>> {
+    const readBack = await this.readBack(call, input, accessToken);
+    if (readBack.outcome === "found")
+      return newMutationBranch("replied", readBack.output, readBack.receipt);
+    if (readBack.outcome === "retryable") {
+      let isAcceptanceRecorded = true;
+      try {
+        await fence.recordProviderId(acceptedReplyWithoutPartId);
+      } catch {
+        // Without the marker a later attempt could resend, so this one selects uncertain.
+        isAcceptanceRecorded = false;
+      }
+      if (isAcceptanceRecorded)
+        return newMutationRetry(
+          this.client.failure(
+            "replyToConversation",
+            readBack.failure.kind,
+            `${answerFailure.message}; the reply was accepted and is never resent, and ${readBack.failure.message}`,
+          ),
+          readBack.retryAfterMs,
+        );
+    }
+    return newMutationUncertain(
+      readBack.output,
+      this.client.failure(
+        "replyToConversation",
+        answerFailure.kind,
+        `${answerFailure.message}; the reply was accepted and is never resent, and ${readBack.failure.message}`,
+      ),
+      readBack.receipt,
+    );
+  }
+  /** Never send; look for a part by the input's admin, type, and words since the first attempt. */
+  private async readBack(
     call: Call,
     input: ReplyToConversationInput,
-    marker: Wire,
-  ): Promise<MutationAttempt<ReplyToConversationOutput>> {
+    accessToken: string,
+  ): Promise<ReplyReadBack> {
     const operation = "replyToConversation",
       output = zeroReply(input.conversationId),
       exchange = await this.client.readConversation(
         call,
         operation,
         input.conversationId,
+        { accessToken, signal: call.context.cancellationSignal },
       );
     if (exchange.outcome !== "succeeded" && retryable(exchange))
-      return newMutationRetry(exchange.failure, exchange.retryAfterMs);
-    if (exchange.outcome === "notFound")
-      return newMutationBranch(
-        "notFound",
+      return {
+        outcome: "retryable",
         output,
-        exchange.receipt,
-        exchange.failure,
-      );
+        receipt: exchange.receipt,
+        failure: exchange.failure,
+        retryAfterMs: exchange.retryAfterMs,
+      };
     if (exchange.outcome !== "succeeded")
-      return newMutationUncertain(
+      return {
+        outcome: "unconfirmed",
         output,
-        this.client.failure(
+        receipt: exchange.receipt,
+        failure: this.client.failure(
           operation,
           exchange.failure.kind,
-          "an earlier attempt of this Step sent the reply, and the conversation could not be read back",
+          `the conversation could not be read back: ${exchange.failure.message}`,
         ),
-        exchange.receipt,
-      );
+      };
+    let found: Wire | undefined;
     try {
       const wire = envelope(exchange, input.conversationId);
       if (str(wire.state)) output.conversationState = str(wire.state);
-      const found = matchingPart(
-        wire,
-        input,
-        Number(marker.intercomReplyDispatchedAt ?? 0) - 300,
-        false,
-      );
-      if (!found)
-        return newMutationUncertain(
-          output,
-          this.client.failure(
-            operation,
-            "TRANSPORT",
-            "an earlier attempt of this Step sent the reply without a confirmed outcome, and the conversation shows no matching part, so it is not sent again",
-          ),
-          exchange.receipt,
-        );
-      output.part = part(found);
-      output.wasAlreadyApplied = true;
-      return newMutationBranch("replied", output, {
-        ...exchange.receipt,
-        metadata: { partId: output.part.id },
-      });
+      // Every send of this Step happened after its first attempt began.
+      const firstAttemptAt = call.context.firstAttemptAt as Date | undefined;
+      const since = firstAttemptAt
+        ? Math.floor(firstAttemptAt.getTime() / 1000) - replyReconciliationSkewSeconds
+        : 0;
+      found = matchingPart(wire, input, since, false);
     } catch (error) {
-      return newMutationUncertain(
+      return {
+        outcome: "unconfirmed",
         output,
-        this.client.failure(
+        receipt: exchange.receipt,
+        failure: this.client.failure(
           operation,
           "PROTOCOL",
-          `an earlier attempt of this Step sent the reply, and the conversation read back is invalid: ${errorText(error)}`,
+          `the conversation read back is invalid: ${errorText(error)}`,
         ),
-        exchange.receipt,
+      };
+    }
+    if (!found)
+      return {
+        outcome: "absent",
+        output,
+        receipt: exchange.receipt,
+        failure: this.client.failure(
+          operation,
+          "TRANSPORT",
+          "the conversation shows no matching part",
+        ),
+      };
+    try {
+      output.part = part(found);
+    } catch (error) {
+      return {
+        outcome: "unconfirmed",
+        output,
+        receipt: exchange.receipt,
+        failure: this.client.failure(
+          operation,
+          "PROTOCOL",
+          `the conversation shows the reply, but its part is invalid: ${errorText(error)}`,
+        ),
+      };
+    }
+    return {
+      outcome: "found",
+      output,
+      receipt: { ...exchange.receipt, metadata: { partId: output.part.id } },
+    };
+  }
+}
+
+/** One read-back; failure explains every outcome except found. */
+type ReplyReadBack =
+  | {
+      outcome: "found";
+      output: ReplyToConversationOutput;
+      receipt: ReceiptDraft;
+    }
+  | {
+      outcome: "absent" | "retryable" | "unconfirmed";
+      output: ReplyToConversationOutput;
+      receipt: ReceiptDraft;
+      failure: Failure;
+      retryAfterMs?: number;
+    };
+
+/** An earlier attempt may have sent, so the conversation is read back first. */
+function hasPossibleEarlierReplySend(decision: Decision): boolean {
+  return (
+    decision.kind !== "sendAllowed" ||
+    (decision.priorSendUpperBound ?? 0) > 0 ||
+    Boolean(decision.marker?.providerId)
+  );
+}
+
+/** Room under the cap and no saved ID proving Intercom accepted a send. */
+function canResendAfterAbsentReadBack(decision: Decision): boolean {
+  return decision.kind !== "readBackRequired" && !decision.marker?.providerId;
+}
+
+/** A 2xx proves Intercom accepted a write even when its body is unusable. */
+function hasSuccessStatus(exchange: IntercomExchange): boolean {
+  const status =
+    exchange.outcome === "succeeded" ? exchange.response.status : exchange.status;
+  return status !== undefined && status >= 200 && status < 300;
+}
+
+/** A refusal whose body was too large to inspect, or echoed the access token, is an unknown outcome. */
+function withUntrustedRefusalAsUnknown(
+  client: IntercomClient,
+  exchange: IntercomExchange,
+  operation: string,
+): IntercomExchange {
+  if (
+    exchange.outcome === "succeeded" ||
+    (!exchange.isBodyOversized && !exchange.isCredentialEchoed) ||
+    (exchange.outcome !== "rejected" && exchange.outcome !== "notFound")
+  )
+    return exchange;
+  const failureDetail = exchange.isBodyOversized
+    ? (["RESPONSE_TOO_LARGE", "a body larger than maxResponseBytes"] as const)
+    : (["PROTOCOL", "a body that reflected the connection credential"] as const);
+  return {
+    ...exchange,
+    outcome: "unconfirmed",
+    failure: client.failure(
+      operation,
+      failureDetail[0],
+      `Intercom answered HTTP ${exchange.status ?? 0} with ${failureDetail[1]}, so the outcome is unknown`,
+    ),
+  };
+}
+
+/** Map the read before a safe write: only a readable listed refusal selects a branch; anything else retries. */
+function preWriteReadFailure<T>(
+  client: IntercomClient,
+  read: IntercomExchange,
+  empty: T,
+  operation: string,
+): MutationAttempt<T> | undefined {
+  const exchange = withUntrustedRefusalAsUnknown(client, read, operation);
+  if (exchange.outcome === "succeeded") return;
+  if (exchange.outcome === "defect")
+    return newMutationBranch("defect", empty, exchange.receipt, exchange.failure);
+  if (exchange.outcome === "notFound" && exchange.status === 404)
+    return newMutationBranch("notFound", empty, exchange.receipt, exchange.failure);
+  if (exchange.outcome === "rejected" && definiteRefusalStatuses.has(exchange.status ?? 0))
+    return newMutationBranch("providerRejected", empty, exchange.receipt, exchange.failure);
+  return newMutationRetry(exchange.failure, exchange.retryAfterMs);
+}
+
+/** Map unusable credentials before this send; after a possible send record nothing and never defect. */
+async function replyCredentialFailureAttempt(
+  client: IntercomClient,
+  hasPossibleEarlierSend: boolean,
+  isTransient: boolean,
+  output: ReplyToConversationOutput,
+  recordNotSent: () => Promise<void>,
+): Promise<MutationAttempt<ReplyToConversationOutput>> {
+  const operation = "replyToConversation";
+  if (hasPossibleEarlierSend)
+    return isTransient
+      ? newMutationRetry(client.credentialsUnavailable(operation))
+      : newMutationUncertain(
+          output,
+          client.failure(
+            operation,
+            "AUTHENTICATION",
+            "an earlier attempt of this Step may have sent the reply, and the connection credentials cannot read it back",
+          ),
+          zeroReceipt(),
+        );
+  try {
+    await recordNotSent();
+  } catch {
+    return newMutationRetry(
+      client.failure(
+        operation,
+        "AVAILABILITY",
+        "credential checkpoint could not be recorded; nothing was sent",
+      ),
+    );
+  }
+  return isTransient
+    ? newMutationRetry(client.credentialsUnavailable(operation))
+    : newMutationBranch(
+        "defect",
+        output,
+        zeroReceipt(),
+        client.credentialsUnavailable(operation),
       );
+}
+
+/** The reply read-back tolerates a difference between the Worker's and Intercom's clocks, in seconds. */
+const replyReconciliationSkewSeconds = 300;
+/** The checkpoint provider ID of a reply Intercom accepted without a usable part. */
+const acceptedReplyWithoutPartId = "dex:acceptedWithoutPartId";
+/** Only these statuses prove Intercom applied nothing; any other non-2xx answer may have been applied. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Map a Dispatch error: a refused dispatch sent nothing, and a cut-off send stays counted. */
+function replyDispatchErrorAttempt<Output>(
+  client: IntercomClient,
+  operation: string,
+  error: unknown,
+): MutationAttempt<Output> {
+  if (
+    error instanceof CheckpointError ||
+    error instanceof InsufficientTimeError ||
+    error instanceof DispatchNotAllowedError
+  )
+    return newMutationRetry(
+      client.failure(
+        operation,
+        "AVAILABILITY",
+        "the reply was not sent before the attempt deadline or checkpoint",
+      ),
+    );
+  return newMutationRetry(
+    client.failure(
+      operation,
+      "TRANSPORT",
+      "Intercom request failed before a response arrived",
+    ),
+  );
+}
+
+/** Map a sent reply; any outcome but a definite refusal retries, and the next attempt reads back. */
+async function classifySentReply(
+  client: IntercomClient,
+  exchange: IntercomExchange,
+  output: ReplyToConversationOutput,
+  isFirstSend: boolean,
+  recordCanResend: () => Promise<void>,
+): Promise<MutationAttempt<ReplyToConversationOutput> | undefined> {
+  if (exchange.outcome === "succeeded") return;
+  if (
+    exchange.outcome === "notSent" ||
+    exchange.outcome === "rateLimited" ||
+    (exchange.outcome === "unconfirmed" && exchange.status === 503)
+  ) {
+    try {
+      await recordCanResend();
+    } catch {
+      /* A lost checkpoint leaves the claim, so the next attempt counts this send and reads back. */
     }
   }
+  let branch = "";
+  if (exchange.outcome === "notFound" && exchange.status === 404)
+    branch = "notFound";
+  else if (exchange.outcome === "defect" && isFirstSend) branch = "defect";
+  else if (
+    exchange.outcome === "rejected" &&
+    definiteRefusalStatuses.has(exchange.status ?? 0)
+  )
+    branch = "providerRejected";
+  // A 3xx, 408, 409, 410, 5xx, unlisted status, or lost answer may follow an applied reply.
+  if (!branch) return newMutationRetry(exchange.failure, exchange.retryAfterMs);
+  if (!isFirstSend)
+    return newMutationUncertain(output, exchange.failure, exchange.receipt);
+  try {
+    await recordCanResend();
+  } catch {
+    return newMutationRetry(
+      client.failure(
+        "replyToConversation",
+        "AVAILABILITY",
+        "refusal checkpoint could not be recorded",
+      ),
+    );
+  }
+  return newMutationBranch(
+    branch,
+    output,
+    branch === "defect" ? zeroReceipt() : exchange.receipt,
+    exchange.failure,
+  );
 }
 
 function updateInputTime(input: UpdateConversationStateInput): number | string {
@@ -869,21 +1194,34 @@ export class UpdateConversationStateOperation
         zeroReceipt(),
         failure(this.client, operation, snoozedUntil),
       );
+    const resolution = await this.client.resolveAccessTokenResolution(call);
+    if (!("accessToken" in resolution))
+      return resolution.isTransient
+        ? newMutationRetry(this.client.credentialsUnavailable(operation))
+        : newMutationBranch(
+            "defect",
+            zeroUpdate(),
+            zeroReceipt(),
+            this.client.credentialsUnavailable(operation),
+          );
+    const dispatch = {
+      accessToken: resolution.accessToken,
+      signal: call.context.cancellationSignal,
+    };
     const first = await this.client.readConversation(
         call,
         operation,
         input.conversationId,
+        dispatch,
       ),
-      bad = mutationFailure(first, zeroUpdate());
+      bad = preWriteReadFailure(this.client, first, zeroUpdate(), operation);
     if (bad) return bad;
     let current: Conversation;
     try {
       current = conversation(envelope(first, input.conversationId), false);
     } catch (error) {
-      return newMutationBranch(
-        "invalidResponse",
-        zeroUpdate(),
-        first.receipt,
+      // An unusable 2xx read before the change proves nothing, so the attempt repeats.
+      return newMutationRetry(
         this.client.failure(
           operation,
           "PROTOCOL",
@@ -897,78 +1235,94 @@ export class UpdateConversationStateOperation
         { conversation: current, wasAlreadyApplied: true },
         this.client.receipt(call, input.conversationId),
       );
-    const write = await this.client.exchange(
-      call,
+    const write = withUntrustedRefusalAsUnknown(
+      this.client,
+      await this.client.exchange(
+        call,
+        operation,
+        "POST",
+        `/conversations/${input.conversationId}/parts`,
+        undefined,
+        stateRequest(input, snoozedUntil),
+        input.conversationId,
+        dispatch,
+      ),
       operation,
-      "POST",
-      `/conversations/${input.conversationId}/parts`,
-      undefined,
-      stateRequest(input, snoozedUntil),
-      input.conversationId,
     );
-    if (write.outcome === "rejected") {
+    if (
+      write.outcome === "rejected" &&
+      definiteRefusalStatuses.has(write.status ?? 0)
+    ) {
       const reread = await this.client.readConversation(
-          call,
-          operation,
-          input.conversationId,
-        ),
-        readFailure = mutationFailure(reread, zeroUpdate());
-      if (readFailure) return readFailure;
+        call,
+        operation,
+        input.conversationId,
+        dispatch,
+      );
+      // A failed reread retries, because the absolute change is safe to repeat.
+      if (reread.outcome !== "succeeded")
+        return newMutationRetry(reread.failure, reread.retryAfterMs);
+      let after: Conversation;
       try {
-        const after = conversation(
-          envelope(reread, input.conversationId),
-          false,
-        );
-        return stateMatches(after, input, snoozedUntil)
-          ? newMutationBranch(
-              "updated",
-              { conversation: after, wasAlreadyApplied: true },
-              write.receipt,
-            )
-          : newMutationBranch(
-              "providerRejected",
-              { conversation: after },
-              write.receipt,
-              write.failure,
-            );
+        after = conversation(envelope(reread, input.conversationId), false);
       } catch (error) {
-        return newMutationBranch(
-          "invalidResponse",
-          zeroUpdate(),
-          reread.receipt,
+        return newMutationRetry(
           this.client.failure(
             operation,
             "PROTOCOL",
-            `Intercom returned an invalid conversation: ${errorText(error)}`,
+            `Intercom returned an invalid conversation when read again after rejecting the change: ${errorText(error)}`,
           ),
         );
       }
+      return stateMatches(after, input, snoozedUntil)
+        ? newMutationBranch(
+            "updated",
+            { conversation: after, wasAlreadyApplied: true },
+            write.receipt,
+          )
+        : newMutationBranch(
+            "providerRejected",
+            { conversation: after },
+            write.receipt,
+            write.failure,
+          );
     }
-    const writeFailure = mutationFailure(write, { conversation: current });
-    if (writeFailure) return writeFailure;
+    if (write.outcome === "notFound" && write.status === 404)
+      return newMutationBranch(
+        "notFound",
+        { conversation: current },
+        write.receipt,
+        write.failure,
+      );
+    // The request could not be built, so nothing was sent.
+    if (write.outcome === "defect")
+      return newMutationBranch(
+        "defect",
+        { conversation: current },
+        write.receipt,
+        write.failure,
+      );
+    // A lost answer, 3xx, 408, 409, 410, 5xx, unlisted status, or invalid answer may follow an applied change.
+    if (write.outcome !== "succeeded")
+      return newMutationRetry(write.failure, write.retryAfterMs);
+    let after: Conversation;
     try {
-      const after = conversation(envelope(write, input.conversationId), false);
+      after = conversation(envelope(write, input.conversationId), false);
       if (!stateMatches(after, input, snoozedUntil))
         throw new Error(
           "conversation returned after the change is not in the requested state",
         );
-      return newMutationBranch(
-        "updated",
-        { conversation: after },
-        write.receipt,
-      );
     } catch (error) {
-      return newMutationBranch(
-        "invalidResponse",
-        { conversation: current },
-        write.receipt,
+      // The change is absolute, so the next attempt reads again and writes only if still needed.
+      return newMutationRetry(
         this.client.failure(
           operation,
           "PROTOCOL",
-          `Intercom returned an invalid conversation: ${errorText(error)}`,
+          `Intercom returned an invalid conversation after the change: ${errorText(error)}`,
         ),
       );
     }
+    return newMutationBranch("updated", { conversation: after }, write.receipt);
   }
 }
 

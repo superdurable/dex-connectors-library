@@ -1,10 +1,10 @@
 {
   "connectorId": "snowflake",
-  "releaseTag": "connectors/snowflake/go/v0.23.0",
+  "releaseTag": "connectors/snowflake/go/v0.23.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-snowflake",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

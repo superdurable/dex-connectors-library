@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -56,47 +57,177 @@ func TestAddCommentSendsPlainTextWithTheRequestedVisibilityOnce(t *testing.T) {
 	}
 }
 
-func TestAddCommentKeepsUncertainWritesAndRetries429(t *testing.T) {
+func TestAddCommentResendsUnknownOutcomesAndNeverResendsRefusals(t *testing.T) {
 	for _, test := range []struct {
-		name   string
-		reply  func(http.ResponseWriter)
-		branch sdkgo.BranchID
+		name    string
+		reply   func(http.ResponseWriter)
+		branch  sdkgo.BranchID
+		isRetry bool
+		state   singledispatch.State
 	}{
-		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) }, branch: desk.AddCommentBranchUncertain},
+		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) }, isRetry: true, state: singledispatch.StateClaimed},
 		{name: "server error", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusInternalServerError, `{"errorCode":"INTERNAL_SERVER_ERROR"}`)
-		}, branch: desk.AddCommentBranchUncertain},
+		}, isRetry: true, state: singledispatch.StateClaimed},
 		{name: "visibility changed", reply: func(response http.ResponseWriter) {
 			writeValue(t, response, http.StatusOK, commentJSON("4000000529001", true, "Triaged."))
-		}, branch: desk.AddCommentBranchUncertain},
+		}, branch: desk.AddCommentBranchUncertain, state: singledispatch.StateClaimed},
 		{name: "missing ticket", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusNotFound, `{"errorCode":"URL_NOT_FOUND","message":"SENTINEL"}`)
-		}, branch: desk.AddCommentBranchNotFound},
+		}, branch: desk.AddCommentBranchNotFound, state: singledispatch.StateCanResend},
 		{name: "too large", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusRequestEntityTooLarge, `{"errorCode":"RESOURCE_SIZE_EXCEEDED"}`)
-		}, branch: desk.AddCommentBranchProviderRejected},
+		}, branch: desk.AddCommentBranchProviderRejected, state: singledispatch.StateCanResend},
+		{name: "rate limited", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusTooManyRequests, `{"errorCode":"TOO_MANY_REQUESTS"}`)
+		}, isRetry: true, state: singledispatch.StateCanResend},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
-			result, err := sdkgo.RunMutation(newDeskDexContext("comment-"+test.name), newDeskClient(t, provider.URL).AddComment(), deskConnection,
+			ctx := newDeskDexContext("comment-" + test.name)
+			result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection,
 				desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
+			require.Equal(t, 1, provider.requestCount())
+			require.Equal(t, test.state, recordedMarker(t, ctx).State)
+			if test.isRetry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
-			require.Equal(t, 1, provider.requestCount())
 			requireNoSentinel(t, result)
 		})
 	}
-
-	limited := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusTooManyRequests, `{"errorCode":"TOO_MANY_REQUESTS"}`)
-	})
-	ctx := newDeskDexContext("comment-limited")
-	_, err := sdkgo.RunMutation(ctx, newDeskClient(t, limited.URL).AddComment(), deskConnection, desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
-	requireRetry(t, err, sdkgo.FailureRateLimit)
-	require.Nil(t, ctx.recordedHeartbeat, "a 429 clears the marker so the retry may send")
 }
 
-func TestAddCommentRetriesAfter503WithoutRetainingDispatchMarker(t *testing.T) {
+func TestAddCommentWithAReturnedIDIsNeverResent(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeValue(t, response, http.StatusOK, commentJSON("4000000529001", true, "Triaged."))
+	})
+	client := newDeskClient(t, provider.URL)
+	ctx := newDeskDexContext("comment-visibility")
+	input := desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."}
+	result, err := sdkgo.RunMutation(ctx, client.AddComment(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchUncertain, result.Branch, "the comment exists with another visibility")
+	require.Equal(t, "4000000529001", recordedMarker(t, ctx).ProviderID)
+	result, err = sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchUncertain, result.Branch, "the read-back finds the other visibility")
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(1).method, "a saved comment ID is read back, never resent")
+	require.Equal(t, "/api/v1/tickets/"+testTicketID+"/comments/4000000529001", provider.request(1).path)
+}
+
+// TestAddCommentReadsBackAnAcceptedCommentByID covers a 2xx whose comment does not decode but carries
+// its ID, and a later attempt that finds the saved ID: both read back and never resend.
+func TestAddCommentReadsBackAnAcceptedCommentByID(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch {
+		case request.Method == http.MethodPost:
+			writeJSON(t, response, http.StatusCreated, `{"id":"4000000529001","content":"SENTINEL"}`)
+		case index == 1:
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"errorCode":"SERVICE_UNAVAILABLE"}`)
+		default:
+			writeValue(t, response, http.StatusOK, commentJSON("4000000529001", false, "Triaged."))
+		}
+	})
+	client := newDeskClient(t, provider.URL)
+	input := desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."}
+	ctx := newDeskDexContext("comment-read-back")
+	_, err := sdkgo.RunMutation(ctx, client.AddComment(), deskConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, "4000000529001", recordedMarker(t, ctx).ProviderID)
+
+	result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, "4000000529001", result.Value.Comment.ID)
+	require.Equal(t, 3, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(2).method)
+}
+
+// TestAddCommentReadsBackARefusalThatCarriesACommentID covers a refusal status whose body holds a
+// created comment id: it is read back by that id and never resent.
+func TestAddCommentReadsBackARefusalThatCarriesACommentID(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusBadRequest, `{"id":"4000000529001","errorCode":"INVALID_DATA"}`)
+			return
+		}
+		writeValue(t, response, http.StatusOK, commentJSON("4000000529001", false, "Triaged."))
+	})
+	ctx := newDeskDexContext("comment-refused-with-id")
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection,
+		desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, "4000000529001", recordedMarker(t, ctx).ProviderID)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(1).method)
+}
+
+// TestAddCommentTreatsARefusalThatReflectsTheTokenAsUnknown covers an untrusted refusal body.
+func TestAddCommentTreatsARefusalThatReflectsTheTokenAsUnknown(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusNotFound, `{"errorCode":"URL_NOT_FOUND","message":"`+testAccessToken+`"}`)
+	})
+	ctx := newDeskDexContext("comment-refused-untrusted")
+	_, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection,
+		desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Equal(t, singledispatch.StateClaimed, recordedMarker(t, ctx).State, "the claim counts this send")
+	require.NotContains(t, err.Error(), testAccessToken)
+}
+
+// TestAddCommentReadsBackASavedIDAtTheSendCap covers finding 39 for comments.
+func TestAddCommentReadsBackASavedIDAtTheSendCap(t *testing.T) {
+	input := desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."}
+	ctx := capClaimWithSavedProviderID(t, "comment-saved-id", func(client *desk.Client, ctx *deskDexContext) {
+		_, err := sdkgo.RunMutation(ctx, client.AddComment(), deskConnection, input)
+		require.NoError(t, err)
+	}, mustJSON(t, commentJSON("4000000529001", false, "Triaged.")))
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeValue(t, response, http.StatusOK, commentJSON("4000000529001", false, "Triaged."))
+	})
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(0).method)
+}
+
+// TestAddCommentNeverResendsA2xxWithoutAnID covers an accepted comment whose answer has no ID.
+func TestAddCommentNeverResendsA2xxWithoutAnID(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, `{}`)
+	})
+	ctx := newDeskDexContext("comment-2xx-no-id")
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection,
+		desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddCommentResendsBelowTheCapAndSelectsUncertainAtIt(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
+	client := newDeskClient(t, provider.URL)
+	input := desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."}
+	ctx := newDeskDexContext("comment-cap")
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.AddComment(), deskConnection, input)
+		requireRetry(t, err, sdkgo.FailureTransport)
+		ctx = ctx.nextAttempt()
+	}
+	result, err := sdkgo.RunMutation(ctx, client.AddComment(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, 3, provider.requestCount(), "the send cap of three bounds the possible comments")
+}
+
+func TestAddCommentRetriesAfter503AndRecordsCanResend(t *testing.T) {
 	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, attempt int) {
 		if attempt == 0 {
 			response.Header().Set("Retry-After", "2")
@@ -113,7 +244,7 @@ func TestAddCommentRetriesAfter503WithoutRetainingDispatchMarker(t *testing.T) {
 	var retryAfter *dex.RetryAfterError
 	require.ErrorAs(t, err, &retryAfter)
 	require.Equal(t, 2*time.Second, retryAfter.After)
-	require.Nil(t, ctx.recordedHeartbeat, "a 503 clears the dispatch marker before retry")
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, ctx).State, "a 503 records canResend before retry")
 	require.Equal(t, 1, provider.requestCount())
 
 	result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), deskConnection, input)

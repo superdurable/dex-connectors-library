@@ -36,7 +36,7 @@ from ._generated.definitions import (
     LIST_OBJECTS_DEFINITION,
     PUT_OBJECT_DEFINITION,
 )
-from .client import Client, Response, Session, validate_key
+from .client import Client, Response, Session, _CredentialUnavailableError, validate_key
 from .models import (
     GetObjectTextInput,
     HeadObjectInput,
@@ -49,10 +49,20 @@ from .models import (
     StoredObject,
 )
 
+# Statuses that prove S3 refused an object write: the HTTP refusals, a permanent Region redirect, and
+# NotImplemented for create-only writes. Any other refusal of a write is an unknown outcome.
+_DEFINITE_WRITE_REFUSAL_STATUSES = frozenset((301, 400, 401, 403, 404, 411, 413, 414, 415, 422, 501))
+
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Build a secret-safe S3 failure."""
     return Failure(kind, "amazon-s3", operation, message)
+
+
+def _credentials_retry_failure(operation: str) -> Failure:
+    return failure(
+        operation, FailureKind.AVAILABILITY, "S3 credentials are temporarily unavailable; nothing was sent"
+    )
 
 
 def query_branch(
@@ -354,7 +364,10 @@ class ListObjectsOperation:
                 raise ValueError("continuationToken is invalid")
         except (ValueError, UnicodeEncodeError) as error:
             return query_branch("defect", zero, error=failure(operation, FailureKind.VALIDATION, str(error)))
-        session = await self.client.start_session(call)
+        try:
+            session = await self.client._resolve_session(call)
+        except _CredentialUnavailableError:
+            return QueryAttempt.retry(_credentials_retry_failure(operation))
         if session is None:
             return query_branch(
                 "defect",
@@ -434,7 +447,10 @@ class HeadObjectOperation:
             return query_branch(
                 "defect", ObjectMetadata(), error=failure(operation, FailureKind.VALIDATION, str(error))
             )
-        session = await self.client.start_session(call)
+        try:
+            session = await self.client._resolve_session(call)
+        except _CredentialUnavailableError:
+            return QueryAttempt.retry(_credentials_retry_failure(operation))
         if session is None:
             return query_branch(
                 "defect",
@@ -484,7 +500,10 @@ class GetObjectTextOperation:
             return query_branch(
                 "defect", ObjectText(), error=failure(operation, FailureKind.VALIDATION, str(error))
             )
-        session = await self.client.start_session(call)
+        try:
+            session = await self.client._resolve_session(call)
+        except _CredentialUnavailableError:
+            return QueryAttempt.retry(_credentials_retry_failure(operation))
         if session is None:
             return query_branch(
                 "defect",
@@ -640,7 +659,10 @@ class PutObjectOperation:
             return mutation_branch(
                 "defect", zero, error=failure(operation, FailureKind.VALIDATION, str(error))
             )
-        session = await self.client.start_session(call)
+        try:
+            session = await self.client._resolve_session(call)
+        except _CredentialUnavailableError:
+            return MutationAttempt.retry(_credentials_retry_failure(operation))
         if session is None:
             return mutation_branch(
                 "defect",
@@ -684,6 +706,10 @@ class PutObjectOperation:
         )
         if outcome == "retry":
             return MutationAttempt.retry(classified_failure, delay)
+        if response.status not in _DEFINITE_WRITE_REFUSAL_STATUSES:
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.AVAILABILITY, "S3 answered the object write ambiguously")
+            )
         return mutation_branch("providerRejected", requested, receipt, classified_failure)
 
     async def _read_existing(

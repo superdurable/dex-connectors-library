@@ -6,17 +6,17 @@ metadata:
   description: Read and list Microsoft Entra ID user accounts, create, disable, and enable them, revoke their sign-in sessions, and add or remove group members through Microsoft Graph, converging instead of duplicating when a Step repeats.
   company: Microsoft
   categories: [security-identity]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: microsoft
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-microsoft-entra-id'
       operations: [getUser, listUsers, createUser, disableUser, enableUser, revokeSignInSessions, addUserToGroup, removeUserFromGroup]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-microsoft-entra-id
       operations: [getUser, listUsers, createUser, disableUser, enableUser, revokeSignInSessions, addUserToGroup, removeUserFromGroup]
       triggers: []
@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Microsoft Graph response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 999 accounts are larger. Blank keeps the limit, and an oversized response selects invalidResponse.
+        description: Maximum complete Microsoft Graph response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 999 accounts are larger. Blank keeps the limit; an oversized response selects invalidResponse on a read and retries a write.
         required: false
         default: 4194304
       - name: listUsersPageSize
@@ -239,6 +239,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The user principal name is unique and the account carries the creation key, so a resend reads back this Step's account.
+        repeatOnUnknown: safe
       mocks:
         - name: createdAda
           branch: created
@@ -271,6 +273,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The PATCH sets the absolute accountEnabled value, so a repeat leaves the same account.
+        repeatOnUnknown: safe
       mocks:
         - name: disabledAda
           branch: disabled
@@ -302,6 +306,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The PATCH sets the absolute accountEnabled value, so a repeat leaves the same account.
+        repeatOnUnknown: safe
       mocks:
         - name: enabledAda
           branch: enabled
@@ -334,6 +340,8 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Each repeated revocation advances the session cutoff and can sign out someone who signed in after the first attempt, so bound retries to five attempts within two minutes."}}
+        # A repeat only moves the session cutoff later, which a revocation Step intends; the retry policy bounds repeats.
+        repeatOnUnknown: safe
       mocks:
         - name: adaSessionsRevoked
           branch: revoked
@@ -365,6 +373,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A direct membership is unique, so a resend's 400 is confirmed against the member list.
+        repeatOnUnknown: safe
       mocks:
         - name: adaAddedToTeam
           branch: added
@@ -396,6 +406,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated delete gets a 404 that the group check turns into removed.
+        repeatOnUnknown: safe
       mocks:
         - name: adaRemovedFromTeam
           branch: removed

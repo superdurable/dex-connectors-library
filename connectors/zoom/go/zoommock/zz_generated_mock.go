@@ -222,7 +222,7 @@ func CreateMeetingCreated(value zoom.Meeting, failure *sdkgo.Failure) connectorm
 	return connectormock.Branch(zoom.CreateMeetingBranchCreated, value, failure)
 }
 
-// CreateMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the meeting, including a documented daily-limit 429 or a user who cannot host; nothing was created.
+// CreateMeetingProviderRejected selects the providerRejected branch: Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created.
 func CreateMeetingProviderRejected(value zoom.Meeting, failure *sdkgo.Failure) connectormock.Case[zoom.Meeting] {
 	return connectormock.Branch(zoom.CreateMeetingBranchProviderRejected, value, failure)
 }
@@ -232,7 +232,7 @@ func CreateMeetingUncertain(value zoom.Meeting, failure sdkgo.Failure) connector
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateMeetingDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// CreateMeetingDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid before any send.
 func CreateMeetingDefect(value zoom.Meeting, failure *sdkgo.Failure) connectormock.Case[zoom.Meeting] {
 	return connectormock.Branch(zoom.CreateMeetingBranchDefect, value, failure)
 }

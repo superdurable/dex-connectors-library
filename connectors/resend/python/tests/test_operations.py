@@ -12,12 +12,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.resend import (
     DEFECT,
@@ -34,6 +41,7 @@ from dex_connectors.resend import (
     GetEmailInput,
     SendEmailInput,
 )
+from dex_connectors.resend._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("resend", "resend")
 KEY = "re_test_0123456789abcdef"
@@ -117,6 +125,57 @@ async def test_send_email_blank_key_is_defect_without_request() -> None:
     assert requests == []
 
 
+def _sdk_decoding_failure() -> ValueError:
+    """Build the SDK project provider's wrapper around a malformed stored credential."""
+    try:
+        try:
+            raise CredentialMaterialError("Resend credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: object) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_transient"),
+    [
+        (CredentialBrokerUnavailableError(), True),
+        (ValueError("connection is not configured"), True),
+        (RuntimeError("unlisted"), True),
+        (ReauthorizationRequiredError(), False),
+        (ObjectNotFoundError(), False),
+        (ConnectionNotSelectedError(), False),
+        (CredentialBrokerRejectedError(), False),
+        (CredentialMaterialError("Resend credential api_key is required"), False),
+        (_sdk_decoding_failure(), False),
+    ],
+)
+async def test_send_email_classifies_credential_resolve_failures(
+    error: Exception, is_transient: bool
+) -> None:
+    client = Client(
+        Config(base_url="http://localhost:8848"),
+        _FailingCredentials(error),  # type: ignore[arg-type]
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda request: pytest.fail("sent"))),
+    )
+    if is_transient:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.send_email(), send_call(), INPUT)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+        return
+    result = await run_mutation(client.send_email(), send_call(), INPUT)
+    assert result.branch == DEFECT
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("response", "kind"),
@@ -125,6 +184,9 @@ async def test_send_email_blank_key_is_defect_without_request() -> None:
         (httpx.Response(503), FailureKind.AVAILABILITY),
         (httpx.Response(408), FailureKind.AVAILABILITY),
         (httpx.Response(409, json={"name": "concurrent_idempotent_requests"}), FailureKind.AVAILABILITY),
+        (httpx.Response(409, json={"name": "invalid_idempotent_request"}), FailureKind.AVAILABILITY),
+        (httpx.Response(302), FailureKind.AVAILABILITY),
+        (httpx.Response(425), FailureKind.AVAILABILITY),
     ],
 )
 async def test_send_email_retries_safe_failures(response: httpx.Response, kind: FailureKind) -> None:
@@ -152,7 +214,6 @@ async def test_send_email_transport_failure_retries() -> None:
 @pytest.mark.parametrize(
     "response",
     [
-        httpx.Response(409, json={"name": "invalid_idempotent_request"}),
         httpx.Response(422, json={"name": "validation_error"}),
         httpx.Response(401),
     ],
@@ -172,11 +233,11 @@ async def test_send_email_definite_rejections(response: httpx.Response) -> None:
         (httpx.Response(200, json={"id": "x" * 64}), FailureKind.RESPONSE_TOO_LARGE),
     ],
 )
-async def test_send_email_invalid_responses(response: httpx.Response, kind: FailureKind) -> None:
+async def test_send_email_invalid_responses_retry(response: httpx.Response, kind: FailureKind) -> None:
     client = make_client(response, config=Config(base_url="http://localhost:8848", max_response_bytes=32))
-    result = await run_mutation(client.send_email(), send_call(), INPUT)
-    assert result.branch == INVALID_RESPONSE
-    assert result.failure is not None and result.failure.kind == kind
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(client.send_email(), send_call(), INPUT)
+    assert raised.value.failure.kind == kind
 
 
 @pytest.mark.asyncio

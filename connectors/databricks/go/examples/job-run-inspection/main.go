@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{job_runinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{job_runinspection.NewFlow(connection), job_runinspection.NewJobListingFlow(connection), job_runinspection.NewJobCreationFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Databricks job_run inspection Flow: %w", err)
 	}

@@ -7,7 +7,8 @@ import { ExchangeRecorder, loadScenarios, replay, withScenarioHTTPServer, type S
 import { DatadogClient } from '../src/client.js';
 import { ListMonitorsInputSchema, QueryMetricsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/datadog/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/datadog/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'queryMetrics' || scenario.operation === 'listMonitors');
 const connection = { provider: 'datadog', name: 'datadog' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeDatadog));

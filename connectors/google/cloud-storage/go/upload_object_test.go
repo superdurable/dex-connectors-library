@@ -4,6 +4,7 @@
 package cloudstorage
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -153,6 +155,84 @@ func TestUploadObjectRetriesTransientResponsesAndRejectsInvalidInput(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, UploadObjectBranchDefect, result.Branch)
 	require.EqualValues(t, 2, uploads.Load())
+}
+
+func TestUploadObjectRetriesAnUnlistedStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusConflict) }))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	input := UploadObjectInput{Bucket: "example-bucket", Name: "a", ContentBase64: "aGVsbG8=", ContentType: "text/plain"}
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("unlisted-flow", "upload-step"), client.UploadObject(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "HTTP 409 is not a definite refusal")
+}
+
+func TestUploadObjectRetriesAnUnreadableObjectAfterAnEarlierAttempt(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			w.WriteHeader(http.StatusPreconditionFailed)
+			return
+		}
+		if r.URL.Query().Get("alt") == "media" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		_, err := w.Write([]byte(`{"name":"a","generation":"123"}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	input := UploadObjectInput{Bucket: "example-bucket", Name: "a", ContentBase64: "aGVsbG8=", ContentType: "text/plain"}
+	ctx := singledispatchtest.NewContext("unreadable-flow", "upload-step")
+	first, err := sdkgo.RunMutation(ctx, client.UploadObject(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, UploadObjectBranchProviderRejected, first.Branch, "with no earlier attempt the object is not this Step's")
+	ctx.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(ctx, client.UploadObject(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the unreadable object may be this Step's earlier upload")
+}
+
+// resolveErrorCredentials fails every resolution with one error.
+type resolveErrorCredentials struct{ err error }
+
+func (credentials resolveErrorCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.err
+}
+
+func (credentials resolveErrorCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
+	return Credentials{}, credentials.err
+}
+
+func TestUploadObjectClassifiesCredentialResolveFailures(t *testing.T) {
+	for _, test := range []struct {
+		err        error
+		isTerminal bool
+	}{
+		{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), isTerminal: true},
+		{err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		{err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerUnavailable},
+		{err: errors.New("connection is not configured")},
+	} {
+		t.Run(test.err.Error(), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Fatal("no request is expected") }))
+			defer server.Close()
+			client, err := New(Config{BaseURL: server.URL}, resolveErrorCredentials{err: test.err})
+			require.NoError(t, err)
+			input := UploadObjectInput{Bucket: "example-bucket", Name: "a", ContentBase64: "aGVsbG8=", ContentType: "text/plain"}
+			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("upload-credential-flow", "upload-step"), client.UploadObject(), testConnection, input)
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, UploadObjectBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
 }
 
 func TestUploadObjectRetriesTransportBeforeReceivingResponse(t *testing.T) {

@@ -5,6 +5,7 @@ package clickup_test
 
 import (
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -78,6 +79,20 @@ func TestUpdateTaskRejectsAStatusOutsideTheListWorkflow(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, clickup.UpdateTaskBranchProviderRejected, result.Branch)
 	require.Equal(t, "ClickUp rejected the request (HTTP 400) [ITEM_169]", result.Failure.Message)
+}
+
+func TestUpdateTaskRetriesAStatusThatProvesNoRefusal(t *testing.T) {
+	for _, status := range []int{http.StatusConflict, http.StatusGone, http.StatusTooEarly, http.StatusPermanentRedirect, http.StatusServiceUnavailable} {
+		t.Run(strconv.Itoa(status), func(t *testing.T) {
+			provider := newRecordingClickUp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, status, clickupError("ITEM_001"))
+			})
+			_, err := sdkgo.RunMutation(newTestDexContext("update-unknown"), newClickUpClient(t, provider.URL).UpdateTask(), clickupConnection,
+				clickup.UpdateTaskInput{TaskID: testTaskID, Status: "blocked"})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "a repeated PUT leaves the same task, so an unknown outcome retries")
+		})
+	}
 }
 
 func TestUpdateTaskValidatesChangesWithoutARequest(t *testing.T) {

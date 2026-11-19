@@ -559,6 +559,2388 @@
       ],
       "name": "listAdAccounts-retryThenListed",
       "operation": "listAdAccounts"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c101",
+      "exchanges": [
+        {
+          "body": "{\"elements\":[{\"id\":603407684,\"name\":\"Example Group\",\"status\":\"ACTIVE\"}],\"metadata\":{\"nextPageToken\":\"next_2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "cursor_1"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "groups": [
+            {
+              "id": "603407684",
+              "name": "Example Group",
+              "status": "ACTIVE"
+            }
+          ],
+          "nextPageToken": "next_2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "pageSize": 2,
+        "pageToken": "cursor_1",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaignGroups-listed",
+      "operation": "listCampaignGroups"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "groups": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaignGroups-providerRejected",
+      "operation": "listCampaignGroups"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c103",
+      "exchanges": [
+        {
+          "body": "{\"elements\":[{\"id\":0,\"name\":\"bad\",\"status\":\"ACTIVE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "groups": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaignGroups-invalidResponse",
+      "operation": "listCampaignGroups"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c104",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "groups": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "invalid",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaignGroups-defect",
+      "operation": "listCampaignGroups"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c105",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaignGroups-final429",
+      "operation": "listCampaignGroups"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c106",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaignGroups-final503",
+      "operation": "listCampaignGroups"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c107",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaignGroups-transportFailure",
+      "operation": "listCampaignGroups"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c201",
+      "exchanges": [
+        {
+          "body": "{\"elements\":[{\"id\":360035215,\"name\":\"Example Campaign\",\"status\":\"ACTIVE\"}],\"metadata\":{\"nextPageToken\":\"next_2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "cursor_1"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": [
+            {
+              "id": "360035215",
+              "name": "Example Campaign",
+              "status": "ACTIVE"
+            }
+          ],
+          "nextPageToken": "next_2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "pageSize": 2,
+        "pageToken": "cursor_1",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaigns-listed",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c202",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaigns": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaigns-providerRejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c203",
+      "exchanges": [
+        {
+          "body": "{\"elements\":[{\"id\":0,\"name\":\"bad\",\"status\":\"ACTIVE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaigns": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaigns-invalidResponse",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c204",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaigns": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "invalid",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaigns-defect",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c205",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaigns-final429",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaigns-final503",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c207",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "search"
+            ],
+            "search": [
+              "(status:(values:List(ACTIVE)))"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "status": "ACTIVE"
+      },
+      "name": "listCampaigns-transportFailure",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c301",
+      "exchanges": [
+        {
+          "body": "{\"elements\":[{\"id\":\"urn:li:sponsoredCreative:119962155\",\"campaign\":\"urn:li:sponsoredCampaign:360035215\",\"intendedStatus\":\"DRAFT\"}],\"metadata\":{\"nextPageToken\":\"next_2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives",
+          "query": {
+            "campaigns": [
+              "List(urn:li:sponsoredCampaign:360035215)"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "cursor_1"
+            ],
+            "q": [
+              "criteria"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Method": [
+              "FINDER"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "creatives": [
+            {
+              "campaign": "urn:li:sponsoredCampaign:360035215",
+              "id": "urn:li:sponsoredCreative:119962155",
+              "intendedStatus": "DRAFT"
+            }
+          ],
+          "nextPageToken": "next_2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215",
+        "pageSize": 2,
+        "pageToken": "cursor_1"
+      },
+      "name": "listCreatives-listed",
+      "operation": "listCreatives"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c302",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives",
+          "query": {
+            "campaigns": [
+              "List(urn:li:sponsoredCampaign:360035215)"
+            ],
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "criteria"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Method": [
+              "FINDER"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "creatives": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "listCreatives-providerRejected",
+      "operation": "listCreatives"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c303",
+      "exchanges": [
+        {
+          "body": "{\"elements\":[{\"id\":\"invalid\",\"campaign\":\"x\",\"intendedStatus\":\"DRAFT\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives",
+          "query": {
+            "campaigns": [
+              "List(urn:li:sponsoredCampaign:360035215)"
+            ],
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "criteria"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Method": [
+              "FINDER"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "creatives": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "listCreatives-invalidResponse",
+      "operation": "listCreatives"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c304",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "creatives": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "invalid",
+        "campaignId": "360035215"
+      },
+      "name": "listCreatives-defect",
+      "operation": "listCreatives"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c305",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives",
+          "query": {
+            "campaigns": [
+              "List(urn:li:sponsoredCampaign:360035215)"
+            ],
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "criteria"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Method": [
+              "FINDER"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "listCreatives-final429",
+      "operation": "listCreatives"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives",
+          "query": {
+            "campaigns": [
+              "List(urn:li:sponsoredCampaign:360035215)"
+            ],
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "criteria"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Method": [
+              "FINDER"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "listCreatives-final503",
+      "operation": "listCreatives"
+    },
+    {
+      "callId": "0b2e99c1-289a-4ac9-988a-53ae34e5c307",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives",
+          "query": {
+            "campaigns": [
+              "List(urn:li:sponsoredCampaign:360035215)"
+            ],
+            "pageSize": [
+              "100"
+            ],
+            "q": [
+              "criteria"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Method": [
+              "FINDER"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "listCreatives-transportFailure",
+      "operation": "listCreatives"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":507404993,\"name\":\"Example Account\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "507404993",
+          "name": "Example Account"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "507404993"
+      },
+      "name": "getAdAccount-found",
+      "operation": "getAdAccount"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "507404993"
+      },
+      "name": "getAdAccount-notFound",
+      "operation": "getAdAccount"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "507404993"
+      },
+      "name": "getAdAccount-providerRejected",
+      "operation": "getAdAccount"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "507404993"
+      },
+      "name": "getAdAccount-invalidResponse",
+      "operation": "getAdAccount"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "bad"
+      },
+      "name": "getAdAccount-defect",
+      "operation": "getAdAccount"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "507404993"
+      },
+      "name": "getAdAccount-final429",
+      "operation": "getAdAccount"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "507404993"
+      },
+      "name": "getAdAccount-final503",
+      "operation": "getAdAccount"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "507404993"
+      },
+      "name": "getAdAccount-transportFailure",
+      "operation": "getAdAccount"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":603407684,\"name\":\"Example Group\",\"status\":\"ACTIVE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups/603407684",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "603407684",
+          "name": "Example Group",
+          "status": "ACTIVE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "groupId": "603407684"
+      },
+      "name": "getCampaignGroup-found",
+      "operation": "getCampaignGroup"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups/603407684",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "groupId": "603407684"
+      },
+      "name": "getCampaignGroup-notFound",
+      "operation": "getCampaignGroup"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups/603407684",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "groupId": "603407684"
+      },
+      "name": "getCampaignGroup-providerRejected",
+      "operation": "getCampaignGroup"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups/603407684",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "groupId": "603407684"
+      },
+      "name": "getCampaignGroup-invalidResponse",
+      "operation": "getCampaignGroup"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "bad",
+        "groupId": "603407684"
+      },
+      "name": "getCampaignGroup-defect",
+      "operation": "getCampaignGroup"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups/603407684",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "groupId": "603407684"
+      },
+      "name": "getCampaignGroup-final429",
+      "operation": "getCampaignGroup"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups/603407684",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "groupId": "603407684"
+      },
+      "name": "getCampaignGroup-final503",
+      "operation": "getCampaignGroup"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaignGroups/603407684",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "groupId": "603407684"
+      },
+      "name": "getCampaignGroup-transportFailure",
+      "operation": "getCampaignGroup"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":360035215,\"name\":\"Example Campaign\",\"status\":\"ACTIVE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns/360035215",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "360035215",
+          "name": "Example Campaign",
+          "status": "ACTIVE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "getCampaign-found",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns/360035215",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "getCampaign-notFound",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns/360035215",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "getCampaign-providerRejected",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns/360035215",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "getCampaign-invalidResponse",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "bad",
+        "campaignId": "360035215"
+      },
+      "name": "getCampaign-defect",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns/360035215",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "getCampaign-final429",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns/360035215",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "getCampaign-final503",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/adCampaigns/360035215",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "campaignId": "360035215"
+      },
+      "name": "getCampaign-transportFailure",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"urn:li:sponsoredCreative:119962155\",\"campaign\":\"urn:li:sponsoredCampaign:360035215\",\"intendedStatus\":\"DRAFT\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives/urn:li:sponsoredCreative:119962155",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "campaign": "urn:li:sponsoredCampaign:360035215",
+          "id": "urn:li:sponsoredCreative:119962155",
+          "intendedStatus": "DRAFT"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "creativeUrn": "urn:li:sponsoredCreative:119962155"
+      },
+      "name": "getCreative-found",
+      "operation": "getCreative"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives/urn:li:sponsoredCreative:119962155",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "campaign": "",
+          "id": "",
+          "intendedStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "creativeUrn": "urn:li:sponsoredCreative:119962155"
+      },
+      "name": "getCreative-notFound",
+      "operation": "getCreative"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives/urn:li:sponsoredCreative:119962155",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaign": "",
+          "id": "",
+          "intendedStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "creativeUrn": "urn:li:sponsoredCreative:119962155"
+      },
+      "name": "getCreative-providerRejected",
+      "operation": "getCreative"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives/urn:li:sponsoredCreative:119962155",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaign": "",
+          "id": "",
+          "intendedStatus": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "creativeUrn": "urn:li:sponsoredCreative:119962155"
+      },
+      "name": "getCreative-invalidResponse",
+      "operation": "getCreative"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaign": "",
+          "id": "",
+          "intendedStatus": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "bad",
+        "creativeUrn": "urn:li:sponsoredCreative:119962155"
+      },
+      "name": "getCreative-defect",
+      "operation": "getCreative"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives/urn:li:sponsoredCreative:119962155",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "creativeUrn": "urn:li:sponsoredCreative:119962155"
+      },
+      "name": "getCreative-final429",
+      "operation": "getCreative"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives/urn:li:sponsoredCreative:119962155",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "creativeUrn": "urn:li:sponsoredCreative:119962155"
+      },
+      "name": "getCreative-final503",
+      "operation": "getCreative"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts/507404993/creatives/urn:li:sponsoredCreative:119962155",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "507404993",
+        "creativeUrn": "urn:li:sponsoredCreative:119962155"
+      },
+      "name": "getCreative-transportFailure",
+      "operation": "getCreative"
     }
   ],
   "schemaVersion": 1

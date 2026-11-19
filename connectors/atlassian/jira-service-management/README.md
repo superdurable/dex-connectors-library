@@ -13,13 +13,13 @@ and customer calls use the request API at `/rest/servicedeskapi`; search,
 labels, priority, and workflow transitions use the Jira platform API at
 `/rest/api/3` on the same site, because every customer request is a Jira issue.
 
-Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go@v0.24.0`.
+Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go@v0.24.1`.
 
-The TypeScript package `@superdurable/connector-atlassian-jira-service-management@0.1.0` implements all seven operations. See its [package README](typescript/README.md) and [runnable Flow](typescript/examples/find-customer/README.md). Its provider behavior is checked against Go-recorded conformance scenarios; live Atlassian behavior remains unverified.
+The TypeScript package `@superdurable/connector-atlassian-jira-service-management@0.1.1` implements all seven operations. See its [package README](typescript/README.md) and [runnable Flow](typescript/examples/find-customer/README.md). Its provider behavior is checked against Go-recorded conformance scenarios; live Atlassian behavior remains unverified.
 
 ## Python package
 
-The `python/` package declares Python release `v0.1.0` independently of the Go connector. It implements all seven operations listed below and uses generated OAuth credential refresh wiring. Its [support request example](python/examples/support_request/README.md) runs lookup and create Flows with the static connection name `jira-service-management-support`, storing only non-secret customer identity details and ticket references. Run the package suite from `python/` with `uv run pytest`; the real Dex integration test requires `DEX_FLOW_SERVICE_ADDRESS` to point at a running `dexcli dev` server.
+The `python/` package declares Python release `v0.1.1` independently of the Go connector. It implements all seven operations listed below and uses generated OAuth credential refresh wiring. Its [support request example](python/examples/support_request/README.md) runs lookup and create Flows with the static connection name `jira-service-management-support`, storing only non-secret customer identity details and ticket references. Run the package suite from `python/` with `uv run pytest`; the real Dex integration test requires `DEX_FLOW_SERVICE_ADDRESS` to point at a running `dexcli dev` server.
 
 Provider conformance replays the Go-recorded scenarios under `conformance/connectors/atlassian/jira-service-management`. The Python integration test uses a local provider stand-in; live Atlassian OAuth and API behavior remain unverified.
 
@@ -32,7 +32,7 @@ Python bounds each operation to 25 seconds or the Execute deadline minus five se
 | `getTicket` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `createTicket` | Mutation | sync | `created` | `providerRejected`, `uncertain`, `defect` |
 | `updateTicket` | Mutation | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `transitionTicket` | Mutation | async | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `transitionTicket` | Mutation | sync | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse` (retired, never selected), `defect` |
 | `addComment` | Mutation | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 
 Only the happy branch of each operation is required; every other branch is
@@ -218,7 +218,12 @@ and the `priority` name that differ. When nothing differs it selects `updated`
 with `WasAlreadyApplied` and writes nothing. The write is absolute, so every
 unconfirmed outcome, including a 5xx or a lost response, is retried, and the
 next attempt reads first. A conclusive 4xx selects `providerRejected` with the
-rejected field IDs.
+rejected field IDs. The read before the write follows the same rule on every
+attempt: only a readable 404 selects `notFound` and only a readable definite
+refusal selects `providerRejected`. An unparseable, oversized, or
+credential-echoing body, a refusal body that broke, or an unlisted status
+returns Retry, so `invalidResponse` stays declared for compatibility but is no
+longer selected.
 
 ### transitionTicket
 
@@ -226,10 +231,57 @@ Moves the request through its Jira workflow exactly as the Jira connector's
 `transitionIssue` does: it reads the status and available transitions in one
 request, skips a transition the request has already made, selects
 `transitionUnavailable` with up to 50 available transitions when none or
-several match, and reads the request again after any ambiguous response. It
+several match, and records the same transition checkpoint before sending. It
 uses the platform transitions endpoint, which offers an agent every workflow
-transition, rather than the request API's customer transitions. Set
-`DestinationStatusName` whenever the destination is known.
+transition, rather than the request API's customer transitions.
+
+Before the POST, the Step records a heartbeat checkpoint with the chosen
+transition ID, the request's current (source) status ID, and the transition's
+destination status ID; when Dex cannot record it, the attempt returns Retry
+without sending. A 2xx, even one whose body breaks, is `transitioned`. A
+conclusive refusal rereads the request and selects `transitioned` when a
+concurrent attempt already reached the destination, otherwise
+`providerRejected`. A 401 first refreshes the access token and sends the
+transition once more. A 429 or 503 returns Retry after `Retry-After`; a
+provably unsent request, 409, other 5xx, cut body, or dropped connection
+returns Retry.
+
+A later attempt of the same Call never selects a transition again, because a
+workflow can offer a transition with the same name back and a second selection
+could undo the first. It reads the checkpoint and the request, then selects
+`transitioned` without sending when the request is in the recorded destination,
+sends the recorded transition ID again while the request is still in the
+recorded source status, and selects `transitionUnavailable` without sending
+when someone else moved the request to another status or the recorded
+transition is no longer offered.
+
+`transitionUnavailable` on a retry does not prove that this Call's transition
+was never applied: the first request may have moved the request from the
+source to the destination before an agent or an automation moved it on to a
+third status. Check the request's history before you act on that branch. If
+someone moves the request back to the recorded source status before the next
+attempt, that attempt sends the recorded transition again.
+
+Dex can lose a recorded heartbeat, so a later attempt selects a transition
+only when the previous attempt recorded `notSent`, which every Retry before a
+send records, or left an earlier release's `notSent` or `canResend` marker.
+Without a checkpoint or that record it selects `transitioned` only when the
+request is already in `DestinationStatusName` or the matched transition leads
+to the current status, and otherwise returns Retry without sending. Set
+`DestinationStatusName` whenever the destination is known: after a lost
+checkpoint, it is how a retried attempt recognizes a transition Jira already
+made and finishes instead of retrying until the budget ends.
+
+An unreadable checkpoint returns Retry without any request. On every attempt,
+only a definite read outcome selects a branch: a 404 with a fully read body
+selects `notFound`, and a 400, 401, 403, 411, 413, 414, 415, or 422 with a
+fully read body selects `providerRejected`. Every other read returns Retry,
+including a 409, 425, any other 4xx, a refusal whose body was cut, a 1xx or
+3xx, and a 2xx that is unparseable, oversized, or echoes the access token;
+`invalidResponse` is no longer selected. A local failure or a terminal
+credential failure after a checkpoint returns Retry instead of `defect`. Run
+`transitionTicket` in its own Step, as `NewTransitionTicketStep` does, because
+the checkpoint is the Step's heartbeat value.
 
 ### addComment
 
@@ -242,26 +294,51 @@ Jira Service Management documents no idempotency key, so a repeated create is a
 second request and a repeated public reply is a second customer email. Dex
 can replay a Step after Worker loss or before a result is committed, so the writes take these positions:
 
-- **createTicket** and **addComment** run with sync durability. Before resolving
-  credentials or sending, each checks and records the Step's Call ID and
-  attempt number in a Dex heartbeat. A
-  429, 503, or positively traced pre-connection failure records a `canResend`
-  checkpoint and returns Retry. The next attempt sends only if it sees that
-  checkpoint from the immediately preceding attempt. A missing, stale, or
-  dispatched checkpoint selects `uncertain` without sending. Other 5xx, 408,
-  a lost or unreadable response, and an unusable 2xx remain uncertain. A 409
-  with a usable request or comment ID triggers a read by that ID; mismatched
-  or inconclusive reads remain uncertain.
+- **createTicket** and **addComment** run with sync durability and are
+  `limited` Mutations with the default send cap of 3 possibly effective POSTs
+  per Call ID. Before resolving credentials or sending, the shared
+  single-dispatch fence reads and records the Step's send-count checkpoint in
+  a Dex heartbeat. A 429, 503, or positively traced pre-connection failure
+  records a `canResend` checkpoint and returns Retry. An unknown outcome (a
+  5xx, 408, 409, unlisted 4xx, or a response lost before its status arrived)
+  returns Retry while another POST stays within the cap, so the next
+  attempt resends; at the cap it selects `uncertain` without sending. A 2xx
+  means the service desk accepted the POST, so it is never sent again: a 2xx
+  whose body is interrupted, oversized, token-reflecting, or has no usable ID
+  or key selects `uncertain`. Once a response or a confirmed 409 supplied an
+  ID, the fence saves it, and a later attempt reads that request or comment
+  back by ID: a match selects `created` or `added`, a transient read failure
+  returns Retry, and anything else selects `uncertain`. A missing
+  or stale checkpoint counts each earlier attempt as a possible POST, and an
+  unreadable or foreign checkpoint returns Retry without sending. A definite
+  refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of the first POST
+  selects its branch; after an earlier possible POST it selects `uncertain`.
+  A credential failure before the first POST records `notSent`; after an
+  earlier possible POST it records nothing, returning Retry when transient and
+  `uncertain` when terminal. A terminal failure is a reauthorization request,
+  a missing or unselected connection, a broker rejection, or an invalid token;
+  a credential store or broker outage is transient and returns Retry, never
+  `defect`. A refusal status whose body could not be read in full is an
+  unknown outcome. In Python, each POST records its HTTP status when headers
+  arrive, so a 2xx whose body the write deadline cuts off selects `uncertain`
+  instead of resending.
+  The service desk has no lookup by Call ID, so a resend may duplicate a request
+  or a customer reply; at most the cap of them exist. Set the Step's `MaxSends`
+  to 1 to forbid any resend. A 409
+  with a usable request or comment ID triggers a read by that ID first.
   For an accepted create with a valid ID or key but a malformed counterpart,
-  the connector reads the request by that reference before deciding; it never
-  repeats the POST. [Atlassian documents request lookup by ID or key and
+  the connector reads the request by that reference before deciding.
+  [Atlassian documents request lookup by ID or key and
   comment lookup by ID](https://developer.atlassian.com/cloud/jira/service-desk/rest/api-group-request/),
   but its create and comment POSTs document no Call ID field or enforced
   idempotency key. A comment with no returned ID cannot be attributed by
   listing text and timestamps alone. These provider claims have not been
   verified against a live Atlassian site.
-- **updateTicket** and **transitionTicket** keep async durability and read
-  before they write, so a backup attempt finds the change already made.
+- **updateTicket** keeps async durability and reads before it writes, so a
+  backup attempt finds the change already made. **transitionTicket** uses sync
+  durability for its transition checkpoint and resends only the recorded
+  transition, only from the recorded source status, as described above. Both declare
+  `repeatOnUnknown: safe`: an unknown write outcome returns Retry.
 
 Real Dex runs with delayed and retried fake provider requests guard each position:
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex`,
@@ -269,9 +346,9 @@ Real Dex runs with delayed and retried fake provider requests guard each positio
 `TestSlowLabelUpdateBackupAttemptWritesOnceWithRealDex` (two reads, one write),
 and `TestSlowTransitionBackupAttemptMovesTheRequestOnceWithRealDex`. Do not
 override `createTicket` or `addComment` to async. Recording the checkpoint
-returns before Dex confirms persistence. A lost `canResend` checkpoint therefore
-selects `uncertain` even after a 429 or 503, and a crash before dispatch can
-report uncertainty for a request the provider never received. The
+returns before Dex confirms persistence. A lost checkpoint therefore counts as
+a possible POST, and a crash before dispatch can use up the send cap and report
+uncertainty for a request the provider never received. The
 [`support-request`](go/examples/support-request) example parks an uncertain create
 for an operator.
 
@@ -310,14 +387,17 @@ token, such as
 
 | Response | Reads, updateTicket, transitionTicket | createTicket, addComment |
 | --- | --- | --- |
-| 400, 401 after one refresh, 403, 422, other 4xx | `providerRejected` | `providerRejected` |
-| 409 | `transitionTicket` reads back and may retry | Read back by a returned ID; otherwise `uncertain` |
-| 404 | `notFound` where declared | `notFound` (`addComment`), `providerRejected` (`createTicket`) |
-| 429, 503 | Retry after `Retry-After` | Retry only with a fresh `canResend` checkpoint |
+| 400, 401 after one refresh, 403, 411, 413, 414, 415, 422 | `providerRejected` | `providerRejected` on the first POST; `uncertain` after an earlier possible POST |
+| 409 | Reads: `providerRejected`; updateTicket, transitionTicket, and writes: Retry | Read back by a returned ID; otherwise Retry and resend below the send cap, `uncertain` at the cap |
+| definite refusal or 404 whose body broke, is oversized, or echoes the token | Reads: as above; updateTicket and transitionTicket: Retry | As the next row with an unreadable body: Retry and resend below the send cap, `uncertain` at the cap |
+| 404 | `notFound` where declared | `notFound` (`addComment`), `providerRejected` (`createTicket`), as above |
+| 429, 503 | Retry after `Retry-After` | Checkpoint `canResend`, then Retry |
 | connection refused before sending | Retry | Retry |
-| 408, other 5xx, lost or unreadable response | Retry | `uncertain` |
-| 3xx, oversized, malformed, or token-reflecting 2xx | `invalidResponse` | `uncertain` |
-| invalid input or credentials | `defect`, no request | `defect`, no request |
+| 408, other 4xx or 5xx, response lost before its status | Retry | Retry and resend below the send cap, `uncertain` at the cap |
+| 3xx | Reads: `invalidResponse`; updateTicket, transitionTicket, and writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
+| interrupted, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; updateTicket, transitionTicket, and writes: Retry | Read back by a returned ID; otherwise `uncertain`, never resent |
+| invalid input or terminal credential failure | `defect`, no request | `defect`, no request |
+| credential store or broker outage | Retry, no request | Retry, no request |
 
 ## Not in this release
 

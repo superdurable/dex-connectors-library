@@ -5,15 +5,20 @@ package gitlab
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -33,6 +38,87 @@ func testClient(t *testing.T, endpoint string) *Client {
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {AccessToken: sdkgo.NewSecretString("test-accesstoken")}})
 	require.NoError(t, err)
 	return client
+}
+
+func TestSafeWriteRetriesContradictorySuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/releases/"):
+			_, err := fmt.Fprint(w, `{"tag_name":"other-tag","name":"Release 1.2 revised","description":"New notes"}`)
+			require.NoError(t, err)
+		default:
+			_, err := fmt.Fprint(w, `{"id":123,"iid":8,"title":"Revised release notes"}`)
+			require.NoError(t, err)
+		}
+	}))
+	defer server.Close()
+	client := testClient(t, server.URL)
+	title := "Revised release notes"
+	_, err := sdkgo.RunMutation(testContext{}, client.EditIssue(), testConnection, EditIssueInput{ProjectID: "meridian/web", IssueIID: 7, Title: &title})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	_, err = sdkgo.RunMutation(testContext{}, client.LockIssue(), testConnection, GetIssueInput{ProjectID: "meridian/web", IssueIID: 7})
+	require.ErrorAs(t, err, &retry)
+	name := "Release 1.2 revised"
+	description := "New notes"
+	_, err = sdkgo.RunMutation(testContext{}, client.UpdateRelease(), testConnection, UpdateReleaseInput{ProjectID: "meridian/web", TagName: "v1.2.0", Name: &name, Description: &description})
+	require.ErrorAs(t, err, &retry)
+}
+
+func TestLockIssueRequiresConfirmation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := fmt.Fprint(w, `{"id":123,"iid":7,"title":"Review release notes","discussion_locked":false}`)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := testClient(t, server.URL)
+	_, err := sdkgo.RunMutation(testContext{}, client.LockIssue(), testConnection, GetIssueInput{ProjectID: "meridian/web", IssueIID: 7})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}
+
+func TestDeleteReleaseReadsBackAfterDamagedSuccess(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		body string
+	}{
+		{name: "malformed JSON", body: "{"},
+		{name: "wrong tag", body: `{"tag_name":"other-tag"}`},
+		{name: "interrupted body", body: "{"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var deleteCount atomic.Int32
+			var readCount atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					readCount.Add(1)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				require.Equal(t, http.MethodDelete, r.Method)
+				deleteCount.Add(1)
+				if testCase.name == "interrupted body" {
+					w.Header().Set("Content-Length", "100")
+				}
+				w.WriteHeader(http.StatusOK)
+				_, err := fmt.Fprint(w, testCase.body)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			client := testClient(t, server.URL)
+			attemptContext := singledispatchtest.NewContext("gitlab-delete-"+testCase.name, "delete-release")
+			input := GetReleaseInput{ProjectID: "meridian/web", TagName: "v1.2.0"}
+			_, err := sdkgo.RunMutation(attemptContext, client.DeleteRelease(), testConnection, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			attemptContext.AdvanceAttempt()
+			result, err := sdkgo.RunMutation(attemptContext, client.DeleteRelease(), testConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, DeleteReleaseBranchDeleted, result.Branch)
+			require.EqualValues(t, 1, deleteCount.Load())
+			require.EqualValues(t, 1, readCount.Load())
+		})
+	}
 }
 
 func TestGetProjectProviderResponse(t *testing.T) {
@@ -112,6 +198,73 @@ func TestUpdateIssueLabelsRetriesRateLimit(t *testing.T) {
 	_, err := sdkgo.RunMutation(testContext{}, client.UpdateIssueLabels(), testConnection, UpdateIssueLabelsInput{ProjectID: "meridian/web", IssueIID: 7, Labels: []string{"review", "ready"}})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), string(sdkgo.FailureRateLimit))
+}
+
+// failingCredentials fails every resolution with one error.
+type failingCredentials struct{ err error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.err
+}
+
+func TestUpdateIssueLabelsRetriesUnknownAnswers(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		status     int
+		body       string
+		isRejected bool
+	}{
+		"redirect":     {status: http.StatusFound},
+		"unlisted":     {status: http.StatusTooEarly, body: `{}`},
+		"malformed":    {status: http.StatusOK, body: `{"id":1,"iid":0}`},
+		"definite 422": {status: http.StatusUnprocessableEntity, body: `{"message":"Invalid labels"}`, isRejected: true},
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			writer.WriteHeader(testCase.status)
+			_, _ = io.WriteString(writer, testCase.body)
+		}))
+		client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {AccessToken: sdkgo.NewSecretString("test-accesstoken")}})
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(testContext{}, client.UpdateIssueLabels(), testConnection, UpdateIssueLabelsInput{ProjectID: "meridian/web", IssueIID: 7, Labels: []string{"review"}})
+		server.Close()
+		if testCase.isRejected {
+			require.NoError(t, err, name)
+			require.Equal(t, UpdateIssueLabelsBranchProviderRejected, result.Branch, name)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
+}
+
+func TestCredentialResolveErrorsUseTheSharedTerminalSet(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("no request may be sent") }))
+	defer server.Close()
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"reauthorization":         {sdkgo.ErrReauthorizationRequired, true},
+		"project reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":        {projectconfig.ErrObjectNotFound, true},
+		"connection not selected": {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":         {projectconfig.ErrCredentialBrokerRejected, true},
+		"broker unavailable":      {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"not configured":          {errors.New("connection is not configured"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := New(Config{BaseURL: server.URL}, failingCredentials{test.err})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(testContext{}, client.UpdateIssueLabels(), testConnection, UpdateIssueLabelsInput{ProjectID: "meridian/web", IssueIID: 7, Labels: []string{"review"}})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, UpdateIssueLabelsBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+		})
+	}
 }
 
 func TestUpdateIssueLabelsCanClearTheEntireSet(t *testing.T) {

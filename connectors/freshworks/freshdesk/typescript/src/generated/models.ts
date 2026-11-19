@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Non-secret Freshdesk helpdesk domain: the acme in https://acme.freshdesk.com. Sign in at https://login.freshworks.com/email-login/, open your helpdesk, and copy the part before .freshdesk.com from the browser address bar. Enter lowercase letters, digits, and hyphens only, without https:// or .freshdesk.com; a custom support domain such as support.example.com does not work, because Freshdesk serves its API only on freshdesk.com domains. Required: every API request is sent to this helpdesk. */
   domain: string;
-  /** Maximum complete Freshdesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or notes are unusually large. An oversized response selects invalidResponse, or uncertain for a write. */
+  /** Maximum complete Freshdesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or notes are unusually large. An oversized read response selects invalidResponse; an oversized answer to a created ticket, note, or reply selects uncertain because Freshdesk accepted the write, and an oversized updateTicket answer repeats the update. */
   maxResponseBytes?: number;
   /** Delay between ticketChanged Trigger polls of Freshdesk's ticket list, as a Go duration of at least 10s such as 30s or 2m. Leave blank to keep the displayed interval. Each poll normally makes one List All Tickets request, which counts against the account's per-minute API limit and its lower Tickets List sublimit (40 per minute on the Growth plan); lower it only when changes must arrive sooner, and raise it when other apps share the helpdesk's API limit. Runtime value in milliseconds. */
   pollIntervalMs?: number;
@@ -63,15 +63,34 @@ export interface Credentials {
   apiKey: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["api_key"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new CredentialMaterialError("credential api_key has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  if (!fields["api_key"]) throw new CredentialMaterialError("credential api_key is required");
   credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
   return credentials;
 }

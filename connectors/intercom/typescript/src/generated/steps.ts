@@ -78,9 +78,9 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** An earlier attempt sent the reply but its outcome cannot be confirmed and the conversation shows no matching part, so the reply may exist; the connector never resends it. */
+  /** The reply may exist but could not be confirmed: the send cap is reached and the conversation shows no part by the admin with the reply's type and text; or, after a possible send, the conversation could not be read back, is missing, or shows the reply with an invalid part; or Intercom accepted the reply with an unusable answer that a read-back could not confirm. A refusal whose body is oversized or reflects the access token is unconfirmed like a lost answer. Do not send it again without checking the conversation. Below the cap, a read-back that shows no matching part resends. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Intercom accepted the reply but returned an invalid or oversized conversation, so the reply exists. */
+  /** No longer selected. A reply whose part is invalid may exist, so the connector selects uncertain instead; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -112,15 +112,18 @@ export interface UpdateConversationStateStepConfig<StepInput, OperationInput = U
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Intercom returned an invalid or oversized conversation, so the change may have been applied. */
+  /** Kept for compatibility and no longer selected: an invalid, oversized, or credential-reflecting conversation read before the change returns Retry, because the change is safe to repeat. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateConversationState Step from a named connection. */
 export function newUpdateConversationStateStep<StepInput, OperationInput = UpdateConversationStateInput, OperationOutput = UpdateConversationStateOutput>(configuration: UpdateConversationStateStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateConversationState(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

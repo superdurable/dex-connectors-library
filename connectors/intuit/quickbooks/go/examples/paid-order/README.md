@@ -32,7 +32,9 @@ Only the happy-path branches and `notFound` are wired. An ambiguous email, a
 display name in use, a rejected write, an `uncertain` write, an invalid
 response, and a local defect fail the Flow. Every write sends QuickBooks a
 `requestid` derived from the Step. QuickBooks documents replay for writes, but
-key retention and replay of `/send` have not been verified with a live company.
+key retention and replay of `/send` have not been verified with a live company,
+so each write also runs under a single-dispatch fence that resends an unknown
+outcome only while fewer than three sends may have taken effect.
 
 ## Generate the Flow Definition
 
@@ -61,7 +63,7 @@ mkdir -p /tmp/quickbooks-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/quickbooks/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go \
-  --version v0.25.0 --tag connectors/intuit/quickbooks/go/v0.25.0 \
+  --version v0.25.1 --tag connectors/intuit/quickbooks/go/v0.25.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/quickbooks-release/connector-release.json \
   --digest-output /tmp/quickbooks-release/connector-release.json.sha256

@@ -145,6 +145,9 @@ func classifyGraphResponse[Output any](operation string, response graphResponse,
 	if errors.Is(response.err, errCredential) {
 		return queryBranch(operation, defect, empty, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid"), true
 	}
+	if errors.Is(response.err, errCredentialUnavailable) {
+		return sdkgo.NewQueryRetry[Output](queryFailure(operation, sdkgo.FailureAvailability, "connection credentials are temporarily unavailable"), 0), true
+	}
 	if errors.Is(response.err, errRequest) {
 		return sdkgo.NewQueryRetry[Output](queryFailure(operation, sdkgo.FailureTransport, "Meta request failed"), 0), true
 	}

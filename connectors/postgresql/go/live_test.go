@@ -22,6 +22,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/internal/commitfaultproxy"
 	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 // liveDatabase is a real PostgreSQL role configured through POSTGRESQL_CONNECTOR_TEST_* variables.
@@ -402,15 +403,9 @@ func TestLiveExecuteRollsBackRejectedAndOverLimitStatements(t *testing.T) {
 	require.Equal(t, postgresql.ExecuteStatementBranchDefect, transactionControl.Branch)
 }
 
-func TestLiveExecuteReportsUncertainOnlyWhenCommitMayHaveReachedTheServer(t *testing.T) {
-	database := requireLiveDatabase(t)
-	client := database.newClient(t, database.config())
-	table := createLiveTable(t, client, "idempotency_key uuid PRIMARY KEY, note text NOT NULL")
-	faults := []commitfaultproxy.Fault{
-		commitfaultproxy.DropAtStatementExecute,
-		commitfaultproxy.DropBeforeCommitReachesServer,
-		commitfaultproxy.DropAfterCommitReachesServer,
-	}
+// startLiveCommitFaultProxy returns a client whose first connections suffer faults, in order.
+func startLiveCommitFaultProxy(t *testing.T, database liveDatabase, faults ...commitfaultproxy.Fault) *postgresql.Client {
+	t.Helper()
 	proxy, err := commitfaultproxy.Start(net.JoinHostPort(database.host, strconv.FormatInt(database.port, 10)), func(connectionNumber int) commitfaultproxy.Fault {
 		if connectionNumber <= len(faults) {
 			return faults[connectionNumber-1]
@@ -421,45 +416,73 @@ func TestLiveExecuteReportsUncertainOnlyWhenCommitMayHaveReachedTheServer(t *tes
 	t.Cleanup(func() { require.NoError(t, proxy.Close()) })
 	config := database.config()
 	config.Host, config.Port, config.SSLMode = "127.0.0.1", int64(proxy.Port()), postgresql.SSLModeDisable
-	proxied := database.newClient(t, config)
+	return database.newClient(t, config)
+}
+
+func TestLiveExecuteRetriesEveryLostConnectionAndWritesOnce(t *testing.T) {
+	database := requireLiveDatabase(t)
+	client := database.newClient(t, database.config())
+	table := createLiveTable(t, client, "idempotency_key uuid PRIMARY KEY, note text NOT NULL")
+	proxied := startLiveCommitFaultProxy(t, database,
+		commitfaultproxy.DropAtStatementExecute,
+		commitfaultproxy.DropBeforeCommitReachesServer,
+		commitfaultproxy.DropAfterCommitReachesServer,
+	)
 	insert := func(step *testsupport.DexContext, note string) (postgresql.ExecuteStatementResult, error) {
 		return runLiveExecute(t, proxied, step, postgresql.ExecuteStatementInput{
 			Statement:  "INSERT INTO " + table + " (note, idempotency_key) VALUES ($1, $2) ON CONFLICT (idempotency_key) DO NOTHING",
 			Parameters: []any{note}, IdempotencyKeyPlaceholder: 2,
 		})
 	}
-	keyExists := func(key sdkgo.IdempotencyKey) bool {
-		result := runLiveQuery(t, client, "SELECT count(*) AS matches FROM "+table+" WHERE idempotency_key = $1", string(key))
-		return result.Value.Rows[0]["matches"] == "1"
+	noteCount := func(note string) string {
+		result := runLiveQuery(t, client, "SELECT count(*) AS matches FROM "+table+" WHERE note = $1", note)
+		return result.Value.Rows[0]["matches"].(string)
 	}
 
-	atExecute := newLiveStep(t)
-	_, err = insert(atExecute, "dropped at execute")
 	var retry *sdkgo.RetryError
+	atExecute := newLiveStep(t)
+	_, err := insert(atExecute, "dropped at execute")
 	require.ErrorAs(t, err, &retry, "a connection lost before COMMIT committed nothing, so Dex may retry")
-	require.Equal(t, "0", countLiveRows(t, client, table))
 
-	beforeCommit, err := insert(newLiveStep(t), "dropped before commit")
-	require.NoError(t, err)
-	require.Equal(t, postgresql.ExecuteStatementBranchUncertain, beforeCommit.Branch, "the client cannot tell whether COMMIT arrived")
-	require.False(t, keyExists(beforeCommit.Receipt.IdempotencyKey), "this COMMIT never reached the server")
+	beforeCommit := newLiveStep(t)
+	_, err = insert(beforeCommit, "dropped before commit")
+	require.ErrorAs(t, err, &retry, "execute is repeat-safe, so an unknown COMMIT returns Retry")
+	require.Equal(t, "0", noteCount("dropped before commit"), "this COMMIT never reached the server")
 
-	afterCommitStep := newLiveStep(t)
-	afterCommit, err := insert(afterCommitStep, "dropped after commit")
-	require.NoError(t, err)
-	require.Equal(t, postgresql.ExecuteStatementBranchUncertain, afterCommit.Branch)
-	require.Equal(t, sdkgo.FailureTransport, afterCommit.Failure.Kind)
-	require.True(t, keyExists(afterCommit.Receipt.IdempotencyKey), "this COMMIT was applied although its reply was lost")
+	afterCommit := newLiveStep(t)
+	_, err = insert(afterCommit, "dropped after commit")
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+	require.Equal(t, "1", noteCount("dropped after commit"), "this COMMIT was applied although its reply was lost")
 
-	replay, err := insert(afterCommitStep, "dropped after commit")
-	require.NoError(t, err)
-	require.Equal(t, postgresql.ExecuteStatementBranchCompleted, replay.Branch, replay.Failure)
-	require.Equal(t, int64(0), replay.Value.RowsAffected, "replaying the same key is a no-op")
+	for step, wantRowsAffected := range map[*testsupport.DexContext]int64{atExecute: 1, beforeCommit: 1, afterCommit: 0} {
+		step.AttemptNumber = 2
+		retried, err := insert(step, "")
+		require.NoError(t, err)
+		require.Equal(t, postgresql.ExecuteStatementBranchCompleted, retried.Branch, retried.Failure)
+		require.Equal(t, wantRowsAffected, retried.Value.RowsAffected, "the retry writes only a key that is not yet committed")
+	}
+	require.Equal(t, "3", countLiveRows(t, client, table))
+}
 
-	retried, err := insert(atExecute, "dropped at execute")
+func TestLiveExecuteNonIdempotentSelectsUncertainAndNeverRunsAgain(t *testing.T) {
+	database := requireLiveDatabase(t)
+	client := database.newClient(t, database.config())
+	table := createLiveTable(t, client, "account_id text PRIMARY KEY, amount numeric(12, 2) NOT NULL")
+	requireLiveExecute(t, client, "INSERT INTO "+table+" (account_id, amount) VALUES ('acct_1', 0)")
+	proxied := startLiveCommitFaultProxy(t, database, commitfaultproxy.DropAfterCommitReachesServer)
+	input := postgresql.ExecuteStatementInput{Statement: "UPDATE " + table + " SET amount = amount + $1::numeric WHERE account_id = $2", Parameters: []any{"25.00", "acct_1"}}
+	step := singledispatchtest.NewContext("live-"+t.Name(), fmt.Sprintf("fenced-step-%d", time.Now().UnixNano()))
+
+	result, err := sdkgo.RunMutation(step, proxied.ExecuteStatementNonIdempotent(), liveConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, int64(1), retried.Value.RowsAffected, "the retried Step execution writes once")
-	require.Equal(t, "2", countLiveRows(t, client, table))
+	require.Equal(t, postgresql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the reply to an applied COMMIT was lost")
+	step.AdvanceAttempt()
+	again, err := sdkgo.RunMutation(step, proxied.ExecuteStatementNonIdempotent(), liveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, postgresql.ExecuteStatementNonIdempotentBranchUncertain, again.Branch)
+	balance := runLiveQuery(t, client, "SELECT amount FROM "+table+" WHERE account_id = 'acct_1'")
+	require.Equal(t, "25.00", balance.Value.Rows[0]["amount"], "the increment was applied exactly once")
 }
 
 func envOr(name string, fallback string) string {

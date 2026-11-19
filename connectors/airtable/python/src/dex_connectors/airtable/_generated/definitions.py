@@ -70,7 +70,7 @@ UPSERT_RECORDS_DEFINITION = MutationDefinition(
     (
         BranchDefinition(UPSERTED, "Airtable created each record without a match and updated each record that matched.", False),
         BranchDefinition(PROVIDER_REJECTED, "Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token.", True),
-        BranchDefinition(INVALID_RESPONSE, "Airtable applied or rejected the upsert but returned an invalid or oversized response.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -78,8 +78,7 @@ UPSERT_RECORDS_DEFINITION = MutationDefinition(
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 UPDATE_RECORDS_DEFINITION = MutationDefinition(
@@ -88,7 +87,7 @@ UPDATE_RECORDS_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Airtable updated every record and returned it.", False),
         BranchDefinition(NOT_FOUND, "A record ID does not exist in the table.", True),
         BranchDefinition(PROVIDER_REJECTED, "Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token.", True),
-        BranchDefinition(INVALID_RESPONSE, "Airtable applied or rejected the update but returned an invalid or oversized response.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -96,8 +95,7 @@ UPDATE_RECORDS_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 RECORD_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(

@@ -37,6 +37,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 var bucketName = regexp.MustCompile(`^[a-z][a-z0-9-]{4,19}$`)
@@ -57,7 +58,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("UPYUN API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, bucket: config.Bucket, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, bucket: config.Bucket, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("UPYUN client option is required")
@@ -95,7 +96,7 @@ func (client *Client) getUsage(call sdkgo.Call) providerResponse {
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	date := time.Now().UTC().Format(http.TimeFormat)
+	date := client.now().UTC().Format(http.TimeFormat)
 	request.Header.Set("Date", date)
 	request.Header.Set("Authorization", makeAuthorization(credentials.Operator, password, request.Method, request.URL.RequestURI(), date))
 	response, err := client.httpClient.Do(request)

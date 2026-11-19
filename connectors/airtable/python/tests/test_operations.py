@@ -15,11 +15,18 @@ from dex_connectors.sdk import (
     ConnectionRef,
     FailureKind,
     IdempotencyKey,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
 )
 
 from dex_connectors.airtable import (
@@ -49,8 +56,20 @@ from dex_connectors.airtable import (
     UpsertRecordsInput,
     build_filter_formula,
 )
+from dex_connectors.airtable._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("airtable", "airtable")
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("Airtable credential personal_access_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 TOKEN = "patTEST.token"
 BASE = "appABCDEFGHIJKLMN"
 RECORD_ID = "recABCDEFGHIJKLMN"
@@ -274,13 +293,93 @@ async def test_invalid_upsert_is_defect(value: UpsertRecordsInput) -> None:
         {"records": [WIRE_RECORD], "createdRecords": [RECORD_ID], "updatedRecords": [RECORD_ID]},
     ],
 )
-async def test_inconsistent_upsert_answer_is_invalid(body: object) -> None:
-    result = await run_mutation(
-        make_client(fixed(httpx.Response(200, json=body))).upsert_records(),
-        call_for(UPSERT_RECORDS_DEFINITION),
-        UpsertRecordsInput(BASE, "Log", ("Case ID",), (RecordUpsert({"Case ID": "case-1"}),)),
+async def test_inconsistent_upsert_answer_retries(body: object) -> None:
+    """The upsert may have applied, and repeating it converges on the same records."""
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(
+            make_client(fixed(httpx.Response(200, json=body))).upsert_records(),
+            call_for(UPSERT_RECORDS_DEFINITION),
+            UpsertRecordsInput(BASE, "Log", ("Case ID",), (RecordUpsert({"Case ID": "case-1"}),)),
+        )
+    assert raised.value.failure.kind == FailureKind.PROTOCOL
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+def _client_with_failing_credentials(error: Exception, requests: list[httpx.Request]) -> Client:
+    def record(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    return Client(
+        Config("http://localhost:8848"),
+        _FailingCredentials(error),
+        httpx.AsyncClient(transport=httpx.MockTransport(record)),
     )
-    assert result.branch == INVALID_RESPONSE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError("credential broker is unavailable"),
+        ValueError("connection is not configured"),
+        RuntimeError("credential store hiccup"),
+    ],
+)
+async def test_write_retries_temporarily_unavailable_credentials(error: Exception) -> None:
+    """An earlier attempt may have applied the write, so a broker outage must not select defect."""
+    requests: list[httpx.Request] = []
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(
+            _client_with_failing_credentials(error, requests).update_records(),
+            call_for(UPDATE_RECORDS_DEFINITION),
+            UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
+        )
+    assert raised.value.failure.kind == FailureKind.AVAILABILITY
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "branch"),
+    [
+        (ReauthorizationRequiredError(), PROVIDER_REJECTED),
+        (ObjectNotFoundError(), DEFECT),
+        (ConnectionNotSelectedError(), DEFECT),
+        (CredentialBrokerRejectedError(), DEFECT),
+        (CredentialMaterialError("Airtable stored credential does not match"), DEFECT),
+        (sdk_decoding_failure(), DEFECT),
+    ],
+)
+async def test_write_selects_a_terminal_branch_for_terminal_credentials(
+    error: Exception, branch: str
+) -> None:
+    requests: list[httpx.Request] = []
+    result = await run_mutation(
+        _client_with_failing_credentials(error, requests).update_records(),
+        call_for(UPDATE_RECORDS_DEFINITION),
+        UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
+    )
+    assert result.branch == branch
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_oversized_write_answer_retries() -> None:
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(
+            make_client(fixed(httpx.Response(200, content=b"x" * 5000))).update_records(),
+            call_for(UPDATE_RECORDS_DEFINITION),
+            UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
+        )
+    assert raised.value.failure.kind == FailureKind.RESPONSE_TOO_LARGE
 
 
 @pytest.mark.asyncio
@@ -313,6 +412,23 @@ async def test_upsert_maps_404_to_provider_rejected() -> None:
     )
     assert result.branch == PROVIDER_REJECTED
     assert result.failure is not None and result.failure.kind == FailureKind.NOT_FOUND
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [409, 501, 302, 418])
+async def test_writes_retry_a_status_that_does_not_prove_a_refusal(status: int) -> None:
+    with pytest.raises(RetryError):
+        await run_mutation(
+            make_client(fixed(httpx.Response(status))).update_records(),
+            call_for(UPDATE_RECORDS_DEFINITION),
+            UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
+        )
+    with pytest.raises(RetryError):
+        await run_mutation(
+            make_client(fixed(httpx.Response(status))).upsert_records(),
+            call_for(UPSERT_RECORDS_DEFINITION),
+            UpsertRecordsInput(BASE, "Log", ("a",), (RecordUpsert({"a": 1}),)),
+        )
 
 
 @pytest.mark.asyncio

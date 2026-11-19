@@ -232,6 +232,34 @@ def _query_result(
     return QueryAttempt.branch_result(branch, empty, receipt, result.failure)
 
 
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses that prove Pipedrive refused a write; any other rejection leaves the write unknown."""
+
+
+def _is_definite_write_refusal(result: Exchange) -> bool:
+    """Report a definite refusal; the daily token budget 429 refuses before Pipedrive acts."""
+    is_quota_exhausted = result.failure is not None and result.failure.kind == FailureKind.QUOTA_EXHAUSTED
+    return is_quota_exhausted or result.status in _DEFINITE_REFUSAL_STATUSES
+
+
+def _is_unknown_write_outcome(result: Exchange) -> bool:
+    """Report a write rejection, such as 402, a redirect, or an unlisted 4xx, that proves nothing."""
+    return result.outcome in ("rejected", "notFound") and not _is_definite_write_refusal(result)
+
+
+def _fence_retry(operation: str) -> MutationAttempt[Any]:
+    return MutationAttempt.retry(
+        failure(
+            operation,
+            FailureKind.AVAILABILITY,
+            (
+                "The single-dispatch fence could not authorize a send or retry; "
+                "the next attempt must reconcile the checkpoint"
+            ),
+        )
+    )
+
+
 def _mutation_result(
     result: Exchange, receipt: Receipt, empty: Any, *, not_found: bool = False
 ) -> MutationAttempt[Any]:
@@ -421,6 +449,12 @@ class UpdateObjectOperation:
             call, operation, credentials, "PATCH", f"/api/v2/{input.object_type}/{input.object_id}", body=body
         )
         receipt = self.client.receipt(call, result, input.object_id)
+        if _is_unknown_write_outcome(result):
+            # The PATCH is repeat-safe, so a status that does not prove a refusal is retried.
+            return MutationAttempt.retry(cast(Failure, result.failure), result.retry_after)
+        if result.outcome == "invalid":
+            # An unusable 2xx leaves the update unconfirmed; repeating the PATCH converges.
+            return MutationAttempt.retry(cast(Failure, result.failure))
         if result.outcome != "succeeded":
             return _mutation_result(result, receipt, CRMObject(""), not_found=True)
         try:
@@ -428,11 +462,8 @@ class UpdateObjectOperation:
             if record.id != input.object_id:
                 raise ValueError("Pipedrive returned an invalid record")
         except ValueError:
-            return MutationAttempt.branch_result(
-                definitions.INVALID_RESPONSE,
-                CRMObject(""),
-                receipt,
-                failure(operation, FailureKind.PROTOCOL, "Pipedrive returned an invalid record"),
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.PROTOCOL, "Pipedrive returned an invalid record")
             )
         return MutationAttempt.branch_result(definitions.UPDATED, record, receipt)
 
@@ -466,6 +497,16 @@ async def _record_can_resend(fence: Fence, operation: str) -> MutationAttempt[An
         )
 
 
+def _resend_or_select_uncertain_create(
+    can_resend_unknown_outcome: bool, problem: Failure, receipt: Receipt, retry_after: float = 0
+) -> MutationAttempt[CRMObject]:
+    """Retry a possibly sent POST while the send cap allows another send."""
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return MutationAttempt.retry(problem, retry_after)
+    return MutationAttempt.uncertain(CRMObject(""), problem, receipt)
+
+
 class CreateObjectOperation:
     """Create a Pipedrive record once through Dex's durable dispatch fence."""
 
@@ -481,10 +522,10 @@ class CreateObjectOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: CreateObjectInput) -> MutationAttempt[CRMObject]:
-        """Send one create or read back a prior accepted provider ID."""
+        """Send a create, resending an unknown outcome only below the send cap, or read back a saved ID."""
         operation = "createObject"
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
             decision = await fence.decide()
         except ValueError:
             return MutationAttempt.branch_result(
@@ -493,10 +534,13 @@ class CreateObjectOperation:
                 Receipt(),
                 failure(operation, FailureKind.LOCAL_DEFECT, "single-dispatch fence could not be built"),
             )
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return _fence_retry(operation)
         if decision.kind != DecisionKind.SEND_ALLOWED:
             marker = decision.marker
             provider_id = marker.provider_id if marker and marker.call_id == call.id else ""
-            if decision.kind == DecisionKind.READ_BACK_REQUIRED and provider_id:
+            # Pipedrive returns an ID only for a record it created, so a saved ID is read back, never resent.
+            if provider_id:
                 credentials, issue = await self.client.resolve(call, operation)
                 if issue:
                     if issue.outcome == "retry":
@@ -530,11 +574,14 @@ class CreateObjectOperation:
                     receipt,
                     result.failure.kind if result.failure else FailureKind.PROTOCOL,
                 )
-            return _uncertain(
-                operation,
-                "an earlier create may have reached Pipedrive and cannot be confirmed",
-                self.client.receipt(call, Exchange("")),
-            )
+            if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+                return _uncertain(
+                    operation,
+                    "earlier creates may have reached Pipedrive up to the send cap and cannot be confirmed",
+                    self.client.receipt(call, Exchange("")),
+                )
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         try:
             body = _write_body(input.fields or {}, input.custom_fields, input.object_type, require_name=True)
         except ValueError as error:
@@ -546,21 +593,19 @@ class CreateObjectOperation:
             )
         credentials, issue = await self.client.resolve(call, operation)
         if issue:
-            try:
-                await fence.record_not_sent()
-            except Exception:
-                return MutationAttempt.retry(
-                    failure(
-                        operation,
-                        FailureKind.AVAILABILITY,
-                        (
-                            "The single-dispatch fence could not authorize a send or retry; "
-                            "the next attempt must reconcile the checkpoint"
-                        ),
-                    )
+            # A pre-send Retry after an earlier possible send records nothing, so the next attempt counts it.
+            if not has_possible_earlier_send:
+                try:
+                    await fence.record_not_sent()
+                except Exception:
+                    return _fence_retry(operation)
+            if has_possible_earlier_send and issue.outcome != "retry":
+                return MutationAttempt.uncertain(
+                    CRMObject(""), cast(Failure, issue.failure), self.client.receipt(call, Exchange(""))
                 )
             return _mutation_result(issue, Receipt(), CRMObject(""))
         assert credentials is not None
+        observed_statuses: list[int] = []
 
         async def send(deadline: datetime) -> Exchange:
             return await self.client.exchange(
@@ -571,6 +616,7 @@ class CreateObjectOperation:
                 f"/api/v2/{input.object_type}",
                 body=body,
                 allow_refresh=False,
+                observed_statuses=observed_statuses,
             )
 
         try:
@@ -586,8 +632,26 @@ class CreateObjectOperation:
                     ),
                 )
             )
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # Pipedrive accepted this POST before the write window cut its body, so it is never resent.
+                return _uncertain(
+                    operation,
+                    "Pipedrive accepted the create, but its response body is unreadable",
+                    self.client.receipt(call, Exchange("")),
+                    FailureKind.TRANSPORT,
+                )
+            return _resend_or_select_uncertain_create(
+                can_resend_unknown_outcome,
+                failure(operation, FailureKind.TRANSPORT, "create dispatch could not be confirmed"),
+                Receipt(),
+            )
         except Exception:
-            return _uncertain(operation, "create dispatch could not be confirmed", Receipt())
+            return _resend_or_select_uncertain_create(
+                can_resend_unknown_outcome,
+                failure(operation, FailureKind.TRANSPORT, "create dispatch could not be confirmed"),
+                Receipt(),
+            )
         receipt = self.client.receipt(call, result)
         if result.status == 401 and credentials.auth_method_id == "pipedrive-oauth":
             refreshed, rejected_failure = await self.client.refresh_after_write_rejection(
@@ -604,13 +668,23 @@ class CreateObjectOperation:
         ):
             problem = await _record_can_resend(fence, operation)
             return problem or MutationAttempt.retry(cast(Failure, result.failure), result.retry_after)
-        if result.outcome in ("unavailable", "invalid"):
+        if result.outcome == "invalid" or (result.outcome != "succeeded" and 200 <= result.status < 300):
+            # Pipedrive accepted this POST, so a resend would duplicate the record.
             return MutationAttempt.uncertain(CRMObject(""), cast(Failure, result.failure), receipt)
-        if result.outcome == "defect":
+        if result.outcome == "defect" and not has_possible_earlier_send:
             return MutationAttempt.branch_result(definitions.DEFECT, CRMObject(""), receipt, result.failure)
-        if result.outcome != "succeeded":
-            return MutationAttempt.branch_result(
+        if result.outcome in ("rejected", "notFound") and _is_definite_write_refusal(result):
+            # An earlier send may have created the record, so a refusal of this resend proves nothing.
+            if has_possible_earlier_send:
+                return MutationAttempt.uncertain(CRMObject(""), cast(Failure, result.failure), receipt)
+            problem = await _record_can_resend(fence, operation)
+            return problem or MutationAttempt.branch_result(
                 definitions.PROVIDER_REJECTED, CRMObject(""), receipt, result.failure
+            )
+        if result.outcome != "succeeded":
+            # A timeout, 5xx, 408, 409, 402, redirect, or other status leaves the outcome unknown.
+            return _resend_or_select_uncertain_create(
+                can_resend_unknown_outcome, cast(Failure, result.failure), receipt, result.retry_after
             )
         try:
             record = decode_record_body(input.object_type, result.body)
@@ -759,31 +833,31 @@ class UpsertObjectOperation:
                 )
             else:
                 return MutationAttempt.branch_result(definitions.UPSERTED, UpsertedObject(record), receipt)
-        if earlier_create and result.outcome not in ("notSent", "rateLimited", "unavailable"):
+        # The PATCH is repeat-safe, so a status that does not prove a refusal is retried.
+        is_retryable = result.outcome in ("notSent", "rateLimited", "unavailable") or (
+            update_body is not None and _is_unknown_write_outcome(result)
+        )
+        if earlier_create and not is_retryable:
             return _uncertain(
                 "upsertObject",
                 cast(Failure, result.failure).message,
                 receipt,
                 cast(Failure, result.failure).kind,
             )
-        if not earlier_create and result.outcome in ("notSent", "rateLimited", "unavailable"):
+        if not earlier_create and is_retryable:
             try:
                 await fence.record_not_sent()
             except Exception:
-                return MutationAttempt.retry(failure(
-                    "upsertObject", FailureKind.AVAILABILITY,
-                    (
-                        "The single-dispatch fence could not authorize a send or retry; "
-                        "the next attempt must reconcile the checkpoint"
-                    ),
-                ))
+                return _fence_retry("upsertObject")
+        if is_retryable:
+            return MutationAttempt.retry(cast(Failure, result.failure), result.retry_after)
         return _mutation_result(result, receipt, _upsert_empty())
 
     async def invoke(self, call: Call, input: UpsertObjectInput) -> MutationAttempt[UpsertedObject]:
-        """Reconcile identity and send at most one provider create."""
+        """Reconcile identity and create again only while possible sends stay below the send cap."""
         operation = "upsertObject"
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
             decision = await fence.decide()
         except ValueError:
             return MutationAttempt.branch_result(
@@ -793,7 +867,7 @@ class UpsertObjectOperation:
                 failure(operation, FailureKind.LOCAL_DEFECT, "single-dispatch fence could not be built"),
             )
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return _uncertain(operation, "create checkpoint could not be read", Receipt())
+            return _fence_retry(operation)
         try:
             identity_field, create_body, update_body = _upsert_bodies(input)
         except ValueError as error:
@@ -803,23 +877,18 @@ class UpsertObjectOperation:
                 Receipt(),
                 failure(operation, FailureKind.VALIDATION, str(error)),
             )
-        earlier_create = decision.kind == DecisionKind.READ_BACK_REQUIRED
+        # A canResend marker allows a send but keeps counting earlier unknown sends.
+        earlier_create = decision.kind != DecisionKind.SEND_ALLOWED or decision.prior_send_upper_bound > 0
+        can_create = decision.kind != DecisionKind.READ_BACK_REQUIRED
         credentials, issue = await self.client.resolve(call, operation)
         if issue:
+            # notSent would hide an earlier possible send, so it is recorded only before the first one.
             if not earlier_create:
                 try:
                     await fence.record_not_sent()
                 except Exception:
-                    return MutationAttempt.retry(
-                        failure(
-                            operation,
-                            FailureKind.AVAILABILITY,
-                            (
-                                "The single-dispatch fence could not authorize a send or retry; "
-                                "the next attempt must reconcile the checkpoint"
-                            ),
-                        )
-                    )
+                    return _fence_retry(operation)
+            if not earlier_create:
                 return _mutation_result(issue, Receipt(), _upsert_empty())
             if issue.outcome == "retry":
                 return MutationAttempt.retry(cast(Failure, issue.failure))
@@ -851,21 +920,22 @@ class UpsertObjectOperation:
                     receipt,
                     cast(Failure, result.failure).kind,
                 )
-            if not earlier_create and result.outcome in ("notSent", "rateLimited", "unavailable"):
+            if not earlier_create and result.outcome in (
+                "notSent", "rateLimited", "unavailable"
+            ):
                 try:
                     await fence.record_not_sent()
                 except Exception:
-                    return MutationAttempt.retry(
-                        failure(
-                            operation,
-                            FailureKind.AVAILABILITY,
-                            (
-                                "The single-dispatch fence could not authorize a send or retry; "
-                                "the next attempt must reconcile the checkpoint"
-                            ),
-                        )
-                    )
+                    return _fence_retry(operation)
             return _mutation_result(result, receipt, _upsert_empty())
+        if (len(matches) > 1 or has_more) and earlier_create:
+            # One of the matches may be this Step's own earlier create.
+            return _uncertain(
+                operation,
+                "Pipedrive search finds several records with the identity value",
+                receipt,
+                FailureKind.CONFLICT,
+            )
         if len(matches) > 1 or has_more:
             return MutationAttempt.branch_result(
                 definitions.MULTIPLE_MATCHES,
@@ -884,9 +954,16 @@ class UpsertObjectOperation:
             return await self._read_or_update(
                 call, input, credentials, matches[0], update_body, earlier_create, fence
             )
-        if earlier_create:
-            return _uncertain(operation, "Pipedrive search finds no record with the identity value", receipt)
+        if not can_create:
+            return _uncertain(
+                operation,
+                "creates reached the send cap, and Pipedrive search finds no record with the identity value",
+                receipt,
+            )
 
+        observed_statuses: list[int] = []
+
+        # Search can lag behind a create, so a resend after a miss may duplicate; the cap bounds that.
         async def send(deadline: datetime) -> Exchange:
             return await self.client.exchange(
                 call,
@@ -896,23 +973,27 @@ class UpsertObjectOperation:
                 f"/api/v2/{input.object_type}",
                 body=create_body,
                 allow_refresh=False,
+                observed_statuses=observed_statuses,
             )
 
         try:
             created = await fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
-            return MutationAttempt.retry(
-                failure(
-                    operation,
-                    FailureKind.AVAILABILITY,
-                    (
-                        "The single-dispatch fence could not authorize a send or retry; "
-                        "the next attempt must reconcile the checkpoint"
-                    ),
+            return _fence_retry(operation)
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The write window cut an accepted create's body, so it is read back, never resent.
+                return await self._read_back_created(
+                    call, input, credentials, identity_field, self.client.receipt(call, Exchange("")), fence
                 )
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.TRANSPORT, "create dispatch could not be confirmed")
             )
         except Exception:
-            return _uncertain(operation, "create dispatch could not be confirmed", Receipt())
+            # The next attempt searches the identity before it creates again.
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.TRANSPORT, "create dispatch could not be confirmed")
+            )
         receipt = self.client.receipt(call, created)
         if created.status == 401 and credentials.auth_method_id == "pipedrive-oauth":
             refreshed, rejected_failure = await self.client.refresh_after_write_rejection(
@@ -929,12 +1010,22 @@ class UpsertObjectOperation:
         ):
             problem = await _record_can_resend(fence, operation)
             return problem or MutationAttempt.retry(cast(Failure, created.failure), created.retry_after)
+        create_failure = cast(Failure, created.failure)
         if created.outcome == "defect":
+            if earlier_create:
+                return _uncertain(operation, create_failure.message, receipt, create_failure.kind)
             return MutationAttempt.branch_result(
                 definitions.DEFECT, _upsert_empty(), receipt, created.failure
             )
         if created.outcome in ("notFound", "rejected"):
-            return MutationAttempt.branch_result(
+            if not _is_definite_write_refusal(created):
+                # A 402, redirect, or other unlisted status leaves the create unknown.
+                return MutationAttempt.retry(cast(Failure, created.failure), created.retry_after)
+            # An earlier send may have created the record, so a refusal of this resend proves nothing.
+            if earlier_create:
+                return _uncertain(operation, create_failure.message, receipt, create_failure.kind)
+            refusal_problem = await _record_can_resend(fence, operation)
+            return refusal_problem or MutationAttempt.branch_result(
                 definitions.PROVIDER_REJECTED, _upsert_empty(), receipt, created.failure
             )
         if created.outcome in ("invalid", "unavailable"):
@@ -964,9 +1055,8 @@ class UpsertObjectOperation:
         receipt: Receipt,
         fence: Fence,
     ) -> MutationAttempt[UpsertedObject]:
+        # Without a saved record ID, a Retry could let a later attempt search, miss, and create again.
         matches, has_more, result = await self._find_matches(call, input, credentials, identity_field)
-        if result.outcome in ("notSent", "rateLimited", "unavailable"):
-            return MutationAttempt.retry(cast(Failure, result.failure), result.retry_after)
         if result.outcome != "succeeded" or len(matches) != 1 or has_more:
             return _uncertain(
                 "upsertObject",
@@ -974,10 +1064,15 @@ class UpsertObjectOperation:
                 receipt,
                 FailureKind.PROTOCOL,
             )
+        try:
+            await fence.record_provider_id(matches[0])
+            is_provider_id_saved = True
+        except Exception:
+            is_provider_id_saved = False
         read = await self._read_or_update(call, input, credentials, matches[0], None, True, fence)
-        if read.kind == "retry":
+        if read.kind == "retry" and is_provider_id_saved:
             return read
-        if read.branch != definitions.UPSERTED or read.value is None:
+        if read.kind == "retry" or read.branch != definitions.UPSERTED or read.value is None:
             return _uncertain(
                 "upsertObject",
                 read.failure.message if read.failure else "read-back failed",
@@ -985,10 +1080,6 @@ class UpsertObjectOperation:
                 read.failure.kind if read.failure else FailureKind.PROTOCOL,
             )
         record = read.value.object
-        try:
-            await fence.record_provider_id(record.id)
-        except Exception:
-            pass  # The confirmed read-back still identifies the created record.
         return MutationAttempt.branch_result(
             definitions.UPSERTED,
             UpsertedObject(record, created=True),

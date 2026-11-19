@@ -1,6 +1,6 @@
 # GitLab lookup example
 
-This runnable Flow calls `gitlab.NewGetProjectStep` with the static connection name `gitlab` and completes with the typed `Project` value. Optional branches are unwired and fail the Flow if selected. Its [mock-backed integration test](flow/workflow_mock_integration_test.go) uses a real Dex Worker and Client in CI.
+This runnable Worker registers `GitLabLookup` and `GitLabIssueLookup` using the static connection name `gitlab`. The first calls `gitlab.NewGetProjectStep`; the second calls `gitlab.NewGetIssueStep`. Optional branches are unwired and fail the Flow if selected. Its [mock-backed integration test](flow/workflow_mock_integration_test.go) exercises both through a real Dex Worker and Client.
 
 ## Generate the strict Flow Definition
 
@@ -9,6 +9,7 @@ From `connectors/gitlab`, use the latest stable dexcli:
 ```bash
 mkdir -p build
 dexcli visualize ./examples/gitlab-lookup/flow/workflow.go --schema-version 2.0 --json --out ./build/gitlab-lookup
+dexcli visualize ./examples/gitlab-lookup/flow/issue_lookup.go --schema-version 2.0 --lint app --json --out ./build/gitlab-issue-lookup
 ```
 
 The definition must report `valid: true`. The local module can warn that a connector release is required.
@@ -22,7 +23,7 @@ mkdir -p /tmp/gitlab-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/gitlab/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/gitlab/go \
-  --version v0.2.0 --tag connectors/gitlab/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/gitlab/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/gitlab-release/connector-release.json \
   --digest-output /tmp/gitlab-release/connector-release.json.sha256
@@ -39,4 +40,6 @@ In Dex Web **Connections**, select `gitlab / gitlab`, follow the authorization g
 
 Use the input type `GetProjectInput` as the JSON shape; the provider-specific fields are described in the [connector README](../../../README.md). The Worker accepts `DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR` overrides.
 
-Live provider authorization and the real Dex example have not been exercised locally; CI runs the mock-backed integration test.
+For `GitLabIssueLookup`, enter `{"projectId":"meridian/web","issueIid":7}`. The `issueIid` is the positive project-local number shown in GitLab's issue URL.
+
+Live provider authorization has not been exercised locally. The mock-backed integration test has passed against local Dex.

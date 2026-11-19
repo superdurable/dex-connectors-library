@@ -3,10 +3,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
-import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { BambooHRClient } from '../src/client.js';
 import { buildTimeOffRequestFilter } from '../src/operations.js';
-import type { Credentials } from '../src/generated/models.js';
+import { CredentialMaterialError, type Credentials } from '../src/generated/models.js';
 
 const credentials = { resolve: async () => ({ apiKey: new SecretString('0123456789abcdef0123456789abcdef01234567') }) };
 const call = {
@@ -46,14 +47,75 @@ describe('BambooHR client', () => {
       .toBe("startDate le '2026-10-26' and endDate ge '2026-10-13' and employeeId eq 123 and status in ('requested', 'approved')");
   });
 
-  it.each(['getEmployee', 'findEmployeeByEmail', 'listEmployeeChanges', 'listTimeOffRequests', 'updateEmployee'])('%s returns the Go authentication defect for terminal and transient credential failures', async operation => {
-    for (const error of [new ReauthorizationRequiredError(), new Error('temporary credential store failure')]) {
+  it('updateEmployee retries a transient credential failure and selects defect for a terminal one', async () => {
+    for (const error of [new Error('temporary credential store failure'), new Error('connection is not configured'), new CredentialBrokerUnavailableError()]) {
+      const transient = await invokeOperation(clientWithCredentialError(error), 'updateEmployee');
+      expect(transient.kind).toBe('retry');
+    }
+    for (const error of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+      const terminal = await invokeOperation(clientWithCredentialError(error), 'updateEmployee');
+      expect(terminal).toMatchObject({ kind: 'branch', branch: 'defect' });
+    }
+  });
+
+  it('updateEmployee retries every failed read-back after an accepted write', async () => {
+    for (const [readBack, expected] of [[{ status: 200, body: '{"id":"999"}' }, 'retry'], [{ status: 404, body: '{}' }, 'retry']] as const) {
+      const answers = [{ status: 200, body: '{"id":"123","firstName":"Sam"}' }, { status: 200, body: '' }, readBack];
+      const client = new BambooHRClient({ companyDomain: 'acme' }, credentials, {
+        send: async () => { const answer = answers.shift()!; return { status: answer.status, headers: {}, body: Buffer.from(answer.body) }; },
+      });
+      const attempt = await invokeOperation(client, 'updateEmployee');
+      expect(attempt.kind).toBe(expected);
+    }
+  });
+
+  it.each([
+    ['unparseable 2xx', { status: 200, body: '{"id":' }],
+    ['oversized 2xx', new BodyTooLargeError(200, {})],
+    ['credential echo 2xx', { status: 200, body: '{"id":"123","firstName":"0123456789abcdef0123456789abcdef01234567"}' }],
+    ['credential echo 403', { status: 403, body: '{"error":"0123456789abcdef0123456789abcdef01234567"}' }],
+    ['oversized 404', new BodyTooLargeError(404, {})],
+    ['unlisted 409', { status: 409, body: '{}' }],
+    ['unlisted 302', { status: 302, body: '{}' }],
+  ] as const)('updateEmployee retries an unknown pre-write read: %s', async (_name, answer) => {
+    let requests = 0;
+    const client = new BambooHRClient({ companyDomain: 'acme' }, credentials, {
+      send: async () => {
+        requests += 1;
+        if (answer instanceof BodyTooLargeError) throw answer;
+        return { status: answer.status, headers: {}, body: Buffer.from(answer.body) };
+      },
+    });
+    const attempt = await invokeOperation(client, 'updateEmployee');
+    expect(attempt.kind).toBe('retry');
+    if (attempt.kind === 'retry') expect(attempt.failure.message).not.toContain('0123456789abcdef0123456789abcdef01234567');
+    expect(requests).toBe(1);
+  });
+
+  it('updateEmployee retries a write refusal that echoes the credential', async () => {
+    const answers = [{ status: 200, body: '{"id":"123","firstName":"Sam"}' }, { status: 400, body: '{"e":"0123456789abcdef0123456789abcdef01234567"}' }];
+    const client = new BambooHRClient({ companyDomain: 'acme' }, credentials, {
+      send: async () => { const answer = answers.shift()!; return { status: answer.status, headers: {}, body: Buffer.from(answer.body) }; },
+    });
+    const attempt = await invokeOperation(client, 'updateEmployee');
+    expect(attempt.kind).toBe('retry');
+    expect(answers).toHaveLength(0);
+  });
+
+  it.each(['getEmployee', 'findEmployeeByEmail', 'listEmployeeChanges', 'listTimeOffRequests'])('%s selects defect for a terminal credential failure and retries a transient one', async operation => {
+    const terminalErrors = [new ReauthorizationRequiredError(), new CredentialBrokerRejectedError(), new CredentialMaterialError('credential api_key is required'), new TypeError('project credential decoding failed')];
+    for (const error of terminalErrors) {
       const attempt = await invokeOperation(clientWithCredentialError(error), operation);
       expect(attempt.kind).toBe('branch');
       if (attempt.kind === 'branch') {
         expect(attempt.branch).toBe('defect');
         expect(attempt.failure?.kind).toBe('AUTHENTICATION');
       }
+    }
+    for (const error of [new Error('temporary credential store failure'), new CredentialBrokerUnavailableError(), new TypeError('unlisted')]) {
+      const attempt = await invokeOperation(clientWithCredentialError(error), operation);
+      expect(attempt.kind).toBe('retry');
+      if (attempt.kind === 'retry') expect(attempt.failure.kind).toBe('AVAILABILITY');
     }
   });
 
@@ -91,10 +153,10 @@ describe('BambooHR client', () => {
     expect(checkpoints).toEqual([{ callId: call.id, attempt: 1, state: 'notSent' }]);
   });
 
-  it('addEmployee retries credential failure during read-back without sending another write', async () => {
+  it('addEmployee retries a transient credential failure during read-back without sending another write', async () => {
     const readBackCall = { ...call, context: { ...call.context, attempt: 2, hasLastHeartbeatValue: () => true,
       getLastHeartbeatValue: () => ({ callId: call.id, attempt: 1, state: 'claimed', providerId: '123' }) } } as Call;
-    const attempt = await clientWithCredentialError(new ReauthorizationRequiredError()).addEmployee().invoke(readBackCall, { firstName: 'Ava', lastName: 'Nguyen' });
+    const attempt = await clientWithCredentialError(new Error('temporary credential store failure')).addEmployee().invoke(readBackCall, { firstName: 'Ava', lastName: 'Nguyen' });
     expect(attempt.kind).toBe('retry');
     if (attempt.kind === 'retry') expect(attempt.failure.kind).toBe('AUTHENTICATION');
   });

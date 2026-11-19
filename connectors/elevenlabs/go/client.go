@@ -60,6 +60,10 @@ var errCredential = errors.New("provider credential unavailable")
 var errRequest = errors.New("provider request failed")
 
 func (client *Client) do(call sdkgo.Call, method, path string, query url.Values, payload []byte) ([]byte, int, time.Duration, error) {
+	return client.doWithContentType(call, method, path, query, payload, "application/json")
+}
+
+func (client *Client) doWithContentType(call sdkgo.Call, method, path string, query url.Values, payload []byte, contentType string) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, 0, 0, errCredential
@@ -86,7 +90,7 @@ func (client *Client) do(call sdkgo.Call, method, path string, query url.Values,
 		request.Header.Set("Accept", "application/json")
 	}
 	if payload != nil {
-		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Content-Type", contentType)
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {

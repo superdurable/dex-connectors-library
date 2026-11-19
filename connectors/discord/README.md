@@ -1,10 +1,12 @@
 # Discord Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.3.0`.
+Safe channel and member writes retry unlisted HTTP statuses and unusable success responses when acceptance is unclear.
+
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.5.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/discord`.
 
-Read Discord channels and messages, send bot messages, and add reactions
+Read and manage Discord channels and messages, send bot messages, and add reactions
 through the [Discord HTTP API](https://discord.com/developers/docs/reference)
 with typed Dex Query and Mutation Steps. Use the
 [channel announcement example](go/examples/channel-announcement/README.md) to post
@@ -13,19 +15,43 @@ an announcement, react to it, and confirm it with a read-back.
 Its Go module is `github.com/superdurable/dex-connectors-library/connectors/discord/go`.
 The connector ID is `discord`.
 
-The TypeScript package is `@superdurable/connector-discord` at v0.1.0. It supports all four operations and no Triggers. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
+The TypeScript package is `@superdurable/connector-discord` at v0.2.0. It supports `getChannel`, `listChannelMessages`, `createMessage`, and `addReaction`, and no Triggers. The new Channel management operations are Go-only. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
 
 ## Operations
 
 | Factory | Kind | Input | Required branch | Optional branches |
 | --- | --- | --- | --- | --- |
 | `NewGetChannelStep` | Query | `GetChannelInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewListGuildChannelsStep` | Query | `ListGuildChannelsInput` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewCreateGuildChannelStep` | Mutation | `CreateGuildChannelInput` | `created` | `providerRejected`, `uncertain`, `defect` |
+| `NewUpdateChannelStep` | Mutation | `UpdateChannelInput` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewDeleteChannelStep` | Mutation | `DeleteChannelInput` | `deleted` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewListGuildMembersStep` | Query | `ListGuildMembersInput` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewBanGuildMemberStep` | Mutation | `BanGuildMemberInput` | `banned` | `notFound`, `providerRejected`, `defect` |
+| `NewKickGuildMemberStep` | Mutation | `KickGuildMemberInput` | `kicked` | `notFound`, `providerRejected`, `defect` |
+| `NewAddGuildMemberRoleStep` | Mutation | `GuildMemberRoleInput` | `added` | `notFound`, `providerRejected`, `defect` |
+| `NewRemoveGuildMemberRoleStep` | Mutation | `GuildMemberRoleInput` | `removed` | `notFound`, `providerRejected`, `defect` |
+| `NewTimeoutGuildMemberStep` | Mutation | `TimeoutGuildMemberInput` | `timedOut` | `notFound`, `providerRejected`, `defect` |
+| `NewUnbanGuildMemberStep` | Mutation | `UnbanGuildMemberInput` | `unbanned` | `notFound`, `providerRejected`, `defect` |
+| `NewGetMessageStep` | Query | `GetMessageInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewDeleteMessageStep` | Mutation | `DeleteMessageInput` | `deleted` | `notFound`, `providerRejected`, `defect` |
 | `NewListChannelMessagesStep` | Query | `ListChannelMessagesInput` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `NewCreateMessageStep` | Mutation | `CreateMessageInput` | `created` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewCreateMessageStep` | Mutation | `CreateMessageInput` | `created` | `notFound`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
 | `NewAddReactionStep` | Mutation | `AddReactionInput` | `added` | `notFound`, `providerRejected`, `defect` |
 
 - `getChannel` reads `GET /channels/{channel.id}` and returns the channel's ID,
   type number, server ID, name, topic, and newest message ID.
+- `listGuildChannels` reads `GET /guilds/{guild.id}/channels`, excluding threads and channels the bot cannot view.
+- `createGuildChannel` creates a server text channel with `name` and optional `topic`. Discord has no channel creation deduplication key, so the limited mutation sends at most twice after an unknown outcome, then selects `uncertain` without a confirmed ID. A confirmed ID is read back on recovery.
+- `updateChannel` replaces an explicit name or topic; a nil pointer keeps that field, while an empty topic clears it. `deleteChannel` deletes one guild channel and returns Discord's deleted channel summary. Both are safe to repeat for the same ID.
+- `listGuildMembers` reads one page of 1 to 1000 members; zero selects 100, and `AfterUserID` continues a full page. It returns user IDs, nicknames, role IDs, and timeout timestamps, without other profile fields. Discord requires the Server Members privileged intent, enabled under **Bot > Privileged Gateway Intents**.
+- `banGuildMember`, `kickGuildMember`, `addGuildMemberRole`, `removeGuildMemberRole`, and `unbanGuildMember` target explicit server, user, and optional role IDs. Their PUT or DELETE requests are safe to repeat for the same IDs. `banGuildMember` does not erase message history.
+- `timeoutGuildMember` sets an explicit RFC3339 timestamp with an absolute PATCH; Discord accepts at most 28 days into the future. A malformed 200 response retries because the write result is unknown.
+- `getMessage` reads one message by channel and message ID. The announcement
+  example reads its newly posted message back by ID.
+- `deleteMessage` deletes one message and accepts Discord's empty 204 response.
+  The bot may delete its own messages; deleting another author's message in a
+  server requires `MANAGE_MESSAGES` permission.
 - `listChannelMessages` reads one page of up to 100 messages (zero asks for
   Discord's 50), newest first. Set at most one of `BeforeMessageID`, such as the
   previous page's `OldestMessageID`, and `AfterMessageID`. `IsFull` reports a
@@ -38,7 +64,7 @@ The TypeScript package is `@superdurable/connector-discord` at v0.1.0. It suppor
 
 Channel, message, and emoji IDs are Discord snowflakes of 17 to 20 digits; any
 other value selects `defect` before a request, so input can never change the
-request path. Message `Content`, channel `Name`, and `Topic` are untrusted
+request path. Channel management writes require `MANAGE_CHANNELS`; member actions require the relevant `BAN_MEMBERS`, `KICK_MEMBERS`, `MANAGE_ROLES`, or `MODERATE_MEMBERS` permission, granted by the server owner under **Server Settings > Roles**. The bot's role must outrank the target. Existing bot tokens remain valid. Message `Content`, channel `Name`, and `Topic` are untrusted
 provider text: escape them before rendering HTML. A bot without the Message
 Content intent reads empty content for server messages that do not mention it.
 
@@ -69,16 +95,39 @@ supplies a transport.
 
 ## Execution contract
 
-Every operation uses async durability and a 30-second Execute timeout. `createMessage` keeps five attempts within two minutes; the other operations use the one-hour default retry budget. Each attempt makes one HTTP request. Redirects are not followed.
+Every operation uses a 30-second Execute timeout. `createMessage` uses sync durability so its single-dispatch fence survives retries and Worker loss, and keeps five attempts within two minutes; the other operations use async durability and the one-hour default retry budget. Each attempt makes one HTTP request, except that a `createMessage` attempt may read an accepted message back with one more GET. Redirects are not followed.
 
 `createMessage` sends a 25-character `nonce` derived with SHA-256 from the
 Step's idempotency key, with `enforce_nonce: true`. Retries and Worker restarts
-of one Step execution send the same nonce, and Discord returns the message the
-earlier attempt created instead of posting another. A transport failure, a 5xx,
-or a 429 after dispatch is therefore retried rather than reported as uncertain.
-Discord enforces a nonce for only a few minutes, so the retry window stays at
-two minutes; a `StepOptionsOverride` that lengthens it can post a duplicate. The
-operation declares no `uncertain` branch. A new Step execution is a new message.
+of one Step execution send the same nonce, and inside its nonce window Discord
+returns the message the earlier attempt created instead of posting another.
+Without a known message ID, that resend is the read-back. The
+operation is `repeatOnUnknown: limited` with `maxSends: 3`: an unknown outcome
+after dispatch, such as a lost connection, a 5xx other than 503, a 408, or an
+unlisted status, resends while possible sends stay below the cap and selects
+`uncertain` at the cap. A 2xx proves Discord created the message, so it is
+never resent. A 2xx whose body is broken, oversized, or cut by the write window
+selects `uncertain`. A 2xx whose body parses but is not a valid message selects
+`uncertain` unless it carries a valid snowflake `id`. With such an ID, the
+operation checkpoints it and reads the message back with
+`GET /channels/{channel}/messages/{id}`. A matching message selects `created`.
+A transient read-back failure (a lost connection, a broken or oversized body,
+408, 429, or 5xx) retries, and the next attempt reads back the saved ID again
+without sending; if the retry budget runs out first, the Flow fails. If the ID
+could not be checkpointed, that failure selects `uncertain` instead. Every other
+read-back answer selects `uncertain`: a complete 2xx that is not the matching
+message, 404 Unknown Message, a missing Read Message History permission, or any
+other status. This differs from Gmail, whose Sent Mail search selects
+`uncertain` at the send cap instead of retrying. A timestamp without an offset
+is read as UTC. One residual risk remains: a Worker lost between the 2xx and the
+message ID checkpoint leaves only the claim, so the next attempt resends with
+the same nonce, still within the send cap, because nothing proves the first POST. A 429, a 503, or a request that never left the process retries and never
+selects `uncertain` on its own. A definite refusal of the first send selects `notFound` or
+`providerRejected` and is never resent; the same refusal after an earlier
+possible send selects `uncertain`. An application sets the cap, from 1 to 10,
+with the factory's `MaxSends`. Discord enforces a nonce for only a few minutes, so the
+retry window stays at two minutes; a `StepOptionsOverride` that lengthens it
+can post a duplicate. A new Step execution is a new message.
 
 `addReaction` sends no key: Discord keeps one reaction per user and emoji, so
 repeating the PUT converges.
@@ -91,10 +140,25 @@ repeating the PUT converges.
 | 403, such as 50001 Missing Access or 50013 Missing Permissions | `providerRejected` | `AUTHORIZATION` |
 | 400 or 413, such as 50035 Invalid Form Body or 30010 maximum reactions | `providerRejected` | `VALIDATION` |
 | 429 | Retry after the body's `retry_after`, else `Retry-After` | `RATE_LIMIT` |
-| 408, 5xx other than 501 | Retry, honoring `Retry-After` | `AVAILABILITY` |
-| transport failure, interrupted body | Retry | `TRANSPORT` |
-| any other status | `providerRejected` | `PROVIDER_REJECTION` |
-| malformed JSON, a different channel, more messages than the limit, an oversized body | `invalidResponse` (`providerRejected` for `addReaction`) | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
+| 408, any 5xx | Retry, honoring `Retry-After`; for `createMessage`, `uncertain` at the send cap except 503 | `AVAILABILITY` |
+| transport failure, interrupted body | Retry; for `createMessage` after dispatch, `uncertain` at the send cap | `TRANSPORT` |
+| other 404, 411, 414, 415, or 422 | `providerRejected` | `PROVIDER_REJECTION` |
+| 3xx or any other status | Retry; for `createMessage`, `uncertain` at the send cap | `AVAILABILITY` |
+| malformed JSON, a different channel, more messages than the limit, an oversized body | `invalidResponse` for a Query; Retry for `addReaction`; for `createMessage`, a read-back by a valid message ID, otherwise `uncertain` without a resend | `PROTOCOL`, `RESPONSE_TOO_LARGE`, or `TRANSPORT` |
+
+For `createMessage`, a refusal status counts as definite only when its body is
+readable and does not describe a message. An error body over 64 KiB, or one that
+is contradictory, is an unknown outcome. `invalidResponse` stays declared for compatibility
+and is no longer selected by either write. `addReaction` is declared
+`repeatOnUnknown: safe` and repeats an idempotent PUT.
+
+Stored credential material that does not decode, such as a token whose stored
+form is corrupt, is handled differently by language. In Python and TypeScript it
+selects `defect` before any request. In Go the SDK does not yet expose the
+decoder error type, so the operation retries without a request until the retry
+budget ends. A decoded token that is blank or unsafe in a header selects `defect`
+in every language. After an earlier possible send, `createMessage` selects
+`uncertain` instead of `defect`.
 
 A Failure names only a documented numeric Discord error code, never Discord's
 message text. An unwired optional branch fails the Flow. The connector has no
@@ -131,12 +195,17 @@ require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 ## Security
 
 The bot token is a `secretString` credential resolved for every call, so a
-reset token applies without restarting the Worker. It travels only in the
+reset token applies without restarting the Worker. A reauthorization-required
+connection selects `providerRejected`; a missing or unselected connection, a
+credential broker rejection, or a blank or header-unsafe token selects `defect`;
+undecodable stored material follows the language rule in the execution contract;
+every other credential failure, such as an unavailable broker, retries without a request.
+The token travels only in the
 `Authorization: Bot <token>` header and never in a URL, Result, Failure,
 receipt, or log. Create it under **Bot > Reset Token** at
 [discord.com/developers/applications](https://discord.com/developers/applications)
 and store it only in Dex Web **Connections**. Grant the bot only View Channels,
-Read Message History, Send Messages, and Add Reactions in the channels it uses.
+Read Message History, Send Messages, and Add Reactions in the channels it uses. Grant channel and member management permissions only when running those operations.
 
 ## Verification
 
@@ -150,16 +219,21 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 
 The provider tests run every operation against an `httptest` fake Discord API.
 They cover the `Bot` authorization and `DiscordBot` User-Agent headers, the
-stable enforced nonce across retries of one Step execution and a new nonce for
-a new execution, disabled mentions, reply references, emoji path escaping,
+stable enforced nonce across resends of one Step execution and a new nonce for
+a new execution, `uncertain` at the send cap, refusals that are never resent,
+read-back by message ID after an accepted but invalid answer,
+disabled mentions, reply references, emoji path escaping,
 page bounds and cursors, every error class, fractional rate-limit delays,
 malformed and oversized responses, input and credential validation, and
 secret-safe Failures. The example's real Dex suite covers the complete
-announcement, a post whose first response was lost, an unwired `notFound`, and
+announcement, a post whose first response was lost, an accepted post read back
+by message ID, an unwired `notFound`, and
 invalid start input.
 
-No test runs against the real Discord API yet.
+The mock-backed real Dex suite also runs the temporary channel and member moderation examples. No test runs against the real Discord API yet.
+
+Channel API contracts: [Discord Guild resource](https://github.com/discord/discord-api-docs/blob/main/developers/resources/guild.mdx), [Discord Channel resource](https://github.com/discord/discord-api-docs/blob/main/developers/resources/channel.mdx).
 
 ## Python package
 
-The `python/` package implements all four operations with generated typed models and Step factories. Its runnable [channel announcement example](python/examples/channel_announcement/README.md) uses a static `discord-announcements` connection and a Dex Worker. Run `uv sync && uv run pytest` from `python/`. Go-recorded conformance scenarios cover provider requests, branches, retry, and the stable message nonce. Live Discord authorization and API behavior remain unverified for the Python port.
+The `python/` package implements all four operations with generated typed models and Step factories. Its runnable [channel announcement example](python/examples/channel_announcement/README.md) uses a static `discord-announcements` connection and a Dex Worker. Run `uv sync && uv run pytest` from `python/`. Go-recorded conformance scenarios cover provider requests, branches, retry, bounded resend up to `uncertain`, and the stable message nonce. Live Discord authorization and API behavior remain unverified for the Python port.

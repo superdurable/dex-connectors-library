@@ -16,5 +16,13 @@ CREATE TABLE IF NOT EXISTS refund_ledger (
   CONSTRAINT refund_ledger_amount_positive CHECK (amount_usd > 0)
 ) ENGINE = InnoDB;
 
+-- One running refund total per UTC day. Adding a refund is not idempotent: a repeat counts it twice.
+CREATE TABLE IF NOT EXISTS refund_daily_totals (
+  refund_date DATE NOT NULL PRIMARY KEY,
+  total_usd DECIMAL(14, 2) NOT NULL,
+  CONSTRAINT refund_daily_totals_total_nonnegative CHECK (total_usd >= 0)
+) ENGINE = InnoDB;
+
 -- Grant the Dex account only what the example needs, for example:
 -- GRANT SELECT, INSERT, UPDATE ON app.refund_ledger TO 'dex_app'@'%';
+-- GRANT INSERT, UPDATE ON app.refund_daily_totals TO 'dex_app'@'%';

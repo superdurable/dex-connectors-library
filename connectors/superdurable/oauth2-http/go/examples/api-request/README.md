@@ -12,6 +12,8 @@ records the answer:
 
 1. `SendRequest` sends a `GET` for the requested path with the connection's
    access token, refreshing the token first when it is about to expire;
+   when the input sets `orderBody`, `PostOrder` instead sends that body once as
+   a `POST` with `postNonIdempotent`;
 2. `recordResponse` stores a 2xx answer and completes the Flow.
 
 Application Steps store the report in the `oauth2-http-request-report`
@@ -30,7 +32,7 @@ that returns at once, because Dex Web Start Flow in dexcli v0.13.8 invokes
 
 ## Release baseline
 
-- OAuth 2.0 HTTP Connector `v0.2.0`
+- OAuth 2.0 HTTP Connector `v0.3.0`
 - dexcli `v0.13.8` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -45,12 +47,12 @@ cd oauth2-http-api-request-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/superdurable/oauth2-http/go/v0.2.0/connectors/superdurable/oauth2-http/go/examples/api-request/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/superdurable/oauth2-http/go/v0.3.0/connectors/superdurable/oauth2-http/go/examples/api-request/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/oauth2-http-api-request-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.2.0
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.3.0
 go mod tidy
 ```
 
@@ -108,7 +110,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go/examples/api-request@v0.2.0
+  github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go/examples/api-request@v0.3.0
 ```
 
 Set
@@ -132,6 +134,21 @@ Keycloak realm whose base URL is its origin, the UserInfo endpoint is:
 Open the run and follow it to **Completed**. The display shows the status code
 and body. A path that does not exist fails the Flow on the unwired `rejected` branch.
 
+To send one POST that must never be repeated, also set `orderBody`. The Flow
+then sends it with `postNonIdempotent` instead of the GET:
+
+```json
+{
+  "path": "/orders",
+  "orderBody": "{\"item\":\"gear\"}"
+}
+```
+
+The `PostOrder` Step runs with sync durability and sends at most once. An answer
+that does not prove the API refused or ignored the POST, such as a lost
+connection or a 502, fails the Flow on the unwired `uncertain` branch instead
+of sending it again.
+
 ## Verify from the repository
 
 The example tests run from the Connector directory:
@@ -145,12 +162,14 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 The integration tests use a real Dex Server and a local plain-http
 authorization server. They verify a completed request after a token refresh
 and a duplicate start with the same request ID, a 404 that fails on the unwired `rejected` branch, a
-throttled request that Dex retries after the server's `Retry-After` delay, and
-a Flow failure for an unwired `defect` branch. A mock test runs the same Flow on
-an `oauth2httpmock` connection, as an application test does.
+throttled request that Dex retries after the server's `Retry-After` delay, an
+order sent once, an order whose 502 answer fails the Flow on the unwired
+`uncertain` branch without a second POST, and a Flow failure for an unwired
+`defect` branch. A mock test runs the same Flow on an `oauth2httpmock`
+connection, as an application test does.
 
-Before `v0.2.0` is published, build a local release artifact with
+Before `v0.3.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override oauth2-http=DIRECTORY`.
-The test project must still resolve the connector `v0.1.1` module without a
+The test project must still resolve the connector `v0.2.0` module without a
 `replace`, as the compatibility gate does with a local module proxy.

@@ -98,30 +98,46 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.helpscout.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Help Scout credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Help Scout stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Help Scout stored credential does not match the connector credential fields")
     if set(material) - set(('app_id', 'app_secret', 'access_token', 'webhook_secret')):
-        raise ValueError("Help Scout stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Help Scout stored credential does not match the connector credential fields")
     is_shared = shared
     app_id = material.get("app_id")
     if app_id is not None and not (isinstance(app_id, str)):
-        raise ValueError("Help Scout credential app_id has an invalid type")
+        raise CredentialMaterialError("Help Scout credential app_id has an invalid type")
     app_secret = material.get("app_secret")
     if app_secret is not None and not (isinstance(app_secret, str)):
-        raise ValueError("Help Scout credential app_secret has an invalid type")
+        raise CredentialMaterialError("Help Scout credential app_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Help Scout credential access_token has an invalid type")
+        raise CredentialMaterialError("Help Scout credential access_token has an invalid type")
     webhook_secret = material.get("webhook_secret")
     if webhook_secret is not None and not (isinstance(webhook_secret, str)):
-        raise ValueError("Help Scout credential webhook_secret has an invalid type")
+        raise CredentialMaterialError("Help Scout credential webhook_secret has an invalid type")
     if not app_id:
-        raise ValueError("Help Scout credential app_id is required")
+        raise CredentialMaterialError("Help Scout credential app_id is required")
     if not app_secret and not is_shared:
-        raise ValueError("Help Scout credential app_secret is required")
+        raise CredentialMaterialError("Help Scout credential app_secret is required")
     if not access_token and is_shared:
-        raise ValueError("Help Scout credential access_token is required")
+        raise CredentialMaterialError("Help Scout credential access_token is required")
     return Credentials(app_id, SecretString(app_secret or ''), SecretString(access_token or ''), SecretString(webhook_secret or ''))
 
 

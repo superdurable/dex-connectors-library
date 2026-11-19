@@ -231,14 +231,16 @@ var SendGroupRobotMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendGroupRobotMessageBranchSent, Description: "WeCom accepted the message for the group chat with errcode 0."},
 		{ID: SendGroupRobotMessageBranchProviderRejected, Description: "WeCom conclusively refused the post, such as a removed or disabled robot, an invalid key, or content over the size limit; nothing was posted.", Optional: true},
-		{ID: SendGroupRobotMessageBranchUncertain, Description: "The post may have reached WeCom but its acceptance was not confirmed; check the group chat before posting again.", Optional: true},
-		{ID: SendGroupRobotMessageBranchDefect, Description: "Local input, the connection method, the webhook key, or the dispatch checkpoint is invalid; nothing was posted.", Optional: true},
+		{ID: SendGroupRobotMessageBranchUncertain, Description: "The post may have reached WeCom, but the send cap was reached, WeCom answered and the response body broke, or a later post was refused or found an invalid connection; check the group chat before posting again.", Optional: true},
+		{ID: SendGroupRobotMessageBranchDefect, Description: "Local input, the connection method, the webhook key, or the dispatch fence is invalid; nothing was posted.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendGroupRobotMessageResult = sdkgo.MutationResult[SentGroupRobotMessage]
@@ -258,6 +260,8 @@ type SendGroupRobotMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendGroupRobotMessageResult]                   `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentGroupRobotMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendGroupRobotMessageStep[IN any](config SendGroupRobotMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendGroupRobotMessageInput, SentGroupRobotMessage] {
@@ -289,6 +293,7 @@ func NewSendGroupRobotMessageStep[IN any](config SendGroupRobotMessageStepConfig
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -302,14 +307,16 @@ var SendApplicationMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendApplicationMessageBranchSent, Description: "WeCom accepted the message and returned its msgid; any recipients it could not reach are listed in the output."},
 		{ID: SendApplicationMessageBranchProviderRejected, Description: "WeCom conclusively refused the send or the access token request, such as an invalid secret or AgentId, an untrusted Worker IP, or no valid recipient; nothing was sent.", Optional: true},
-		{ID: SendApplicationMessageBranchUncertain, Description: "A retry came 3 hours 50 minutes or more after the first attempt, past the safe part of WeCom's four-hour duplicate check, and an earlier attempt may have delivered the message; check with the recipients before sending again.", Optional: true},
+		{ID: SendApplicationMessageBranchUncertain, Description: "The message may have been delivered, but the send cap was reached, WeCom answered and the response broke, a retry came 3 hours 50 minutes or more after the first attempt, past the safe part of WeCom's four-hour duplicate check, or a retry was refused or found invalid credentials; check with the recipients before sending again.", Optional: true},
 		{ID: SendApplicationMessageBranchDefect, Description: "Local input, the connection method, or the application credentials are invalid; nothing was sent.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendApplicationMessageResult = sdkgo.MutationResult[SentApplicationMessage]
@@ -329,6 +336,8 @@ type SendApplicationMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendApplicationMessageResult]                   `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentApplicationMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendApplicationMessageStep[IN any](config SendApplicationMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendApplicationMessageInput, SentApplicationMessage] {
@@ -360,5 +369,6 @@ func NewSendApplicationMessageStep[IN any](config SendApplicationMessageStepConf
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

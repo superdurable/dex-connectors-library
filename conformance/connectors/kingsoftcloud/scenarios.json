@@ -1,0 +1,552 @@
+{
+  "connector": "kingsoftcloud",
+  "scenarios": [
+    {
+      "callId": "937d632f-9a4a-5ce9-99f7-9ac6bfd08c12",
+      "exchanges": [
+        {
+          "body": "{\"ListUserResult\":{\"Users\":{\"member\":[{\"UserId\":\"user-001\",\"UserName\":\"example-user\"}]},\"IsTruncated\":true,\"Marker\":\"another-page=\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Accesskey": [
+              "test-access-key-id"
+            ],
+            "Action": [
+              "ListUsers"
+            ],
+            "Marker": [
+              "next-page="
+            ],
+            "MaxItems": [
+              "25"
+            ],
+            "Region": [
+              "cn-beijing-6"
+            ],
+            "Service": [
+              "iam"
+            ],
+            "Signature": [
+              "97b0efde8bec9ea6b6c897f0193d3cf97596e3cc3e67a2d615c5ded39fc162d9"
+            ],
+            "SignatureMethod": [
+              "HMAC-SHA256"
+            ],
+            "SignatureVersion": [
+              "1.0"
+            ],
+            "Timestamp": [
+              "2021-08-12T02:47:36Z"
+            ],
+            "Version": [
+              "2015-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": true,
+          "nextMarker": "another-page=",
+          "users": [
+            {
+              "userId": "user-001",
+              "userName": "example-user"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "next-page=",
+        "maxItems": 25
+      },
+      "name": "listUsers-listed",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "1b33fa44-eb3f-5cd9-9ab6-565effdce4c1",
+      "exchanges": [
+        {
+          "body": "{\"ListUserResult\":{\"Users\":{\"member\":[]},\"IsTruncated\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Accesskey": [
+              "test-access-key-id"
+            ],
+            "Action": [
+              "ListUsers"
+            ],
+            "MaxItems": [
+              "100"
+            ],
+            "Region": [
+              "cn-beijing-6"
+            ],
+            "Service": [
+              "iam"
+            ],
+            "Signature": [
+              "4799e2f9c98d4a4e2a72c02663d72d871624ad6a6f07425afe17b534c5568db0"
+            ],
+            "SignatureMethod": [
+              "HMAC-SHA256"
+            ],
+            "SignatureVersion": [
+              "1.0"
+            ],
+            "Timestamp": [
+              "2021-08-12T02:47:36Z"
+            ],
+            "Version": [
+              "2015-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "nextMarker": "",
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listUsers-empty",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "05159f7f-1f78-5a62-ba6a-ba5986ed4002",
+      "exchanges": [
+        {
+          "body": "{\"Error\":{\"Code\":\"AccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Accesskey": [
+              "test-access-key-id"
+            ],
+            "Action": [
+              "ListUsers"
+            ],
+            "MaxItems": [
+              "100"
+            ],
+            "Region": [
+              "cn-beijing-6"
+            ],
+            "Service": [
+              "iam"
+            ],
+            "Signature": [
+              "4799e2f9c98d4a4e2a72c02663d72d871624ad6a6f07425afe17b534c5568db0"
+            ],
+            "SignatureMethod": [
+              "HMAC-SHA256"
+            ],
+            "SignatureVersion": [
+              "1.0"
+            ],
+            "Timestamp": [
+              "2021-08-12T02:47:36Z"
+            ],
+            "Version": [
+              "2015-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "nextMarker": "",
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listUsers-providerRejected",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "94529b82-e143-5968-bcb3-df13db4ec89a",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Accesskey": [
+              "test-access-key-id"
+            ],
+            "Action": [
+              "ListUsers"
+            ],
+            "MaxItems": [
+              "100"
+            ],
+            "Region": [
+              "cn-beijing-6"
+            ],
+            "Service": [
+              "iam"
+            ],
+            "Signature": [
+              "4799e2f9c98d4a4e2a72c02663d72d871624ad6a6f07425afe17b534c5568db0"
+            ],
+            "SignatureMethod": [
+              "HMAC-SHA256"
+            ],
+            "SignatureVersion": [
+              "1.0"
+            ],
+            "Timestamp": [
+              "2021-08-12T02:47:36Z"
+            ],
+            "Version": [
+              "2015-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "nextMarker": "",
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listUsers-invalidResponse",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "12b0ec19-a008-5599-b17e-1262d8e7fa66",
+      "exchanges": [
+        {
+          "body": "{\"ListUserResult\":{\"Users\":{\"member\":[]},\"IsTruncated\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Accesskey": [
+              "test-access-key-id"
+            ],
+            "Action": [
+              "ListUsers"
+            ],
+            "MaxItems": [
+              "100"
+            ],
+            "Region": [
+              "cn-beijing-6"
+            ],
+            "Service": [
+              "iam"
+            ],
+            "Signature": [
+              "4799e2f9c98d4a4e2a72c02663d72d871624ad6a6f07425afe17b534c5568db0"
+            ],
+            "SignatureMethod": [
+              "HMAC-SHA256"
+            ],
+            "SignatureVersion": [
+              "1.0"
+            ],
+            "Timestamp": [
+              "2021-08-12T02:47:36Z"
+            ],
+            "Version": [
+              "2015-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "hasMore": false,
+          "nextMarker": "",
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listUsers-oversized",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "daad3056-403d-5be5-964e-95f8335d68f0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "nextMarker": "",
+          "users": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxItems": 101
+      },
+      "name": "listUsers-defect",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "b9b3f1be-72f2-512b-b31b-5b3875078abd",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Accesskey": [
+              "test-access-key-id"
+            ],
+            "Action": [
+              "ListUsers"
+            ],
+            "MaxItems": [
+              "100"
+            ],
+            "Region": [
+              "cn-beijing-6"
+            ],
+            "Service": [
+              "iam"
+            ],
+            "Signature": [
+              "4799e2f9c98d4a4e2a72c02663d72d871624ad6a6f07425afe17b534c5568db0"
+            ],
+            "SignatureMethod": [
+              "HMAC-SHA256"
+            ],
+            "SignatureVersion": [
+              "1.0"
+            ],
+            "Timestamp": [
+              "2021-08-12T02:47:36Z"
+            ],
+            "Version": [
+              "2015-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listUsers-rateLimited",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "4493544b-bbf7-53ec-88d1-6ca2ae1fe31e",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Accesskey": [
+              "test-access-key-id"
+            ],
+            "Action": [
+              "ListUsers"
+            ],
+            "MaxItems": [
+              "100"
+            ],
+            "Region": [
+              "cn-beijing-6"
+            ],
+            "Service": [
+              "iam"
+            ],
+            "Signature": [
+              "4799e2f9c98d4a4e2a72c02663d72d871624ad6a6f07425afe17b534c5568db0"
+            ],
+            "SignatureMethod": [
+              "HMAC-SHA256"
+            ],
+            "SignatureVersion": [
+              "1.0"
+            ],
+            "Timestamp": [
+              "2021-08-12T02:47:36Z"
+            ],
+            "Version": [
+              "2015-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listUsers-unavailable",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "29f721d7-52e8-553f-a12f-871c08767b65",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Accesskey": [
+              "test-access-key-id"
+            ],
+            "Action": [
+              "ListUsers"
+            ],
+            "MaxItems": [
+              "100"
+            ],
+            "Region": [
+              "cn-beijing-6"
+            ],
+            "Service": [
+              "iam"
+            ],
+            "Signature": [
+              "4799e2f9c98d4a4e2a72c02663d72d871624ad6a6f07425afe17b534c5568db0"
+            ],
+            "SignatureMethod": [
+              "HMAC-SHA256"
+            ],
+            "SignatureVersion": [
+              "1.0"
+            ],
+            "Timestamp": [
+              "2021-08-12T02:47:36Z"
+            ],
+            "Version": [
+              "2015-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listUsers-transportFailure",
+      "operation": "listUsers"
+    }
+  ],
+  "schemaVersion": 1
+}

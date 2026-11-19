@@ -1,6 +1,6 @@
 # Microsoft Outlook Mail connector for TypeScript
 
-Install `@superdurable/connector-microsoft-outlook-mail` with `@superdurable/dex`. This package implements `searchMessages`, `getMessage`, `sendMessage`, `replyToMessage`, `moveMessage`, and `setMessageFlags` from [the Outlook Mail manifest](../connector.yaml). It has no TypeScript Triggers. The TypeScript package starts at version 0.1.0 and pins Connector SDK 0.7.0.
+Install `@superdurable/connector-microsoft-outlook-mail` with `@superdurable/dex`. This package implements `searchMessages`, `getMessage`, `sendMessage`, `replyToMessage`, `moveMessage`, and `setMessageFlags` from [the Outlook Mail manifest](../connector.yaml). It has no TypeScript Triggers. The TypeScript package is at version 0.1.1 and pins Connector SDK 0.12.0.
 
 The generated files in `src/generated/` define the manifest contracts, authorization declarations, Step factories, and mock scenarios. The handwritten client runs Graph requests and uses those declarations through `ManifestCredentialRefreshDriver`; the project connection uses the generated credential decoders. Regenerate after manifest or Go model changes with `go run ./cmd/connectorctl generate connectors/microsoft/outlook-mail/connector.yaml` from the repository root.
 
@@ -8,7 +8,7 @@ The generated files in `src/generated/` define the manifest contracts, authoriza
 
 Create a Microsoft Outlook Mail connection in Dex Web named `outlook-mail`, matching [the example Flow](examples/read-message/flow.ts). The delegated method needs an Entra app registration with the Dex Web redirect URI and delegated `Mail.ReadWrite`, `Mail.Send`, and `offline_access` permissions. The app-only method needs one configured mailbox and an application restricted to that mailbox through Exchange Online RBAC for Applications. Follow the [connector setup guide](../README.md#connection-setup) for the field paths and authorization instructions. `newProjectConnection(project, ConnectionName)` loads the named connection at Worker startup; credentials stay in the host store and are resolved for every Step attempt.
 
-`sendMessage` and `replyToMessage` create a marked draft and record Dex heartbeats before dispatch. A retry reuses the draft. Once a send request may have left the Worker, the connector checks the draft's immutable ID for its Sent Items copy and never dispatches it again without a conclusive refusal. A still unconfirmed send selects `uncertain` after bounded checks. The two operations use synchronous Execute durability; the reads, move, and absolute flag update use asynchronous durability.
+`sendMessage` and `replyToMessage` create a marked draft and record Dex heartbeats before dispatch. A retry reuses the draft. Once a send request may have left the Worker, the next attempt reads the draft back by its immutable ID and reports `sent` when its Sent Items copy appears; a still-unsent draft is sent again while the possible sends stay below the send cap (`maxSends`, default 3). The operation selects `uncertain` only when the cap is reached and the read-back still finds the draft. A definite refusal of a first send selects `providerRejected` and is never resent. The two operations use synchronous Execute durability; the reads, move, and absolute flag update use asynchronous durability.
 
 ## Run and verify
 

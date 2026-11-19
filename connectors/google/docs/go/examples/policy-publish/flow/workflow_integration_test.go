@@ -134,7 +134,8 @@ func TestPolicyPublishCreatedThenServerErrorReadsBackWithoutResendingWithRealDex
 	requirePublishedDocument(t, provider, outcome)
 }
 
-func TestPolicyPublishLostWorkerDuringCreateIsNeverResentWithRealDex(t *testing.T) {
+// A lost Worker leaves an unconfirmed create, so the replacement looks up and resends once below the send cap.
+func TestPolicyPublishLostWorkerDuringCreateResendsOnceBelowTheSendCapWithRealDex(t *testing.T) {
 	provider := newPolicyProvider(t)
 	hold := make(chan struct{})
 	provider.HoldFirstCreate(hold)
@@ -148,11 +149,14 @@ func TestPolicyPublishLostWorkerDuringCreateIsNeverResentWithRealDex(t *testing.
 
 	result := harness.waitForFlow(t, flowID)
 	close(hold)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Equal(t, StatusPublished, outcome.Status)
+	require.False(t, outcome.IsCreationFromEarlierAttempt)
 	provider.WaitForDelayedRequests(t, 30*time.Second)
-	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived), "the attempt on the new Worker did not resend the create")
+	require.Equal(t, 2, provider.Count(fakegoogledocs.CountCreatesReceived),
+		"the lookup missed the held create, so the new Worker resent it once, a duplicate the limited tier accepts")
 }
 
 // A lost Worker after applying the fill makes the replacement read the committed text.

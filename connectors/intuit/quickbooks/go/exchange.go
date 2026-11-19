@@ -87,6 +87,10 @@ type quickbooksExchange struct {
 	failure    sdkgo.Failure
 	retryAfter time.Duration
 	metadata   map[string]string
+	// isProvablyUnsent means no request byte reached QuickBooks, such as a credential failure or a dial error.
+	isProvablyUnsent bool
+	// isErrorBodyIncomplete means a non-2xx body failed to read or exceeded its prefix, so it proves no refusal.
+	isErrorBodyIncomplete bool
 }
 
 // faultSummary holds only machine-readable tokens and a count from a QuickBooks Fault.
@@ -126,11 +130,16 @@ func classifyHTTPResponse(operation string, httpResponse *http.Response, secret 
 	}
 	if !isSuccessStatus(httpResponse.StatusCode) {
 		// An error body is truncated, not rejected; only its tokens are read.
-		body, err := io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes))
+		body, err := io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes+1))
+		isErrorBodyIncomplete := err != nil || int64(len(body)) > providerhttp.MaxErrorBodyBytes
 		if err != nil {
 			body = nil
+		} else if isErrorBodyIncomplete {
+			body = body[:providerhttp.MaxErrorBodyBytes]
 		}
-		return classifyFailedStatus(operation, response, summarizeFault(body), now)
+		result := classifyFailedStatus(operation, response, summarizeFault(body), now)
+		result.isErrorBodyIncomplete = isErrorBodyIncomplete
+		return result
 	}
 	body, err := providerhttp.ReadBoundedBody(httpResponse.Body, maxResponseBytes)
 	switch {

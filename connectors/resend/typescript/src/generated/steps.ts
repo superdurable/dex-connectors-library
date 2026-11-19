@@ -17,7 +17,7 @@ export interface SendEmailStepConfig<StepInput, OperationInput = SendEmailInput,
   sent: StepTarget<MutationResult<OperationOutput>>;
   /** The provider definitively rejected the request. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The provider returned malformed or oversized JSON. */
+  /** Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because the Idempotency-Key makes Resend replay the first send. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input or connection credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

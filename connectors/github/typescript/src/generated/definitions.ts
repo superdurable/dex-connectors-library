@@ -363,7 +363,7 @@ export const SetIssueStateBranchAuthorizationRevoked = SetIssueStateBranch.Autho
 export const SetIssueStateBranchNotFound = SetIssueStateBranch.NotFound;
 /** GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged. */
 export const SetIssueStateBranchProviderRejected = SetIssueStateBranch.ProviderRejected;
-/** GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed. */
+/** Kept for compatibility and no longer selected: an invalid or oversized issue after an accepted update now retries, because sending the same state again is safe. */
 export const SetIssueStateBranchInvalidResponse = SetIssueStateBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const SetIssueStateBranchDefect = SetIssueStateBranch.Defect;
@@ -376,7 +376,7 @@ export const SetIssueStateDefinition: MutationDefinition = {
     { id: "authorizationRevoked", description: "The OAuth grant is invalid or revoked; the issue is unchanged.", optional: true },
     { id: "notFound", description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", optional: true },
     { id: "providerRejected", description: "GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged.", optional: true },
-    { id: "invalidResponse", description: "GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized issue after an accepted update now retries, because sending the same state again is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
@@ -405,7 +405,7 @@ export const ReplaceIssueLabelsBranchAuthorizationRevoked = ReplaceIssueLabelsBr
 export const ReplaceIssueLabelsBranchNotFound = ReplaceIssueLabelsBranch.NotFound;
 /** GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged. */
 export const ReplaceIssueLabelsBranchProviderRejected = ReplaceIssueLabelsBranch.ProviderRejected;
-/** GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed. */
+/** Kept for compatibility and no longer selected: an invalid or oversized label list after an accepted replacement now retries, because sending the same set again is safe. */
 export const ReplaceIssueLabelsBranchInvalidResponse = ReplaceIssueLabelsBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const ReplaceIssueLabelsBranchDefect = ReplaceIssueLabelsBranch.Defect;
@@ -418,7 +418,7 @@ export const ReplaceIssueLabelsDefinition: MutationDefinition = {
     { id: "authorizationRevoked", description: "The OAuth grant is invalid or revoked; the labels are unchanged.", optional: true },
     { id: "notFound", description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", optional: true },
     { id: "providerRejected", description: "GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged.", optional: true },
-    { id: "invalidResponse", description: "GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized label list after an accepted replacement now retries, because sending the same set again is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },

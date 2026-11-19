@@ -51,108 +51,127 @@ export interface Credentials {
   refreshToken?: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the selected authorization method. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "access_token", "instance_url", "jwt_login_environment", "jwt_private_key", "jwt_username", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["instance_url"] != null && !(typeof fields["instance_url"] === 'string')) throw new TypeError("credential instance_url has an invalid type");
-  if (fields["jwt_login_environment"] != null && !(typeof fields["jwt_login_environment"] === 'string')) throw new TypeError("credential jwt_login_environment has an invalid type");
-  if (fields["jwt_private_key"] != null && !(typeof fields["jwt_private_key"] === 'string')) throw new TypeError("credential jwt_private_key has an invalid type");
-  if (fields["jwt_username"] != null && !(typeof fields["jwt_username"] === 'string')) throw new TypeError("credential jwt_username has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["instance_url"] != null && !(typeof fields["instance_url"] === 'string')) throw new CredentialMaterialError("credential instance_url has an invalid type");
+  if (fields["jwt_login_environment"] != null && !(typeof fields["jwt_login_environment"] === 'string')) throw new CredentialMaterialError("credential jwt_login_environment has an invalid type");
+  if (fields["jwt_private_key"] != null && !(typeof fields["jwt_private_key"] === 'string')) throw new CredentialMaterialError("credential jwt_private_key has an invalid type");
+  if (fields["jwt_username"] != null && !(typeof fields["jwt_username"] === 'string')) throw new CredentialMaterialError("credential jwt_username has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new CredentialMaterialError("credential refresh_token has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "salesforce-oauth";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "salesforce-oauth") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
-    if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+    if (!fields["oauth_client_secret"]) throw new CredentialMaterialError("credential oauth_client_secret is required");
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (!fields["refresh_token"]) throw new TypeError("credential refresh_token is required");
+    if (!fields["refresh_token"]) throw new CredentialMaterialError("credential refresh_token is required");
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
     credentials.instanceUrl = (fields["instance_url"] ?? '') as string;
   } else if (method === "salesforce-sandbox-oauth") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
-    if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+    if (!fields["oauth_client_secret"]) throw new CredentialMaterialError("credential oauth_client_secret is required");
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (!fields["refresh_token"]) throw new TypeError("credential refresh_token is required");
+    if (!fields["refresh_token"]) throw new CredentialMaterialError("credential refresh_token is required");
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
     credentials.instanceUrl = (fields["instance_url"] ?? '') as string;
   } else if (method === "salesforce-jwt-bearer") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
-    if (!fields["jwt_username"]) throw new TypeError("credential jwt_username is required");
+    if (!fields["jwt_username"]) throw new CredentialMaterialError("credential jwt_username is required");
     if (fields["jwt_username"]) credentials.jwtUsername = fields["jwt_username"] as string;
-    if (!fields["jwt_private_key"]) throw new TypeError("credential jwt_private_key is required");
+    if (!fields["jwt_private_key"]) throw new CredentialMaterialError("credential jwt_private_key is required");
     if (fields["jwt_private_key"]) credentials.jwtPrivateKey = new SecretString(fields["jwt_private_key"] as string);
-    if (fields["jwt_login_environment"] && !["production","sandbox"].includes(fields["jwt_login_environment"] as string)) throw new TypeError("credential jwt_login_environment is invalid");
+    if (fields["jwt_login_environment"] && !["production","sandbox"].includes(fields["jwt_login_environment"] as string)) throw new CredentialMaterialError("credential jwt_login_environment is invalid");
     credentials.jwtLoginEnvironment = (fields["jwt_login_environment"] ?? '') as string;
     credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
     credentials.instanceUrl = (fields["instance_url"] ?? '') as string;
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }
 
 /** Decode shared credential fields for the selected authorization method. */
 export function decodeSharedCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "access_token", "instance_url", "jwt_login_environment", "jwt_private_key", "jwt_username", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
-  if (fields["instance_url"] != null && !(typeof fields["instance_url"] === 'string')) throw new TypeError("credential instance_url has an invalid type");
-  if (fields["jwt_login_environment"] != null && !(typeof fields["jwt_login_environment"] === 'string')) throw new TypeError("credential jwt_login_environment has an invalid type");
-  if (fields["jwt_private_key"] != null && !(typeof fields["jwt_private_key"] === 'string')) throw new TypeError("credential jwt_private_key has an invalid type");
-  if (fields["jwt_username"] != null && !(typeof fields["jwt_username"] === 'string')) throw new TypeError("credential jwt_username has an invalid type");
-  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
-  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
-  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
+  if (fields["instance_url"] != null && !(typeof fields["instance_url"] === 'string')) throw new CredentialMaterialError("credential instance_url has an invalid type");
+  if (fields["jwt_login_environment"] != null && !(typeof fields["jwt_login_environment"] === 'string')) throw new CredentialMaterialError("credential jwt_login_environment has an invalid type");
+  if (fields["jwt_private_key"] != null && !(typeof fields["jwt_private_key"] === 'string')) throw new CredentialMaterialError("credential jwt_private_key has an invalid type");
+  if (fields["jwt_username"] != null && !(typeof fields["jwt_username"] === 'string')) throw new CredentialMaterialError("credential jwt_username has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new CredentialMaterialError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new CredentialMaterialError("credential oauth_client_secret has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new CredentialMaterialError("credential refresh_token has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "salesforce-oauth";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "salesforce-oauth") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
     credentials.instanceUrl = (fields["instance_url"] ?? '') as string;
   } else if (method === "salesforce-sandbox-oauth") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
     credentials.instanceUrl = (fields["instance_url"] ?? '') as string;
   } else if (method === "salesforce-jwt-bearer") {
-    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (!fields["oauth_client_id"]) throw new CredentialMaterialError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
-    if (!fields["jwt_username"]) throw new TypeError("credential jwt_username is required");
+    if (!fields["jwt_username"]) throw new CredentialMaterialError("credential jwt_username is required");
     if (fields["jwt_username"]) credentials.jwtUsername = fields["jwt_username"] as string;
     if (fields["jwt_private_key"]) credentials.jwtPrivateKey = new SecretString(fields["jwt_private_key"] as string);
-    if (fields["jwt_login_environment"] && !["production","sandbox"].includes(fields["jwt_login_environment"] as string)) throw new TypeError("credential jwt_login_environment is invalid");
+    if (fields["jwt_login_environment"] && !["production","sandbox"].includes(fields["jwt_login_environment"] as string)) throw new CredentialMaterialError("credential jwt_login_environment is invalid");
     credentials.jwtLoginEnvironment = (fields["jwt_login_environment"] ?? '') as string;
-    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
     credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
     credentials.instanceUrl = (fields["instance_url"] ?? '') as string;
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }

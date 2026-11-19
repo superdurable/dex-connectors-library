@@ -4,8 +4,9 @@
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { XeroClient, encodeGoQuery, escapeGoPath } from '../src/client.js';
-import type { Credentials } from '../src/generated/models.js';
+import { CredentialMaterialError, type Credentials } from '../src/generated/models.js';
 
 const connection = { provider: 'xero', name: 'xero-test' };
 const token = 'xero-test-access-token-0123456789';
@@ -52,7 +53,14 @@ it('separates terminal, transient, and broken credential sources', async () => {
   for (const [error, outcome] of [
     [new ReauthorizationRequiredError(), 'providerRejected'],
     [new RetryError({ kind: 'AVAILABILITY', provider: 'xero', operation: 'refreshCredentials', message: 'temporarily unavailable' }), 'retry'],
-    [new Error('missing connection'), 'defect'],
+    [new Error('connection is not configured'), 'retry'],
+    [new CredentialBrokerUnavailableError(), 'retry'],
+    [new ObjectNotFoundError(), 'defect'],
+    [new ConnectionNotSelectedError(), 'defect'],
+    [new CredentialBrokerRejectedError(), 'defect'],
+    [new TypeError('fetch failed'), 'retry'],
+    [new CredentialMaterialError('credential access_token is required'), 'defect'],
+    [new TypeError('project credential decoding failed'), 'defect'],
   ] as const) {
     const credentials = { resolveWithRefresh: async () => { throw error; }, resolve: async () => { throw error; } };
     const client = new XeroClient({}, credentials, { send: async () => { throw new Error('provider must not be called'); } });
@@ -75,4 +83,41 @@ it('accepts Go email forms and rejects malformed domain literals before dispatch
     expect(attempt.kind === 'branch' ? attempt.branch : 'retry').toBe('defect');
   }
   expect(requests).toHaveLength(addresses.length);
+});
+
+it('retries a write status that does not prove a refusal under the same Idempotency-Key', async () => {
+  const paymentCall = { ...call, idempotencyKey: '801feb97-5ad4-5063-b93c-9a25f054e79b' } as Call;
+  for (const [status, outcome] of [[409, 'retry'], [501, 'retry'], [307, 'retry'], [400, 'providerRejected'], [422, 'providerRejected']] as const) {
+    const client = new XeroClient({}, staticCredentials('custom-connection'), { send: async () => response(status, Buffer.from('{}')) });
+    const attempt = await client.recordPayment().invoke(paymentCall, { invoiceId: invoiceID, accountCode: '090', date: '2026-10-01', amount: '109.89' });
+    expect(attempt.kind === 'branch' ? attempt.branch : attempt.kind, `HTTP ${status}`).toBe(outcome);
+  }
+});
+
+it('selects uncertain for a credential or local failure on a later write attempt', async () => {
+  const laterCall = { ...call, idempotencyKey: '801feb97-5ad4-5063-b93c-9a25f054e79b', context: { ...call.context, attempt: 2 } } as Call;
+  const paymentInput = { invoiceId: invoiceID, accountCode: '090', date: '2026-10-01', amount: '109.89' };
+  for (const [status, outcome] of [[401, 'uncertain'], [403, 'uncertain'], [400, 'providerRejected']] as const) {
+    const client = new XeroClient({}, staticCredentials('custom-connection'), { send: async () => response(status, Buffer.from('{}')) });
+    const attempt = await client.recordPayment().invoke(laterCall, paymentInput);
+    expect(attempt.kind === 'branch' ? attempt.branch : attempt.kind, `HTTP ${status}`).toBe(outcome);
+  }
+  const unconfigured = new XeroClient({}, new StaticCredentialProvider<Credentials>([]), { send: async () => { throw new Error('unexpected send'); } });
+  expect((await unconfigured.recordPayment().invoke(laterCall, paymentInput)).kind, 'an unconfigured connection is transient').toBe('retry');
+  const notSelected = { resolveWithRefresh: async () => { throw new ConnectionNotSelectedError(); }, resolve: async () => { throw new ConnectionNotSelectedError(); } };
+  const terminal = new XeroClient({}, notSelected, { send: async () => { throw new Error('unexpected send'); } });
+  expect((await terminal.recordPayment().invoke(laterCall, paymentInput)).kind).toBe('uncertain');
+});
+
+it('retries a transient credential failure on every write attempt', async () => {
+  const paymentInput = { invoiceId: invoiceID, accountCode: '090', date: '2026-10-01', amount: '109.89' };
+  for (const error of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new RangeError('unlisted')]) {
+    const credentials = { resolveWithRefresh: async () => { throw error; }, resolve: async () => { throw error; } };
+    const client = new XeroClient({}, credentials, { send: async () => { throw new Error('provider must not be called'); } });
+    for (const attemptNumber of [1, 2]) {
+      const writeCall = { ...call, idempotencyKey: '801feb97-5ad4-5063-b93c-9a25f054e79b', context: { ...call.context, attempt: attemptNumber } } as Call;
+      const attempt = await client.recordPayment().invoke(writeCall, paymentInput);
+      expect(attempt.kind, `attempt ${attemptNumber}`).toBe('retry');
+    }
+  }
 });

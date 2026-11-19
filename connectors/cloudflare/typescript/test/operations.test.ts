@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { CloudflareClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const call = {
   id: 'test-call', connection: { provider: 'cloudflare', name: 'cloudflare' },
@@ -16,6 +18,32 @@ function client(send: (request: ProviderRequest) => Promise<{ status: number; he
     resolve: async () => ({ apiToken: new SecretString('test-apitoken') }),
   }, { send });
 }
+
+it.each([
+  ['reauthorization required', new ReauthorizationRequiredError(), true],
+  ['connection object not found', new ObjectNotFoundError(), true],
+  ['connection not selected', new ConnectionNotSelectedError(), true],
+  ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+  ['malformed credential material', new CredentialMaterialError('credential api_token is required'), true],
+  ['SDK provider decoding failure', new TypeError('project credential decoding failed'), true],
+  ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+  ['static connection not configured', new Error('connection is not configured'), false],
+  ['unlisted error', new TypeError('unlisted'), false],
+])('classifies a %s credential failure without sending', async (_name, credentialFailure, isTerminal) => {
+  let requests = 0;
+  const failing = new CloudflareClient({ baseUrl: 'http://127.0.0.1:21201' }, { resolve: async () => { throw credentialFailure; } }, {
+    send: async () => { requests++; throw new Error('unexpected request'); },
+  });
+  const expected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+  expect(await failing.purgeCacheByURLs().invoke(call, { zoneId: 'zone-meridian', urls: ['https://meridian.example/index.html'] })).toMatchObject(expected);
+  expect(await failing.listZones().invoke(call, {})).toMatchObject(expected);
+  expect(requests).toBe(0);
+});
+
+it.each([[405, '{}'], [425, '{}'], [200, 'not json']])('retries a purge answered with HTTP %i body %s', async (status, body) => {
+  const operation = client(async () => ({ status, headers: {}, body: Buffer.from(body) })).purgeCacheByURLs();
+  expect(await operation.invoke(call, { zoneId: 'zone-meridian', urls: ['https://meridian.example/index.html'] })).toMatchObject({ kind: 'retry' });
+});
 
 it('rejects malformed purge inputs before a provider request', async () => {
   let requests = 0;

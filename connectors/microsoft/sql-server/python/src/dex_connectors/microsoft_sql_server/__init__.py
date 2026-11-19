@@ -5,8 +5,8 @@
 from .client import Client, Config, Credentials
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
 from .models import Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution
-from .operations import ExecuteStatementOperation, QueryRowsOperation
-from .steps import new_execute_step, new_query_step
+from .operations import ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation
+from .steps import new_execute_non_idempotent_step, new_execute_step, new_query_step
 
 __all__ = [
     "Client",
@@ -20,9 +20,11 @@ __all__ = [
     "StatementExecution",
     "QueryRowsOperation",
     "ExecuteStatementOperation",
+    "ExecuteStatementNonIdempotentOperation",
     "new_connection",
     "new_connection_with_operations",
     "new_project_connection",
     "new_query_step",
     "new_execute_step",
+    "new_execute_non_idempotent_step",
 ]

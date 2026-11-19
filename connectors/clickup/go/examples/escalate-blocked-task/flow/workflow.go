@@ -250,7 +250,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(chooseExistingEscalation{}),
 		dex.DefineStep(clickup.NewCreateTaskStep(clickup.CreateTaskStepConfig[EscalationRequest]{
 			StepType: createEscalationTaskStepType, ConnectionName: ConnectionName,
-			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Create the escalation task after a checkpoint, so a retry reads the List back instead of resending."},
+			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Create the escalation task; a retry reads the List back first and resends only within the send cap."},
 			Connection:  flow.connection, MapToOperationInput: flow.mapToCreateTaskInput,
 			Created: sdkgo.GoTo(recordEscalationTask{}),
 		})),
@@ -271,7 +271,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(prepareEscalationComment{}),
 		dex.DefineStep(clickup.NewAddCommentStep(clickup.AddCommentStepConfig[EscalationComment]{
 			StepType: commentOnBlockedTaskStepType, ConnectionName: ConnectionName,
-			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Comment on the blocked task with the escalation task's link after a checkpoint, so a retry reads the comments back instead of resending."},
+			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Comment on the blocked task with the escalation task's link; a retry reads the comments back first and resends only within the send cap."},
 			Connection:  flow.connection, MapToOperationInput: MapToAddCommentInput,
 			Added: sdkgo.GoTo(completeEscalated{}),
 		})),

@@ -74,8 +74,11 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
+          "attempt": 1,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "output": {
           "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
@@ -185,8 +188,11 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
+          "attempt": 1,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
         },
         "output": {
           "envelopeId": "",
@@ -295,7 +301,11 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
         },
         "requestCount": 2,
         "retry": true,
@@ -393,7 +403,7 @@
               "application/json"
             ]
           },
-          "status": 503
+          "status": 500
         },
         {
           "body": "{\"envelopes\":[]}",
@@ -424,20 +434,19 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
+          "attempt": 1,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
-        },
-        "output": {
-          "envelopeId": "",
-          "status": ""
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "fixedClock": "2026-10-04T12:00:00Z",
       "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
@@ -535,7 +544,11 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
         },
         "requestCount": 1,
         "retry": true,
@@ -1547,13 +1560,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "envelopeId": ""
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1563,7 +1573,7 @@
         "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
         "voidedReason": "Signing deadline passed"
       },
-      "name": "void invalid response",
+      "name": "void unreadable read-back retries",
       "operation": "voidEnvelope"
     },
     {
@@ -2623,6 +2633,13 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2676,6 +2693,13 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 3600000,
@@ -3092,8 +3116,11 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
+          "attempt": 1,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": true,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "output": {
           "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
@@ -4988,13 +5015,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "envelopeId": ""
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5004,7 +5028,7 @@
         "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
         "voidedReason": "Signing deadline passed"
       },
-      "name": "void-envelope-invalid-response",
+      "name": "void-envelope-unreadable-readback-retries",
       "operation": "voidEnvelope"
     },
     {
@@ -6002,8 +6026,11 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
+          "attempt": 1,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "output": {
           "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
@@ -6113,8 +6140,11 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
+          "attempt": 1,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "output": {
           "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
@@ -6223,8 +6253,11 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
+          "attempt": 1,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
         },
         "output": {
           "envelopeId": "",
@@ -6371,7 +6404,11 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
         },
         "requestCount": 1,
         "retry": true,
@@ -6424,6 +6461,13 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -6527,7 +6571,11 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
         },
         "requestCount": 2,
         "retry": true,
@@ -6599,6 +6647,13 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 2,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 3600000,
@@ -6630,6 +6685,13 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 1,
+            "dispatchedAt": "2026-10-04T12:00:00Z",
+            "isAccepted": false,
+            "isDispatched": false,
+            "sendCount": 0
+          },
           "retryAfterMs": 3600000
         }
       ],
@@ -6676,6 +6738,13 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 2,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -6707,6 +6776,13 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "dispatchedAt": "2026-10-04T12:00:00Z",
+            "isAccepted": false,
+            "isDispatched": false,
+            "sendCount": 0
+          },
           "retryAfterMs": 0
         }
       ],
@@ -6714,6 +6790,7 @@
       "operation": "createEnvelopeFromTemplate"
     },
     {
+      "attempts": 3,
       "callId": "b94bb700-bf57-57fc-afbe-e60647490d32",
       "exchanges": [
         {
@@ -6779,7 +6856,7 @@
               "application/json"
             ]
           },
-          "status": 503
+          "status": 500
         },
         {
           "body": "{\"envelopes\":[]}",
@@ -6807,58 +6884,24 @@
             ]
           },
           "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "uncertain",
-        "failureKind": "AVAILABILITY",
-        "heartbeat": {
-          "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
         },
-        "output": {
-          "envelopeId": "",
-          "status": ""
-        },
-        "requestCount": 3,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": true
-      },
-      "fixedClock": "2026-10-04T12:00:00Z",
-      "idempotencyKey": "b94bb700-bf57-57fc-afbe-e60647490d32",
-      "input": {
-        "customFields": [
-          {
-            "name": "requestId",
-            "value": "REQ-1"
-          }
-        ],
-        "emailBlurb": "Please sign.",
-        "emailSubject": "Meridian MSA",
-        "isDraft": false,
-        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
-        "templateRoles": [
-          {
-            "email": "priya@example.com",
-            "name": "Priya Raman",
-            "roleName": "Customer",
-            "routingOrder": 1
-          }
-        ]
-      },
-      "name": "create-uncertain",
-      "operation": "createEnvelopeFromTemplate"
-    },
-    {
-      "callId": "dc08aa80-5c9d-562f-a541-d6925ae6fb44",
-      "exchanges": [
         {
-          "body": "{\"accounts\":[{\"account_id\":\"a4ec37d6-1111-2222-3333-143885c220e1\",\"is_default\":true,\"base_uri\":\"https://na3.docusign.net\"}]}",
+          "body": "{\"envelopes\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/oauth/userinfo",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=b94bb700-bf57-57fc-afbe-e60647490d32"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -6882,7 +6925,7 @@
                   "name": "dexIdempotencyKey",
                   "required": "false",
                   "show": "false",
-                  "value": "dc08aa80-5c9d-562f-a541-d6925ae6fb44"
+                  "value": "b94bb700-bf57-57fc-afbe-e60647490d32"
                 },
                 {
                   "name": "requestId",
@@ -6916,17 +6959,286 @@
               "application/json"
             ]
           },
-          "status": 503
+          "status": 500
         },
         {
-          "body": "{\"envelopes\":[{\"envelopeId\":\"93be49ab-1111-2222-3333-f752070d71ec\",\"status\":\"sent\",\"statusChangedDateTime\":\"2026-10-04T11:00:00Z\",\"customFields\":{\"textCustomFields\":[{\"name\":\"dexIdempotencyKey\",\"value\":\"dc08aa80-5c9d-562f-a541-d6925ae6fb44\"}]}}]}",
+          "body": "{\"envelopes\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
           "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
           "query": {
             "custom_field": [
-              "dexIdempotencyKey=dc08aa80-5c9d-562f-a541-d6925ae6fb44"
+              "dexIdempotencyKey=b94bb700-bf57-57fc-afbe-e60647490d32"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=b94bb700-bf57-57fc-afbe-e60647490d32"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":\"SERVER_ERROR\",\"message\":\"inert provider message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "b94bb700-bf57-57fc-afbe-e60647490d32"
+                },
+                {
+                  "name": "requestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "REQ-1"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign.",
+            "emailSubject": "Meridian MSA",
+            "status": "sent",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=b94bb700-bf57-57fc-afbe-e60647490d32"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 3
+        },
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 9,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-04T12:00:00Z",
+      "idempotencyKey": "b94bb700-bf57-57fc-afbe-e60647490d32",
+      "input": {
+        "customFields": [
+          {
+            "name": "requestId",
+            "value": "REQ-1"
+          }
+        ],
+        "emailBlurb": "Please sign.",
+        "emailSubject": "Meridian MSA",
+        "isDraft": false,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "dispatchedAt": "2026-10-04T12:00:00Z",
+            "isAccepted": false,
+            "isDispatched": true,
+            "sendCount": 1
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 6,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "dispatchedAt": "2026-10-04T12:00:00Z",
+            "isAccepted": false,
+            "isDispatched": true,
+            "sendCount": 2
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "create-uncertain",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "d20d77ab-3cfa-53fd-8f65-8930296241b8",
+      "exchanges": [
+        {
+          "body": "{\"accounts\":[{\"account_id\":\"a4ec37d6-1111-2222-3333-143885c220e1\",\"is_default\":true,\"base_uri\":\"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":\"SERVER_ERROR\",\"message\":\"inert provider message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "d20d77ab-3cfa-53fd-8f65-8930296241b8"
+                },
+                {
+                  "name": "requestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "REQ-1"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign.",
+            "emailSubject": "Meridian MSA",
+            "status": "sent",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"envelopes\":[{\"envelopeId\":\"93be49ab-1111-2222-3333-f752070d71ec\",\"status\":\"sent\",\"statusChangedDateTime\":\"2026-10-04T11:00:00Z\",\"customFields\":{\"textCustomFields\":[{\"name\":\"dexIdempotencyKey\",\"value\":\"d20d77ab-3cfa-53fd-8f65-8930296241b8\"}]}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=d20d77ab-3cfa-53fd-8f65-8930296241b8"
             ],
             "from_date": [
               "2026-10-04T11:00:00Z"
@@ -6950,8 +7262,11 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
+          "attempt": 1,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "output": {
           "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
@@ -6965,7 +7280,7 @@
         "uncertain": false
       },
       "fixedClock": "2026-10-04T12:00:00Z",
-      "idempotencyKey": "dc08aa80-5c9d-562f-a541-d6925ae6fb44",
+      "idempotencyKey": "d20d77ab-3cfa-53fd-8f65-8930296241b8",
       "input": {
         "customFields": [
           {
@@ -6986,7 +7301,7 @@
           }
         ]
       },
-      "name": "create-recovered-after-503",
+      "name": "create-recovered-after-500",
       "operation": "createEnvelopeFromTemplate"
     },
     {
@@ -7161,8 +7476,11 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
+          "attempt": 3,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "requestCount": 3,
         "retry": true,
@@ -7196,8 +7514,11 @@
           "exchangeCount": 2,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
+            "attempt": 2,
             "dispatchedAt": "2026-10-04T12:00:00Z",
-            "isDispatched": true
+            "isAccepted": false,
+            "isDispatched": true,
+            "sendCount": 1
           },
           "retryAfterMs": 0
         }
@@ -7291,8 +7612,11 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
+          "attempt": 3,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "requestCount": 3,
         "retry": true,
@@ -7326,8 +7650,11 @@
           "exchangeCount": 2,
           "failureKind": "RATE_LIMIT",
           "heartbeat": {
+            "attempt": 2,
             "dispatchedAt": "2026-10-04T12:00:00Z",
-            "isDispatched": true
+            "isAccepted": false,
+            "isDispatched": true,
+            "sendCount": 1
           },
           "retryAfterMs": 30000
         }
@@ -7391,8 +7718,11 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
+          "attempt": 2,
           "dispatchedAt": "2026-10-04T12:00:00Z",
-          "isDispatched": true
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         },
         "requestCount": 1,
         "retry": true,
@@ -7428,6 +7758,486 @@
         "value": {
           "dispatchedAt": "2026-10-04T12:00:00Z",
           "isDispatched": true
+        }
+      }
+    },
+    {
+      "callId": "7a2179b2-54e5-517e-96d8-1f7f4b25bae1",
+      "exchanges": [
+        {
+          "body": "{\"accounts\":[{\"account_id\":\"a4ec37d6-1111-2222-3333-143885c220e1\",\"is_default\":true,\"base_uri\":\"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":\"SERVICE_UNAVAILABLE\",\"message\":\"inert provider message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "7a2179b2-54e5-517e-96d8-1f7f4b25bae1"
+                },
+                {
+                  "name": "requestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "REQ-1"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign.",
+            "emailSubject": "Meridian MSA",
+            "status": "sent",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": false,
+          "isDispatched": false,
+          "sendCount": 0
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-04T12:00:00Z",
+      "idempotencyKey": "7a2179b2-54e5-517e-96d8-1f7f4b25bae1",
+      "input": {
+        "customFields": [
+          {
+            "name": "requestId",
+            "value": "REQ-1"
+          }
+        ],
+        "emailBlurb": "Please sign.",
+        "emailSubject": "Meridian MSA",
+        "isDraft": false,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create-503-retries-without-counting-a-send",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "attempts": 3,
+      "callId": "178656d5-db63-5662-ab82-5e2788486b5f",
+      "exchanges": [
+        {
+          "body": "{\"accounts\":[{\"account_id\":\"a4ec37d6-1111-2222-3333-143885c220e1\",\"is_default\":true,\"base_uri\":\"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopeId\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "178656d5-db63-5662-ab82-5e2788486b5f"
+                },
+                {
+                  "name": "requestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "REQ-1"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign.",
+            "emailSubject": "Meridian MSA",
+            "status": "sent",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=178656d5-db63-5662-ab82-5e2788486b5f"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=178656d5-db63-5662-ab82-5e2788486b5f"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=178656d5-db63-5662-ab82-5e2788486b5f"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "dispatchedAt": "2026-10-04T12:00:00Z",
+          "isAccepted": true,
+          "isDispatched": true,
+          "sendCount": 1
+        },
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-04T12:00:00Z",
+      "idempotencyKey": "178656d5-db63-5662-ab82-5e2788486b5f",
+      "input": {
+        "customFields": [
+          {
+            "name": "requestId",
+            "value": "REQ-1"
+          }
+        ],
+        "emailBlurb": "Please sign.",
+        "emailSubject": "Meridian MSA",
+        "isDraft": false,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "PROTOCOL",
+          "heartbeat": {
+            "attempt": 1,
+            "dispatchedAt": "2026-10-04T12:00:00Z",
+            "isAccepted": true,
+            "isDispatched": true,
+            "sendCount": 1
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 4,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "dispatchedAt": "2026-10-04T12:00:00Z",
+            "isAccepted": true,
+            "isDispatched": true,
+            "sendCount": 1
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "create-accepted-unreadable-reads-back-without-resending",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "e3959bc1-2f6b-5211-b402-74dc115eb1f5",
+      "exchanges": [
+        {
+          "body": "{\"accounts\":[{\"account_id\":\"a4ec37d6-1111-2222-3333-143885c220e1\",\"is_default\":true,\"base_uri\":\"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=e3959bc1-2f6b-5211-b402-74dc115eb1f5"
+            ],
+            "from_date": [
+              "2026-10-04T10:59:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":\"TEMPLATE_ID_INVALID\",\"message\":\"inert provider message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "e3959bc1-2f6b-5211-b402-74dc115eb1f5"
+                },
+                {
+                  "name": "requestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "REQ-1"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign.",
+            "emailSubject": "Meridian MSA",
+            "status": "sent",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 2,
+          "dispatchedAt": "2026-10-04T11:59:00Z",
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 2
+        },
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-04T12:00:00Z",
+      "idempotencyKey": "e3959bc1-2f6b-5211-b402-74dc115eb1f5",
+      "input": {
+        "customFields": [
+          {
+            "name": "requestId",
+            "value": "REQ-1"
+          }
+        ],
+        "emailBlurb": "Please sign.",
+        "emailSubject": "Meridian MSA",
+        "isDraft": false,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create-refusal-after-a-counted-send-is-uncertain",
+      "operation": "createEnvelopeFromTemplate",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "dispatchedAt": "2026-10-04T11:59:00Z",
+          "isAccepted": false,
+          "isDispatched": true,
+          "sendCount": 1
         }
       }
     }

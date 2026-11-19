@@ -155,16 +155,16 @@ func TestLostSendAnswerIsConfirmedFromSentItemsAndNeverResentWithRealDex(t *test
 	require.NotNil(t, outcome.ArchivedTo, "a confirmed reply continues to mark and archive the message")
 }
 
-func TestUnconfirmedSendFailsAndIsNeverResentWithRealDex(t *testing.T) {
+func TestUnconfirmedSendIsResentUntilTheSendCapThenFailsWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t, "")
 	latest := seedCustomerThread(harness)
-	harness.graph.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointSendDraft, ShouldDropConnection: true})
+	harness.graph.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointSendDraft, Count: 3, ShouldDropConnection: true})
 
 	result := harness.waitForFlow(t, harness.startReply(t, "unconfirmed", integrationInput()))
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "outlook-mail replyToMessage (connection outlook-support-mailbox) selected branch uncertain with no target:")
-	require.Contains(t, result.ErrorMessage, "the send was dispatched but its answer was lost")
-	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointSendDraft), "an unconfirmed send is never dispatched again")
+	require.Contains(t, result.ErrorMessage, "the send cap of 3 is reached")
+	require.Equal(t, 3, harness.graph.RequestCount(graphtest.EndpointSendDraft), "each unconfirmed send is read back before the next, up to the cap")
 	require.Empty(t, harness.graph.Deliveries())
 	require.Len(t, harness.graph.MessagesInFolder("drafts"), 1)
 	message, _ := harness.graph.Message(latest)

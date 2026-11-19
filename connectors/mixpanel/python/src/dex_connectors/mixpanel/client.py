@@ -31,6 +31,11 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -134,7 +139,11 @@ class Client:
         LOCAL_DEFECT means defect, and any other Failure means invalidResponse."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                # A passing credential outage sent nothing, so the attempt retries.
+                message = "Mixpanel credentials are temporarily unavailable"
+                return (_failure(operation, FailureKind.AVAILABILITY, message), 0.0)
             credentials = None
         username = "" if credentials is None else credentials.service_account_username.reveal()
         secret = "" if credentials is None else credentials.service_account_secret.reveal()
@@ -245,17 +254,27 @@ class TrackEventOperation:
         if isinstance(reply, tuple):
             return MutationAttempt.retry(reply[0], reply[1])
         if isinstance(reply, Failure):
-            branch = DEFECT if _is_local_failure(reply) else INVALID_RESPONSE
-            return MutationAttempt.branch_result(branch, EventImportResult(), Receipt(), reply)
+            if _is_local_failure(reply):
+                return MutationAttempt.branch_result(DEFECT, EventImportResult(), Receipt(), reply)
+            # The $insert_id deduplicates a resend, so an oversized confirmation retries.
+            return MutationAttempt.retry(reply)
         if reply.status != 200:
+            if reply.status not in _DEFINITE_REFUSAL_STATUSES:
+                return MutationAttempt.retry(
+                    _failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        f"Mixpanel answered event import with HTTP {reply.status}, so its outcome is unknown",
+                    )
+                )
             return _mutation_branch(
                 PROVIDER_REJECTED,
                 _rejection_kind(reply.status),
                 f"Mixpanel rejected event import with HTTP {reply.status}",
             )
         if not _is_import_confirmation(reply.body):
-            return _mutation_branch(
-                INVALID_RESPONSE, FailureKind.PROTOCOL, "Mixpanel returned an invalid import confirmation"
+            return MutationAttempt.retry(
+                _failure(operation, FailureKind.PROTOCOL, "Mixpanel returned an unusable import confirmation")
             )
         return MutationAttempt.branch_result(IMPORTED, EventImportResult(True), Receipt())
 
@@ -358,6 +377,25 @@ def _decode_exported_event(document: Any) -> ExportedEvent:
     if not isinstance(distinct_id, str) or not isinstance(insert_id, str) or type(time) is not int:
         raise ValueError
     return ExportedEvent(event, distinct_id, time, insert_id)
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure no later attempt clears; every other resolve error is transient."""
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _is_local_failure(failure: Failure) -> bool:

@@ -6,5 +6,5 @@ export * from './generated/definitions.js';
 export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { SQLServerClient, classifyDriverError } from './client.js';
-export { QueryRowsOperation, ExecuteStatementOperation } from './operations.js';
+export { QueryRowsOperation, ExecuteStatementOperation, ExecuteStatementNonIdempotentOperation } from './operations.js';
 export { newProjectConnection } from './project.js';

@@ -9,29 +9,36 @@ from Dex Web **Start Flow**:
 3. `InsertRefund` uses `execute` to run an `INSERT ... OUTPUT ... SELECT ... WHERE NOT EXISTS` whose
    existence check holds `UPDLOCK, HOLDLOCK`. The connector binds the Step execution's idempotency
    key as `@p4`, `MaxRowsAffected` is one, and `ReturnsOutputRows` returns the inserted row. The
-   Result is also kept in the `sql-server-refund-insert-result` Attribute.
-4. Both `completed` and `uncertain` go to `CompleteRefundRecording`, which completes with
-   `recorded` and the `OUTPUT` row. When the insert was uncertain or inserted nothing, it continues
-   to `FindInsertedRefund`, which reads back by the idempotency key or the order.
-5. `ResolveInsertedRefund` completes with:
-   - `recorded`, with `wasReconciled`, when the row carries this Step's key: a replay or an
-     uncertain `COMMIT` that applied;
+   Result is also kept in the `sql-server-refund-insert-result` Attribute. `execute` is
+   repeat-safe, so a `COMMIT` with an unknown outcome returns Retry and Dex sends the same `INSERT`
+   again with the same key.
+4. `completed` goes to `CompleteRefundRecording`, which records `recorded` and the `OUTPUT` row.
+   When the insert inserted nothing, it continues to `FindInsertedRefund`, which reads back by the
+   idempotency key or the order.
+5. `ResolveInsertedRefund` records:
+   - `recorded`, with `wasReconciled`, when the row carries this Step's key: a replay whose earlier
+     `COMMIT` applied;
    - `alreadyRecorded` when another Flow recorded the order between the duplicate check and a
-     completed insert, which then inserted nothing.
+     completed insert, which then inserted nothing; the Flow completes.
 
-   When an uncertain insert left no row, it fails the Flow for review instead of inserting again.
+   When the read-back finds no row, it fails the Flow for review instead of inserting again.
+6. `AddRefundToDailyTotal` uses `executeNonIdempotent` to run a `MERGE` that adds a new refund to
+   today's UTC total in `dbo.refund_daily_totals`. Running it twice would count the refund twice,
+   so the connector commits it at most once. An `uncertain` daily total is not wired and fails the
+   Flow for review; inspect `dbo.refund_daily_totals` before correcting it by hand.
+7. `CompleteDailyTotal` completes with `isAddedToDailyTotal`.
 
 The other optional branches, `limitExceeded`, `providerRejected`, `truncated`, `invalidResponse`, and
 `defect`, are not wired and fail the Flow.
 
 ## Prepare the database
 
-Create the table as its owner in the application database, and grant the Dex user only what the
+Create the tables as their owner in the application database, and grant the Dex user only what the
 example needs:
 
 ```bash
 sqlcmd -S myserver.database.windows.net -d app -U app_owner -N -i examples/record-refund/schema.sql
-sqlcmd -S myserver.database.windows.net -d app -U app_owner -N -Q "GRANT SELECT, INSERT ON dbo.refund_ledger TO dex_app"
+sqlcmd -S myserver.database.windows.net -d app -U app_owner -N -Q "GRANT SELECT, INSERT ON dbo.refund_ledger TO dex_app; GRANT SELECT, INSERT, UPDATE ON dbo.refund_daily_totals TO dex_app"
 ```
 
 The schema needs SQL Server 2016 or later, Azure SQL Database, or Azure SQL Managed Instance.
@@ -52,7 +59,7 @@ Until the connector is released, build a local release override from the reposit
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/sql-server/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go \
-  --version v0.23.0 --tag connectors/microsoft/sql-server/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/microsoft/sql-server/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/sql-server-refund/release/connector-release.json \
   --digest-output /tmp/sql-server-refund/release/connector-release.json.sha256
@@ -104,9 +111,12 @@ The integration suite runs the Flow on a real Dex Worker against the scripted TD
 ledger makes an `INSERT` wait on a key or order another transaction holds, as `UPDLOCK, HOLDLOCK`
 does. It covers:
 
-- a new refund returned through `OUTPUT`, and a duplicate order;
+- a new refund returned through `OUTPUT`, its daily total, and a duplicate order;
 - another Flow's refund committed between the duplicate check and the insert;
-- a `COMMIT` whose reply was dropped, once after it applied and once before;
+- an `INSERT` `COMMIT` whose reply was dropped, once after it applied and once before, each
+  retried with the same key;
+- a daily-total `COMMIT` whose reply was dropped, which selects `uncertain` and is never sent
+  again;
 - a write lost before `COMMIT` and retried with the same key;
 - an `INSERT` committed before its Worker is lost and dispatched again with the
   same key, which still writes one row;

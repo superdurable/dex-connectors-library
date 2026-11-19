@@ -67,7 +67,8 @@ func (AddUpdateOperation) IdempotencyKey(callID sdkgo.CallID, _ AddUpdateInput) 
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke adds one update. Confirmed retryable failures reuse the key; ambiguous sent failures select uncertain.
+// Invoke adds one update. Proven unprocessed failures reuse the key; an unknown outcome resends
+// under the same key while the send cap allows and selects uncertain at the cap.
 func (operation AddUpdateOperation) Invoke(call sdkgo.Call, input AddUpdateInput) sdkgo.MutationAttempt[AddUpdateOutput] {
 	client := operation.client
 	requested := AddUpdateOutput{ItemID: strings.TrimSpace(input.ItemID)}
@@ -79,23 +80,39 @@ func (operation AddUpdateOperation) Invoke(call sdkgo.Call, input AddUpdateInput
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddUpdateBranchDefect, requested, mondayFailurePointer(sdkgo.FailureValidation, addUpdateOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	result := client.exchange(call, addUpdateOperationID, graphQLRequest{
-		document: addUpdateDocument, variables: map[string]any{"itemId": itemID, "body": body}, isMutation: true, requiresDispatchCheckpoint: true,
-	})
+	branches := fencedWriteBranches{notFound: AddUpdateBranchNotFound, providerRejected: AddUpdateBranchProviderRejected, defect: AddUpdateBranchDefect}
+	write, attempt, isFinal := startFencedWrite(call, AddUpdateDefinition, addUpdateOperationID, requested, client.receipt(call, mondayResponse{}, ""), AddUpdateBranchDefect)
+	if isFinal {
+		return attempt
+	}
+	credentials, failedResolution := client.resolveCredentials(call, addUpdateOperationID)
+	if failedResolution != nil {
+		return preSendFailureAttempt(write, addUpdateOperationID, *failedResolution, requested, branches)
+	}
+	result, attempt, isFinal := dispatchFencedWrite(write, client, call, credentials, addUpdateOperationID, graphQLRequest{
+		document: addUpdateDocument, variables: map[string]any{"itemId": itemID, "body": body}, isMutation: true,
+	}, requested, AddUpdateBranchDefect)
+	if isFinal {
+		return attempt
+	}
 	receipt := client.receipt(call, result.response, "")
 	if update, isAdded := decodeCreatedUpdate(result.response.data, itemID); isAdded {
+		recordAcceptedWrite(write, update.UpdateID)
 		output := requested
 		output.UpdateID, output.CreatorID, output.CreatedAt, output.IsReplayed = update.UpdateID, update.CreatorID, update.CreatedAt, result.response.isReplayed
 		receipt.ProviderObjectID = update.UpdateID
 		return sdkgo.NewMutationBranch(AddUpdateBranchAdded, output, nil, receipt)
 	}
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
-		notFound: AddUpdateBranchNotFound, providerRejected: AddUpdateBranchProviderRejected, defect: AddUpdateBranchDefect,
-	}); isTerminal {
+	unusable := mondayFailure(sdkgo.FailureProtocol, addUpdateOperationID, "monday.com accepted the update but returned an unusable update")
+	if updateID := acceptedReferenceID(result.response.data, "create_update"); updateID != "" {
+		recordAcceptedWrite(write, updateID)
+		receipt.ProviderObjectID = updateID
+		return sdkgo.NewMutationUncertain(requested, unusable, receipt)
+	}
+	if attempt, isFinal := attemptForWrite(write, addUpdateOperationID, result, "create_update", requested, receipt, branches); isFinal {
 		return attempt
 	}
-	return sdkgo.NewMutationUncertain(requested, mondayFailure(sdkgo.FailureProtocol, addUpdateOperationID,
-		"monday.com accepted the update but returned an unusable update"), receipt)
+	return resendOrSelectUncertain(write, requested, unusable, 0, receipt)
 }
 
 // decodeCreatedUpdate reads create_update; an item_id that differs from the request is unusable.

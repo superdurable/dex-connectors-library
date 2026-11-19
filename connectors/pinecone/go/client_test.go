@@ -59,6 +59,26 @@ func TestUpsertVectorsHTTPAndRejection(t *testing.T) {
 	}
 }
 
+func TestUpsertVectorsRetriesUnknownOutcomesBecauseAnUpsertConverges(t *testing.T) {
+	for _, answer := range []struct {
+		status int
+		body   string
+	}{{http.StatusMethodNotAllowed, `{}`}, {http.StatusTooEarly, `{}`}, {http.StatusOK, `{"missing":true}`}, {http.StatusOK, `{`}, {http.StatusOK, `{"upsertedCount":3}`}} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(answer.status)
+			_, err := fmt.Fprint(w, answer.body)
+			require.NoError(t, err)
+		}))
+		reference := sdkgo.ConnectionRef{Provider: "pinecone", Name: "pinecone"}
+		client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{reference: {APIKey: sdkgo.NewSecretString("test-token")}})
+		require.NoError(t, err)
+		_, err = sdkgo.RunMutation(testContext{}, client.UpsertVectors(), reference, UpsertVectorsInput{Namespace: "example", Vectors: []Vector{{ID: "vec-meridian", Values: []float32{0.1, 0.2}}}})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "HTTP %d %s retries", answer.status, answer.body)
+		server.Close()
+	}
+}
+
 func TestQueryVectorsHTTPAndRejection(t *testing.T) {
 	for _, test := range []struct {
 		name   string

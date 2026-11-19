@@ -284,7 +284,7 @@ func UpdateItemColumnValuesProviderRejected(value monday.UpdateItemColumnValuesO
 	return connectormock.Branch(monday.UpdateItemColumnValuesBranchProviderRejected, value, failure)
 }
 
-// UpdateItemColumnValuesInvalidResponse selects the invalidResponse branch: monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe.
+// UpdateItemColumnValuesInvalidResponse selects the invalidResponse branch: monday.com's response echoed the connection credential, so it was discarded; the values may have been set, and repeating the Step is safe. An oversized or malformed item is retried instead.
 func UpdateItemColumnValuesInvalidResponse(value monday.UpdateItemColumnValuesOutput, failure *sdkgo.Failure) connectormock.Case[monday.UpdateItemColumnValuesOutput] {
 	return connectormock.Branch(monday.UpdateItemColumnValuesBranchInvalidResponse, value, failure)
 }
@@ -317,10 +317,10 @@ func UpdateItemColumnValuesProviderRejectedFailure() connectormock.Case[monday.U
 	return connectormock.Branch(monday.UpdateItemColumnValuesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "monday.com rejected the status label."})
 }
 
-// UpdateItemColumnValuesInvalidResponseFailure is the manifest mock invalidResponseFailure: monday.com returned a malformed item, so the values may have been set; repeating the Step is safe.
+// UpdateItemColumnValuesInvalidResponseFailure is the manifest mock invalidResponseFailure: monday.com's response echoed the connection credential, so the values may have been set; repeating the Step is safe.
 func UpdateItemColumnValuesInvalidResponseFailure() connectormock.Case[monday.UpdateItemColumnValuesOutput] {
 	var value monday.UpdateItemColumnValuesOutput
-	return connectormock.Branch(monday.UpdateItemColumnValuesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "monday.com returned a malformed item, so the values may have been set; repeating the Step is safe."})
+	return connectormock.Branch(monday.UpdateItemColumnValuesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "monday.com response reflected the connection credential"})
 }
 
 // UpdateItemColumnValuesDefault is the manifest default, scheduledWorkItem, which New installs.

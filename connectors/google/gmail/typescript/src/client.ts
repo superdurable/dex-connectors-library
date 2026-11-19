@@ -83,7 +83,10 @@ export class GetMessageOperation implements Query<GetMessageInput, Message> {
     }
     let credentials: Credentials;
     try { credentials = await this.#http.resolveCredentials(call, call.context.cancellationSignal); }
-    catch { return newQueryBranch(GetMessageBranch.Defect, emptyMessage(), zeroReceipt(), gmailFailure('getMessage', 'AUTHENTICATION', 'connection credentials are unavailable')); }
+    catch (error) {
+      if (error instanceof GmailCredentialError && !error.isPermanent) return newQueryRetry(gmailFailure('getMessage', 'AVAILABILITY', 'Gmail credentials are temporarily unavailable'));
+      return newQueryBranch(GetMessageBranch.Defect, emptyMessage(), zeroReceipt(), gmailFailure('getMessage', 'AUTHENTICATION', 'connection credentials are unavailable'));
+    }
     let result: GmailReadResult;
     try { result = await this.#provider.readMessage(call, credentials, input.messageId, 'full', call.context.cancellationSignal); }
     catch (error) {

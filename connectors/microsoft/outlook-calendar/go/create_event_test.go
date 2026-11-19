@@ -190,18 +190,21 @@ func TestCreateEventRetriesAConflictWithoutTheEventAndRejectsABadRequest(t *test
 	}
 }
 
-func TestCreateEventRejectsAnEventWithAnotherTransactionID(t *testing.T) {
+func TestCreateEventNeverResendsAnAcceptedEventItCannotRead(t *testing.T) {
+	var posts int
 	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodGet {
 			writeJSON(t, response, http.StatusOK, `{"value":[]}`)
 			return
 		}
+		posts++
 		writeJSON(t, response, http.StatusCreated, strings.Replace(timedEventJSON("other", "Kickoff"), `"id"`, `"transactionId":"someone-else","id"`, 1))
 	})
 	client := newCalendarClient(t, provider.URL)
-	result, err := sdkgo.RunMutation(newCalendarDexContext("create-other"), client.CreateEvent(), calendarConnection, meetingCreateInput())
-	require.NoError(t, err)
-	require.Equal(t, outlookcalendar.CreateEventBranchInvalidResponse, result.Branch)
+	_, err := sdkgo.RunMutation(newCalendarDexContext("create-other"), client.CreateEvent(), calendarConnection, meetingCreateInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the marker lookup may lag the accepted create")
+	require.Equal(t, 1, posts)
 }
 
 func TestCreateEventUsesACallerTransactionIDAndAnAllDayMidnight(t *testing.T) {

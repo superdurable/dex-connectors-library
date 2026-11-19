@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, HeartbeatContext, invokeProduc
 import { FrontClient } from '../src/client.js';
 import { FindContactByEmailInputSchema, GetConversationInputSchema, ReplyToConversationInputSchema, SearchConversationsInputSchema, UpdateConversationInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/front/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/front/scenarios.json', import.meta.url))
+  .filter(scenario => ['searchConversations', 'getConversation', 'replyToConversation', 'updateConversation', 'findContactByEmail'].includes(scenario.operation));
 const connection = { provider: 'front', name: 'front-test' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay({

@@ -76,7 +76,7 @@ export interface CreateConversationStepConfig<StepInput, OperationInput = Create
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed and no conversation carries the Step's key, so it may still appear; the connector never resends it. */
+  /** No conversation carrying the Step's key could be confirmed after a send that may have created one: the send cap is reached, Re:amaze accepted the create with an unusable answer, or the read-back was refused, so one may still appear. Below the cap, a send whose outcome is unknown is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -106,15 +106,18 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Re:amaze returned an invalid or oversized conversation, so the change may have been applied. */
+  /** Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid; unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateConversation Step from a named connection. */
 export function newUpdateConversationStep<StepInput, OperationInput = UpdateConversationInput, OperationOutput = UpdateConversationOutput>(configuration: UpdateConversationStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateConversation(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -137,7 +140,7 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the message; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The message was sent but its outcome cannot be confirmed and the conversation shows no message with its origin_id, so it may still appear; the connector never resends it. */
+  /** No message with the Step's origin_id could be confirmed after a send that may have added one: the send cap is reached, Re:amaze accepted the message with an unusable answer, or the read-back was refused or found no conversation, so one may still appear. Below the cap, a send whose outcome is unknown is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

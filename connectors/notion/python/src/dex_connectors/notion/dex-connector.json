@@ -1,10 +1,10 @@
 {
   "connectorId": "notion",
-  "releaseTag": "connectors/notion/go/v0.25.0",
+  "releaseTag": "connectors/notion/go/v0.25.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-notion",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -373,7 +373,7 @@
       "kind": "mutation",
       "operationId": "createPage",
       "inputType": "CreatePageInput",
-      "description": "Create one database row with typed property values and optional plain-text body paragraphs. Sync durability persists the single-dispatch fence before sending so retries cannot duplicate an unconfirmed page.",
+      "description": "Create one database row with typed property values and optional plain-text body paragraphs. Sync durability persists the single-dispatch fence before sending, so an unknown outcome is resent only while possible sends stay below the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

@@ -2233,13 +2233,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2258,7 +2255,7 @@
         "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
         "title": "New title"
       },
-      "name": "updateIssue-invalid-response",
+      "name": "updateIssue-invalid-response-retries",
       "operation": "updateIssue"
     },
     {

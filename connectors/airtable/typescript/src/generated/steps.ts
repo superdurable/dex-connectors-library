@@ -79,15 +79,18 @@ export interface UpsertRecordsStepConfig<StepInput, OperationInput = UpsertRecor
   upserted: StepTarget<MutationResult<OperationOutput>>;
   /** Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Airtable applied or rejected the upsert but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the upsertRecords Step from a named connection. */
 export function newUpsertRecordsStep<StepInput, OperationInput = UpsertRecordsInput, OperationOutput = UpsertedRecords>(configuration: UpsertRecordsStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, upserted, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, upserted, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.upsertRecords(), connection: connection.reference, branches: [
     goToBranch("upserted", upserted),
@@ -109,15 +112,18 @@ export interface UpdateRecordsStepConfig<StepInput, OperationInput = UpdateRecor
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Airtable applied or rejected the update but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateRecords Step from a named connection. */
 export function newUpdateRecordsStep<StepInput, OperationInput = UpdateRecordsInput, OperationOutput = UpdatedRecords>(configuration: UpdateRecordsStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateRecords(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

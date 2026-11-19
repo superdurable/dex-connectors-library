@@ -1,6 +1,6 @@
 # DocuSign TypeScript connector
 
-Install `@superdurable/connector-docusign@0.2.0` with `@superdurable/connectors-sdk@0.11.0` and `@superdurable/dex` 1.28 or newer. It provides five eSignature operations for Dex Flows: `createEnvelopeFromTemplate`, `getEnvelope`, `listEnvelopeRecipients`, `voidEnvelope`, and `downloadCombinedDocument`, and from 0.2.0 the `envelopeEventReceived` Connect Trigger. The package uses the manifest's production and developer OAuth methods, with automatic refresh through the generated credential wiring.
+Install `@superdurable/connector-docusign@0.2.1` with `@superdurable/connectors-sdk@0.11.0` and `@superdurable/dex` 1.28 or newer. It provides five eSignature operations for Dex Flows: `createEnvelopeFromTemplate`, `getEnvelope`, `listEnvelopeRecipients`, `voidEnvelope`, and `downloadCombinedDocument`, and from 0.2.0 the `envelopeEventReceived` Connect Trigger. The package uses the manifest's production and developer OAuth methods, with automatic refresh through the generated credential wiring.
 
 The package exports generated operation-specific Step factories, typed models, mock cases, `DocuSignClient`, and `newProjectConnection`. Applications configure a named DocuSign connection in Dex Web using the [connector authorization guide](../README.md). Never put access tokens, refresh tokens, client secrets, Connect HMAC keys, or signed PDFs in Flow inputs, Attributes, Results, or logs.
 

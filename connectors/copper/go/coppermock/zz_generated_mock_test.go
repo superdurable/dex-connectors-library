@@ -16,8 +16,132 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createCompany/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}`)
+			return err
+		}},
+		{name: "getCompany/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}`)
+			return err
+		}},
+		{name: "listCompanies/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CompaniesPage](`{"companies":[{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}]}`)
+			return err
+		}},
+		{name: "updateCompany/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","details":"Updated"}`)
+			return err
+		}},
+		{name: "deleteCompany/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeleteCompanyOutput](`{"id":26443553,"deleted":true}`)
+			return err
+		}},
+		{name: "createPerson/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","email":"sample@example.com"}`)
+			return err
+		}},
+		{name: "getPerson/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","email":"sample@example.com"}`)
+			return err
+		}},
+		{name: "listPeople/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.PeoplePage](`{"people":[{"id":26443553,"name":"Sample Person","email":"sample@example.com"}]}`)
+			return err
+		}},
+		{name: "updatePerson/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","details":"Updated"}`)
+			return err
+		}},
+		{name: "deletePerson/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeletePersonOutput](`{"id":26443553,"deleted":true}`)
+			return err
+		}},
+		{name: "listCustomerSources/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CustomerSourcesList](`{"sources":[{"id":331240,"name":"Email"}]}`)
+			return err
+		}},
 		{name: "listLeadStatuses/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[copper.LeadStatusesList](`{"statuses":[{"id":208231,"name":"New"}]}`)
+			return err
+		}},
+		{name: "listUsers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.UsersPage](`{"users":[{"id":137658,"name":"John Doe","email":"johndoe@copper.com"}]}`)
+			return err
+		}},
+		{name: "createTask/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.TaskMetadata](`{"id":3726701,"name":"Sample Task","status":"Open"}`)
+			return err
+		}},
+		{name: "listTasks/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.TasksPage](`{"tasks":[{"id":3726701,"name":"Sample Task","status":"Open"}]}`)
+			return err
+		}},
+		{name: "updateTask/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.TaskMetadata](`{"id":3726701,"name":"Sample Task","status":"Open"}`)
+			return err
+		}},
+		{name: "deleteTask/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeleteTaskOutput](`{"id":3726701,"deleted":true}`)
+			return err
+		}},
+		{name: "getTask/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.TaskMetadata](`{"id":3726701,"name":"Sample Task","status":"Open"}`)
+			return err
+		}},
+		{name: "createProject/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+			return err
+		}},
+		{name: "listProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.ProjectsPage](`{"projects":[{"id":208105,"name":"Sample Project","status":"Open"}]}`)
+			return err
+		}},
+		{name: "updateProject/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+			return err
+		}},
+		{name: "deleteProject/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeleteProjectOutput](`{"id":208105,"deleted":true}`)
+			return err
+		}},
+		{name: "getProject/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.ProjectMetadata](`{"id":208105,"name":"Sample Project","status":"Open"}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.OpportunityMetadata](`{"id":4956209,"name":"Sample Opportunity","status":"Open"}`)
+			return err
+		}},
+		{name: "listOpportunities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.OpportunitiesPage](`{"opportunities":[{"id":4956209,"name":"Sample Opportunity","status":"Open"}]}`)
+			return err
+		}},
+		{name: "updateOpportunity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.OpportunityMetadata](`{"id":4956209,"name":"Sample Opportunity","status":"Open"}`)
+			return err
+		}},
+		{name: "deleteOpportunity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeleteOpportunityOutput](`{"id":4956209,"deleted":true}`)
+			return err
+		}},
+		{name: "getOpportunity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.OpportunityMetadata](`{"id":4956209,"name":"Sample Opportunity","status":"Open"}`)
+			return err
+		}},
+		{name: "createLead/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.LeadMetadata](`{"id":8894157,"name":"Sample Lead","status":"New"}`)
+			return err
+		}},
+		{name: "listLeads/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.LeadsPage](`{"leads":[{"id":8894157,"name":"Sample Lead","status":"New"}]}`)
+			return err
+		}},
+		{name: "updateLead/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.LeadMetadata](`{"id":8894157,"name":"Sample Lead","status":"New"}`)
+			return err
+		}},
+		{name: "deleteLead/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeleteLeadOutput](`{"id":8894157,"deleted":true}`)
 			return err
 		}},
 		{name: "getLead/foundDefault/1", decode: func() error {
@@ -34,8 +158,101 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateCompany().Definition().Operation.OperationID != "createCompany" {
+		t.Errorf("createCompany mock has another definition")
+	}
+	if mock.GetCompany().Definition().Operation.OperationID != "getCompany" {
+		t.Errorf("getCompany mock has another definition")
+	}
+	if mock.ListCompanies().Definition().Operation.OperationID != "listCompanies" {
+		t.Errorf("listCompanies mock has another definition")
+	}
+	if mock.UpdateCompany().Definition().Operation.OperationID != "updateCompany" {
+		t.Errorf("updateCompany mock has another definition")
+	}
+	if mock.DeleteCompany().Definition().Operation.OperationID != "deleteCompany" {
+		t.Errorf("deleteCompany mock has another definition")
+	}
+	if mock.CreatePerson().Definition().Operation.OperationID != "createPerson" {
+		t.Errorf("createPerson mock has another definition")
+	}
+	if mock.GetPerson().Definition().Operation.OperationID != "getPerson" {
+		t.Errorf("getPerson mock has another definition")
+	}
+	if mock.ListPeople().Definition().Operation.OperationID != "listPeople" {
+		t.Errorf("listPeople mock has another definition")
+	}
+	if mock.UpdatePerson().Definition().Operation.OperationID != "updatePerson" {
+		t.Errorf("updatePerson mock has another definition")
+	}
+	if mock.DeletePerson().Definition().Operation.OperationID != "deletePerson" {
+		t.Errorf("deletePerson mock has another definition")
+	}
+	if mock.ListCustomerSources().Definition().Operation.OperationID != "listCustomerSources" {
+		t.Errorf("listCustomerSources mock has another definition")
+	}
 	if mock.ListLeadStatuses().Definition().Operation.OperationID != "listLeadStatuses" {
 		t.Errorf("listLeadStatuses mock has another definition")
+	}
+	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
+		t.Errorf("listUsers mock has another definition")
+	}
+	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
+		t.Errorf("createTask mock has another definition")
+	}
+	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
+		t.Errorf("listTasks mock has another definition")
+	}
+	if mock.UpdateTask().Definition().Operation.OperationID != "updateTask" {
+		t.Errorf("updateTask mock has another definition")
+	}
+	if mock.DeleteTask().Definition().Operation.OperationID != "deleteTask" {
+		t.Errorf("deleteTask mock has another definition")
+	}
+	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
+		t.Errorf("getTask mock has another definition")
+	}
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.DeleteProject().Definition().Operation.OperationID != "deleteProject" {
+		t.Errorf("deleteProject mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.ListOpportunities().Definition().Operation.OperationID != "listOpportunities" {
+		t.Errorf("listOpportunities mock has another definition")
+	}
+	if mock.UpdateOpportunity().Definition().Operation.OperationID != "updateOpportunity" {
+		t.Errorf("updateOpportunity mock has another definition")
+	}
+	if mock.DeleteOpportunity().Definition().Operation.OperationID != "deleteOpportunity" {
+		t.Errorf("deleteOpportunity mock has another definition")
+	}
+	if mock.GetOpportunity().Definition().Operation.OperationID != "getOpportunity" {
+		t.Errorf("getOpportunity mock has another definition")
+	}
+	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
+		t.Errorf("createLead mock has another definition")
+	}
+	if mock.ListLeads().Definition().Operation.OperationID != "listLeads" {
+		t.Errorf("listLeads mock has another definition")
+	}
+	if mock.UpdateLead().Definition().Operation.OperationID != "updateLead" {
+		t.Errorf("updateLead mock has another definition")
+	}
+	if mock.DeleteLead().Definition().Operation.OperationID != "deleteLead" {
+		t.Errorf("deleteLead mock has another definition")
 	}
 	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
 		t.Errorf("getLead mock has another definition")

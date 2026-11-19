@@ -176,7 +176,8 @@ setattr(ListObjectsInput, '__module__', 'dex_connectors.pipedrive.models')
 
 # UpsertObjectInput creates or updates one person identified by email, or one
 # organization identified by name. Pipedrive does not enforce either value as
-# unique, so more than one match selects multipleMatches and writes nothing.
+# unique, so more than one match selects multipleMatches and writes nothing
+# before any create of this Step was sent, and uncertain after one may have been.
 @dataclass(frozen=True, slots=True)
 class UpsertObjectInput:
     # ObjectType is persons or organizations; deals have no identity value, so use createObject.

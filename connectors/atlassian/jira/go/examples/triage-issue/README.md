@@ -12,8 +12,9 @@ every Jira operation:
    reused. Search is eventually consistent, so this is a business duplicate
    check, never the retry-safety mechanism;
 3. `CreateTriageIssue` calls `jira.NewCreateIssueStep` with sync durability.
+   An unknown outcome is read back and resent up to the send cap of 3.
    `created` records the key, and `uncertain` parks the Flow for operator
-   reconciliation before any second create;
+   reconciliation before any further create;
 4. `ReadBackTriageIssue` calls `jira.NewGetIssueStep`, and `VerifyTriageIssue`
    adopts the issue;
 5. `AddTriageComment` calls `jira.NewAddCommentStep`. Only `added` continues;
@@ -97,13 +98,14 @@ With the latest Dex development server running, the integration test drives
 the Flow on a real Worker against a stateful fake Jira: a new issue created
 once beside a near-duplicate and read back, commented, and moved; an open
 issue with the same summary reused; a rate-limited create
-retried after `Retry-After`; a create timeout reconciled by confirming a
-missing, a mismatched, and then the real issue key without a second create; a
-5xx create created again only after operator approval; a create sent once;
+retried after `Retry-After`; a create timeout resent up to the send cap and
+reconciled by confirming a missing, a mismatched, and then a real issue key
+without another create; a 5xx create resent up to the send cap and created
+again only after operator approval; a create sent once;
 a Worker lost after Jira applies a transition, whose replacement reads the
 issue already moved and sends nothing; a destination the workflow does
-not offer; a comment timeout that fails without a resend; and a blank `cloudId`
-resolved to the only granted site.
+not offer; a comment timeout resent up to the send cap before the Flow fails;
+and a blank `cloudId` resolved to the only granted site.
 
 ```bash
 GOWORK=off go test -tags=integration ./examples/triage-issue/... -count=1 -v

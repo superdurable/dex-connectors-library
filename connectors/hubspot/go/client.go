@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -144,6 +145,8 @@ type providerOutcome struct {
 	failure     sdkgo.Failure
 	retryAfter  time.Duration
 	receipt     sdkgo.Receipt
+	// statusCode is the HTTP status of the answer, or zero when no answer arrived.
+	statusCode int
 }
 
 // operationBranches names the branch each outcome selects for one operation.
@@ -249,7 +252,9 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 	case errors.Is(err, errRequestNotBuilt):
 		return response, client.outcome(outcomeDefect, operation, sdkgo.FailureLocalDefect, "HubSpot request could not be built", receipt)
 	case errors.Is(err, errResponseTooLarge):
-		return response, client.outcome(outcomeInvalidResponse, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+		tooLarge := client.outcome(outcomeInvalidResponse, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+		tooLarge.statusCode = response.statusCode
+		return response, tooLarge
 	case err != nil:
 		return response, client.outcome(outcomeRetry, operation, sdkgo.FailureTransport, "HubSpot did not return a complete response", receipt)
 	case response.statusCode >= 200 && response.statusCode < 300:
@@ -257,6 +262,7 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 	}
 	classified := classifyErrorResponse(operation, response, client.now())
 	classified.receipt = receipt
+	classified.statusCode = response.statusCode
 	return response, &classified
 }
 
@@ -295,14 +301,26 @@ func (client *Client) send(ctx context.Context, credentials Credentials, request
 func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, *providerOutcome) {
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "HubSpot authorization must be renewed", sdkgo.Receipt{})
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "HubSpot OAuth token refresh is temporarily unavailable", sdkgo.Receipt{})
-	case err != nil || validateResolvedCredentials(credentials) != nil:
+	case isTerminalCredentialError(err):
+		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "HubSpot connection credentials are unavailable", sdkgo.Receipt{})
+	case err != nil:
+		// A write may have applied in an earlier attempt, so a passing outage must not select defect.
+		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "HubSpot connection credentials are temporarily unavailable", sdkgo.Receipt{})
+	case validateResolvedCredentials(credentials) != nil:
 		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "HubSpot connection credentials are unavailable", sdkgo.Receipt{})
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) canRefreshAfterRejection(credentials Credentials) bool {
@@ -362,8 +380,11 @@ func classifyErrorResponse(operation string, response providerResponse, now time
 		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureAuthorization, "HubSpot denied access to the record"+detail)
 	case status == http.StatusNotFound:
 		return terminalOutcome(outcomeNotFound, operation, sdkgo.FailureNotFound, "HubSpot found no such record"+detail)
-	case status == http.StatusConflict:
+	case status == http.StatusConflict && isDocumentedConflictCategory(errorBody.Category):
 		return terminalOutcome(outcomeConflict, operation, sdkgo.FailureConflict, "HubSpot reported a conflict with another record"+detail)
+	case status == http.StatusConflict:
+		// A write answered with a bare 409 has an unknown outcome and is retried.
+		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureConflict, "HubSpot answered HTTP 409 without a documented conflict category"+detail)
 	case status == http.StatusBadRequest || status == http.StatusUnprocessableEntity || errorBody.Category == "VALIDATION_ERROR":
 		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureValidation, "HubSpot rejected the request as invalid"+detail)
 	case status >= 300 && status < 400:
@@ -436,7 +457,14 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 // mutationAttemptForOutcome maps an unsuccessful exchange to Retry or a branch; idempotent writes never select uncertain.
 func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	if outcome.disposition == outcomeRetry {
+	// Both writes are repeat-safe, so a status that does not prove a refusal, such as a bare 409, is
+	// retried. A documented CONFLICT is definite even after an earlier send: repeating our own write
+	// sets the same values on the same record and cannot conflict with it.
+	isUnknownStatus := outcome.statusCode != 0 && (outcome.statusCode < 200 || outcome.statusCode >= 300) &&
+		!isDefiniteRefusalStatus(outcome.statusCode) && outcome.failure.Kind != sdkgo.FailureQuotaExhausted &&
+		outcome.disposition != outcomeConflict
+	// An oversized or unusable answer may follow an applied write, and repeating it is safe.
+	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
@@ -455,6 +483,22 @@ func (branches operationBranches) branchFor(disposition outcomeDisposition) sdkg
 	default:
 		return branches.defect
 	}
+}
+
+// isDocumentedConflictCategory reports the error categories HubSpot documents for a 409 business conflict.
+func isDocumentedConflictCategory(category string) bool {
+	return category == "CONFLICT" || category == "OBJECT_ALREADY_EXISTS"
+}
+
+// isDefiniteRefusalStatus reports a status that proves HubSpot refused a write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 // preferredBranchOr returns preferred, or fallback when the operation declares no preferred branch.

@@ -338,6 +338,9 @@ def _request_failure(
     error: ProviderRequestError, operation: str, mutation: bool, value: Any, receipt: Receipt
 ) -> Any:
     attempt = MutationAttempt if mutation else QueryAttempt
+    if error.kind == FailureKind.RESPONSE_TOO_LARGE and mutation:
+        # Both writes are safe to repeat, so an unusable response retries.
+        return MutationAttempt.retry(failure(error.kind, operation, str(error)))
     if error.kind == FailureKind.RESPONSE_TOO_LARGE:
         return attempt.branch_result(
             "invalidResponse", value, receipt, failure(error.kind, operation, str(error))
@@ -398,6 +401,8 @@ class ListEventsOperation:
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return QueryAttempt.branch_result("defect", empty, Receipt(), credentials)
         query = {
@@ -488,6 +493,8 @@ class GetEventOperation:
                 "defect", Event(), Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return QueryAttempt.branch_result("defect", Event(), Receipt(), credentials)
         return await _read_event(
@@ -567,7 +574,9 @@ def _read_as_mutation(
         read.receipt.provider_request_id,
     )
     if read.branch == "invalidResponse":
-        return MutationAttempt.branch_result("invalidResponse", output, receipt, read.failure)
+        # Both writes are safe to repeat, so an unusable read retries.
+        assert read.failure is not None
+        return MutationAttempt.retry(read.failure)
     if read.branch == "providerRejected":
         return MutationAttempt.branch_result("providerRejected", output, receipt, read.failure)
     if read.branch == "defect":
@@ -616,6 +625,8 @@ class CreateEventOperation:
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return MutationAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return MutationAttempt.branch_result("defect", empty, Receipt(), credentials)
         read = await _read_event(self.client, call, credentials, operation, input.calendar_id, event_id)
@@ -684,6 +695,15 @@ class CreateEventOperation:
         receipt = self.client.receipt(call, response, event_id)
         if response.status == 409:
             read = await _read_event(self.client, call, credentials, operation, input.calendar_id, event_id)
+            if read.branch == "notFound" and call.context is not None and call.context.attempt > 1:
+                # After an earlier attempt, the unreadable event may be this Step's.
+                return MutationAttempt.retry(
+                    failure(
+                        FailureKind.AVAILABILITY,
+                        operation,
+                        "Google reports the event ID as taken but does not return the event yet",
+                    )
+                )
             if read.branch == "notFound":
                 assert read.receipt is not None
                 read_receipt = Receipt(
@@ -732,11 +752,8 @@ class CreateEventOperation:
             if event.id != event_id:
                 raise ValueError("provider returned an event with another ID")
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                receipt,
-                failure(FailureKind.PROTOCOL, operation, "provider returned an invalid event: " + str(error)),
+            return MutationAttempt.retry(
+                failure(FailureKind.PROTOCOL, operation, "provider returned an invalid event: " + str(error))
             )
         return MutationAttempt.branch_result("created", CreateEventOutput(event), receipt)
 
@@ -787,6 +804,8 @@ class UpdateEventOperation:
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return MutationAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return MutationAttempt.branch_result("defect", empty, Receipt(), credentials)
         read = await _read_event(self.client, call, credentials, operation, input.calendar_id, input.event_id)
@@ -869,11 +888,8 @@ class UpdateEventOperation:
         try:
             event = _decode_event(_json(response.body), input.calendar_id)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                receipt,
-                failure(FailureKind.PROTOCOL, operation, "provider returned an invalid event: " + str(error)),
+            return MutationAttempt.retry(
+                failure(FailureKind.PROTOCOL, operation, "provider returned an invalid event: " + str(error))
             )
         return MutationAttempt.branch_result("updated", UpdateEventOutput(event), receipt)
 
@@ -916,6 +932,8 @@ class QueryFreeBusyOperation:
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return QueryAttempt.branch_result("defect", empty, Receipt(), credentials)
         payload = {

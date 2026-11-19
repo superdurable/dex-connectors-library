@@ -88,7 +88,7 @@ func CreatePostUncertain(value wordpress.CreatedPost, failure sdkgo.Failure) con
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreatePostDefect selects the defect branch: Local post input, connection credentials, or dispatch checkpoint is invalid.
+// CreatePostDefect selects the defect branch: Local post input, connection credentials, or dispatch fence is invalid before any send.
 func CreatePostDefect(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
 	return connectormock.Branch(wordpress.CreatePostBranchDefect, value, failure)
 }

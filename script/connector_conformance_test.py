@@ -391,6 +391,77 @@ class CoverageValidationTest(unittest.TestCase):
         scenario["pending"] = True
         self.validate_fixture([scenario], "unsupported pending")
 
+    def run_mutation_fixture(self, branches: list[str], is_safe_to_repeat: bool,
+                             retired_branches: list[str] | None = None, final_branch: str = "written") -> None:
+        """Run run_connector on a Python-ported writeItem Mutation whose replays cover only final_branch and Retry."""
+        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), \
+                patch.object(connector_conformance, "conformance_exemptions", return_value={}), \
+                patch.object(connector_conformance, "run_logged_command"):
+            root = Path(directory)
+            connector = root / "connectors/example"
+            (connector / "go").mkdir(parents=True)
+            (connector / "go/zz_generated_conformance_test.go").write_text("package example\n")
+            (connector / "python/tests").mkdir(parents=True)
+            (connector / "python/pyproject.toml").write_text("[project]\n")
+            (connector / "python/tests/test_conformance.py").write_text("")
+            (connector / "connector.yaml").write_text("metadata: example\n")
+            scenarios = []
+            for scenario in (self.scenario("rate", [429], True), self.scenario("server", [503], True),
+                             self.scenario("transport", [None], True), self.scenario("written", [200], False)):
+                scenario["operation"] = "writeItem"
+                scenario["idempotencyKey"] = "key-" + str(scenario["name"])
+                if scenario["expected"]["branch"]:
+                    scenario["expected"]["branch"] = final_branch
+                scenarios.append(scenario)
+            fixture = root / "conformance/connectors/example/scenarios.json"
+            fixture.parent.mkdir(parents=True)
+            fixture.write_text(json.dumps({"schemaVersion": 1, "connector": "example", "scenarios": scenarios}))
+            declaration: dict[str, object] = {"kind": "mutation", "branches": branches, "optionalInputFields": []}
+            if is_safe_to_repeat:
+                declaration["isSafeToRepeat"] = True
+            if retired_branches:
+                declaration["retiredBranches"] = retired_branches
+
+            def connectorctl_output(command: list[str], **_: object) -> str:
+                if command[3] == "language-capabilities":
+                    return json.dumps({"operations": ["writeItem"]})
+                return json.dumps({"writeItem": declaration})
+
+            with patch.object(connector_conformance.subprocess, "check_output", side_effect=connectorctl_output):
+                connector_conformance.run_connector(connector, [])
+
+    def test_safe_mutation_needs_no_uncertain_or_invalid_response_replay(self) -> None:
+        self.run_mutation_fixture(["written", "uncertain", "invalidResponse"], is_safe_to_repeat=True)
+
+    def test_limited_mutation_still_needs_uncertainty_replay(self) -> None:
+        with self.assertRaisesRegex(ValueError, "writeItem uncertainty coverage"):
+            self.run_mutation_fixture(["written", "uncertain"], is_safe_to_repeat=False)
+
+    def test_limited_mutation_still_needs_invalid_response_replay(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"writeItem branches: \['invalidResponse'\]"):
+            self.run_mutation_fixture(["written", "invalidResponse"], is_safe_to_repeat=False)
+
+    def test_safe_mutation_still_needs_every_other_branch_replay(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"writeItem branches: \['providerRejected'\]"):
+            self.run_mutation_fixture(["written", "providerRejected", "uncertain"], is_safe_to_repeat=True)
+
+    def test_limited_mutation_needs_no_retired_branch_replay(self) -> None:
+        self.run_mutation_fixture(["written", "invalidResponse"], is_safe_to_repeat=False,
+                                  retired_branches=["invalidResponse"])
+
+    def test_limited_mutation_needs_no_uncertainty_replay_when_uncertain_is_retired(self) -> None:
+        self.run_mutation_fixture(["written", "uncertain"], is_safe_to_repeat=False, retired_branches=["uncertain"])
+
+    def test_retired_branch_does_not_excuse_other_missing_branches(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"writeItem branches: \['providerRejected'\]"):
+            self.run_mutation_fixture(["written", "providerRejected", "invalidResponse"], is_safe_to_repeat=False,
+                                      retired_branches=["invalidResponse"])
+
+    def test_scenario_selecting_a_retired_branch_fails(self) -> None:
+        with self.assertRaisesRegex(ValueError, "selects retired branch invalidResponse"):
+            self.run_mutation_fixture(["written", "invalidResponse"], is_safe_to_repeat=False,
+                                      retired_branches=["invalidResponse"], final_branch="invalidResponse")
+
 
 class ReplaySelectionTest(unittest.TestCase):
     """CI replays every connector its plan selected plus what the changed paths select."""

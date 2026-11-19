@@ -5,13 +5,15 @@
 import { ConnectionRefSchema, type ConnectionRef, type Mutation } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';
-import type { SendRequestInput, SendRequestOutput } from './models.js';
+import type { SendRequestInput, SendRequestOutput, PostNonIdempotentInput } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
 export interface Operations {
   /** Invoke sendRequest through this connection. */
   sendRequest(): Mutation<SendRequestInput, SendRequestOutput>;
+  /** Invoke postNonIdempotent through this connection. */
+  postNonIdempotent(): Mutation<PostNonIdempotentInput, SendRequestOutput>;
 }
 
 /** Named connector connection kept outside Flow state. */

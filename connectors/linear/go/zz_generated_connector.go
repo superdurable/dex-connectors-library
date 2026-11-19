@@ -593,7 +593,7 @@ var UpdateIssueDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateIssueBranchUpdated, Description: "Linear applied the change and returned the issue."},
 		{ID: UpdateIssueBranchNotFound, Description: "The issue does not exist, was deleted, or the connection cannot see its team; nothing was changed.", Optional: true},
 		{ID: UpdateIssueBranchProviderRejected, Description: "Linear conclusively rejected the change, such as a workflow state or label of another team, an unknown assignee, or missing permission.", Optional: true},
-		{ID: UpdateIssueBranchInvalidResponse, Description: "Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe.", Optional: true},
+		{ID: UpdateIssueBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized issue after the change now retries, because repeating the absolute update is safe.", Optional: true},
 		{ID: UpdateIssueBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

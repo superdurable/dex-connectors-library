@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -241,6 +242,9 @@ func executeQuery[T any](client *Client, call sdkgo.Call, operation string, spec
 		localFailure.Operation = operation
 		return sdkgo.NewQueryBranch(defect, zero, localFailure, sdkgo.Receipt{})
 	}
+	if errors.Is(err, errCredentialsUnreadable) {
+		return sdkgo.NewQueryRetry[T](*failure(sdkgo.FailureAvailability, operation, "connection credentials could not be read, so nothing was sent"), 0)
+	}
 	if err != nil {
 		return sdkgo.NewQueryRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "gitlab", Operation: operation, Message: "GitLab request failed"}, 0)
 	}
@@ -279,6 +283,9 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 		localFailure.Operation = operation
 		return sdkgo.NewMutationBranch(defect, zero, localFailure, sdkgo.Receipt{})
 	}
+	if errors.Is(err, errCredentialsUnreadable) {
+		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureAvailability, operation, "connection credentials could not be read, so nothing was sent"), 0)
+	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "gitlab", Operation: operation, Message: "GitLab request failed"}, 0)
 	}
@@ -288,30 +295,53 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 		retry, after := retryFailure(response, operation)
 		return sdkgo.NewMutationRetry[T](retry, after)
 	}
-	if response.StatusCode == http.StatusNotFound && notFound != "" {
-		rejectedFailure := statusFailure(response, operation)
-		return sdkgo.NewMutationBranch(notFound, zero, &rejectedFailure, sdkgo.Receipt{})
-	}
 	if response.StatusCode != http.StatusOK {
+		if !client.hasDefiniteMutationRefusal(response) {
+			return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureAvailability, operation, fmt.Sprintf("GitLab answered HTTP %d, so the outcome is unknown", response.StatusCode)), 0)
+		}
 		rejectedFailure := statusFailure(response, operation)
+		if response.StatusCode == http.StatusNotFound && notFound != "" {
+			return sdkgo.NewMutationBranch(notFound, zero, &rejectedFailure, sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationBranch(rejected, zero, &rejectedFailure, sdkgo.Receipt{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if err != nil {
 		if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-			return sdkgo.NewMutationBranch(invalid, zero, failure(sdkgo.FailureResponseTooLarge, operation, "response exceeded the configured limit"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureResponseTooLarge, operation, "response exceeded the configured limit"), 0)
 		}
 		return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "gitlab", Operation: operation, Message: "response was interrupted"}, 0)
 	}
 	value, err := decode(body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(invalid, zero, failure(sdkgo.FailureProtocol, operation, "response was malformed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureProtocol, operation, "response was malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(happy, value, nil, sdkgo.Receipt{})
 }
 
+func (client *Client) hasDefiniteMutationRefusal(response *http.Response) bool {
+	if !isDefiniteRefusalStatus(response.StatusCode) {
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return err == nil && isDefiniteGitLabRefusal(response.StatusCode, body)
+}
+
+// isDefiniteRefusalStatus reports a status that proves GitLab refused the write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
 func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) (*http.Response, *sdkgo.Failure, error) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, nil, errCredentialsUnreadable
+	}
 	if err != nil {
 		return nil, failure(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), nil
 	}
@@ -348,6 +378,16 @@ func statusFailure(response *http.Response, operation string) sdkgo.Failure {
 		kind = sdkgo.FailureValidation
 	}
 	return sdkgo.Failure{Kind: kind, Provider: "gitlab", Operation: operation, Message: fmt.Sprintf("GitLab returned HTTP %d", response.StatusCode)}
+}
+
+// errCredentialsUnreadable marks a transient credential resolution failure before any request.
+var errCredentialsUnreadable = errors.New("GitLab connection credentials could not be read")
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; every other error is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func shouldRetry(response *http.Response) bool {

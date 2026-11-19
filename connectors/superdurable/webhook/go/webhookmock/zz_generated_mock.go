@@ -56,12 +56,12 @@ func SendEventDelivered(value webhook.SendEventOutput, failure *sdkgo.Failure) c
 	return connectormock.Branch(webhook.SendEventBranchDelivered, value, failure)
 }
 
-// SendEventRejected selects the rejected branch: The receiver answered a redirect or a 4xx other than 408, 409, 425, and 429, so it refused the event; the Result carries the status code. A 409 is retried with the same webhook-id instead, and fails the Flow when the retry budget runs out.
+// SendEventRejected selects the rejected branch: On the Step's first attempt the receiver answered 400, 401, 403, 404, 411, 413, 414, 415, or 422, so it refused the event; the Result carries the status code. Any other status, and a refusal on a later attempt that may follow a delivered event, is retried with the same webhook-id and fails the Flow when the retry budget runs out.
 func SendEventRejected(value webhook.SendEventOutput, failure *sdkgo.Failure) connectormock.Case[webhook.SendEventOutput] {
 	return connectormock.Branch(webhook.SendEventBranchRejected, value, failure)
 }
 
-// SendEventDefect selects the defect branch: The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.
+// SendEventDefect selects the defect branch: On the Step's first attempt the connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes. A later attempt retries instead.
 func SendEventDefect(value webhook.SendEventOutput, failure *sdkgo.Failure) connectormock.Case[webhook.SendEventOutput] {
 	return connectormock.Branch(webhook.SendEventBranchDefect, value, failure)
 }

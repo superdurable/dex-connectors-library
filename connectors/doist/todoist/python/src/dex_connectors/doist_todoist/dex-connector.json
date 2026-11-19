@@ -1,10 +1,10 @@
 {
   "connectorId": "todoist",
-  "releaseTag": "connectors/doist/todoist/go/v0.4.0",
+  "releaseTag": "connectors/doist/todoist/go/v0.5.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-doist-todoist",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -177,7 +177,7 @@
       "kind": "mutation",
       "operationId": "createTask",
       "inputType": "CreateTaskInput",
-      "description": "Create a task with content and optional description or project; omitted project uses Inbox. Sends a stable X-Request-ID.",
+      "description": "Create a task with content and optional description or project; omitted project uses Inbox. Sends a stable X-Request-ID and resends an unknown outcome up to the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

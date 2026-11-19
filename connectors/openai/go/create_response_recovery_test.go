@@ -20,6 +20,7 @@ import (
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai/go"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -132,32 +133,41 @@ func TestCreateResponseNeverReplaysAPostThatMayHaveReachedOpenAI(t *testing.T) {
 	_, err := runCreateResponse(ctx, client)
 	require.ErrorContains(t, err, "429")
 	ctx.AttemptNo = 2
+	_, err = runCreateResponse(ctx, client)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the lost answer resends below the cap")
+	require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods(), "net/http must not send the create a third time")
+	ctx.AttemptNo = 3
 	result, err := runCreateResponse(ctx, client)
 	require.NoError(t, err)
-	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "failure: %+v", result.Failure)
-	require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods(), "net/http must not send the create a third time")
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+	require.Equal(t, []string{http.MethodPost, http.MethodPost, http.MethodPost}, script.requestMethods())
 }
 
-func TestCreateResponseLostDispatchCheckpointNeverResends(t *testing.T) {
-	script, server := newProviderScript(t, replyDroppedConnection(t))
+// Without a stored checkpoint, every earlier attempt counts as a possible send.
+func TestCreateResponseLostDispatchCheckpointCountsEveryEarlierAttempt(t *testing.T) {
+	script, server := newProviderScript(t, replyDroppedConnection(t), replyDroppedConnection(t))
 	client := newClient(t, server.URL)
 	ctx := &lossyContext{DexContext: testsupport.NewDexContext("flow-1", "lost"), isDropping: true}
+	_, err := runCreateResponse(ctx, client)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AttemptNo = 3
 	result, err := runCreateResponse(ctx, client)
 	require.NoError(t, err)
-	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
-	ctx.isDropping = false
-	ctx.AttemptNo = 2
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "the third possible send reached the cap")
+	ctx.AttemptNo = 4
 	result, err = runCreateResponse(ctx, client)
 	require.NoError(t, err)
 	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
-	require.Contains(t, result.Failure.Message, "sync Execute durability")
-	require.Equal(t, []string{http.MethodPost}, script.requestMethods())
+	require.Contains(t, result.Failure.Message, "send cap is reached")
+	require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
 }
 
 // Async durability runs its local attempts without heartbeat checkpoints, so a
-// retried attempt selects uncertain instead of sending again.
-func TestCreateResponseFailsClosedWithoutRestoredCheckpoints(t *testing.T) {
-	script, server := newProviderScript(t, replyStatus(http.StatusTooManyRequests))
+// retried attempt counts every earlier attempt as a possible send.
+func TestCreateResponseBoundsSendsWithoutRestoredCheckpoints(t *testing.T) {
+	script, server := newProviderScript(t, replyStatus(http.StatusTooManyRequests), replyJSON(`{"id":"resp_async","status":"completed"}`))
 	client := newClient(t, server.URL)
 	ctx := &lossyContext{DexContext: testsupport.NewDexContext("flow-1", "async"), isDropping: true}
 	_, err := runCreateResponse(ctx, client)
@@ -165,8 +175,12 @@ func TestCreateResponseFailsClosedWithoutRestoredCheckpoints(t *testing.T) {
 	ctx.AttemptNo = 2
 	result, err := runCreateResponse(ctx, client)
 	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+	ctx.AttemptNo = 4
+	result, err = runCreateResponse(ctx, client)
+	require.NoError(t, err)
 	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
-	require.Equal(t, []string{http.MethodPost}, script.requestMethods())
+	require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
 }
 
 func TestCreateResponseResendsOnlyAfterTheImmediatelyPreviousAttemptProvedNoResponse(t *testing.T) {
@@ -182,17 +196,37 @@ func TestCreateResponseResendsOnlyAfterTheImmediatelyPreviousAttemptProvedNoResp
 		require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
 		require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
 	})
-	t.Run("a skipped attempt may have sent", func(t *testing.T) {
-		script, server := newProviderScript(t, replyStatus(http.StatusTooManyRequests))
+	t.Run("a skipped attempt counts as a possible send", func(t *testing.T) {
+		script, server := newProviderScript(t, replyStatus(http.StatusTooManyRequests), replyJSON(`{"id":"resp_skip","status":"completed"}`))
 		client := newClient(t, server.URL)
 		ctx := testsupport.NewDexContext("flow-1", "stale")
 		_, err := runCreateResponse(ctx, client)
 		require.ErrorContains(t, err, "429")
-		ctx.AttemptNo = 3
+		ctx.AttemptNo = 5
 		result, err := runCreateResponse(ctx, client)
 		require.NoError(t, err)
-		require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
-		require.Equal(t, []string{http.MethodPost}, script.requestMethods())
+		require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "attempts 2 through 4 may each have sent")
+		ctx.AttemptNo = 3
+		result, err = runCreateResponse(ctx, client)
+		require.NoError(t, err)
+		require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch, "only attempt 2 may have sent")
+		require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
+	})
+	t.Run("rate limits do not consume the send cap", func(t *testing.T) {
+		limited := replyStatus(http.StatusTooManyRequests)
+		script, server := newProviderScript(t, limited, limited, limited, limited, replyJSON(`{"id":"resp_after_limits","status":"completed"}`))
+		client := newClient(t, server.URL)
+		ctx := testsupport.NewDexContext("flow-1", "limited")
+		for attempt := int32(1); attempt <= 4; attempt++ {
+			ctx.AttemptNo = attempt
+			_, err := runCreateResponse(ctx, client)
+			require.ErrorContains(t, err, "429")
+		}
+		ctx.AttemptNo = 5
+		result, err := runCreateResponse(ctx, client)
+		require.NoError(t, err)
+		require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+		require.Len(t, script.requestMethods(), 5)
 	})
 }
 
@@ -368,41 +402,244 @@ func replyEventStream(events ...string) func(http.ResponseWriter, *http.Request)
 }
 
 // A 408 reply names no response and does not prove that none was stored.
-func TestCreateResponseRequestTimeoutIsUncertainAndNeverResent(t *testing.T) {
-	requireUncertainWithoutResend(t, http.StatusRequestTimeout, sdkgo.FailureTransport)
+func TestCreateResponseRequestTimeoutResendsBelowTheCap(t *testing.T) {
+	requireResendBelowTheCapThenUncertain(t, http.StatusRequestTimeout, sdkgo.FailureTransport)
 }
 
 // OpenAI offers no create key or response lookup that could resolve a 409.
-func TestCreateResponseConflictIsUncertainAndNeverResent(t *testing.T) {
-	requireUncertainWithoutResend(t, http.StatusConflict, sdkgo.FailureConflict)
+func TestCreateResponseConflictResendsBelowTheCap(t *testing.T) {
+	requireResendBelowTheCapThenUncertain(t, http.StatusConflict, sdkgo.FailureConflict)
 }
 
-// Only 503 promises the request was not processed; other 5xx replies may follow a stored response.
-func TestCreateResponseServerFailuresOtherThan503AreUncertainAndNeverResent(t *testing.T) {
-	for _, status := range []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusGatewayTimeout} {
+// Only 503 promises the request was not processed; other 5xx replies, a 3xx, or an unlisted 4xx may follow a stored response.
+func TestCreateResponseUnknownStatusesResendBelowTheCap(t *testing.T) {
+	for status, wantKind := range map[int]sdkgo.FailureKind{
+		http.StatusInternalServerError: sdkgo.FailureAvailability, http.StatusBadGateway: sdkgo.FailureAvailability,
+		http.StatusGatewayTimeout: sdkgo.FailureAvailability, http.StatusFound: sdkgo.FailureProviderRejection,
+		http.StatusTooEarly: sdkgo.FailureProviderRejection, http.StatusGone: sdkgo.FailureProviderRejection,
+	} {
 		t.Run(fmt.Sprint(status), func(t *testing.T) {
-			requireUncertainWithoutResend(t, status, sdkgo.FailureAvailability)
+			requireResendBelowTheCapThenUncertain(t, status, wantKind)
 		})
 	}
 }
 
-// requireUncertainWithoutResend also runs attempt 2, which sends again only after a recorded resend permission.
-func requireUncertainWithoutResend(t *testing.T, status int, wantKind sdkgo.FailureKind) {
+// A refusal of a resend cannot prove the earlier attempt created nothing.
+func TestCreateResponseRefusedResendAfterAPossibleCreateSelectsUncertain(t *testing.T) {
+	script, server := newProviderScript(t, replyStatus(http.StatusBadGateway), replyStatus(http.StatusBadRequest))
+	client := newClient(t, server.URL)
+	ctx := testsupport.NewDexContext("flow-1", "refused-resend")
+	_, err := runCreateResponse(ctx, client)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AttemptNo = 2
+	result, err := runCreateResponse(ctx, client)
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
+	require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
+}
+
+// After a possible create, missing credentials retry, while invalid ones, which no attempt can fix, select uncertain.
+func TestCreateResponseCredentialFailureAfterAPossibleCreate(t *testing.T) {
+	for name, test := range map[string]struct {
+		credentials sdkgo.StaticCredentialProvider[openai.Credentials]
+		isUncertain bool
+	}{
+		"unavailable": {credentials: sdkgo.StaticCredentialProvider[openai.Credentials]{}},
+		"invalid":     {credentials: sdkgo.StaticCredentialProvider[openai.Credentials]{openAIConnection: {APIKey: sdkgo.NewSecretString("")}}, isUncertain: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := openai.New(openai.Config{Endpoint: "https://api.openai.example/v1"}, test.credentials)
+			require.NoError(t, err)
+			ctx := testsupport.NewDexContext("flow-1", "credentials-after-send-"+name)
+			ctx.AttemptNo = 2
+			result, err := runCreateResponse(ctx, client)
+			if !test.isUncertain {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "never defect after a possible create")
+		})
+	}
+}
+
+// failingCredentials fails every Resolve with err.
+type failingCredentials struct{ err error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (openai.Credentials, error) {
+	return openai.Credentials{}, credentials.err
+}
+
+// A broker that cannot answer yet retries without counting a send; a lasting failure is a defect before
+// any send and uncertain after a possible one.
+func TestCreateResponseClassifiesTransientAndTerminalCredentialFailures(t *testing.T) {
+	for name, test := range map[string]struct {
+		err           error
+		attempt       int32
+		wantBranch    sdkgo.BranchID
+		wantSendCount int32
+	}{
+		"broker unavailable before a send": {err: projectconfig.ErrCredentialBrokerUnavailable, attempt: 1, wantSendCount: 0},
+		"broker unavailable after a send":  {err: projectconfig.ErrCredentialBrokerUnavailable, attempt: 2, wantSendCount: 1},
+		"reauthorization before a send":    {err: sdkgo.ErrReauthorizationRequired, attempt: 1, wantBranch: openai.CreateResponseBranchDefect},
+		"reauthorization after a send":     {err: sdkgo.ErrReauthorizationRequired, attempt: 2, wantBranch: openai.CreateResponseBranchUncertain},
+		"project reauthorization":          {err: projectconfig.ErrReauthorizationRequired, attempt: 1, wantBranch: openai.CreateResponseBranchDefect},
+		"not selected after a send":        {err: projectconfig.ErrConnectionNotSelected, attempt: 2, wantBranch: openai.CreateResponseBranchUncertain},
+		"not configured before a send":     {err: errors.New("connection is not configured"), attempt: 1, wantSendCount: 0},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := openai.New(openai.Config{Endpoint: "https://api.openai.example/v1"}, failingCredentials{err: test.err})
+			require.NoError(t, err)
+			ctx := testsupport.NewDexContext("flow-1", "credentials-"+name)
+			ctx.AttemptNo = test.attempt
+			result, err := runCreateResponse(ctx, client)
+			if test.wantBranch != "" {
+				require.NoError(t, err)
+				require.Equal(t, test.wantBranch, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			var checkpoint struct {
+				CanResend bool  `json:"canResend"`
+				SendCount int32 `json:"sendCount"`
+			}
+			isFound, err := ctx.GetLastHeartbeatValue(&checkpoint)
+			require.NoError(t, err)
+			require.True(t, isFound && checkpoint.CanResend, "this attempt sent nothing")
+			require.Equal(t, test.wantSendCount, checkpoint.SendCount)
+		})
+	}
+}
+
+// A refusal status whose body is oversized, cut off, or names a response proves no refusal.
+func TestCreateResponseRefusalThatProvesNothingResendsBelowTheCap(t *testing.T) {
+	for name, reply := range map[string]func(http.ResponseWriter, *http.Request){
+		"oversized": func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"error":{"code":"x"}}` + strings.Repeat(" ", 64<<10)))
+		},
+		"cut off": func(response http.ResponseWriter, _ *http.Request) {
+			response.Header().Set("Content-Length", "200")
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"error":`))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			script, server := newProviderScript(t, reply, reply)
+			client := newClient(t, server.URL)
+			ctx := testsupport.NewDexContext("flow-1", "unproven-refusal-"+name)
+			_, err := runCreateResponse(ctx, client)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			later := testsupport.NewDexContext("flow-1", "unproven-refusal-"+name)
+			later.AttemptNo = 3
+			result, err := runCreateResponse(later, client)
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "the third possible send reached the cap")
+			require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
+		})
+	}
+}
+
+func replyStatusJSON(status int, body string) func(http.ResponseWriter, *http.Request) {
+	return func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(status)
+		_, _ = response.Write([]byte(body))
+	}
+}
+
+// An error answer that names a response means OpenAI created it, so it is read back and never resent.
+func TestCreateResponseErrorAnswerNamingAResponseIsReadBackAndNeverResent(t *testing.T) {
+	for _, status := range []int{http.StatusBadRequest, http.StatusTooManyRequests, http.StatusInternalServerError} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			script, server := newProviderScript(t,
+				replyStatusJSON(status, `{"id":"resp_named","error":{"code":"x"}}`),
+				replyJSON(`{"id":"resp_named","status":"completed"}`),
+			)
+			result, err := runCreateResponse(testsupport.NewDexContext("flow-1", fmt.Sprint("named-", status)), newClient(t, server.URL))
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+			require.Equal(t, "resp_named", result.Value.ID)
+			require.Equal(t, []string{http.MethodPost, http.MethodGet}, script.requestMethods())
+		})
+	}
+}
+
+// The named response's ID is checkpointed, so a later attempt reads it back instead of sending.
+func TestCreateResponseErrorAnswerNamingAResponseKeepsItsIDForLaterAttempts(t *testing.T) {
+	script, server := newProviderScript(t,
+		replyStatusJSON(http.StatusBadRequest, `{"id":"resp_named","error":{"code":"x"}}`),
+		replyStatus(http.StatusNotFound),
+		replyJSON(`{"id":"resp_named","status":"completed"}`),
+	)
+	client := newClient(t, server.URL)
+	ctx := testsupport.NewDexContext("flow-1", "named-kept")
+	result, err := runCreateResponse(ctx, client)
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "a read-back miss cannot confirm the named response")
+	ctx.AttemptNo = 2
+	result, err = runCreateResponse(ctx, client)
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+	require.Equal(t, []string{http.MethodPost, http.MethodGet, http.MethodGet}, script.requestMethods(), "the create is never sent again")
+}
+
+// A later attempt treats a foreign checkpoint or an invalid saved ID as no checkpoint, never as a defect.
+func TestCreateResponseLaterAttemptTreatsAnUntrustedCheckpointAsAPossibleSend(t *testing.T) {
+	for name, replaceCheckpoint := range map[string]func(map[string]any){
+		"foreign call":        func(checkpoint map[string]any) { checkpoint["callId"] = "another-call" },
+		"invalid response ID": func(checkpoint map[string]any) { checkpoint["responseId"] = "resp/../bad" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			script, server := newProviderScript(t, replyStatus(http.StatusTooManyRequests), replyJSON(`{"id":"resp_after_untrusted","status":"completed"}`))
+			client := newClient(t, server.URL)
+			ctx := testsupport.NewDexContext("flow-1", "untrusted-"+strings.ReplaceAll(name, " ", "-"))
+			_, err := runCreateResponse(ctx, client)
+			require.ErrorContains(t, err, "429")
+			var checkpoint map[string]any
+			hasCheckpoint, err := ctx.GetLastHeartbeatValue(&checkpoint)
+			require.NoError(t, err)
+			require.True(t, hasCheckpoint)
+			replaceCheckpoint(checkpoint)
+			require.NoError(t, ctx.RecordHeartbeat(checkpoint))
+			ctx.AttemptNo = 2
+			result, err := runCreateResponse(ctx, client)
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch, "attempt 1 counts as one possible send")
+			require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
+		})
+	}
+}
+
+// requireResendBelowTheCapThenUncertain runs three attempts: the first two resend, and the third reaches the cap of 3.
+func requireResendBelowTheCapThenUncertain(t *testing.T, status int, wantKind sdkgo.FailureKind) {
 	t.Helper()
-	script, server := newProviderScript(t, replyStatus(status, "X-Request-Id", "req_ambiguous"))
+	reply := replyStatus(status, "X-Request-Id", "req_ambiguous")
+	script, server := newProviderScript(t, reply, reply, reply)
 	client := newClient(t, server.URL)
 	ctx := testsupport.NewDexContext("flow-1", fmt.Sprintf("ambiguous-%d", status))
+	for attempt := int32(1); attempt < 3; attempt++ {
+		ctx.AttemptNo = attempt
+		_, err := runCreateResponse(ctx, client)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d is below the send cap", attempt)
+		require.Equal(t, wantKind, retry.Failure.Kind)
+	}
+	ctx.AttemptNo = 3
 	result, err := runCreateResponse(ctx, client)
 	require.NoError(t, err)
 	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
 	require.Equal(t, wantKind, result.Failure.Kind)
 	require.Contains(t, result.Failure.Message, fmt.Sprint(status))
 	require.Equal(t, "req_ambiguous", result.Receipt.ProviderRequestID)
-	ctx.AttemptNo = 2
+	ctx.AttemptNo = 4
 	result, err = runCreateResponse(ctx, client)
 	require.NoError(t, err)
-	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
-	require.Equal(t, []string{http.MethodPost}, script.requestMethods())
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "the cap allows no fourth send")
+	require.Equal(t, []string{http.MethodPost, http.MethodPost, http.MethodPost}, script.requestMethods())
 }
 
 func TestCreateResponseHonorsBothRetryAfterForms(t *testing.T) {

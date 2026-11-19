@@ -17,6 +17,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/internal/scriptedpostgresql"
 	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -63,6 +64,35 @@ func startScriptedDatabase(t *testing.T, database *scriptedDatabase, mutate func
 	}, postgresql.WithClock(func() time.Time { return time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC) }))
 	require.NoError(t, err)
 	return server, client
+}
+
+// unavailableBrokerCredentials fails every Resolve as a temporarily unavailable credential broker.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (postgresql.Credentials, error) {
+	return postgresql.Credentials{}, fmt.Errorf("read password: %w", projectconfig.ErrCredentialBrokerUnavailable)
+}
+
+func newClientWithCredentials(t *testing.T, server *scriptedpostgresql.Server, credentials sdkgo.CredentialProvider[postgresql.Credentials]) *postgresql.Client {
+	t.Helper()
+	config := postgresql.Config{Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", SSLMode: postgresql.SSLModeDisable}
+	client, err := postgresql.New(config, credentials)
+	require.NoError(t, err)
+	return client
+}
+
+func TestQueryAndExecuteRetryAnUnavailableCredentialBroker(t *testing.T) {
+	database := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{CommandTag: "UPDATE 1"}}
+	server, _ := startScriptedDatabase(t, database, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	var retry *sdkgo.RetryError
+	_, err := query(t, client, postgresql.QueryRowsInput{Statement: "SELECT 1"})
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	_, err = execute(t, client, newStep(), addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventStartup))
 }
 
 var stepSequence atomic.Int64
@@ -225,7 +255,7 @@ func TestQueryRowsSelectsDefectBeforeContactingTheServer(t *testing.T) {
 	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventExecute), "a placeholder mismatch is caught at Prepare")
 
 	withoutCredentials, err := postgresql.New(postgresql.Config{Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", SSLMode: postgresql.SSLModeDisable},
-		sdkgo.StaticCredentialProvider[postgresql.Credentials]{})
+		sdkgo.StaticCredentialProvider[postgresql.Credentials]{scriptedConnection: {}})
 	require.NoError(t, err)
 	missing, err := query(t, withoutCredentials, postgresql.QueryRowsInput{Statement: "SELECT 1"})
 	require.NoError(t, err)
@@ -280,7 +310,7 @@ func TestExecuteStatementCommitsAndBindsTheIdempotencyKeyLast(t *testing.T) {
 	require.Equal(t, "commit", queries[1].Text)
 }
 
-func TestExecuteStatementReportsUncertainOnlyAfterCommitIsSent(t *testing.T) {
+func TestExecuteStatementRetriesACommitWithAnUnknownOutcome(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		commit        scriptedpostgresql.CommitAction
 		wantCommitted bool
@@ -293,13 +323,13 @@ func TestExecuteStatementReportsUncertainOnlyAfterCommitIsSent(t *testing.T) {
 				shape: scriptedpostgresql.Shape{ParameterCount: 1}, execution: scriptedpostgresql.Execution{CommandTag: "UPDATE 1"}, commit: testCase.commit,
 			}
 			_, client := startScriptedDatabase(t, database, nil)
-			result, err := execute(t, client, newStep(), postgresql.ExecuteStatementInput{Statement: "UPDATE t SET note = $1", Parameters: []any{secretLookingText}})
-			require.NoError(t, err, "uncertainty is a branch, never a retry")
-			require.Equal(t, postgresql.ExecuteStatementBranchUncertain, result.Branch)
-			require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-			require.NotEmpty(t, result.Receipt.IdempotencyKey, "the Receipt carries the key for reconciliation")
+			_, err := execute(t, client, newStep(), postgresql.ExecuteStatementInput{Statement: "UPDATE t SET note = $1", Parameters: []any{secretLookingText}})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "execute is repeat-safe, so an unknown COMMIT runs again instead of selecting uncertain")
+			require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
+			require.Contains(t, retry.Failure.Message, "whether the transaction committed is unknown")
+			require.NotContains(t, retry.Failure.Message, secretLookingText)
 			require.Equal(t, testCase.wantCommitted, database.hasCommitted.Load())
-			requireSecretFree(t, result)
 		})
 	}
 

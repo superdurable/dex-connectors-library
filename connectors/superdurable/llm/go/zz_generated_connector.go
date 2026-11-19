@@ -25,16 +25,17 @@ const (
 type Provider string
 
 const (
-	ProviderOpenai           Provider = "openai"
-	ProviderOpenaiCompatible Provider = "openai-compatible"
-	ProviderAnthropic        Provider = "anthropic"
-	ProviderGemini           Provider = "gemini"
-	ProviderQwen             Provider = "qwen"
-	ProviderDeepseek         Provider = "deepseek"
-	ProviderMeta             Provider = "meta"
-	ProviderMistral          Provider = "mistral"
-	ProviderKimi             Provider = "kimi"
-	ProviderXai              Provider = "xai"
+	ProviderOpenai              Provider = "openai"
+	ProviderOpenaiCompatible    Provider = "openai-compatible"
+	ProviderAnthropic           Provider = "anthropic"
+	ProviderAnthropicCompatible Provider = "anthropic-compatible"
+	ProviderGemini              Provider = "gemini"
+	ProviderQwen                Provider = "qwen"
+	ProviderDeepseek            Provider = "deepseek"
+	ProviderMeta                Provider = "meta"
+	ProviderMistral             Provider = "mistral"
+	ProviderKimi                Provider = "kimi"
+	ProviderXai                 Provider = "xai"
 )
 
 type Region string
@@ -47,13 +48,23 @@ const (
 	RegionHongKong Region = "hong-kong"
 )
 
+type OpenAICompatibleAPI string
+
+const (
+	OpenAICompatibleAPIChatCompletions OpenAICompatibleAPI = "chat-completions"
+	OpenAICompatibleAPIResponses       OpenAICompatibleAPI = "responses"
+)
+
 type Config struct {
-	Provider             Provider `json:"provider,omitempty" yaml:"provider,omitempty"`
-	BaseURL              string   `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
-	Model                string   `json:"model,omitempty" yaml:"model,omitempty"`
-	Region               Region   `json:"region,omitempty" yaml:"region,omitempty"`
-	AnthropicWorkspaceID string   `json:"anthropicWorkspaceId,omitempty" yaml:"anthropicWorkspaceId,omitempty"`
-	MaxResponseBytes     int64    `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	Provider                 Provider            `json:"provider,omitempty" yaml:"provider,omitempty"`
+	BaseURL                  string              `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
+	Model                    string              `json:"model,omitempty" yaml:"model,omitempty"`
+	Region                   Region              `json:"region,omitempty" yaml:"region,omitempty"`
+	AnthropicWorkspaceID     string              `json:"anthropicWorkspaceId,omitempty" yaml:"anthropicWorkspaceId,omitempty"`
+	MaxResponseBytes         int64               `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	OpenAICompatibleAPI      OpenAICompatibleAPI `json:"openaiCompatibleApi,omitempty" yaml:"openaiCompatibleApi,omitempty"`
+	Models                   []string            `json:"models,omitempty" yaml:"models,omitempty"`
+	ModelContextWindowTokens []string            `json:"modelContextWindowTokens,omitempty" yaml:"modelContextWindowTokens,omitempty"`
 }
 
 type Credentials struct {
@@ -175,7 +186,10 @@ func (Connection) GoString() string { return "llm.Connection{[REDACTED]}" }
 
 func DefaultConfig() Config {
 	return Config{
-		Region: Region("global"),
+		Region:                   Region("global"),
+		OpenAICompatibleAPI:      OpenAICompatibleAPI("chat-completions"),
+		Models:                   []string{},
+		ModelContextWindowTokens: []string{},
 	}
 }
 
@@ -183,6 +197,15 @@ func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
 	if config.Region == "" {
 		config.Region = defaults.Region
+	}
+	if config.OpenAICompatibleAPI == "" {
+		config.OpenAICompatibleAPI = defaults.OpenAICompatibleAPI
+	}
+	if config.Models == nil {
+		config.Models = defaults.Models
+	}
+	if config.ModelContextWindowTokens == nil {
+		config.ModelContextWindowTokens = defaults.ModelContextWindowTokens
 	}
 	return config
 }
@@ -192,7 +215,7 @@ func (config Config) Validate() error {
 		return fmt.Errorf("configuration provider is required")
 	}
 	switch config.Provider {
-	case "", "openai", "openai-compatible", "anthropic", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai":
+	case "", "openai", "openai-compatible", "anthropic", "anthropic-compatible", "gemini", "qwen", "deepseek", "meta", "mistral", "kimi", "xai":
 	default:
 		return fmt.Errorf("configuration provider is invalid")
 	}
@@ -203,6 +226,11 @@ func (config Config) Validate() error {
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	switch config.OpenAICompatibleAPI {
+	case "", "chat-completions", "responses":
+	default:
+		return fmt.Errorf("configuration openaiCompatibleApi is invalid")
 	}
 	return nil
 }

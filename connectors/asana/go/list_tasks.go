@@ -74,6 +74,9 @@ func (operation ListTasksOperation) Invoke(call sdkgo.Call, input ListTasksInput
 		return sdkgo.NewQueryBranch(ListTasksBranchDefect, ListTasksOutput{}, failurePointer(listTasksOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
 	session, cancel, startFailure := client.startSession(call, listTasksOperationID)
+	if startFailure != nil && startFailure.Kind != sdkgo.FailureAuthentication {
+		return sdkgo.NewQueryRetry[ListTasksOutput](*startFailure, 0)
+	}
 	if startFailure != nil {
 		return sdkgo.NewQueryBranch(ListTasksBranchDefect, ListTasksOutput{}, startFailure, sdkgo.Receipt{})
 	}

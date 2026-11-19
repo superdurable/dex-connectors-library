@@ -815,15 +815,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "fileId": "",
-          "name": "",
-          "sha1": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -832,7 +827,7 @@
         "contentBase64": "SGVsbG8=",
         "fileId": "12345"
       },
-      "name": "uploadFile-invalidResponse",
+      "name": "uploadFile-invalidMetadataRetries",
       "operation": "uploadFile"
     },
     {
@@ -970,6 +965,119 @@
         "fileId": "12345"
       },
       "name": "uploadFile-readbackMismatch",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "bc3fe488-f7a0-5ea0-8330-6ef7795d5372",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"12345\",\"type\":\"file\",\"name\":\"example.txt\",\"sha1\":\"0000000000000000000000000000000000000000\",\"size\":5}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,sha1,size"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"type\":\"error\",\"status\":409,\"code\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoiZXhhbXBsZS50eHQifQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"example.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"12345\",\"type\":\"file\",\"name\":\"example.txt\",\"sha1\":\"0000000000000000000000000000000000000000\",\"size\":5}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,sha1,size"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc3fe488-f7a0-5ea0-8330-6ef7795d5372",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "fileId": "12345"
+      },
+      "name": "uploadFile-conflictReadsBackThenRetries",
       "operation": "uploadFile"
     },
     {

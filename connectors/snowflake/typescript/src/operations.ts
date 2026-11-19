@@ -82,13 +82,20 @@ export class CancelStatementOperation implements Mutation<CancelStatementInput, 
   async invoke(call: Call, input: CancelStatementInput): Promise<MutationAttempt<StatementCancellation>> {
     if (!isStatementHandle(input.statementHandle)) return mutationFailure(this.client, call, 'cancelStatement', 'defect', 'VALIDATION', 'statementHandle must be the UUID-shaped handle submitStatement returned', emptyCancellation);
     const exchange = await this.client.exchange(call, 'cancelStatement', 'POST', `${path}/${input.statementHandle}/cancel?${new URLSearchParams({ requestId: call.idempotencyKey ?? '' }).toString()}`, Buffer.from('{}'));
-    if ('outcome' in exchange) return mutationOutcome(this.client, call, 'cancelStatement', exchange.outcome, emptyCancellation, input.statementHandle);
+    // An earlier attempt may have canceled it; canceled already allows a statement that finished first.
+    const isRepeatedRefusal = 'outcome' in exchange && exchange.outcome.disposition === 'rejected' && exchange.outcome.httpStatus === 422 &&
+      call.context.attempt > 1 && exchange.outcome.status.code !== '000709';
+    if ('outcome' in exchange && !isRepeatedRefusal) return mutationOutcome(this.client, call, 'cancelStatement', exchange.outcome, emptyCancellation, input.statementHandle);
+    if ('outcome' in exchange) return newMutationBranch('canceled', { statementHandle: input.statementHandle }, this.client.receipt(call, input.statementHandle, exchange.outcome.status));
     return newMutationBranch('canceled', { statementHandle: input.statementHandle }, this.client.receipt(call, input.statementHandle, decodeStatus(exchange.response.body)));
   }
 }
 
 function mutationOutcome<T>(client: SnowflakeClient, call: Call, _operation: string, outcome: SnowflakeFailure, zero: T, handle = ''): MutationAttempt<T> {
   if (outcome.disposition === 'retry' || outcome.disposition === 'invalidResponse') return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  // Both writes are safe to repeat, so a status that does not prove a refusal retries.
+  if (outcome.disposition === 'rejected' && ![400, 401, 403, 404, 411, 413, 414, 415, 422].includes(outcome.httpStatus ?? 0))
+    return newMutationRetry({ ...outcome.failure, kind: 'AVAILABILITY' });
   return newMutationBranch(outcome.disposition === 'defect' ? 'defect' : 'providerRejected', zero, client.receipt(call, handle || outcome.status.statementHandle, outcome.status), outcome.failure);
 }
 

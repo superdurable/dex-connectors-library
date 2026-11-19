@@ -209,7 +209,7 @@ func CreateEventProviderRejected(value outlookcalendar.CreateEventOutput, failur
 	return connectormock.Branch(outlookcalendar.CreateEventBranchProviderRejected, value, failure)
 }
 
-// CreateEventInvalidResponse selects the invalidResponse branch: Microsoft Graph returned an invalid or oversized event response.
+// CreateEventInvalidResponse selects the invalidResponse branch: The marker lookup before any send returned a malformed or oversized answer, so nothing was sent; an unusable POST answer is read back or selects uncertain instead.
 func CreateEventInvalidResponse(value outlookcalendar.CreateEventOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.CreateEventOutput] {
 	return connectormock.Branch(outlookcalendar.CreateEventBranchInvalidResponse, value, failure)
 }
@@ -217,6 +217,11 @@ func CreateEventInvalidResponse(value outlookcalendar.CreateEventOutput, failure
 // CreateEventDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
 func CreateEventDefect(value outlookcalendar.CreateEventOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.CreateEventOutput] {
 	return connectormock.Branch(outlookcalendar.CreateEventBranchDefect, value, failure)
+}
+
+// CreateEventUncertain returns an uncertain createEvent outcome.
+func CreateEventUncertain(value outlookcalendar.CreateEventOutput, failure sdkgo.Failure) connectormock.Case[outlookcalendar.CreateEventOutput] {
+	return connectormock.Uncertain(value, failure)
 }
 
 // CreateEventRetry asks Dex to retry the createEvent Step, after the delay when it is positive.
@@ -256,7 +261,7 @@ func UpdateEventProviderRejected(value outlookcalendar.UpdateEventOutput, failur
 	return connectormock.Branch(outlookcalendar.UpdateEventBranchProviderRejected, value, failure)
 }
 
-// UpdateEventInvalidResponse selects the invalidResponse branch: Microsoft Graph returned an invalid or oversized event response.
+// UpdateEventInvalidResponse selects the invalidResponse branch: Retained for compatibility and no longer selected: an invalid or oversized response now retries from the read.
 func UpdateEventInvalidResponse(value outlookcalendar.UpdateEventOutput, failure *sdkgo.Failure) connectormock.Case[outlookcalendar.UpdateEventOutput] {
 	return connectormock.Branch(outlookcalendar.UpdateEventBranchInvalidResponse, value, failure)
 }

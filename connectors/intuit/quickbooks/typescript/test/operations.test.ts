@@ -2,11 +2,22 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { QuickBooksClient } from '../src/client.js';
+import { decodeCredentials } from '../src/generated/models.js';
 
-const call = { id: 'quickbooks-unit-call', idempotencyKey: 'quickbooks-unit-call', connection: { provider: 'quickbooks', name: 'test' }, operation: { connectorId: 'quickbooks', operationId: 'createInvoice' }, context: { cancellationSignal: new AbortController().signal } } as Call;
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
+
+// A fenced write needs a UUID Call ID and an attempt context; maxSendsOverride 1 makes one attempt final.
+const call = { id: '5af8fafa-06ff-5b2d-bb13-04693809fabf', idempotencyKey: 'quickbooks-unit-call', connection: { provider: 'quickbooks', name: 'test' }, operation: { connectorId: 'quickbooks', operationId: 'createInvoice' }, maxSendsOverride: 1,
+  context: { attempt: 1, cancellationSignal: new AbortController().signal, hasLastHeartbeatValue: () => false, getLastHeartbeatValue: () => undefined, recordHeartbeat: async () => {} } } as unknown as Call;
 const credentials = { accessToken: new SecretString('quickbooks-test-token'), clientId: 'test-client', clientSecret: new SecretString('test-secret'), refreshToken: new SecretString(''), idToken: new SecretString('') };
 const source = { resolve: async () => credentials, resolveWithRefresh: async () => credentials };
 const response = (status: number, body: unknown): ProviderResponse => ({ status, headers: {}, body: Buffer.from(JSON.stringify(body)) });
@@ -16,16 +27,29 @@ function client(send: (request: ProviderRequest) => Promise<ProviderResponse>, p
 }
 
 describe('QuickBooks provider boundaries', () => {
-  it('treats malformed host credentials as a terminal defect', async () => {
-    const provider = { resolve: async (): Promise<typeof credentials> => { throw new TypeError('malformed'); }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw new TypeError('malformed'); } };
+  it('retries a plain TypeError from the credential source, which a fetch failure throws', async () => {
+    const provider = { resolve: async (): Promise<typeof credentials> => { throw new TypeError('fetch failed'); }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw new TypeError('fetch failed'); } };
     const result = await client(async () => { throw new Error('must not send'); }, provider).getInvoice().invoke(call, { invoiceId: '130' });
-    expect(result).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
+    expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
   });
 
   it('retries a transient host refresh failure', async () => {
     const provider = { resolve: async (): Promise<typeof credentials> => { throw new Error('temporary outage'); }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw new Error('temporary outage'); } };
     const result = await client(async () => { throw new Error('must not send'); }, provider).getInvoice().invoke(call, { invoiceId: '130' });
     expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+  });
+
+  it('treats only the listed credential errors as terminal', async () => {
+    for (const [error, expected] of [
+      [new Error('connection is not configured'), { kind: 'retry' }], [new CredentialBrokerUnavailableError(), { kind: 'retry' }],
+      [new ReauthorizationRequiredError(), { kind: 'branch', branch: 'providerRejected' }], [new ObjectNotFoundError(), { kind: 'branch', branch: 'defect' }],
+      [new ConnectionNotSelectedError(), { kind: 'branch', branch: 'defect' }], [new CredentialBrokerRejectedError(), { kind: 'branch', branch: 'defect' }],
+      [sdkWrappedMaterialError(), { kind: 'branch', branch: 'defect' }],
+    ] as const) {
+      const provider = { resolve: async (): Promise<typeof credentials> => { throw error; }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw error; } };
+      const result = await client(async () => { throw new Error('must not send'); }, provider).getInvoice().invoke(call, { invoiceId: '130' });
+      expect(result, error.name).toMatchObject(expected);
+    }
   });
 
   it('rejects invalid calendar dates before a provider request', async () => {

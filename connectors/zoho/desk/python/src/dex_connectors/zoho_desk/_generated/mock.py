@@ -182,7 +182,7 @@ def update_ticket_invalid_status() -> Case[UpdateTicketOutput]:
 setattr(update_ticket_invalid_status, '__module__', "dex_connectors.zoho_desk.deskmock")
 
 def update_ticket_invalid_updated_ticket() -> Case[UpdateTicketOutput]:
-    return Case.branch_result(INVALID_RESPONSE, UpdateTicketOutput(ticket=Ticket(id='1892000000099001', ticket_number='101', subject='Billing question', description_html='<div>Please check my invoice.</div>', status='On Hold', status_type='On Hold', priority='Low', channel='Web', department_id='1892000000006907', contact_id='1892000000042032', email='jane@example.test', comment_count=1, created_at=datetime.fromisoformat("2026-01-28T09:00:00Z".replace('Z', '+00:00')), modified_at=datetime.fromisoformat("2026-01-28T09:03:00Z".replace('Z', '+00:00')))), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "updateTicket", "Zoho Desk returned an invalid updated ticket."))
+    return Case.branch_result(INVALID_RESPONSE, UpdateTicketOutput(ticket=Ticket(status='')), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "updateTicket", "Zoho Desk returned an invalid ticket."))
 
 setattr(update_ticket_invalid_updated_ticket, '__module__', "dex_connectors.zoho_desk.deskmock")
 

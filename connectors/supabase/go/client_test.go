@@ -93,6 +93,26 @@ func TestUpsertRowsHTTPAndRejection(t *testing.T) {
 	}
 }
 
+func TestUpsertRowsRetriesUnknownOutcomesBecauseAnUpsertConverges(t *testing.T) {
+	for _, answer := range []struct {
+		status int
+		body   string
+	}{{http.StatusMethodNotAllowed, `{}`}, {http.StatusConflict, `{}`}, {http.StatusCreated, `{"wrong":true}`}, {http.StatusCreated, `[`}} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(answer.status)
+			_, err := fmt.Fprint(w, answer.body)
+			require.NoError(t, err)
+		}))
+		reference := sdkgo.ConnectionRef{Provider: "supabase", Name: "supabase"}
+		client, err := New(Config{BaseURL: server.URL + "/rest/v1"}, sdkgo.StaticCredentialProvider[Credentials]{reference: {APIKey: sdkgo.NewSecretString("test-token")}})
+		require.NoError(t, err)
+		_, err = sdkgo.RunMutation(testContext{}, client.UpsertRows(), reference, UpsertRowsInput{Table: "projects", OnConflict: "id", Rows: []map[string]any{{"id": 1, "name": "Meridian"}}})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "HTTP %d %s retries", answer.status, answer.body)
+		server.Close()
+	}
+}
+
 func TestUpsertRowsRequiresStableUniqueConflictValues(t *testing.T) {
 	_, _, _, err := encodeUpsertRowsInput(UpsertRowsInput{Table: "projects", OnConflict: "id", Rows: []map[string]any{{"name": "Meridian"}}})
 	require.ErrorContains(t, err, "onConflict")

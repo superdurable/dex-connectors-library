@@ -61,6 +61,494 @@
       },
       "idempotencyKey": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
       "input": {
+        "channel": "support",
+        "message": "I was charged twice.",
+        "requester": {
+          "email": "jane@acme.example.com",
+          "name": "Jane Smith"
+        },
+        "subject": "Double charge"
+      },
+      "name": "createConversation-canResendReadsBackFirst",
+      "operation": "createConversation",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+        "sendCount": 1,
+        "state": "canResend"
+      }
+    },
+    {
+      "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+      "exchanges": [
+        {
+          "body": "{\"slug\":\"double-charge\",\"status\":\"open\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "conversation": {
+              "category": "support",
+              "data": {
+                "dex_dispatch_key": "dex-89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6"
+              },
+              "message": {
+                "body": "I was charged twice."
+              },
+              "subject": "Double charge",
+              "user": {
+                "email": "jane@acme.example.com",
+                "name": "Jane Smith"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"slug\":\"double-charge\",\"subject\":\"Double charge\",\"status\":0,\"created_at\":\"2026-01-26T14:02:00Z\",\"tag_list\":[\"billing\"],\"message\":{\"body\":\"I was charged twice.\"},\"author\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"category\":{\"slug\":\"support\",\"name\":\"Support\",\"channel\":1},\"data\":{\"dex_dispatch_key\":\"dex-89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/double-charge",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+          "providerId": "double-charge",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "conversation": {
+            "channel": {
+              "name": "Support",
+              "slug": "support",
+              "type": 1
+            },
+            "createdAt": "2026-01-26T14:02:00Z",
+            "firstMessage": "I was charged twice.",
+            "id": "double-charge",
+            "requester": {
+              "email": "jane@acme.example.com",
+              "name": "Jane Smith"
+            },
+            "status": 0,
+            "subject": "Double charge",
+            "tags": [
+              "billing"
+            ]
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+      "input": {
+        "channel": "support",
+        "message": "I was charged twice.",
+        "requester": {
+          "email": "jane@acme.example.com",
+          "name": "Jane Smith"
+        },
+        "subject": "Double charge"
+      },
+      "name": "createConversation-acceptedUndecodableReadBackBySlug",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+      "exchanges": [
+        {
+          "body": "{\"subject\":\"accepted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "conversation": {
+              "category": "support",
+              "data": {
+                "dex_dispatch_key": "dex-89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6"
+              },
+              "message": {
+                "body": "I was charged twice."
+              },
+              "subject": "Double charge",
+              "user": {
+                "email": "jane@acme.example.com",
+                "name": "Jane Smith"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations",
+          "query": {
+            "data[dex_dispatch_key]": [
+              "dex-89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6"
+            ],
+            "filter": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "conversation": {
+            "channel": {
+              "slug": ""
+            },
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "status": 0,
+            "tags": []
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+      "input": {
+        "channel": "support",
+        "message": "I was charged twice.",
+        "requester": {
+          "email": "jane@acme.example.com",
+          "name": "Jane Smith"
+        },
+        "subject": "Double charge"
+      },
+      "name": "createConversation-acceptedUndecodableReadBackRateLimit",
+      "operation": "createConversation"
+    },
+    {
+      "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "exchanges": [
+        {
+          "body": "{\"page_size\":30,\"page_count\":1,\"total_count\":1,\"messages\":[{\"body\":\"Dex triage note.\",\"visibility\":1,\"origin\":7,\"origin_id\":\"dex-6a98d84c-1ae1-56e1-b710-a14e062badff\",\"created_at\":\"2026-01-27T12:00:00Z\",\"user\":{\"name\":\"Agent\",\"email\":\"agent@acme.example.com\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/double-charge/messages",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "conversationId": "double-charge",
+          "message": {
+            "author": {
+              "email": "agent@acme.example.com",
+              "name": "Agent"
+            },
+            "body": "Dex triage note.",
+            "createdAt": "2026-01-27T12:00:00Z",
+            "isInternalNote": true,
+            "origin": 7,
+            "originId": "dex-6a98d84c-1ae1-56e1-b710-a14e062badff",
+            "visibility": 1
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "input": {
+        "conversationId": "double-charge",
+        "isInternalNote": true,
+        "text": "Dex triage note."
+      },
+      "name": "replyToConversation-canResendReadsBackFirst",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+        "sendCount": 1,
+        "state": "canResend"
+      }
+    },
+    {
+      "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "exchanges": [
+        {
+          "body": "{\"body\":\"accepted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/double-charge/messages",
+          "requestBody": {
+            "message": {
+              "body": "Dex triage note.",
+              "origin_id": "dex-6a98d84c-1ae1-56e1-b710-a14e062badff",
+              "visibility": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/double-charge/messages",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": "double-charge",
+          "message": {
+            "body": "",
+            "createdAt": "0001-01-01T00:00:00Z",
+            "isInternalNote": false,
+            "origin": 0,
+            "visibility": 0
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "input": {
+        "conversationId": "double-charge",
+        "isInternalNote": true,
+        "text": "Dex triage note."
+      },
+      "name": "replyToConversation-acceptedUndecodableReadBackRateLimit",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/double-charge/messages",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "conversationId": "double-charge",
+          "message": {
+            "body": "",
+            "createdAt": "0001-01-01T00:00:00Z",
+            "isInternalNote": false,
+            "origin": 0,
+            "visibility": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "input": {
+        "conversationId": "double-charge",
+        "isInternalNote": true,
+        "text": "Dex triage note."
+      },
+      "name": "replyToConversation-readBackNotFoundAfterPossibleSend",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+      "exchanges": [
+        {
+          "body": "{\"page_size\":30,\"page_count\":1,\"total_count\":1,\"conversations\":[{\"slug\":\"double-charge\",\"subject\":\"Double charge\",\"status\":0,\"created_at\":\"2026-01-26T14:02:00Z\",\"tag_list\":[\"billing\"],\"message\":{\"body\":\"I was charged twice.\"},\"author\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"category\":{\"slug\":\"support\",\"name\":\"Support\",\"channel\":1},\"data\":{\"dex_dispatch_key\":\"dex-89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations",
+          "query": {
+            "data[dex_dispatch_key]": [
+              "dex-89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6"
+            ],
+            "filter": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "conversation": {
+            "channel": {
+              "name": "Support",
+              "slug": "support",
+              "type": 1
+            },
+            "createdAt": "2026-01-26T14:02:00Z",
+            "firstMessage": "I was charged twice.",
+            "id": "double-charge",
+            "requester": {
+              "email": "jane@acme.example.com",
+              "name": "Jane Smith"
+            },
+            "status": 0,
+            "subject": "Double charge",
+            "tags": [
+              "billing"
+            ]
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+      "input": {
         "assigneeEmail": "agent@acme.example.com",
         "channel": "support",
         "holdUntil": "2026-07-15T09:00:00Z",
@@ -266,8 +754,9 @@
       "name": "createConversation-candidate-invalidIgnoredField",
       "operation": "createConversation",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -658,8 +1147,9 @@
       "name": "createConversation-candidate-uncertain",
       "operation": "createConversation",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -772,8 +1262,9 @@
       "name": "createConversation-nullReadBackEntry",
       "operation": "createConversation",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -829,7 +1320,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversation": {
@@ -1341,7 +1832,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversation": {
@@ -1511,6 +2002,7 @@
           "attempt": 1,
           "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
           "providerId": "double-charge",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1759,6 +2251,7 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+            "sendCount": 1,
             "state": "claimed"
           },
           "retryAfterMs": 0
@@ -1834,26 +2327,85 @@
             ]
           },
           "status": 200
+        },
+        {
+          "body": "{\"slug\":\"double-charge\",\"subject\":\"Double charge\",\"status\":0,\"created_at\":\"2026-01-26T22:02:00Z\",\"tag_list\":[\"billing\"],\"message\":{\"body\":\"I was charged twice.\"},\"author\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"category\":{\"slug\":\"support\",\"name\":\"Support\",\"channel\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "conversation": {
+              "assignee": "agent@acme.example.com",
+              "category": "support",
+              "data": {
+                "dex_dispatch_key": "dex-89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6"
+              },
+              "hold_until": "2026-07-15T09:00:00Z",
+              "message": {
+                "body": "I was charged twice.",
+                "suppress_notifications": true
+              },
+              "status": 5,
+              "subject": "Double charge",
+              "tag_list": [
+                "billing"
+              ],
+              "user": {
+                "email": "jane@acme.example.com",
+                "name": "Jane Smith"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+          "providerId": "double-charge",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
           "conversation": {
             "channel": {
-              "slug": ""
+              "name": "Support",
+              "slug": "support",
+              "type": 1
             },
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": "",
+            "createdAt": "2026-01-26T22:02:00Z",
+            "firstMessage": "I was charged twice.",
+            "id": "double-charge",
+            "requester": {
+              "email": "jane@acme.example.com",
+              "name": "Jane Smith"
+            },
             "status": 0,
-            "tags": []
+            "subject": "Double charge",
+            "tags": [
+              "billing"
+            ]
           }
         },
-        "requestCount": 2,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
       "input": {
@@ -1879,6 +2431,7 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+            "sendCount": 1,
             "state": "claimed"
           },
           "retryAfterMs": 0
@@ -2110,8 +2663,9 @@
       "name": "createConversation-uncertain",
       "operation": "createConversation",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -4117,7 +4671,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversationId": "",
@@ -4183,7 +4737,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversationId": "",
@@ -4249,7 +4803,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversationId": "",
@@ -4633,7 +5187,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "conversationId": "",
@@ -4755,6 +5309,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -4929,6 +5484,7 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+            "sendCount": 1,
             "state": "claimed"
           },
           "retryAfterMs": 0
@@ -4987,25 +5543,60 @@
             ]
           },
           "status": 200
+        },
+        {
+          "body": "{\"body\":\"Dex triage note.\",\"visibility\":1,\"origin\":7,\"origin_id\":\"dex-6a98d84c-1ae1-56e1-b710-a14e062badff\",\"created_at\":\"2026-01-26T22:03:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/double-charge/messages",
+          "requestBody": {
+            "message": {
+              "body": "Dex triage note.",
+              "origin_id": "dex-6a98d84c-1ae1-56e1-b710-a14e062badff",
+              "suppress_autoresolve": true,
+              "suppress_notifications": true,
+              "visibility": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "replied",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
           "conversationId": "double-charge",
           "message": {
-            "body": "",
-            "createdAt": "0001-01-01T00:00:00Z",
-            "isInternalNote": false,
-            "origin": 0,
-            "visibility": 0
+            "body": "Dex triage note.",
+            "createdAt": "2026-01-26T22:03:00Z",
+            "isInternalNote": true,
+            "origin": 7,
+            "originId": "dex-6a98d84c-1ae1-56e1-b710-a14e062badff",
+            "visibility": 1
           }
         },
-        "requestCount": 2,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "6a98d84c-1ae1-56e1-b710-a14e062badff",
       "input": {
@@ -5022,6 +5613,7 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+            "sendCount": 1,
             "state": "claimed"
           },
           "retryAfterMs": 0
@@ -5194,8 +5786,9 @@
       "name": "replyToConversation-uncertain",
       "operation": "replyToConversation",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -6455,21 +7048,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "conversation": {
-            "channel": {
-              "slug": ""
-            },
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": "",
-            "status": 0,
-            "tags": []
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6539,31 +7121,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "conversation": {
-            "channel": {
-              "name": "Support",
-              "slug": "support",
-              "type": 1
-            },
-            "createdAt": "2026-01-26T14:02:00Z",
-            "firstMessage": "I was charged twice.",
-            "id": "double-charge",
-            "requester": {
-              "email": "jane@acme.example.com",
-              "name": "Jane Smith"
-            },
-            "status": 0,
-            "subject": "Double charge",
-            "tags": [
-              "billing"
-            ]
-          }
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7488,6 +8049,186 @@
       },
       "name": "updateConversation-unavailable",
       "operation": "updateConversation"
+    },
+    {
+      "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "input": {
+        "conversationId": "double-charge",
+        "isInternalNote": true,
+        "text": "Dex triage note."
+      },
+      "name": "replyToConversation-untrustedCheckpointRetry",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+        "sendCount": 2,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+      "input": {
+        "channel": "support",
+        "message": "I was charged twice.",
+        "requester": {
+          "email": "jane@acme.example.com",
+          "name": "Jane Smith"
+        },
+        "subject": "Double charge"
+      },
+      "name": "createConversation-untrustedCheckpointRetry",
+      "operation": "createConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+        "sendCount": 2,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/double-charge/messages",
+          "requestBody": {
+            "message": {
+              "body": "Dex triage note.",
+              "origin_id": "dex-6a98d84c-1ae1-56e1-b710-a14e062badff",
+              "visibility": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"page_size\":30,\"page_count\":1,\"total_count\":0,\"messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/double-charge/messages",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/double-charge/messages",
+          "requestBody": {
+            "message": {
+              "body": "Dex triage note.",
+              "origin_id": "dex-6a98d84c-1ae1-56e1-b710-a14e062badff",
+              "visibility": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": "",
+          "message": {
+            "body": "",
+            "createdAt": "0001-01-01T00:00:00Z",
+            "isInternalNote": false,
+            "origin": 0,
+            "visibility": 0
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+      "input": {
+        "conversationId": "double-charge",
+        "isInternalNote": true,
+        "text": "Dex triage note."
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "CONFLICT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "replyToConversation-refusalAfterUnknownUncertain",
+      "operation": "replyToConversation"
     }
   ],
   "schemaVersion": 1

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Durable refund recording through the MySQL connector."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import dex
 from dex_connectors.sdk import MutationResult, QueryResult
@@ -13,6 +13,7 @@ from dex_connectors.mysql import (
     QueryRowsInput,
     RowSet,
     StatementExecution,
+    new_execute_non_idempotent_step,
     new_execute_step,
     new_query_step,
 )
@@ -22,6 +23,11 @@ _FIND = "SELECT refund_id, order_id, amount_usd, idempotency_key FROM refund_led
 _INSERT = (
     "INSERT INTO refund_ledger (order_id, amount_usd, external_reference, idempotency_key) "
     "VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE refund_id = LAST_INSERT_ID(refund_id)"
+)
+# Running this twice counts the refund twice, so it uses executeNonIdempotent.
+_ADD_TO_DAILY_TOTAL = (
+    "INSERT INTO refund_daily_totals (refund_date, total_usd) VALUES (UTC_DATE(), ?) "
+    "ON DUPLICATE KEY UPDATE total_usd = total_usd + VALUES(total_usd)"
 )
 
 
@@ -40,11 +46,11 @@ class RefundOutcome:
 
     status: str
     order_id: str = field(metadata={"dex_json_name": "orderId"})
+    is_added_to_daily_total: bool = field(default=False, metadata={"dex_json_name": "isAddedToDailyTotal"})
 
 
 _REQUEST = dex.Attribute("mysql-python-refund-request", RefundRequest)
 _OUTCOME = dex.Attribute("mysql-python-refund-outcome", RefundOutcome)
-_UNCERTAIN_KEY = dex.Attribute("mysql-python-uncertain-key", str)
 
 
 def _query_input(request: RefundRequest) -> QueryRowsInput:
@@ -57,10 +63,9 @@ def _execute_input(request: RefundRequest) -> ExecuteStatementInput:
     )
 
 
-def _readback_input(key: str) -> QueryRowsInput:
-    return QueryRowsInput(
-        "SELECT order_id, idempotency_key FROM refund_ledger WHERE idempotency_key = ?", (key,)
-    )
+def _daily_total_input(amount_usd: str) -> ExecuteStatementInput:
+    # ON DUPLICATE KEY UPDATE reports 1 row for a new day's row and 2 for an updated one.
+    return ExecuteStatementInput(_ADD_TO_DAILY_TOTAL, (amount_usd,), 0, 2)
 
 
 # dex:group group-id:mysql-refund group-label:"MySQL refund"
@@ -92,46 +97,25 @@ class _Decide(dex.Step[QueryResult[RowSet]]):
 
 
 # dex:group group-id:mysql-refund group-label:"MySQL refund"
-# dex:explanation text:"Complete after the idempotent insert commits."
+# dex:explanation text:"Record the committed refund, then add it to the daily total."
 class _Complete(dex.Step[MutationResult[StatementExecution]]):
     def get_step_type(self) -> str:
         return "CompleteRefund"
 
     def execute(self, context: dex.Context, input: MutationResult[StatementExecution]) -> dex.StepDecision:
-        outcome = RefundOutcome("recorded", _REQUEST.get(context).order_id)
-        _OUTCOME.set(context, outcome)
-        return dex.graceful_complete(outcome)
+        request = _REQUEST.get(context)
+        _OUTCOME.set(context, RefundOutcome("recorded", request.order_id))
+        return dex.go_to(dex.StepRef("AddRefundToDailyTotal"), request.amount_usd)
 
 
 # dex:group group-id:mysql-refund group-label:"MySQL refund"
-# dex:explanation text:"Read back a write whose COMMIT outcome was unknown."
-class _CheckUncertain(dex.Step[MutationResult[StatementExecution]]):
+# dex:explanation text:"Complete with the refund after adding it to today's total."
+class _DailyTotalRecorded(dex.Step[MutationResult[StatementExecution]]):
     def get_step_type(self) -> str:
-        return "CheckUncertainRefund"
+        return "CompleteDailyTotal"
 
     def execute(self, context: dex.Context, input: MutationResult[StatementExecution]) -> dex.StepDecision:
-        key = str(input.receipt.idempotency_key)
-        if not key:
-            return dex.force_fail("uncertain refund has no idempotency key")
-        _UNCERTAIN_KEY.set(context, key)
-        return dex.go_to(dex.StepRef("ReadBackUncertainRefund"), key)
-
-
-# dex:group group-id:mysql-refund group-label:"MySQL refund"
-# dex:explanation text:"Confirm this Step's key was committed before completing."
-class _Reconcile(dex.Step[QueryResult[RowSet]]):
-    def get_step_type(self) -> str:
-        return "ReconcileUncertainRefund"
-
-    def execute(self, context: dex.Context, input: QueryResult[RowSet]) -> dex.StepDecision:
-        key = _UNCERTAIN_KEY.get(context)
-        if (
-            len(input.value.rows) != 1
-            or input.value.rows[0] is None
-            or input.value.rows[0]["idempotency_key"] != key
-        ):
-            return dex.force_fail("uncertain refund was not confirmed by read-back")
-        outcome = RefundOutcome("recorded", _REQUEST.get(context).order_id)
+        outcome = replace(_OUTCOME.get(context), is_added_to_daily_total=True)
         _OUTCOME.set(context, outcome)
         return dex.graceful_complete(outcome)
 
@@ -145,8 +129,7 @@ class RecordRefundFlow(dex.Flow[RefundRequest]):
         self._record = _RecordRequest()
         self._decide = _Decide()
         self._complete = _Complete()
-        self._check_uncertain = _CheckUncertain()
-        self._reconcile = _Reconcile()
+        self._daily_total_recorded = _DailyTotalRecorded()
         self._query = new_query_step(
             step_type="FindRecordedRefund",
             step_input_type=RefundRequest,
@@ -172,21 +155,19 @@ class RecordRefundFlow(dex.Flow[RefundRequest]):
             connection_name=CONNECTION_NAME,
             map_to_operation_input=_execute_input,
             completed=self._complete,
-            # An uncertain COMMIT requires a read-back by this Step's idempotency key.
-            uncertain=self._check_uncertain,
         )
-        self._readback = new_query_step(
-            step_type="ReadBackUncertainRefund",
+        self._add_to_daily_total = new_execute_non_idempotent_step(
+            step_type="AddRefundToDailyTotal",
             step_input_type=str,
             annotations={
                 "groupId": "mysql-refund",
                 "groupLabel": "MySQL refund",
-                "explanation": "Confirm an uncertain refund by its Step idempotency key.",
+                "explanation": "Add the new refund to today's total at most once.",
             },
             connection=connection,
             connection_name=CONNECTION_NAME,
-            map_to_operation_input=_readback_input,
-            completed=self._reconcile,
+            map_to_operation_input=_daily_total_input,
+            completed=self._daily_total_recorded,
         )
 
     def get_flow_type(self) -> str:
@@ -198,10 +179,9 @@ class RecordRefundFlow(dex.Flow[RefundRequest]):
             self._decide,
             self._insert,
             self._complete,
-            self._check_uncertain,
-            self._readback,
-            self._reconcile,
+            self._add_to_daily_total,
+            self._daily_total_recorded,
         )
 
     def get_persistence_schema(self) -> dex.PersistenceSchema:
-        return dex.PersistenceSchema.of(_REQUEST, _OUTCOME, _UNCERTAIN_KEY)
+        return dex.PersistenceSchema.of(_REQUEST, _OUTCOME)

@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -78,6 +79,7 @@ UPDATE_VALUES_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 APPEND_TABLE_ROWS_DEFINITION = MutationDefinition(
@@ -88,7 +90,7 @@ APPEND_TABLE_ROWS_DEFINITION = MutationDefinition(
         BranchDefinition(COLUMNS_MISMATCH, "The table has no column with the key column's name or with a name a row uses; nothing was written.", True),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft conclusively rejected the append or the key lookup, such as a protected worksheet or a missing permission; nothing was written.", True),
         BranchDefinition(INVALID_RESPONSE, "Microsoft returned an invalid or oversized response before the append was sent.", True),
-        BranchDefinition(UNCERTAIN, "The append was sent but its outcome cannot be confirmed and the table does not show its rows yet; the connector never sends it again.", True),
+        BranchDefinition(UNCERTAIN, "The append reached the send cap, or a send was refused after an earlier unconfirmed send, and the table still does not show every row.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -96,4 +98,6 @@ APPEND_TABLE_ROWS_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 5, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )

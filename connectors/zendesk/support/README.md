@@ -1,6 +1,6 @@
 # Zendesk Support Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zendesk/support`.
 
@@ -15,18 +15,25 @@ Flows. It exposes these operation-specific Dex Step factories:
 | --- | --- | --- | --- |
 | `support.NewSearchTicketsStep` | Query | `searched` | `providerRejected`, `invalidResponse`, `defect` |
 | `support.NewGetTicketStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `support.NewCreateTicketStep` | Mutation | `created` | `providerRejected`, `invalidResponse`, `defect` |
-| `support.NewUpdateTicketStep` | Mutation | `updated` | `notFound`, `conflict`, `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewCreateTicketStep` | Mutation | `created` | `providerRejected`, `invalidResponse` (never selected), `defect` |
+| `support.NewUpdateTicketStep` | Mutation | `updated` | `notFound`, `conflict`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses async Execute durability and a 30-second Execute timeout. Reads and
-`createTicket` use the one-hour default retry budget, within Zendesk's two-hour
-Idempotency-Key lifetime. `createTicket` repeats an unknown outcome safely
-(`repeatOnUnknown: safe`), because every attempt sends the same Idempotency-Key.
-`updateTicket` keeps six attempts within five minutes because comment
-reconciliation scans only the latest audit page, and uses the default
-`limited` tier with three sends.
+uses a 30-second Execute timeout; the reads and `createTicket` use async
+Execute durability, and `updateTicket` uses sync durability for its
+single-dispatch fence. Reads and `createTicket` use the one-hour default retry
+budget, within Zendesk's two-hour Idempotency-Key lifetime. `createTicket`
+repeats an unknown outcome safely (`repeatOnUnknown: safe`), because every
+attempt sends the same Idempotency-Key. `updateTicket` keeps six attempts
+within five minutes because comment reconciliation scans only the latest audit
+page, and uses the default `limited` tier with three sends.
+
+Release v0.25.0 (Python and TypeScript v0.3.0) retries an invalid, oversized,
+or credential-reflecting answer to `createTicket` under the same
+Idempotency-Key. `createTicket` still declares `invalidResponse` so existing
+wiring compiles, but never selects it. The same release adds the optional
+`uncertain` branch to `updateTicket`.
 
 It also exposes one Trigger:
 
@@ -166,14 +173,25 @@ every attempt of one Step execution, including a retry after a Worker failure,
 sends the same key and the same body. The key
 is also stored as `dex_idempotency_key` audit metadata. As a result:
 
-- a lost connection, a timeout, a 408, a 409, a 429, or a 5xx is retried with
-  the identical request, so the operation has no `uncertain` branch;
+- only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a readable
+  body that carries no ticket and does not echo the API token selects
+  `providerRejected`;
+- every other outcome is unknown and is retried with the identical request:
+  a lost connection, a timeout, a redirect, a 408, 409, 410, 429, or 5xx, any
+  other status, a refusal whose body is oversized, carries a ticket, or echoes
+  the API token, and a
+  2xx response whose body breaks, is oversized, cannot be decoded, or
+  reflects the credential. The operation therefore has no `uncertain` branch
+  and never selects its compatibility `invalidResponse` branch, and the retry
+  budget fails the Flow if Zendesk keeps answering that way;
 - `created` reports `wasIdempotentReplay: true` when Zendesk returned the
   cached response, and the Receipt carries `idempotencyLookup`;
 - `IdempotentRequestError` selects `providerRejected` with a `CONFLICT`
   failure;
-- a 2xx response that cannot be decoded selects `invalidResponse`, and the
-  ticket may exist;
+- a credential failure selects `defect` only on the first attempt and only
+  when it is terminal, such as a revoked authorization or a deselected
+  connection; a transient failure, and any failure on a later attempt, retries,
+  because an earlier attempt may have created the ticket;
 - a new Step execution is a new logical ticket. Set `externalId` to correlate
   tickets with an application record; Zendesk does not enforce its uniqueness.
 
@@ -191,7 +209,9 @@ requester may be emailed, so every attempt runs this sequence:
    earlier attempt already wrote the change, so the operation selects
    `updated` with `wasAlreadyApplied: true` and writes nothing.
 3. When `expectedUpdatedAt` is set and the ticket changed after it, select
-   `conflict` without writing.
+   `conflict` without writing. After an earlier attempt may have written, the
+   mismatch may be that attempt's own change, so the attempt retries instead,
+   and selects `uncertain` at the send cap.
 4. Send only the fields that differ from the ticket as read. Tags are computed
    from the read tag list plus `addTags` minus `removeTags` and sent as the
    complete list. When nothing differs and there is no comment, select
@@ -200,11 +220,52 @@ requester may be emailed, so every attempt runs this sequence:
    `safe_update: true`, `updated_stamp` set to the `updated_at` read in step 1,
    and the Step's key as `dex_idempotency_key` audit metadata.
 
-A concurrent change, including a second dispatch of the same Step, makes
-Zendesk reject the stale write with `409 UpdateConflict`, and the retried
-attempt starts again at step 1 and finds its own marker. A closed ticket is
-`providerRejected`; a missing ticket is `notFound`. This release cannot clear
-an assignee or group.
+The PUT runs inside the SDK single-dispatch fence, which records a heartbeat
+checkpoint before the request and counts every possibly effective send of the
+Step's Call ID against `execution.maxSends` (3 by default; override it per Step
+with `MaxSends`):
+
+- An unknown write outcome, such as a lost answer, the end of the write
+  window, a redirect, a 408, a `409 UpdateConflict` from a concurrent change,
+  a 410, a 5xx other than 503, any other status, or a refusal whose body is
+  oversized, carries a ticket, or echoes the API token, returns Retry and
+  records nothing, also on the last send the cap
+  allows. The next attempt starts again at step 1, so a found audit or
+  already-held values select `updated`, and only an absent read-back resends.
+  Every attempt after a possible send reads back first, including one that
+  follows a rate-limited resend.
+- A 2xx means Zendesk accepted the write, so it is never resent. When its body
+  breaks, stalls, is oversized, cannot be decoded, is for another ticket, or
+  reflects the credential, or the write window ends after the 2xx headers
+  arrived, the attempt saves the ticket ID in the checkpoint
+  and reads the ticket and its audits back at once: a found audit, or, without
+  a comment, already-held values select `updated`; a transient read failure
+  retries, and every later attempt only reads back; anything else, including a
+  missing ticket, selects `uncertain`. If the ticket ID could not be saved, a
+  transient read failure also selects `uncertain`, because a later attempt
+  could otherwise resend.
+- At the cap, an attempt only reads back, so the attempt after the last
+  allowed send still confirms a change that send applied. An unconfirmed write
+  then selects `uncertain`: the change and its comment may still appear.
+- A 429, a 503, or a request that provably never left the process records
+  that nothing was processed and retries without counting the send.
+- A definite refusal of the first send (400, 401, 403, 404, 411, 413, 414,
+  415, or 422 with a readable body that carries no ticket and does not echo
+  the API token) records that
+  nothing was processed and selects `providerRejected` or `notFound`, such as
+  for a closed ticket. After a possible earlier send the same answer selects
+  `uncertain`, and so does a missing ticket or a rejected read.
+- A credential failure before the first send records that nothing was sent,
+  then selects `defect` when it is terminal and retries when it is transient.
+  After a possible earlier send nothing is recorded: a transient failure
+  retries, and a terminal one selects `uncertain`.
+- `invalidResponse` and `conflict` describe only a read before any possible
+  send; after one, an invalid read retries and selects `uncertain` at the cap.
+- An unreadable or untrusted checkpoint sends nothing and retries.
+
+Checkpoints written by v0.24.0 or earlier carry no fence marker, so a Step
+execution that was mid-retry during the upgrade counts each earlier attempt as
+a possible send. This release cannot clear an assignee or group.
 
 ## ticketChanged Trigger
 
@@ -306,12 +367,21 @@ A token that contains the API token is dropped.
 | 400, 422 | `providerRejected`, `VALIDATION` (`CONFLICT` for `IdempotentRequestError`) |
 | 401 | `providerRejected`, `AUTHENTICATION` |
 | 403 | `providerRejected`, `AUTHORIZATION` |
-| 404, 410 | `notFound` where declared, otherwise `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
+| 404 | `notFound` where declared, otherwise `providerRejected` |
+| 410 | `notFound` for a read; an unknown outcome for a write |
+| 3xx | `providerRejected`, `PROTOCOL` for a read; an unknown outcome for a write; redirects are never followed |
 | 408, 409, 5xx, transport failure | Retry, after `Retry-After` when present |
 | 429 | Retry after `Retry-After` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` |
-| invalid input or connection credentials | `defect`, with no request |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; a keyed retry for `createTicket`; an accepted write that `updateTicket` reads back |
+| 4xx refusal with an oversized body or a ticket in the body | the status above for a read; an unknown outcome for a write |
+| invalid input or connection credentials | `defect`, with no request; for a read or write only reauthorization, a missing or unselected connection, a credential broker refusal, malformed stored credential material (Python and TypeScript), or an unusable token is terminal, and any other credential failure, such as a broker outage, retries |
+
+This table describes reads and the first send of a write. `createTicket`
+retries every unknown outcome under its Idempotency-Key. `updateTicket`
+retries an unknown outcome and reads back first; it resends below the send cap
+and selects `uncertain` at the cap when the read-back finds no change, and
+after a possible earlier send it never selects a refusal branch; see
+[updateTicket](#updateticket).
 
 ## Not in this release
 
@@ -428,8 +498,8 @@ Center paths in the setup guidance.
 
 ## Python package
 
-The independent `dex-connector-zendesk-support` Python `v0.2.0` package implements all four ticket operations and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on the Python Connector SDK's poll Trigger kit (`dex-connectors-sdk` 0.12.0). Its cursor documents match Go's byte for byte, so Go and Python replicas can share one binding, and each ticket version keeps Go's event ID. Its [README](python/README.md), [read-ticket example](python/examples/read_ticket/README.md), and [ticket change example](python/examples/ticket_changed/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run against a real local Dex Worker with a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
+The independent `dex-connector-zendesk-support` Python `v0.3.0` package implements all four ticket operations and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on the Python Connector SDK's poll Trigger kit (`dex-connectors-sdk` 0.12.0). Its cursor documents match Go's byte for byte, so Go and Python replicas can share one binding, and each ticket version keeps Go's event ID. Its [README](python/README.md), [read-ticket example](python/examples/read_ticket/README.md), and [ticket change example](python/examples/ticket_changed/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run against a real local Dex Worker with a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
 
 ## TypeScript package
 
-`@superdurable/connector-zendesk-support@0.2.0` implements all four ticket operations with generated operation-specific Step factories and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on `@superdurable/connectors-sdk` 0.12.0. Its cursor documents match Go's byte for byte, so Go and TypeScript replicas can share one binding, and each ticket version keeps Go's event ID. See the runnable [TypeScript customer-issue Flow](typescript/examples/customer-issue/flow.ts) and [ticket-changed Flow](typescript/examples/ticket-changed/README.md). The TypeScript conformance suite replays Go-recorded provider requests and outcomes, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run through a real Dex Worker and Client against provider stand-ins. Live Zendesk authorization and API behavior are unverified.
+`@superdurable/connector-zendesk-support@0.3.0` implements all four ticket operations with generated operation-specific Step factories and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on `@superdurable/connectors-sdk` 0.12.0. Its cursor documents match Go's byte for byte, so Go and TypeScript replicas can share one binding, and each ticket version keeps Go's event ID. See the runnable [TypeScript customer-issue Flow](typescript/examples/customer-issue/flow.ts) and [ticket-changed Flow](typescript/examples/ticket-changed/README.md). The TypeScript conformance suite replays Go-recorded provider requests and outcomes, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run through a real Dex Worker and Client against provider stand-ins. Live Zendesk authorization and API behavior are unverified.

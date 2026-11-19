@@ -63,13 +63,16 @@ func (operation UpdateEmployeeOperation) Invoke(call sdkgo.Call, input UpdateEmp
 	if err := validateUpdateEmployeeInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateEmployeeBranchDefect, UpdateEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureValidation, updateEmployeeOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, updateEmployeeOperation)
-	if failure != nil {
-		return sdkgo.NewMutationBranch(UpdateEmployeeBranchDefect, UpdateEmployeeOutput{}, failure, sdkgo.Receipt{})
+	credentials, credentialErr := operation.client.credentials.Resolve(call)
+	if credentialErr != nil && !isTerminalCredentialError(credentialErr) {
+		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, updateEmployeeOperation, "connection credentials could not be read; nothing was sent"), 0)
+	}
+	if credentialErr != nil || validateResolvedCredentials(credentials) != nil {
+		return sdkgo.NewMutationBranch(UpdateEmployeeBranchDefect, UpdateEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureAuthentication, updateEmployeeOperation, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	fieldNames := sortedFieldNames(input.Fields)
 	receipt := operation.client.receipt(call, input.EmployeeID)
-	current, attempt, isTerminal := operation.readFields(call, credentials, input.EmployeeID, fieldNames, receipt, UpdateEmployeeOutput{})
+	current, attempt, isTerminal := operation.readFields(call, credentials, input.EmployeeID, fieldNames, receipt, UpdateEmployeeOutput{}, false)
 	if isTerminal {
 		return attempt
 	}
@@ -81,11 +84,11 @@ func (operation UpdateEmployeeOperation) Invoke(call sdkgo.Call, input UpdateEmp
 	writeResult := operation.client.exchange(call, credentials, updateEmployeeOperation, bambooHRRequest{
 		method: http.MethodPost, path: "/employees/" + input.EmployeeID, payload: writes,
 	})
-	if attempt, isTerminal := updateEmployeeAttemptForExchange(writeResult, receipt, currentOutput); isTerminal {
+	if attempt, isTerminal := updateEmployeeAttemptForWrite(writeResult, receipt, currentOutput); isTerminal {
 		return attempt
 	}
 	output := UpdateEmployeeOutput{WrittenFields: sortedFieldNames(writes)}
-	stored, attempt, isTerminal := operation.readFields(call, credentials, input.EmployeeID, fieldNames, receipt, output)
+	stored, attempt, isTerminal := operation.readFields(call, credentials, input.EmployeeID, fieldNames, receipt, output, true)
 	if isTerminal {
 		return attempt
 	}
@@ -93,19 +96,38 @@ func (operation UpdateEmployeeOperation) Invoke(call sdkgo.Call, input UpdateEmp
 	return sdkgo.NewMutationBranch(UpdateEmployeeBranchUpdated, output, nil, receipt)
 }
 
-// readFields reads the requested fields, or returns the terminal attempt for a failed read.
+// readFields reads the requested fields, or returns the terminal attempt for a failed read. After
+// an accepted write, every failed read-back retries, because repeating the absolute write is safe.
 func (operation UpdateEmployeeOperation) readFields(call sdkgo.Call, credentials Credentials, employeeID string, fieldNames []string,
-	receipt sdkgo.Receipt, value UpdateEmployeeOutput) (EmployeeRecord, sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
+	receipt sdkgo.Receipt, value UpdateEmployeeOutput, isAfterWrite bool) (EmployeeRecord, sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
 	result := operation.client.exchange(call, credentials, updateEmployeeOperation, buildGetEmployeeRequest(employeeID, fieldNames, false))
-	if attempt, isTerminal := updateEmployeeAttemptForExchange(result, receipt, value); isTerminal {
+	if isAfterWrite && result.outcome != exchangeSucceeded {
+		return EmployeeRecord{}, sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+	}
+	if attempt, isTerminal := updateEmployeeAttemptForPreWriteRead(result, receipt, value); isTerminal {
 		return EmployeeRecord{}, attempt, true
 	}
 	record, err := decodeEmployeeRecord(result.response.body, employeeID, fieldNames)
 	if err != nil {
-		return EmployeeRecord{}, sdkgo.NewMutationBranch(UpdateEmployeeBranchInvalidResponse, value,
-			bambooHRFailurePointer(sdkgo.FailureProtocol, updateEmployeeOperation, "BambooHR returned an invalid employee: "+err.Error()), receipt), true
+		// An unreadable answer is unknown on every attempt, before or after the write.
+		failure := bambooHRFailure(sdkgo.FailureProtocol, updateEmployeeOperation, "BambooHR returned an invalid employee: "+err.Error())
+		return EmployeeRecord{}, sdkgo.NewMutationRetry[UpdateEmployeeOutput](failure, 0), true
 	}
 	return record, sdkgo.MutationAttempt[UpdateEmployeeOutput]{}, false
+}
+
+// updateEmployeeAttemptForPreWriteRead selects a branch only for a readable allowlisted refusal or a
+// 404; an oversized, unparseable, credential-echoing, or unlisted answer retries.
+func updateEmployeeAttemptForPreWriteRead(result bambooHRExchange, receipt sdkgo.Receipt, value UpdateEmployeeOutput) (sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
+	switch result.outcome {
+	case exchangeInvalid:
+		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+	case exchangeRejected, exchangeNotFound:
+		if !isDefiniteRefusalStatus(result.response.statusCode) || !result.response.isReadableRefusal() {
+			return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+		}
+	}
+	return updateEmployeeAttemptForExchange(result, receipt, value)
 }
 
 // updateEmployeeAttemptForExchange retries every unconfirmed outcome, because the write sets absolute values.
@@ -124,6 +146,22 @@ func updateEmployeeAttemptForExchange(result bambooHRExchange, receipt sdkgo.Rec
 	default:
 		return sdkgo.NewMutationBranch(UpdateEmployeeBranchProviderRejected, value, &result.failure, receipt), true
 	}
+}
+
+// updateEmployeeAttemptForWrite retries a write whose outcome is unknown, such as an unreadable
+// 2xx or a status that does not prove a refusal; the next attempt reads first.
+func updateEmployeeAttemptForWrite(result bambooHRExchange, receipt sdkgo.Receipt, value UpdateEmployeeOutput) (sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
+	switch result.outcome {
+	case exchangeInvalid:
+		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+	case exchangeRejected, exchangeNotFound:
+		// The documented duplicate-email 409 is a definite business outcome, not an unknown one.
+		isRefusalStatus := isDefiniteRefusalStatus(result.response.statusCode) || isDocumentedConflictStatus(result.response.statusCode)
+		if !isRefusalStatus || !result.response.isReadableRefusal() {
+			return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+		}
+	}
+	return updateEmployeeAttemptForExchange(result, receipt, value)
 }
 
 func validateUpdateEmployeeInput(input UpdateEmployeeInput) error {

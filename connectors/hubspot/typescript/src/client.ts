@@ -3,9 +3,10 @@
 
 import { ReauthorizationRequiredError, RetryError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, SecretString, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { GetObjectOperation, SearchObjectsOperation, UpdateObjectOperation, UpsertObjectOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.hubapi.com';
@@ -38,6 +39,8 @@ export interface ExchangeFailure {
   retryAfterMs: number;
   /** Provider receipt. */
   receipt: ReceiptDraft;
+  /** HTTP status of the provider answer; undefined for a batch error or when no answer arrived. */
+  status?: number;
 }
 
 /** Successful response or classified failure. */
@@ -89,12 +92,17 @@ export class HubSpotClient {
     let credentials: Credentials;
     try {
       credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      this.validateCredentials(credentials);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'HubSpot authorization must be renewed') };
       if (error instanceof RetryError) return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'HubSpot OAuth token refresh is temporarily unavailable') };
-      return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'HubSpot connection credentials are unavailable') };
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) {
+        return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'HubSpot connection credentials are unavailable') };
+      }
+      // A write may have applied in an earlier attempt, so a passing outage must not select defect.
+      return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'HubSpot connection credentials are temporarily unavailable') };
     }
+    try { this.validateCredentials(credentials); }
+    catch { return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'HubSpot connection credentials are unavailable') }; }
     let encoded: Uint8Array | undefined;
     try { if (body !== undefined) encoded = Buffer.from(JSON.stringify(body)); }
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', 'HubSpot request could not be built') }; }
@@ -112,11 +120,11 @@ export class HubSpotClient {
       }
     } catch (error) {
       const receipt = this.receipt(call, error instanceof BodyTooLargeError && error.headers ? { status: error.status ?? 0, headers: error.headers, body: new Uint8Array() } : undefined, objectId);
-      if (error instanceof BodyTooLargeError) return { outcome: this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'HubSpot response exceeds the configured size limit', receipt) };
+      if (error instanceof BodyTooLargeError) return { outcome: { ...this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'HubSpot response exceeds the configured size limit', receipt), ...(error.status !== undefined ? { status: error.status } : {}) } };
       return { outcome: this.failure('retry', operation, 'TRANSPORT', 'HubSpot did not return a complete response', receipt) };
     }
     if (response.status >= 200 && response.status < 300) return { response };
-    return { outcome: this.classify(operation, response, this.receipt(call, response, objectId)) };
+    return { outcome: { ...this.classify(operation, response, this.receipt(call, response, objectId)), status: response.status } };
   }
 
   private validateCredentials(credentials: Credentials): void {
@@ -147,7 +155,9 @@ export class HubSpotClient {
     if (status === 403 && errorBody.category === 'MISSING_SCOPES') return this.failure('rejected', operation, 'AUTHORIZATION', `HubSpot access token lacks a required scope${detail}`, receipt);
     if (status === 403) return this.failure('rejected', operation, 'AUTHORIZATION', `HubSpot denied access to the record${detail}`, receipt);
     if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', `HubSpot found no such record${detail}`, receipt);
-    if (status === 409) return this.failure('conflict', operation, 'CONFLICT', `HubSpot reported a conflict with another record${detail}`, receipt);
+    if (status === 409 && (errorBody.category === 'CONFLICT' || errorBody.category === 'OBJECT_ALREADY_EXISTS')) return this.failure('conflict', operation, 'CONFLICT', `HubSpot reported a conflict with another record${detail}`, receipt);
+    // A write answered with a bare 409 has an unknown outcome and is retried.
+    if (status === 409) return this.failure('rejected', operation, 'CONFLICT', `HubSpot answered HTTP 409 without a documented conflict category${detail}`, receipt);
     if (status === 400 || status === 422 || errorBody.category === 'VALIDATION_ERROR') return this.failure('rejected', operation, 'VALIDATION', `HubSpot rejected the request as invalid${detail}`, receipt);
     if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `HubSpot redirected the request (HTTP ${status})`, receipt);
     return this.failure('rejected', operation, 'PROVIDER_REJECTION', `HubSpot rejected the request (HTTP ${status})${detail}`, receipt);

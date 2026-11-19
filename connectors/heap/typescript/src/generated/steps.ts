@@ -17,7 +17,7 @@ export interface SetUserPropertiesStepConfig<StepInput, OperationInput = SetUser
   accepted: StepTarget<MutationResult<OperationOutput>>;
   /** Heap conclusively rejected the request. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Heap returned an oversized or unreadable confirmation. */
+  /** Kept for compatibility and no longer selected: an oversized or unreadable confirmation now retries, because repeating the overwrite is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local identity, property input, or app ID is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

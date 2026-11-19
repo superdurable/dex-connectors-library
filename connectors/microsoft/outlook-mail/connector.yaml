@@ -3,20 +3,20 @@ kind: Connector
 metadata:
   name: outlook-mail
   displayName: Microsoft Outlook Mail
-  description: "Search, read, flag, categorize, and move messages in a Microsoft 365 (Exchange Online) mailbox through Microsoft Graph, and send new messages or threaded replies through drafts marked with the Step's idempotency key, so a retried Step never sends twice."
+  description: "Search, read, flag, categorize, and move messages in a Microsoft 365 (Exchange Online) mailbox through Microsoft Graph, and send new messages or threaded replies through drafts marked with the Step's idempotency key, so a retried Step reads its own message back before it sends again."
   company: Microsoft
   categories: [communication]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: microsoft
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-microsoft-outlook-mail'
       operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setMessageFlags]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-microsoft-outlook-mail
       timestampFormat: rfc3339Nano
       operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setMessageFlags]
@@ -357,13 +357,13 @@ spec:
       inputType: SendMessageInput
       outputType: SentMessage
       kind: mutation
-      description: "Send one plain-text message by creating a draft marked with the Step's idempotency key and sending that draft. Graph has no idempotency key, so the Step runs with sync durability, finds its own draft again on every retry, sends it at most once, and confirms a lost answer from the Sent Items copy."
+      description: "Send one plain-text message by creating a draft marked with the Step's idempotency key and sending that draft. Graph has no idempotency key, so the Step runs with sync durability, finds its own draft again on every retry, and confirms a lost answer from the Sent Items copy; a draft still unsent after a lost answer is sent again until the send cap is reached."
       idempotency: required
       authorization: required
       branches:
         - {id: sent, goName: Sent, description: "Microsoft Graph accepted the draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed."}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the draft or the send, such as a revoked authorization, a mailbox without send permission, or an invalid recipient, so nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap was reached while the draft had still not appeared as sent after a lost answer, so the message may have been sent; the connector does not send it again, and the Result names the draft to inspect.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 90s
@@ -391,14 +391,14 @@ spec:
       inputType: ReplyToMessageInput
       outputType: SentMessage
       kind: mutation
-      description: "Reply to one message, or reply to all, by creating Outlook's threaded reply draft, which quotes the original, marking it with the Step's idempotency key, and sending it at most once per Step execution like sendMessage."
+      description: "Reply to one message, or reply to all, by creating Outlook's threaded reply draft, which quotes the original, marking it with the Step's idempotency key, and sending it like sendMessage: a lost answer is confirmed from the Sent Items copy, and a still-unsent draft is sent again until the send cap is reached."
       idempotency: required
       authorization: required
       branches:
         - {id: sent, goName: Sent, description: "Microsoft Graph accepted the reply draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed."}
         - {id: notFound, goName: NotFound, description: "No message with the ID exists in the mailbox, so no reply was drafted or sent.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively refused the reply draft or the send, such as a revoked authorization, a mailbox without send permission, or an original without a usable reply address, so nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap was reached while the reply draft had still not appeared as sent after a lost answer, so the reply may have been sent; the connector does not send it again, and the Result names the draft to inspect.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 90s
@@ -441,6 +441,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Immutable IDs let a repeat find the message already in the folder, so it never moves twice.
+        repeatOnUnknown: safe
       mocks:
         - name: customerMessageArchived
           branch: moved
@@ -471,6 +473,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every change is an absolute value, so a repeated update leaves the same flags.
+        repeatOnUnknown: safe
       mocks:
         - name: customerMessageRead
           branch: updated

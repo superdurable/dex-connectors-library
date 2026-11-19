@@ -513,7 +513,7 @@ var UpsertWebhookDefinition = sdkgo.MutationDefinition{
 		{ID: UpsertWebhookBranchUpserted, Description: "Typeform stored the webhook for this form and tag with the requested URL and enabled state."},
 		{ID: UpsertWebhookBranchNotFound, Description: "The form does not exist or the token's account does not own it.", Optional: true},
 		{ID: UpsertWebhookBranchProviderRejected, Description: "Typeform conclusively rejected the webhook, such as a URL that is not HTTPS, a plan without webhooks, or a token without the webhooks:write scope.", Optional: true},
-		{ID: UpsertWebhookBranchInvalidResponse, Description: "Typeform answered 2xx with a malformed or oversized body, so it may have stored the webhook without this Result describing it.", Optional: true},
+		{ID: UpsertWebhookBranchInvalidResponse, Description: "Retained for compatibility and no longer selected: a malformed or oversized 2xx body now retries the idempotent PUT.", Optional: true},
 		{ID: UpsertWebhookBranchDefect, Description: "Local input, connection configuration such as a blank webhook_secret, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

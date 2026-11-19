@@ -117,8 +117,9 @@ async def test_resolve_credentials_maps_all_provider_errors(error: Exception) ->
             requester=TicketRequesterInput(email="ada@example.com"),
         ),
     )
-    assert attempt.kind == "uncertain"
-    assert attempt.failure is not None and attempt.failure.kind == FailureKind.AUTHENTICATION
+    # Without a Dex Step context the single-dispatch fence cannot start, so nothing is sent.
+    assert attempt.kind == "branch" and attempt.branch == "defect"
+    assert attempt.failure is not None and attempt.failure.kind == FailureKind.LOCAL_DEFECT
     await client.aclose()
 
 

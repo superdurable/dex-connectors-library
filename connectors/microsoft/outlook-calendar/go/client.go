@@ -15,6 +15,7 @@ package outlookcalendar
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -102,6 +104,8 @@ type graphRequest struct {
 	query    url.Values
 	payload  any
 	ifMatch  string
+	// requestContext bounds a fenced write to its write window; nil uses the Step context.
+	requestContext context.Context
 }
 
 type graphResponse struct {
@@ -235,18 +239,29 @@ func (client *Client) QueryFreeBusy() QueryFreeBusyOperation {
 }
 
 // resolveCredentials returns the call's credentials and the Graph path of the mailbox they reach.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, string, *sdkgo.Failure) {
+// isRetryable reports a failure isTerminalCredentialError does not name, which a later attempt may clear.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (credentials Credentials, mailboxRoot string, failure *sdkgo.Failure, isRetryable bool) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, "", failurePointer(sdkgo.FailureAvailability, operation, "connection credentials are temporarily unavailable; nothing was sent"), true
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, "", failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+		return Credentials{}, "", failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), false
 	}
 	if credentials.AuthMethodID == MicrosoftOAuthAuthMethodID {
-		return credentials, "/me", nil
+		return credentials, "/me", nil, false
 	}
 	if client.mailbox == "" {
-		return Credentials{}, "", failurePointer(sdkgo.FailureValidation, operation, "an app-only connection needs its mailbox configured")
+		return Credentials{}, "", failurePointer(sdkgo.FailureValidation, operation, "an app-only connection needs its mailbox configured"), false
 	}
-	return credentials, "/users/" + url.PathEscape(client.mailbox), nil
+	return credentials, "/users/" + url.PathEscape(client.mailbox), nil, false
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // readEvent performs one event GET and classifies it without choosing an operation branch.
@@ -348,7 +363,11 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request gr
 		if encodedPayload != nil {
 			body = bytes.NewReader(encodedPayload)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, strings.TrimSuffix(target, "?"), body)
+		var requestContext context.Context = call.Context
+		if request.requestContext != nil {
+			requestContext = request.requestContext
+		}
+		httpRequest, err := http.NewRequestWithContext(requestContext, request.method, strings.TrimSuffix(target, "?"), body)
 		if err != nil {
 			return graphResponse{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}
@@ -375,7 +394,8 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request gr
 			return result, &providerRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider response exceeds configured limit"}
 		}
 		if readErr != nil || closeErr != nil {
-			return graphResponse{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
+			// The status stays, so a caller can tell an accepted write whose body broke.
+			return result, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
 		}
 		result.body = content
 		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
@@ -385,6 +405,10 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request gr
 			return result, nil
 		}
 		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if refreshErr != nil && !isTerminalCredentialError(refreshErr) {
+			// Graph did not process the rejected request; a later attempt refreshes again.
+			return result, &providerRequestError{kind: sdkgo.FailureAvailability, message: "credential refresh after a rejection is temporarily unavailable"}
+		}
 		if refreshErr != nil || validateResolvedCredentials(replacement) != nil {
 			return result, nil
 		}

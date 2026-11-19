@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-atlassian-jira-service-management",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Jira Service Management ticket operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -45,8 +45,8 @@
     "example:find:start": "npm run build && tsx examples/find-customer/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

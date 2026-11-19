@@ -4,8 +4,10 @@
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import timedelta
 from email.utils import parseaddr
+from typing import TypeVar
 from urllib.parse import quote, urlsplit
 
 from dex_connectors.sdk import (
@@ -31,11 +33,15 @@ from .client import (
     decode_checkout_session,
     decode_payment_intent,
     decode_refund,
+    is_definite_stripe_write_refusal,
+    is_later_attempt,
+    is_replayed_stripe_response,
     parse_stripe_api_error,
     retry_after_seconds,
     should_retry_keyed_conflict,
     should_retry_keyed_server_failure,
     stripe_failure,
+    unknown_stripe_write_failure,
 )
 from .models import (
     CheckoutSession,
@@ -49,6 +55,7 @@ from .models import (
 )
 
 _DEFAULTS = StepDefaults(timedelta(seconds=30), 2)
+T = TypeVar("T")
 
 CREATE_CARD_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
     _generated_definitions.CREATE_CARD_CHECKOUT_SESSION_DEFINITION.operation,
@@ -205,7 +212,7 @@ class _CheckoutMutation:
             )
         credentials, failure = await self._client.resolve_credentials(call, self._operation)
         if failure is not None or credentials is None:
-            return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _unavailable_credentials_attempt(call, empty, failure)
         try:
             response = await self._client.request(
                 call, credentials.secret_key.reveal(), "POST", "checkout/sessions", values
@@ -217,10 +224,9 @@ class _CheckoutMutation:
                 )
             )
         except ValueError:
-            return MutationAttempt.branch_result(
-                "defect",
+            return _unavailable_credentials_attempt(
+                call,
                 empty,
-                Receipt(),
                 stripe_failure(self._operation, FailureKind.LOCAL_DEFECT, "Stripe request is invalid"),
             )
         if response.status_code == 429:
@@ -232,60 +238,49 @@ class _CheckoutMutation:
                 ),
                 retry_after_seconds(response.headers),
             )
-        if response.status_code == 409 and should_retry_keyed_conflict(response):
-            return MutationAttempt.retry(
-                stripe_failure(
-                    self._operation,
-                    FailureKind.CONFLICT,
-                    "Stripe reported a conflicting Checkout Session request with this idempotency key",
-                ),
-                retry_after_seconds(response.headers),
-            )
-        if response.status_code >= 500:
-            if should_retry_keyed_server_failure(response):
-                return MutationAttempt.retry(
-                    stripe_failure(
-                        self._operation,
-                        FailureKind.AVAILABILITY,
-                        "Stripe Checkout Session is temporarily unavailable",
-                    ),
-                    retry_after_seconds(response.headers),
-                )
-            return MutationAttempt.uncertain(
-                empty,
-                stripe_failure(
-                    self._operation,
-                    FailureKind.AVAILABILITY,
-                    "Stripe Checkout Session outcome cannot be confirmed after a server error",
-                ),
-                self._client.receipt(call, response),
-            )
-        if not 200 <= response.status_code < 300:
+        # Stripe's idempotency key returns the original session on a resend, so every unknown retries.
+        if is_definite_stripe_write_refusal(response, _is_checkout_session_body):
             return MutationAttempt.branch_result(
                 "providerRejected",
                 empty,
                 self._client.receipt(call, response),
                 classify_stripe_rejection(self._operation, response),
             )
-        if response.is_body_too_large:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
+        if response.status_code >= 500 and is_replayed_stripe_response(response):
+            # Stripe replays this cached failure for every resend under the key, so no retry can confirm it.
+            return MutationAttempt.uncertain(
                 empty,
+                stripe_failure(
+                    self._operation,
+                    FailureKind.AVAILABILITY,
+                    "Stripe Checkout Session outcome cannot be confirmed after a replayed server error",
+                ),
                 self._client.receipt(call, response),
+            )
+        if not 200 <= response.status_code < 300:
+            return MutationAttempt.retry(
+                unknown_stripe_write_failure(self._operation, "Checkout Session", response),
+                retry_after_seconds(response.headers),
+            )
+        # Stripe created the Session and replays the same 2xx body for every resend under the key, so an
+        # unusable one is uncertain: a retry cannot repair it.
+        if response.is_body_too_large:
+            return MutationAttempt.uncertain(
+                empty,
                 stripe_failure(
                     self._operation,
                     FailureKind.RESPONSE_TOO_LARGE,
                     "Stripe response exceeds configured size limit",
                 ),
+                self._client.receipt(call, response),
             )
         try:
             session = decode_checkout_session(response.body)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
+            return MutationAttempt.uncertain(
                 empty,
-                self._client.receipt(call, response),
                 stripe_failure(self._operation, FailureKind.PROTOCOL, str(error)),
+                self._client.receipt(call, response),
             )
         return MutationAttempt.branch_result(
             "created", session, self._client.receipt(call, response, session.id)
@@ -338,7 +333,7 @@ class GetCheckoutSessionOperation:
             )
         credentials, failure = await self._client.resolve_credentials(call, operation)
         if failure is not None or credentials is None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _unavailable_credentials_query(empty, failure)
         try:
             response = await self._client.request(
                 call,
@@ -426,7 +421,7 @@ class GetPaymentIntentOperation:
             )
         credentials, failure = await self._client.resolve_credentials(call, operation)
         if failure is not None or credentials is None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _unavailable_credentials_query(empty, failure)
         try:
             response = await self._client.request(
                 call,
@@ -525,7 +520,7 @@ class CreateRefundOperation:
             )
         credentials, failure = await self._client.resolve_credentials(call, operation)
         if failure is not None or credentials is None:
-            return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _unavailable_credentials_attempt(call, empty, failure)
         try:
             response = await self._client.request(
                 call, credentials.secret_key.reveal(), "POST", "refunds", values
@@ -535,10 +530,9 @@ class CreateRefundOperation:
                 stripe_failure(operation, FailureKind.TRANSPORT, "Stripe refund response is unavailable")
             )
         except ValueError:
-            return MutationAttempt.branch_result(
-                "defect",
+            return _unavailable_credentials_attempt(
+                call,
                 empty,
-                Receipt(),
                 stripe_failure(operation, FailureKind.LOCAL_DEFECT, "Stripe request is invalid"),
             )
         if response.status_code == 429:
@@ -555,46 +549,60 @@ class CreateRefundOperation:
                 ),
                 retry_after_seconds(response.headers),
             )
-        if response.status_code >= 500:
-            if should_retry_keyed_server_failure(response):
-                return MutationAttempt.retry(
-                    stripe_failure(
-                        operation, FailureKind.AVAILABILITY, "Stripe refund is temporarily unavailable"
-                    ),
-                    retry_after_seconds(response.headers),
-                )
-            return await self._read_back_refund(
-                call, credentials.secret_key.reveal(), input.payment_intent_id, response
+        if response.status_code >= 500 and should_retry_keyed_server_failure(response):
+            return MutationAttempt.retry(
+                stripe_failure(
+                    operation, FailureKind.AVAILABILITY, "Stripe refund is temporarily unavailable"
+                ),
+                retry_after_seconds(response.headers),
             )
-        if not 200 <= response.status_code < 300:
+        if is_definite_stripe_write_refusal(response, _is_refund_body):
             return MutationAttempt.branch_result(
                 "providerRejected", empty, self._client.receipt(call, response), _refund_rejection(response)
             )
-        if response.is_body_too_large:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
+        # Stripe accepted the refund and replays the same 2xx body for every resend under the key, so an
+        # unusable one is uncertain: a retry cannot repair it.
+        if 200 <= response.status_code < 300 and response.is_body_too_large:
+            return MutationAttempt.uncertain(
                 empty,
-                self._client.receipt(call, response),
                 stripe_failure(
                     operation, FailureKind.RESPONSE_TOO_LARGE, "Stripe response exceeds configured size limit"
                 ),
-            )
-        try:
-            refund = decode_refund(response.body)
-        except ValueError as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
                 self._client.receipt(call, response),
-                stripe_failure(operation, FailureKind.PROTOCOL, str(error)),
             )
-        return MutationAttempt.branch_result(
-            "refunded", refund, self._client.receipt(call, response, refund.refund_id)
+        if 200 <= response.status_code < 300:
+            try:
+                refund = decode_refund(response.body)
+            except ValueError as error:
+                return MutationAttempt.uncertain(
+                    empty,
+                    stripe_failure(operation, FailureKind.PROTOCOL, str(error)),
+                    self._client.receipt(call, response),
+                )
+            return MutationAttempt.branch_result(
+                "refunded", refund, self._client.receipt(call, response, refund.refund_id)
+            )
+        unknown_failure = unknown_stripe_write_failure(operation, "refund", response)
+        is_replayed = False
+        if response.status_code >= 500:
+            unknown_failure = stripe_failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "Stripe refund outcome cannot be confirmed after a server error",
+            )
+            is_replayed = is_replayed_stripe_response(response)
+        return await self._read_back_refund(
+            call,
+            credentials.secret_key.reveal(),
+            input.payment_intent_id,
+            _UnconfirmedRefund(response, unknown_failure, is_replayed),
         )
 
     async def _read_back_refund(
-        self, call: Call, secret_key: str, payment_intent_id: str, original: ProviderResponse
+        self, call: Call, secret_key: str, payment_intent_id: str, unconfirmed: "_UnconfirmedRefund"
     ) -> MutationAttempt[Refund]:
+        """Find this call's refund by dex_call_id; a miss resends, or is uncertain after a replay."""
+        unknown_failure = unconfirmed.failure
         query = {"payment_intent": payment_intent_id, "limit": "100"}
         for _ in range(3):
             try:
@@ -617,7 +625,9 @@ class CreateRefundOperation:
                     retry_after_seconds(response.headers),
                 )
             if response.status_code in (401, 403):
-                return self._denied_refund_readback(call, original, response.status_code)
+                return unconfirmed.attempt(
+                    self._client, call, _denied_refund_readback_failure(response.status_code)
+                )
             if not 200 <= response.status_code < 300 or response.is_body_too_large:
                 break
             try:
@@ -639,7 +649,7 @@ class CreateRefundOperation:
                     or not isinstance(candidate.get("id"), str)
                     or not candidate["id"].startswith("re_")
                 ):
-                    return self._uncertain_refund(call, original)
+                    return unconfirmed.attempt(self._client, call, unknown_failure)
                 last_refund_id = candidate["id"]
                 metadata = candidate.get("metadata")
                 if metadata is not None and (
@@ -648,48 +658,83 @@ class CreateRefundOperation:
                         isinstance(key, str) and isinstance(value, str) for key, value in metadata.items()
                     )
                 ):
-                    return self._uncertain_refund(call, original)
+                    return unconfirmed.attempt(self._client, call, unknown_failure)
                 if isinstance(metadata, dict) and metadata.get("dex_call_id") == str(call.id):
                     try:
                         refund = decode_refund(json.dumps(candidate).encode())
                     except ValueError:
-                        return self._uncertain_refund(call, original)
+                        return unconfirmed.attempt(self._client, call, unknown_failure)
                     return MutationAttempt.branch_result(
                         "refunded", refund, self._client.receipt(call, response, refund.refund_id)
                     )
             if not listing["has_more"] or not last_refund_id:
                 break
             query["starting_after"] = last_refund_id
-        return self._uncertain_refund(call, original)
+        return unconfirmed.attempt(self._client, call, unknown_failure)
 
-    def _uncertain_refund(self, call: Call, original: ProviderResponse) -> MutationAttempt[Refund]:
-        return MutationAttempt.uncertain(
-            Refund(),
-            stripe_failure(
-                "createRefund",
-                FailureKind.AVAILABILITY,
-                "Stripe refund outcome cannot be confirmed after a server error",
-            ),
-            self._client.receipt(call, original),
-        )
 
-    def _denied_refund_readback(
-        self, call: Call, original: ProviderResponse, status_code: int
-    ) -> MutationAttempt[Refund]:
-        if status_code == 401:
-            kind = FailureKind.AUTHENTICATION
-            message = (
-                "Stripe refund outcome cannot be confirmed after a server error because Stripe rejected "
-                "the API key for the refund read-back; check that the key is still valid"
-            )
-        else:
-            kind = FailureKind.AUTHORIZATION
-            message = (
-                "Stripe refund outcome cannot be confirmed after a server error because the API key lacks "
-                "permission for the refund read-back; grant it Refund read permission"
-            )
-        return MutationAttempt.uncertain(
-            Refund(),
-            stripe_failure("createRefund", kind, message),
-            self._client.receipt(call, original),
+@dataclass(frozen=True, slots=True)
+class _UnconfirmedRefund:
+    """An unknown refund outcome that read-back could not confirm."""
+
+    original: ProviderResponse
+    failure: Failure
+    # A cached Stripe 5xx that every resend under the key replays unchanged.
+    is_replayed: bool
+
+    def attempt(self, client: Client, call: Call, failure: Failure) -> MutationAttempt[Refund]:
+        """Retry under the same key, or select uncertain after a replay no resend can resolve."""
+        if self.is_replayed:
+            return MutationAttempt.uncertain(Refund(), failure, client.receipt(call, self.original))
+        return MutationAttempt.retry(failure)
+
+
+def _denied_refund_readback_failure(status_code: int) -> Failure:
+    if status_code == 401:
+        kind = FailureKind.AUTHENTICATION
+        message = (
+            "Stripe refund outcome cannot be confirmed after a server error because Stripe rejected "
+            "the API key for the refund read-back; check that the key is still valid"
         )
+    else:
+        kind = FailureKind.AUTHORIZATION
+        message = (
+            "Stripe refund outcome cannot be confirmed after a server error because the API key lacks "
+            "permission for the refund read-back; grant it Refund read permission"
+        )
+    return stripe_failure("createRefund", kind, message)
+
+
+def _unavailable_credentials_attempt(call: Call, empty: T, failure: Failure | None) -> MutationAttempt[T]:
+    """Retry a transient credential failure; a terminal one is defect first, then uncertain.
+
+    A later attempt may follow a created object, so it never selects defect.
+    """
+    if failure is not None and failure.kind == FailureKind.AVAILABILITY:
+        return MutationAttempt.retry(failure)
+    if failure is not None and is_later_attempt(call):
+        return MutationAttempt.uncertain(empty, failure, Receipt())
+    return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
+
+
+def _unavailable_credentials_query(empty: T, failure: Failure | None) -> QueryAttempt[T]:
+    """Retry a credential broker outage; every other credential failure selects defect."""
+    if failure is not None and failure.kind == FailureKind.AVAILABILITY:
+        return QueryAttempt.retry(failure)
+    return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+
+
+def _is_checkout_session_body(body: bytes) -> bool:
+    try:
+        decode_checkout_session(body)
+    except ValueError:
+        return False
+    return True
+
+
+def _is_refund_body(body: bytes) -> bool:
+    try:
+        decode_refund(body)
+    except ValueError:
+        return False
+    return True

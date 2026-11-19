@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getCampaign/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CampaignSummary](`{"id":5,"name":"Welcome series","active":true,"state":"running"}`)
+			return err
+		}},
+		{name: "listCampaigns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CampaignsPage](`{"campaigns":[{"id":5,"name":"Welcome series","active":true,"state":"running"}]}`)
+			return err
+		}},
+		{name: "getCampaignMetrics/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.CampaignMetrics](`{"campaignId":5,"series":{"sent":[1],"delivered":[1]}}`)
+			return err
+		}},
 		{name: "getCustomersByEmail/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[customerio.CustomerLookupPage](`{"email":"person@example.com","customerIDs":["a3000001"]}`)
 			return err
@@ -30,6 +42,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
+		t.Errorf("getCampaign mock has another definition")
+	}
+	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
+		t.Errorf("listCampaigns mock has another definition")
+	}
+	if mock.GetCampaignMetrics().Definition().Operation.OperationID != "getCampaignMetrics" {
+		t.Errorf("getCampaignMetrics mock has another definition")
+	}
 	if mock.GetCustomersByEmail().Definition().Operation.OperationID != "getCustomersByEmail" {
 		t.Errorf("getCustomersByEmail mock has another definition")
 	}

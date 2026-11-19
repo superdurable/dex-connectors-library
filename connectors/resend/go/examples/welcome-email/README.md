@@ -29,7 +29,7 @@ mkdir -p /tmp/resend-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/resend/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/resend/go \
-  --version v0.2.0 --tag connectors/resend/go/v0.2.0 \
+  --version v0.2.1 --tag connectors/resend/go/v0.2.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/resend-release/connector-release.json \
   --digest-output /tmp/resend-release/connector-release.json.sha256

@@ -24,3 +24,14 @@ func TestObjectsFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestBucketFlowIdentityAndRegistration(t *testing.T) {
+	input := cloudstorage.ListBucketsInput{Project: "123456789"}
+	require.Equal(t, input, mapBucketListInput(input))
+	mock := cloudstoragemock.New(t, ConnectionName)
+	flow := NewBucketFlow(mock.Connection())
+	require.Equal(t, BucketFlowType, dex.GetFinalFlowType(flow))
+	require.Equal(t, "StartListBuckets", dex.GetFinalStepType[cloudstorage.ListBucketsInput](startBucketList{}))
+	_, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+}

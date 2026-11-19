@@ -115,7 +115,7 @@ export const CreateTicketBranch = {
 export const CreateTicketBranchCreated = CreateTicketBranch.Created;
 /** Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created. */
 export const CreateTicketBranchProviderRejected = CreateTicketBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it. */
+/** The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again. */
 export const CreateTicketBranchUncertain = CreateTicketBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateTicketBranchDefect = CreateTicketBranch.Defect;
@@ -125,10 +125,12 @@ export const CreateTicketDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Jira Service Management created the request and returned its key." },
     { id: "providerRejected", description: "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createTicket. */
 export const CreateTicketMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -147,7 +149,7 @@ export const UpdateTicketBranchUpdated = UpdateTicketBranch.Updated;
 export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
 /** Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission. */
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
-/** Jira returned an invalid or oversized issue. */
+/** Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateTicketBranchDefect = UpdateTicketBranch.Defect;
@@ -158,10 +160,11 @@ export const UpdateTicketDefinition: MutationDefinition = {
     { id: "updated", description: "The request holds the requested labels and priority, written now or by an earlier attempt." },
     { id: "notFound", description: "The issue does not exist or the connection cannot browse it.", optional: true },
     { id: "providerRejected", description: "Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission.", optional: true },
-    { id: "invalidResponse", description: "Jira returned an invalid or oversized issue.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateTicket. */
 export const UpdateTicketMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -179,11 +182,11 @@ export const TransitionTicketBranch = {
 export const TransitionTicketBranchTransitioned = TransitionTicketBranch.Transitioned;
 /** The issue does not exist or the connection cannot browse it. */
 export const TransitionTicketBranchNotFound = TransitionTicketBranch.NotFound;
-/** No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions. */
+/** No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions. */
 export const TransitionTicketBranchTransitionUnavailable = TransitionTicketBranch.TransitionUnavailable;
 /** Jira conclusively rejected the transition, such as a required transition screen field or missing permission. */
 export const TransitionTicketBranchProviderRejected = TransitionTicketBranch.ProviderRejected;
-/** Jira returned an invalid or oversized issue or transition list. */
+/** No longer selected. An invalid or oversized issue or transition list proves nothing about the request, so the Step retries; the branch stays declared for compatibility. */
 export const TransitionTicketBranchInvalidResponse = TransitionTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const TransitionTicketBranchDefect = TransitionTicketBranch.Defect;
@@ -193,12 +196,13 @@ export const TransitionTicketDefinition: MutationDefinition = {
   branches: [
     { id: "transitioned", description: "The request is in the transition's destination status, including when it already was." },
     { id: "notFound", description: "The issue does not exist or the connection cannot browse it.", optional: true },
-    { id: "transitionUnavailable", description: "No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions.", optional: true },
+    { id: "transitionUnavailable", description: "No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.", optional: true },
     { id: "providerRejected", description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", optional: true },
-    { id: "invalidResponse", description: "Jira returned an invalid or oversized issue or transition list.", optional: true },
+    { id: "invalidResponse", description: "No longer selected. An invalid or oversized issue or transition list proves nothing about the request, so the Step retries; the branch stays declared for compatibility.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for transitionTicket. */
 export const TransitionTicketMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -217,7 +221,7 @@ export const AddCommentBranchAdded = AddCommentBranch.Added;
 export const AddCommentBranchNotFound = AddCommentBranch.NotFound;
 /** Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added. */
 export const AddCommentBranchProviderRejected = AddCommentBranch.ProviderRejected;
-/** The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it. */
+/** The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again. */
 export const AddCommentBranchUncertain = AddCommentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddCommentBranchDefect = AddCommentBranch.Defect;
@@ -228,10 +232,12 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "added", description: "Jira Service Management added the comment and returned its ID." },
     { id: "notFound", description: "The request does not exist or the connection cannot view it; nothing was added.", optional: true },
     { id: "providerRejected", description: "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", optional: true },
-    { id: "uncertain", description: "The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for addComment. */
 export const AddCommentMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

@@ -55,6 +55,11 @@ var providerAPIs = map[Provider]providerAPI{
 		requestTimeout: streamingRequestTimeout, defaultMaxResponseBytes: defaultMaxResponseBytes,
 		newWireFormat: newClaudeMessagesWireFormat,
 	},
+	ProviderAnthropicCompatible: {
+		regionBaseURLs: map[Region]string{RegionGlobal: ""},
+		requestTimeout: streamingRequestTimeout, defaultMaxResponseBytes: defaultMaxResponseBytes,
+		newWireFormat: newAnthropicCompatibleMessagesWireFormat,
+	},
 	ProviderGemini: {
 		defaultModel: "gemini-3.5-flash-lite", regionBaseURLs: map[Region]string{RegionGlobal: geminiAPIBaseURL},
 		requestTimeout: streamingRequestTimeout, defaultMaxResponseBytes: defaultMaxResponseBytes,

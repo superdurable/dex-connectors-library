@@ -48,17 +48,20 @@ export interface SendMessageStepConfig<StepInput, OperationInput = SendMessageIn
   sent: StepTarget<MutationResult<OperationOutput>>;
   /** Gmail conclusively rejected the message. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** Gmail may have sent the message, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
 /** Build the sendMessage Step from a named connection. */
 export function newSendMessageStep<StepInput, OperationInput = SendMessageInput, OperationOutput = SendMessageOutput>(configuration: SendMessageStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, sent, providerRejected, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName, sent, providerRejected, uncertain, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.sendMessage(), connection: connection.reference, branches: [
     goToBranch("sent", sent),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }
@@ -75,18 +78,21 @@ export interface ReplyToMessageStepConfig<StepInput, OperationInput = ReplyToMes
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Gmail returned an invalid or oversized source message response before sending the reply. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
+  /** Gmail may have sent the reply, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
 /** Build the replyToMessage Step from a named connection. */
 export function newReplyToMessageStep<StepInput, OperationInput = ReplyToMessageInput, OperationOutput = SendMessageOutput>(configuration: ReplyToMessageStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, sent, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName, sent, providerRejected, invalidResponse, uncertain, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.replyToMessage(), connection: connection.reference, branches: [
     goToBranch("sent", sent),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }

@@ -156,8 +156,8 @@ type AgentTool interface {
 	//     unknown when the Fence cannot prove that no request reached the
 	//     provider: this attempt recorded a claimed checkpoint (Dispatch ran),
 	//     even if RecordCanResend followed, or Decide withheld a send because
-	//     the prior checkpoint was missing after attempt one, unreadable,
-	//     foreign, invalid, claimed, carried a provider ID, or came from an
+	//     the call's prior checkpoint entry was missing after attempt one,
+	//     unreadable, invalid, claimed, carried a provider ID, or came from an
 	//     attempt other than the previous one, including when a send cap let
 	//     it return ReadBackThenResendAllowed;
 	//  5. a listed branch takes its listed outcome;
@@ -376,21 +376,35 @@ func (tool mutationAgentTool[IN, OUT]) RunAttemptWithOptions(ctx dex.Context, ar
 	if err != nil {
 		return AgentToolAttempt{}, err
 	}
-	trace := &operationRunTrace{}
+	scope := &fenceObservationScope{}
+	trace := &operationRunTrace{onCallCreated: scope.begin}
 	defer recoverAgentToolPanic(tool.metadata.Operation, trace, &attempt, &err)
-	var observation *fenceobservation.Observation
-	if ctx != nil {
-		callID := deriveCallID(ctx.FlowID(), ctx.StepExecutionID(), tool.metadata.Operation)
-		var endObservation func()
-		observation, endObservation = fenceobservation.Begin(fenceobservation.AttemptIdentity{CallID: string(callID), Attempt: ctx.Attempt()})
-		defer endObservation()
-	}
+	defer scope.end()
 	result, runErr := runMutationWithTrace(ctx, tool.operation, tool.connection, input, trace, options...)
 	if runErr != nil {
 		return agentToolRetryAttempt(tool.metadata.Operation, trace, runErr)
 	}
-	mayHaveDispatched := observation != nil && observation.MayHaveDispatched()
-	return classifyAgentToolResult(tool.metadata, trace, mayHaveDispatched, result.Branch, result.Value, result.Failure)
+	return classifyAgentToolResult(tool.metadata, trace, scope.mayHaveDispatched(), result.Branch, result.Value, result.Failure)
+}
+
+// fenceObservationScope observes the Fence of the Call that RunAttempt creates, by its occurrence-aware ID.
+type fenceObservationScope struct {
+	observation    *fenceobservation.Observation
+	endObservation func()
+}
+
+func (scope *fenceObservationScope) begin(call Call) {
+	scope.observation, scope.endObservation = fenceobservation.Begin(fenceobservation.AttemptIdentity{CallID: string(call.ID), Attempt: call.Context.Attempt()})
+}
+
+func (scope *fenceObservationScope) end() {
+	if scope.endObservation != nil {
+		scope.endObservation()
+	}
+}
+
+func (scope *fenceObservationScope) mayHaveDispatched() bool {
+	return scope.observation != nil && scope.observation.MayHaveDispatched()
 }
 
 func (mutationAgentTool[IN, OUT]) isAgentTool() {}

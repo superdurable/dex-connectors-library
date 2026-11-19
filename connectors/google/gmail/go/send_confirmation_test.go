@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -21,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -196,12 +198,12 @@ type sendAttemptResult struct {
 	err     error
 }
 
-func runGmailSendAttempt(ctx dex.Context, client *gmail.Client, isReply bool) sendAttemptResult {
+func runGmailSendAttempt(ctx dex.Context, client *gmail.Client, isReply bool, options ...sdkgo.RunOption) sendAttemptResult {
 	if isReply {
-		result, err := sdkgo.RunMutation(ctx, client.ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{MessageID: "source-1", TextBody: "Update"})
+		result, err := sdkgo.RunMutation(ctx, client.ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{MessageID: "source-1", TextBody: "Update"}, options...)
 		return sendAttemptResult{branch: result.Branch, value: result.Value, failure: result.Failure, err: err}
 	}
-	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"}, options...)
 	return sendAttemptResult{branch: result.Branch, value: result.Value, failure: result.Failure, err: err}
 }
 
@@ -524,10 +526,7 @@ func TestGmailServiceUnavailableSearchMissResendsWithTheSameMessageID(t *testing
 		require.ErrorAs(t, first.err, &retry)
 		require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, singledispatch.StateClaimed, marker.State)
 		require.Equal(t, int32(1), marker.SendCount)
 		second := runGmailSendAttempt(stepContext, client, isReply)
@@ -543,8 +542,17 @@ func TestGmailServiceUnavailableSearchMissResendsWithTheSameMessageID(t *testing
 	})
 }
 
-// TestGmailUnconfirmedSendResendsUntilTheCap resends with one Message-ID until the cap, then only reads back.
-func TestGmailUnconfirmedSendResendsUntilTheCap(t *testing.T) {
+// requireGmailUncertain asserts that an attempt selected the uncertain branch.
+func requireGmailUncertain(t *testing.T, result sendAttemptResult) {
+	t.Helper()
+	require.NoError(t, result.err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.branch)
+	require.NotNil(t, result.failure)
+}
+
+// TestGmailUnconfirmedSendResendsBelowTheCapThenSelectsUncertain resends with one Message-ID below
+// the cap, selects uncertain when the final send stays unconfirmed, and afterwards only reads back.
+func TestGmailUnconfirmedSendResendsBelowTheCapThenSelectsUncertain(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusInternalServerError)})
 		client := newGmailClient(t, fake.URL)
@@ -557,22 +565,24 @@ func TestGmailUnconfirmedSendResendsUntilTheCap(t *testing.T) {
 		var retry *sdkgo.RetryError
 		for attempt := 1; attempt <= maxSends; attempt++ {
 			result := runGmailSendAttempt(stepContext, client, isReply)
-			require.ErrorAs(t, result.err, &retry)
+			if attempt < maxSends {
+				require.ErrorAs(t, result.err, &retry)
+			} else {
+				requireGmailUncertain(t, result)
+				require.Contains(t, result.failure.Message, "the sent-mail search found no message")
+			}
 			sends, searches, _, _ := fake.counts()
 			require.Equal(t, attempt, sends)
 			// Attempt one polls four times; later attempts search once before the POST, then poll.
 			require.Equal(t, 5*attempt-1, searches)
 			stepContext.AdvanceAttempt()
-			var marker singledispatch.Marker
-			hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-			require.NoError(t, err)
-			require.True(t, hasMarker)
+			marker := readPersistedMarker(t, stepContext)
 			require.Equal(t, singledispatch.StateClaimed, marker.State)
 			require.Equal(t, int32(attempt), marker.SendCount)
 		}
 		atCap := runGmailSendAttempt(stepContext, client, isReply)
-		require.ErrorAs(t, atCap.err, &retry)
-		require.Contains(t, retry.Failure.Message, "prior dispatch cannot be repeated")
+		requireGmailUncertain(t, atCap)
+		require.Contains(t, atCap.failure.Message, "no further")
 		sends, searches, _, _ := fake.counts()
 		require.Equal(t, maxSends, sends)
 		require.Equal(t, 5*maxSends, searches)
@@ -587,12 +597,163 @@ func TestGmailUnconfirmedSendResendsUntilTheCap(t *testing.T) {
 	})
 }
 
-// TestGmailRejectedResendKeepsTheEarlierSendUnknown retries instead of reporting that nothing changed.
+// TestGmailFinalSendConfirmedByReadBackIsSent selects sent when Sent Mail confirms the send the cap allows last.
+func TestGmailFinalSendConfirmedByReadBackIsSent(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		// Attempts one and two search nine times; attempt three misses before its POST, then matches.
+		fake := newGmailSendFake(t, sendFakeBehavior{
+			answerSend:  writeGmailSendStatus(http.StatusInternalServerError),
+			searchMatch: `{"id":"sent-3","threadId":"thread-1"}`, matchFromSearch: 11,
+		})
+		client := newGmailClient(t, fake.URL)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		for attempt := 1; attempt < 3; attempt++ {
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+			stepContext.AdvanceAttempt()
+		}
+		final := runGmailSendAttempt(stepContext, client, isReply)
+		require.NoError(t, final.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), final.branch)
+		require.Equal(t, "sent-3", final.value.MessageID)
+		sends, searches, _, _ := fake.counts()
+		require.Equal(t, 3, sends)
+		require.Equal(t, 11, searches)
+	})
+}
+
+// TestGmailSendCapFollowsTheStepMaxSends selects uncertain at the application's send cap, not a fixed one.
+func TestGmailSendCapFollowsTheStepMaxSends(t *testing.T) {
+	for _, maxSends := range []int32{1, 5} {
+		t.Run(strconv.Itoa(int(maxSends)), func(t *testing.T) {
+			forSendAndReply(t, func(t *testing.T, isReply bool) {
+				fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusInternalServerError)})
+				client := newGmailClient(t, fake.URL)
+				stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+				for attempt := int32(1); attempt < maxSends; attempt++ {
+					var retry *sdkgo.RetryError
+					require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply, sdkgo.WithMaxSends(maxSends)).err, &retry)
+					stepContext.AdvanceAttempt()
+				}
+				requireGmailUncertain(t, runGmailSendAttempt(stepContext, client, isReply, sdkgo.WithMaxSends(maxSends)))
+				sends, _, _, _ := fake.counts()
+				require.Equal(t, int(maxSends), sends)
+			})
+		})
+	}
+}
+
+// TestGmailRejectedResendKeepsTheEarlierSendUnknown selects uncertain instead of reporting that
+// nothing changed: a definite refusal proves only that the resend failed.
 func TestGmailRejectedResendKeepsTheEarlierSendUnknown(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
 			if sendNumber == 1 {
 				response.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"error":{"code":400}}`))
+		}})
+		client := newGmailClient(t, fake.URL)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		first := runGmailSendAttempt(stepContext, client, isReply)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, first.err, &retry)
+		stepContext.AdvanceAttempt()
+		second := runGmailSendAttempt(stepContext, client, isReply)
+		requireGmailUncertain(t, second)
+		require.Equal(t, sdkgo.FailureProviderRejection, second.failure.Kind)
+		require.Contains(t, second.failure.Message, "an earlier send may still be delivered")
+		sends, _, _, _ := fake.counts()
+		require.Equal(t, 2, sends)
+		stepContext.AdvanceAttempt()
+		marker := readPersistedMarker(t, stepContext)
+		require.Equal(t, singledispatch.StateClaimed, marker.State)
+		require.Equal(t, int32(2), marker.SendCount)
+	})
+}
+
+// TestGmailIndefiniteResendRefusalRetriesBelowTheCap treats a 409 resend as an unknown outcome.
+func TestGmailIndefiniteResendRefusalRetriesBelowTheCap(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+			if sendNumber == 1 {
+				response.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			response.WriteHeader(http.StatusConflict)
+		}})
+		client := newGmailClient(t, fake.URL)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		var retry *sdkgo.RetryError
+		for attempt := 1; attempt < 3; attempt++ {
+			require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+			stepContext.AdvanceAttempt()
+		}
+		// The final send the cap allows is refused indefinitely too, so the earlier sends stay unconfirmed.
+		third := runGmailSendAttempt(stepContext, client, isReply)
+		requireGmailUncertain(t, third)
+		require.Equal(t, sdkgo.FailureConflict, third.failure.Kind)
+		sends, _, _, _ := fake.counts()
+		require.Equal(t, 3, sends)
+	})
+}
+
+// TestGmailRejectedFirstSendIsProviderRejected keeps a definite 4xx terminal when nothing was sent before.
+func TestGmailRejectedFirstSendIsProviderRejected(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusBadRequest)})
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		result := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), isReply)
+		require.NoError(t, result.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), result.branch)
+		// canResend proves the refused POST sent nothing, so agent hosts report failure.
+		stepContext.AdvanceAttempt()
+		marker := readPersistedMarker(t, stepContext)
+		require.Equal(t, singledispatch.StateCanResend, marker.State)
+		require.Equal(t, int32(1), marker.Attempt)
+	})
+}
+
+// TestGmailUnprovenRefusalOnFirstSendRetriesUnknown repeats a 4xx outside the allowlist, reading back first.
+func TestGmailUnprovenRefusalOnFirstSendRetriesUnknown(t *testing.T) {
+	for _, statusCode := range []int{http.StatusRequestTimeout, http.StatusConflict, http.StatusTeapot} {
+		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
+			forSendAndReply(t, func(t *testing.T, isReply bool) {
+				fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+					if sendNumber == 1 {
+						response.WriteHeader(statusCode)
+						return
+					}
+					_, _ = response.Write([]byte(`{"id":"sent-2","threadId":"thread-1"}`))
+				}})
+				client := newGmailClient(t, fake.URL)
+				stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+				first := runGmailSendAttempt(stepContext, client, isReply)
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, first.err, &retry)
+				require.Contains(t, retry.Failure.Message, "Gmail may still have processed the request")
+				stepContext.AdvanceAttempt()
+				marker := readPersistedMarker(t, stepContext)
+				require.Equal(t, singledispatch.StateClaimed, marker.State)
+				second := runGmailSendAttempt(stepContext, client, isReply)
+				require.NoError(t, second.err)
+				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
+				sends, searches, _, _ := fake.counts()
+				require.Equal(t, 2, sends)
+				require.Equal(t, 1, searches)
+			})
+		})
+	}
+}
+
+// TestGmailRejectedSendAfterRateLimitRecordsCanResend treats a refused POST after a proven unsent one as clean.
+func TestGmailRejectedSendAfterRateLimitRecordsCanResend(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+			if sendNumber == 1 {
+				response.WriteHeader(http.StatusTooManyRequests)
 				return
 			}
 			response.WriteHeader(http.StatusBadRequest)
@@ -604,34 +765,17 @@ func TestGmailRejectedResendKeepsTheEarlierSendUnknown(t *testing.T) {
 		require.ErrorAs(t, first.err, &retry)
 		stepContext.AdvanceAttempt()
 		second := runGmailSendAttempt(stepContext, client, isReply)
-		require.ErrorAs(t, second.err, &retry)
-		require.Equal(t, sdkgo.FailureProviderRejection, retry.Failure.Kind)
-		require.Contains(t, retry.Failure.Message, "an earlier send may still be delivered")
-		sends, _, _, _ := fake.counts()
-		require.Equal(t, 2, sends)
-		// The kept claim counts both sends, so the cap still bounds further resends.
+		require.NoError(t, second.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), second.branch)
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
-		require.Equal(t, singledispatch.StateClaimed, marker.State)
-		require.Equal(t, int32(2), marker.SendCount)
+		marker := readPersistedMarker(t, stepContext)
+		require.Equal(t, singledispatch.StateCanResend, marker.State)
+		require.Equal(t, int32(2), marker.Attempt)
 	})
 }
 
-// TestGmailRejectedFirstSendIsProviderRejected keeps a definite 4xx terminal when nothing was sent before.
-func TestGmailRejectedFirstSendIsProviderRejected(t *testing.T) {
-	forSendAndReply(t, func(t *testing.T, isReply bool) {
-		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusBadRequest)})
-		result := runGmailSendAttempt(singledispatchtest.NewContext("gmail-fence-test", t.Name()), newGmailClient(t, fake.URL), isReply)
-		require.NoError(t, result.err)
-		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), result.branch)
-	})
-}
-
-// TestGmailReplySourceRejectedAfterUnconfirmedSendRetries keeps an earlier reply unknown when the source vanished.
-func TestGmailReplySourceRejectedAfterUnconfirmedSendRetries(t *testing.T) {
+// TestGmailReplySourceRejectedAfterUnconfirmedSendIsUncertain keeps an earlier reply unknown when the source vanished.
+func TestGmailReplySourceRejectedAfterUnconfirmedSendIsUncertain(t *testing.T) {
 	fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusInternalServerError)})
 	client := newGmailClient(t, fake.URL)
 	stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
@@ -643,10 +787,44 @@ func TestGmailReplySourceRejectedAfterUnconfirmedSendRetries(t *testing.T) {
 	fake.mutex.Unlock()
 	stepContext.AdvanceAttempt()
 	second := runGmailSendAttempt(stepContext, client, true)
-	require.ErrorAs(t, second.err, &retry)
-	require.Equal(t, sdkgo.FailureNotFound, retry.Failure.Kind)
+	requireGmailUncertain(t, second)
+	require.Equal(t, sdkgo.FailureNotFound, second.failure.Kind)
 	sends, _, _, _ := fake.counts()
 	require.Equal(t, 1, sends)
+}
+
+// TestGmailReplyIndefiniteSourceReadCountsOnlyEarlierSends retries an unclear source read
+// before any POST even when the earlier sends leave room for only one more send.
+func TestGmailReplyIndefiniteSourceReadCountsOnlyEarlierSends(t *testing.T) {
+	fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusInternalServerError)})
+	client := newGmailClient(t, fake.URL)
+	stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+	for attempt := 1; attempt <= 2; attempt++ {
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, runGmailSendAttempt(stepContext, client, true).err, &retry)
+		stepContext.AdvanceAttempt()
+	}
+	fake.mutex.Lock()
+	fake.behavior.sourceReadStatusCode = http.StatusConflict
+	fake.mutex.Unlock()
+	heartbeatCount := len(stepContext.Heartbeats())
+	third := runGmailSendAttempt(stepContext, client, true)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, third.err, &retry, "two earlier sends stay below the cap of three")
+	require.Len(t, stepContext.Heartbeats(), heartbeatCount, "a pre-send Retry after a possible send records nothing")
+	sends, _, _, _ := fake.counts()
+	require.Equal(t, 2, sends)
+
+	// The unrecorded attempt counts as a possible send, so attempt four only searches Sent Mail.
+	stepContext.AdvanceAttempt()
+	_, searchesBefore, _, _ := fake.counts()
+	sourceReadsBefore := fake.sourceReadCount()
+	fourth := runGmailSendAttempt(stepContext, client, true)
+	requireGmailUncertain(t, fourth)
+	sends, searches, _, _ := fake.counts()
+	require.Equal(t, 2, sends)
+	require.Greater(t, searches, searchesBefore, "attempt four searches Sent Mail")
+	require.Equal(t, sourceReadsBefore, fake.sourceReadCount(), "attempt four never rereads the source")
 }
 
 // TestGmailReplySourceRejectedOnFirstAttemptIsProviderRejected keeps a clean first rejection terminal.
@@ -672,10 +850,7 @@ func TestGmailRateLimitCheckpointPermitsOneLaterPost(t *testing.T) {
 		var retry *sdkgo.RetryError
 		require.ErrorAs(t, first.err, &retry)
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, singledispatch.StateCanResend, marker.State)
 		second := runGmailSendAttempt(stepContext, client, isReply)
 		require.NoError(t, second.err)
@@ -702,17 +877,15 @@ func TestGmailSecondAttemptWithoutCheckpointSearchesThenResends(t *testing.T) {
 			require.Equal(t, 1, fake.sourceReadCount())
 		}
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		// The missing marker counts the first attempt as a possible send.
 		require.Equal(t, int32(2), marker.SendCount)
 	})
 }
 
+// TestGmailInvalidCheckpointFailsClosedWithoutProviderRequests retries, because an earlier send may have happened.
 func TestGmailInvalidCheckpointFailsClosedWithoutProviderRequests(t *testing.T) {
-	for _, scenario := range []string{"foreign CallID", "invalid state", "heartbeat read error"} {
+	for _, scenario := range []string{"impossible send count", "heartbeat read error"} {
 		t.Run(scenario, func(t *testing.T) {
 			forSendAndReply(t, func(t *testing.T, isReply bool) {
 				fake := newGmailSendFake(t, sendFakeBehavior{})
@@ -722,16 +895,16 @@ func TestGmailInvalidCheckpointFailsClosedWithoutProviderRequests(t *testing.T) 
 				require.NotEmpty(t, callID)
 				stepContext.AdvanceAttempt()
 				switch scenario {
-				case "foreign CallID":
-					require.NoError(t, stepContext.SetPersistedCheckpoint(singledispatch.Marker{CallID: "foreign-call", Attempt: 1, State: singledispatch.StateClaimed}))
-				case "invalid state":
-					require.NoError(t, stepContext.SetPersistedCheckpoint(singledispatch.Marker{CallID: callID, Attempt: 1, State: "invalid"}))
+				case "impossible send count":
+					// One attempt cannot have claimed three sends.
+					seedPersistedMarker(t, stepContext, singledispatch.Marker{CallID: callID, Attempt: 1, State: singledispatch.StateClaimed, SendCount: 3})
 				case "heartbeat read error":
 					stepContext.SetReadError(errors.New("heartbeat unavailable"))
 				}
 				result := runGmailSendAttempt(stepContext, client, isReply)
-				require.NoError(t, result.err)
-				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchDefect, gmail.ReplyToMessageBranchDefect), result.branch)
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, result.err, &retry)
+				require.Contains(t, retry.Failure.Message, "an earlier send may still be delivered")
 				sends, searches, threadReads, _ := fake.counts()
 				require.Zero(t, sends)
 				require.Zero(t, searches)
@@ -740,6 +913,74 @@ func TestGmailInvalidCheckpointFailsClosedWithoutProviderRequests(t *testing.T) 
 			})
 		})
 	}
+}
+
+// TestGmailInvalidInputAfterPossibleSendIsUncertain never selects defect once an earlier send may have happened.
+func TestGmailInvalidInputAfterPossibleSendIsUncertain(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{})
+		client := newGmailClient(t, fake.URL)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		callID := callIDWithoutProviderRequest(t, stepContext, client, isReply)
+		stepContext.AdvanceAttempt()
+		seedPersistedMarker(t, stepContext, singledispatch.Marker{CallID: callID, Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1})
+		var result sendAttemptResult
+		if isReply {
+			outcome, err := sdkgo.RunMutation(stepContext, client.ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{})
+			result = sendAttemptResult{branch: outcome.Branch, failure: outcome.Failure, err: err}
+		} else {
+			outcome, err := sdkgo.RunMutation(stepContext, client.SendMessage(), gmailConnection, gmail.SendMessageInput{})
+			result = sendAttemptResult{branch: outcome.Branch, failure: outcome.Failure, err: err}
+		}
+		requireGmailUncertain(t, result)
+		require.Contains(t, result.failure.Message, "an earlier send may still be delivered")
+		sends, _, _, _ := fake.counts()
+		require.Zero(t, sends)
+	})
+}
+
+// TestGmailRefusalNamingMessageIsReadBackByID confirms a message a refusal body names by its ID.
+func TestGmailRefusalNamingMessageIsReadBackByID(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{threadReadID: "thread-1", answerSend: func(response http.ResponseWriter) {
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"id":"sent-1","threadId":"thread-1"}`))
+		}})
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		result := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), isReply)
+		require.NoError(t, result.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
+		require.Equal(t, "sent-1", result.value.MessageID)
+		require.Equal(t, "thread-1", result.value.ThreadID)
+		sends, searches, threadReads, _ := fake.counts()
+		require.Equal(t, 1, sends)
+		require.Zero(t, searches)
+		require.Equal(t, 1, threadReads)
+		stepContext.AdvanceAttempt()
+		require.Equal(t, "sent-1", readPersistedMarker(t, stepContext).ProviderID)
+	})
+}
+
+// TestGmailUnconfirmedRefusalNamingMessageIsNeverResent reads back a named message instead of
+// resending it; the saved ID forbids a resend, so an unconfirmed later read-back is uncertain.
+func TestGmailUnconfirmedRefusalNamingMessageIsNeverResent(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: func(response http.ResponseWriter) {
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"id":"sent-1"}`))
+		}})
+		client := newGmailClient(t, fake.URL)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+		stepContext.AdvanceAttempt()
+		require.Equal(t, "sent-1", readPersistedMarker(t, stepContext).ProviderID)
+		second := runGmailSendAttempt(stepContext, client, isReply)
+		requireGmailUncertain(t, second)
+		sends, _, threadReads, _ := fake.counts()
+		require.Equal(t, 1, sends, "a message the refusal named is read back, never resent")
+		require.Equal(t, 2, threadReads)
+	})
 }
 
 func TestGmailSavedProviderIDConfirmsWithoutSearch(t *testing.T) {
@@ -752,10 +993,7 @@ func TestGmailSavedProviderIDConfirmsWithoutSearch(t *testing.T) {
 		first := runGmailSendAttempt(stepContext, client, isReply)
 		require.NoError(t, first.err)
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, "sent-1", marker.ProviderID)
 		second := runGmailSendAttempt(stepContext, client, isReply)
 		require.NoError(t, second.err)
@@ -784,10 +1022,7 @@ func TestGmailReadBackMatchCheckpointsProviderID(t *testing.T) {
 				require.NoError(t, result.err)
 				require.Equal(t, "sent-1", result.value.MessageID)
 				stepContext.AdvanceAttempt()
-				var marker singledispatch.Marker
-				hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-				require.NoError(t, err)
-				require.True(t, hasMarker)
+				marker := readPersistedMarker(t, stepContext)
 				require.Equal(t, singledispatch.StateClaimed, marker.State)
 				require.Equal(t, "sent-1", marker.ProviderID)
 			})
@@ -795,7 +1030,8 @@ func TestGmailReadBackMatchCheckpointsProviderID(t *testing.T) {
 	}
 }
 
-// TestGmailSavedProviderIDIsNeverResent reads back an accepted send's ID and never resends it.
+// TestGmailSavedProviderIDIsNeverResent reads back an accepted send's ID and never resends it; an
+// unconfirmed read-back is uncertain because no resend is permitted.
 func TestGmailSavedProviderIDIsNeverResent(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendJSON(`{"id":"sent-1","threadId":"thread-1"}`)})
@@ -806,8 +1042,7 @@ func TestGmailSavedProviderIDIsNeverResent(t *testing.T) {
 		stepContext.AdvanceAttempt()
 		// threadReadID is empty, so reading the saved ID fails and Sent Mail finds nothing.
 		second := runGmailSendAttempt(stepContext, client, isReply)
-		var retry *sdkgo.RetryError
-		require.ErrorAs(t, second.err, &retry)
+		requireGmailUncertain(t, second)
 		sends, searches, _, _ := fake.counts()
 		require.Equal(t, 1, sends)
 		require.Equal(t, 1, searches)
@@ -1068,15 +1303,16 @@ func (provider *sequencedGmailCredentials) ResolveWithRefresh(
 	return provider.Resolve(call)
 }
 
-// TestGmailCredentialFailureAfterPossibleSend keeps a possibly delivered send unknown unless reconnection is needed.
+// TestGmailCredentialFailureAfterPossibleSend keeps a possibly delivered send unknown: a transient
+// failure retries, and one that needs reconnection selects uncertain because nothing can read back.
 func TestGmailCredentialFailureAfterPossibleSend(t *testing.T) {
 	for _, testCase := range []struct {
 		name          string
 		credentialErr error
-		isRetry       bool
+		isUncertain   bool
 	}{
-		{name: "transient", credentialErr: errors.New("credential store is unavailable"), isRetry: true},
-		{name: "reauthorization", credentialErr: sdkgo.NewReauthorizationRequiredError(errors.New("grant revoked"))},
+		{name: "transient", credentialErr: errors.New("credential store is unavailable")},
+		{name: "reauthorization", credentialErr: sdkgo.NewReauthorizationRequiredError(errors.New("grant revoked")), isUncertain: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			forSendAndReply(t, func(t *testing.T, isReply bool) {
@@ -1090,22 +1326,20 @@ func TestGmailCredentialFailureAfterPossibleSend(t *testing.T) {
 				require.ErrorAs(t, first.err, &retry)
 				stepContext.AdvanceAttempt()
 				second := runGmailSendAttempt(stepContext, client, isReply)
-				if testCase.isRetry {
+				if testCase.isUncertain {
+					requireGmailUncertain(t, second)
+					require.Equal(t, sdkgo.FailureAuthentication, second.failure.Kind)
+					require.Contains(t, second.failure.Message, "need reconnection")
+				} else {
 					require.ErrorAs(t, second.err, &retry)
 					require.Equal(t, sdkgo.FailureAuthentication, retry.Failure.Kind)
 					require.Contains(t, retry.Failure.Message, "an earlier send may still be delivered")
-				} else {
-					require.NoError(t, second.err)
-					require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchDefect, gmail.ReplyToMessageBranchDefect), second.branch)
 				}
 				sends, _, _, _ := fake.counts()
 				require.Equal(t, 1, sends)
 				// The claim stays; notSent would let the next attempt skip read-back.
 				stepContext.AdvanceAttempt()
-				var marker singledispatch.Marker
-				hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-				require.NoError(t, err)
-				require.True(t, hasMarker)
+				marker := readPersistedMarker(t, stepContext)
 				require.Equal(t, singledispatch.StateClaimed, marker.State)
 				require.Equal(t, int32(1), marker.Attempt)
 			})
@@ -1113,18 +1347,158 @@ func TestGmailCredentialFailureAfterPossibleSend(t *testing.T) {
 	}
 }
 
-// TestGmailCredentialFailureOnFirstAttemptIsDefect keeps today's defect when nothing was sent.
-func TestGmailCredentialFailureOnFirstAttemptIsDefect(t *testing.T) {
+// TestGmailMessageIDCheckIgnoresOtherFieldTypes accepts any body whose id is a non-empty string.
+func TestGmailMessageIDCheckIgnoresOtherFieldTypes(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		statusCode  int
+		body        string
+		wantsSent   bool
+		wantsRetry  bool
+		wantsReject bool
+	}{
+		{name: "accepted_numeric_thread", statusCode: http.StatusOK, body: `{"id":"sent-1","threadId":7}`, wantsSent: true},
+		{name: "refusal_naming_message", statusCode: http.StatusBadRequest, body: `{"id":"sent-1","threadId":7}`, wantsSent: true},
+		{name: "refusal_numeric_id", statusCode: http.StatusBadRequest, body: `{"id":7}`, wantsReject: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			forSendAndReply(t, func(t *testing.T, isReply bool) {
+				fake := newGmailSendFake(t, sendFakeBehavior{threadReadID: "thread-1", answerSend: func(response http.ResponseWriter) {
+					response.WriteHeader(testCase.statusCode)
+					_, _ = response.Write([]byte(testCase.body))
+				}})
+				result := runGmailSendAttempt(singledispatchtest.NewContext("gmail-fence-test", t.Name()), newGmailClient(t, fake.URL), isReply)
+				sends, searches, _, _ := fake.counts()
+				require.Equal(t, 1, sends)
+				switch {
+				case testCase.wantsSent:
+					require.NoError(t, result.err)
+					require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
+					require.Equal(t, "sent-1", result.value.MessageID)
+					require.Zero(t, searches, "a named message needs no Sent Mail search")
+				case testCase.wantsRetry:
+					var retry *sdkgo.RetryError
+					require.ErrorAs(t, result.err, &retry)
+				case testCase.wantsReject:
+					require.NoError(t, result.err)
+					require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), result.branch)
+				}
+			})
+		})
+	}
+}
+
+// TestGmailCanResendAfterUnknownSendSearchesBeforeResending reads back a counted send that a later 429 did not erase.
+func TestGmailCanResendAfterUnknownSendSearchesBeforeResending(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
-		fake := newGmailSendFake(t, sendFakeBehavior{})
-		provider := &sequencedGmailCredentials{resolutions: []error{errors.New("credential store is unavailable")}}
-		client, err := gmail.New(gmail.Config{Endpoint: fake.URL}, provider)
-		require.NoError(t, err)
-		result := runGmailSendAttempt(singledispatchtest.NewContext("gmail-fence-test", t.Name()), client, isReply)
-		require.NoError(t, result.err)
-		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchDefect, gmail.ReplyToMessageBranchDefect), result.branch)
-		sends, searches, _, _ := fake.counts()
-		require.Zero(t, sends)
-		require.Zero(t, searches)
+		fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+			if sendNumber == 1 {
+				response.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			response.WriteHeader(http.StatusTooManyRequests)
+		}})
+		client := newGmailClient(t, fake.URL)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+		stepContext.AdvanceAttempt()
+		require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+		stepContext.AdvanceAttempt()
+		require.Equal(t, singledispatch.StateCanResend, readPersistedMarker(t, stepContext).State)
+		fake.makeSentMailSearchMatchAvailable(`{"id":"sent-1","threadId":"thread-1"}`)
+		third := runGmailSendAttempt(stepContext, client, isReply)
+		require.NoError(t, third.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), third.branch)
+		sends, _, _, _ := fake.counts()
+		require.Equal(t, 2, sends, "the first send landed, so the third attempt reads it back instead of resending")
 	})
+}
+
+// TestGmailPreSendRetryAfterCountedCanResendRecordsNothing keeps the counted send visible to later attempts.
+func TestGmailPreSendRetryAfterCountedCanResendRecordsNothing(t *testing.T) {
+	for _, testCase := range []struct {
+		failure string
+		isReply bool
+	}{{failure: "search"}, {failure: "search", isReply: true}, {failure: "source_read", isReply: true}} {
+		failure, isReply := testCase.failure, testCase.isReply
+		t.Run(failure+"-"+strconv.FormatBool(isReply), func(t *testing.T) {
+			fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+				if sendNumber == 1 {
+					response.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				response.WriteHeader(http.StatusTooManyRequests)
+			}})
+			client := newGmailClient(t, fake.URL)
+			stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+			stepContext.AdvanceAttempt()
+			require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+			stepContext.AdvanceAttempt()
+			fake.mutex.Lock()
+			if failure == "search" {
+				fake.behavior.searchStatusCode = http.StatusInternalServerError
+			} else {
+				fake.behavior.sourceReadStatusCode = http.StatusInternalServerError
+			}
+			fake.mutex.Unlock()
+			require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+			sends, _, _, _ := fake.counts()
+			require.Equal(t, 2, sends)
+			// notSent would hide the counted first send from the next attempt.
+			stepContext.AdvanceAttempt()
+			marker := readPersistedMarker(t, stepContext)
+			require.Equal(t, singledispatch.StateCanResend, marker.State)
+			require.Equal(t, int32(2), marker.Attempt)
+		})
+	}
+}
+
+// TestGmailTerminalCredentialFailureOnFirstAttemptIsDefect selects defect when nothing was sent.
+func TestGmailTerminalCredentialFailureOnFirstAttemptIsDefect(t *testing.T) {
+	for _, terminal := range []error{
+		sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked")), projectconfig.ErrReauthorizationRequired,
+		projectconfig.ErrObjectNotFound, projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected,
+	} {
+		t.Run(terminal.Error(), func(t *testing.T) {
+			forSendAndReply(t, func(t *testing.T, isReply bool) {
+				fake := newGmailSendFake(t, sendFakeBehavior{})
+				client, err := gmail.New(gmail.Config{Endpoint: fake.URL}, &sequencedGmailCredentials{resolutions: []error{terminal}})
+				require.NoError(t, err)
+				result := runGmailSendAttempt(singledispatchtest.NewContext("gmail-fence-test", t.Name()), client, isReply)
+				require.NoError(t, result.err)
+				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchDefect, gmail.ReplyToMessageBranchDefect), result.branch)
+				sends, searches, _, _ := fake.counts()
+				require.Zero(t, sends)
+				require.Zero(t, searches)
+			})
+		})
+	}
+}
+
+// TestGmailTransientCredentialFailureOnFirstAttemptRetries records notSent instead of selecting defect.
+func TestGmailTransientCredentialFailureOnFirstAttemptRetries(t *testing.T) {
+	for _, transient := range []error{
+		errors.New("credential store is unavailable"), errors.New("connection is not configured"),
+		projectconfig.ErrCredentialBrokerUnavailable, projectconfig.ErrRejectedCredentialNotRefreshed,
+	} {
+		t.Run(transient.Error(), func(t *testing.T) {
+			forSendAndReply(t, func(t *testing.T, isReply bool) {
+				fake := newGmailSendFake(t, sendFakeBehavior{})
+				client, err := gmail.New(gmail.Config{Endpoint: fake.URL}, &sequencedGmailCredentials{resolutions: []error{transient}})
+				require.NoError(t, err)
+				stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+				result := runGmailSendAttempt(stepContext, client, isReply)
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, result.err, &retry)
+				sends, searches, _, _ := fake.counts()
+				require.Zero(t, sends)
+				require.Zero(t, searches)
+				stepContext.AdvanceAttempt()
+				require.Equal(t, singledispatch.StateNotSent, readPersistedMarker(t, stepContext).State)
+			})
+		})
+	}
 }

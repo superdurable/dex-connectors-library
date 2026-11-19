@@ -120,12 +120,13 @@ func (operation UpsertRecordsOperation) Invoke(call sdkgo.Call, input UpsertReco
 		method: http.MethodPatch, path: recordPath(input.BaseID, input.TableIDOrName), baseID: input.BaseID, body: encoded,
 	}, objectID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[UpsertedRecords](*outcome, upsertRecordsBranches)
+		return mutationAttemptForOutcome[UpsertedRecords](*outcome, response, upsertRecordsBranches)
 	}
 	receipt := operation.client.receipt(call, objectID)
 	upserted, err := decodeUpsertedRecords(response.body, len(input.Records))
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpsertRecordsBranchInvalidResponse, UpsertedRecords{}, providerFailurePointer("upsertRecords", sdkgo.FailureProtocol, err.Error()), receipt)
+		// The upsert may have applied; repeating it converges on the same records.
+		return sdkgo.NewMutationRetry[UpsertedRecords](providerFailure("upsertRecords", sdkgo.FailureProtocol, err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpsertRecordsBranchUpserted, upserted, nil, receipt)
 }

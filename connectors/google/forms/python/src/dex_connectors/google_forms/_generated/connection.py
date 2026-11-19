@@ -82,68 +82,84 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.google_forms.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Google Forms credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Google Forms stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Google Forms stored credential does not match the connector credential fields")
     if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'service_account_key', 'delegated_user', 'auth_method')):
-        raise ValueError("Google Forms stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Google Forms stored credential does not match the connector credential fields")
     is_shared = shared
     oauth_client_id = material.get("oauth_client_id")
     if oauth_client_id is not None and not (isinstance(oauth_client_id, str)):
-        raise ValueError("Google Forms credential oauth_client_id has an invalid type")
+        raise CredentialMaterialError("Google Forms credential oauth_client_id has an invalid type")
     oauth_client_secret = material.get("oauth_client_secret")
     if oauth_client_secret is not None and not (isinstance(oauth_client_secret, str)):
-        raise ValueError("Google Forms credential oauth_client_secret has an invalid type")
+        raise CredentialMaterialError("Google Forms credential oauth_client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Google Forms credential access_token has an invalid type")
+        raise CredentialMaterialError("Google Forms credential access_token has an invalid type")
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
-        raise ValueError("Google Forms credential refresh_token has an invalid type")
+        raise CredentialMaterialError("Google Forms credential refresh_token has an invalid type")
     service_account_key = material.get("service_account_key")
     if service_account_key is not None and not (isinstance(service_account_key, str)):
-        raise ValueError("Google Forms credential service_account_key has an invalid type")
+        raise CredentialMaterialError("Google Forms credential service_account_key has an invalid type")
     delegated_user = material.get("delegated_user")
     if delegated_user is not None and not (isinstance(delegated_user, str)):
-        raise ValueError("Google Forms credential delegated_user has an invalid type")
+        raise CredentialMaterialError("Google Forms credential delegated_user has an invalid type")
     selected_method = material.get('auth_method')
     if selected_method is None:
         selected_method = ''
     if not isinstance(selected_method, str):
-        raise ValueError("Google Forms credential auth_method is invalid")
+        raise CredentialMaterialError("Google Forms credential auth_method is invalid")
     method = selected_method or "google-oauth"
     values: dict[str, Any] = {'auth_method_id': method}
     if method == "google-oauth":
         if not oauth_client_id:
-            raise ValueError("Google Forms credential oauth_client_id is required")
+            raise CredentialMaterialError("Google Forms credential oauth_client_id is required")
         if oauth_client_id:
             values["oauth_client_id"] = oauth_client_id
         if not oauth_client_secret and not is_shared:
-            raise ValueError("Google Forms credential oauth_client_secret is required")
+            raise CredentialMaterialError("Google Forms credential oauth_client_secret is required")
         if oauth_client_secret:
             values["oauth_client_secret"] = SecretString(oauth_client_secret)
         if not access_token:
-            raise ValueError("Google Forms credential access_token is required")
+            raise CredentialMaterialError("Google Forms credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         if not refresh_token and not is_shared:
-            raise ValueError("Google Forms credential refresh_token is required")
+            raise CredentialMaterialError("Google Forms credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
     elif method == "workspace-domain-delegation":
         if not service_account_key and not is_shared:
-            raise ValueError("Google Forms credential service_account_key is required")
+            raise CredentialMaterialError("Google Forms credential service_account_key is required")
         if service_account_key:
             values["service_account_key"] = SecretString(service_account_key)
         if not delegated_user:
-            raise ValueError("Google Forms credential delegated_user is required")
+            raise CredentialMaterialError("Google Forms credential delegated_user is required")
         if delegated_user:
             values["delegated_user"] = delegated_user
         if not access_token and is_shared:
-            raise ValueError("Google Forms credential access_token is required")
+            raise CredentialMaterialError("Google Forms credential access_token is required")
         values["access_token"] = SecretString(access_token or '')
     else:
-        raise ValueError("Google Forms credential auth_method is invalid")
+        raise CredentialMaterialError("Google Forms credential auth_method is invalid")
     return Credentials(**values)
 
 

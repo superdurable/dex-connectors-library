@@ -1,6 +1,6 @@
 # Google Calendar Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/calendar/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/calendar/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/calendar`.
 
@@ -29,7 +29,7 @@ It also exposes one Trigger:
 
 ## TypeScript package
 
-`@superdurable/connector-google-calendar@0.2.0` implements the same five operations as TypeScript Dex Steps and the `eventChanged` Trigger on the TypeScript poll Trigger kit (`@superdurable/connectors-sdk@0.12.0`). Its sync cursor documents match Go's byte for byte, so Go and TypeScript replicas share a binding's cursor and inbox. Its [package README](typescript/README.md) covers setup, generated OAuth refresh, the runnable meeting lookup, and the runnable [event change example](typescript/examples/event-changed/README.md). Its TypeScript version is independent of this Go connector's version.
+`@superdurable/connector-google-calendar@0.2.1` implements the same five operations as TypeScript Dex Steps and the `eventChanged` Trigger on the TypeScript poll Trigger kit (`@superdurable/connectors-sdk@0.12.0`). Its sync cursor documents match Go's byte for byte, so Go and TypeScript replicas share a binding's cursor and inbox. Its [package README](typescript/README.md) covers setup, generated OAuth refresh, the runnable meeting lookup, and the runnable [event change example](typescript/examples/event-changed/README.md). Its TypeScript version is independent of this Go connector's version.
 
 | Capability | Kind | Languages |
 | --- | --- | --- |
@@ -38,7 +38,7 @@ It also exposes one Trigger:
 
 ## Python package
 
-The Python package `dex-connector-google-calendar==0.2.0` implements the same five operations with generated connection and OAuth refresh wiring, and the `eventChanged` Trigger on the Python poll Trigger kit (`dex-connectors-sdk>=0.12.0`). Its sync cursor documents match Go's byte for byte, so Go and Python replicas share a binding's cursor and inbox. Its [runnable event listing example](python/examples/calendar_events/README.md) uses the static `google-calendar-events-reader` connection name and a real Dex Worker, and its [event change example](python/examples/event_changed/README.md) starts one Flow per change from the `calendar-event-changes` binding. Go-recorded provider scenarios cover the Python request and branch behavior. Google consent, Workspace delegated minting against Google, and live Calendar API calls remain unverified for Python.
+The Python package `dex-connector-google-calendar==0.2.1` implements the same five operations with generated connection and OAuth refresh wiring, and the `eventChanged` Trigger on the Python poll Trigger kit (`dex-connectors-sdk>=0.12.0`). Its sync cursor documents match Go's byte for byte, so Go and Python replicas share a binding's cursor and inbox. Its [runnable event listing example](python/examples/calendar_events/README.md) uses the static `google-calendar-events-reader` connection name and a real Dex Worker, and its [event change example](python/examples/event_changed/README.md) starts one Flow per change from the `calendar-event-changes` binding. Go-recorded provider scenarios cover the Python request and branch behavior. Google consent, Workspace delegated minting against Google, and live Calendar API calls remain unverified for Python.
 
 | Capability | Kind | Languages |
 | --- | --- | --- |
@@ -154,12 +154,16 @@ timed and all-day clears the other form. A cancelled event selects `notFound`.
 
 Every operation uses `defect` for invalid local input, connection
 configuration, or connector contract violations, before any provider request.
-A conclusive Google refusal, such as a read-only calendar, uses
-`providerRejected` with a safe failure that names only a documented Google
-reason code. A malformed or oversized response uses `invalidResponse`. `404`
-and `410` use `notFound` where the operation declares it. `429`, a `403` with
-`rateLimitExceeded` or `userRateLimitExceeded`, `408`, and 5xx responses retry
-and honor `Retry-After`; a `403` with `quotaExceeded` is terminal.
+A conclusive Google refusal, a 400, 401, 403, 404, 411, 413, 414, 415, or 422
+such as a read-only calendar, uses `providerRejected` with a safe failure that
+names only a documented Google reason code. A malformed or oversized response
+uses `invalidResponse` on a Query; `createEvent` and `updateEvent` declare
+`repeatOnUnknown: safe`, so they retry it and reread the event. `404` and `410`
+use `notFound` where the operation declares it. `429`, a `403` with
+`rateLimitExceeded` or `userRateLimitExceeded`, `408`, 5xx, and any other
+status retry and honor `Retry-After`; a `403` with `quotaExceeded` is terminal.
+After an earlier attempt, a `createEvent` 409 whose event cannot be read retries
+instead of selecting `conflict`, because the event may be the earlier insert.
 
 `queryFreeBusy` selects `incomplete` when Google reports an error for any
 requested calendar, such as `notFound` for a calendar that does not share its

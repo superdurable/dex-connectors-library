@@ -994,7 +994,7 @@ func SetIssueStateProviderRejected(value github.UpdatedIssueState, failure *sdkg
 	return connectormock.Branch(github.SetIssueStateBranchProviderRejected, value, failure)
 }
 
-// SetIssueStateInvalidResponse selects the invalidResponse branch: GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed.
+// SetIssueStateInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized issue after an accepted update now retries, because sending the same state again is safe.
 func SetIssueStateInvalidResponse(value github.UpdatedIssueState, failure *sdkgo.Failure) connectormock.Case[github.UpdatedIssueState] {
 	return connectormock.Branch(github.SetIssueStateBranchInvalidResponse, value, failure)
 }
@@ -1092,7 +1092,7 @@ func ReplaceIssueLabelsProviderRejected(value github.ReplacedIssueLabels, failur
 	return connectormock.Branch(github.ReplaceIssueLabelsBranchProviderRejected, value, failure)
 }
 
-// ReplaceIssueLabelsInvalidResponse selects the invalidResponse branch: GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed.
+// ReplaceIssueLabelsInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized label list after an accepted replacement now retries, because sending the same set again is safe.
 func ReplaceIssueLabelsInvalidResponse(value github.ReplacedIssueLabels, failure *sdkgo.Failure) connectormock.Case[github.ReplacedIssueLabels] {
 	return connectormock.Branch(github.ReplaceIssueLabelsBranchInvalidResponse, value, failure)
 }

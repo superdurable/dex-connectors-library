@@ -6,18 +6,18 @@ metadata:
   description: "Search and read Linear issues, create issues and comments under client-supplied IDs that every repeated attempt reuses and reads back, move issues through their team's workflow states, assign and label them, find users by email, and receive signed Issue webhooks."
   company: Linear
   categories: [project-management, developer-tools]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: linear
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-linear
       timestampFormat: rfc3339Nano
       operations: [searchIssues, getIssue, createIssue, updateIssue, addComment, findUserByEmail, listWorkflowStates]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-linear"
       operations: [searchIssues, getIssue, createIssue, updateIssue, addComment, findUserByEmail, listWorkflowStates]
       triggers: []
@@ -246,6 +246,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every attempt sends the same client-supplied issue UUID and reads it back, so a repeat creates nothing new.
+        repeatOnUnknown: safe
       mocks:
         - name: createdFireDrillIssue
           branch: created
@@ -269,11 +271,13 @@ spec:
         - {id: updated, goName: Updated, description: Linear applied the change and returned the issue.}
         - {id: notFound, goName: NotFound, description: "The issue does not exist, was deleted, or the connection cannot see its team; nothing was changed.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Linear conclusively rejected the change, such as a workflow state or label of another team, an unknown assignee, or missing permission.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized issue after the change now retries, because repeating the absolute update is safe.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The update sets absolute values and adds or removes labels, so a repeat leaves the issue unchanged.
+        repeatOnUnknown: safe
       mocks:
         - name: movedFireDrillToProgress
           branch: updated
@@ -305,6 +309,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every attempt sends the same client-supplied comment UUID and reads it back, so a repeat adds nothing new.
+        repeatOnUnknown: safe
       mocks:
         - name: commentedFireDrill
           branch: added

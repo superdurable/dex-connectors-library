@@ -369,13 +369,36 @@ def _query_outcome(
     return QueryAttempt.branch_result(branch, empty, client.receipt(call, result), result.error)
 
 
+# Statuses that prove a write was refused; 409, 501, 3xx, and other statuses are unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
 def _mutation_outcome(client: Client, call: Call, result: Exchange, empty: _T) -> MutationAttempt[_T] | None:
     if result.outcome == "success":
         return None
-    if result.outcome == "retry":
-        return MutationAttempt.retry(_require_failure(result), result.retry_after)
-    if result.outcome in ("server", "invalid"):
+    if result.outcome == "server":
+        # Xero caches a 500 under the key and replays it, so no resend can learn the outcome.
         return MutationAttempt.uncertain(empty, _require_failure(result), client.receipt(call, result))
+    if result.outcome in ("retry", "invalid"):
+        # An unusable answer is unknown; the key makes the identical resend safe.
+        return MutationAttempt.retry(_require_failure(result), result.retry_after)
+    if (
+        result.outcome == "rejected"
+        and result.status >= 300
+        and result.status not in _DEFINITE_REFUSAL_STATUSES
+    ):
+        # A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
+        return MutationAttempt.retry(_require_failure(result), result.retry_after)
+    classified_failure = _require_failure(result)
+    # Xero checks credentials before replaying the keyed answer, so after a possible send they prove nothing.
+    if call.context is not None and call.context.attempt > 1 and (
+        result.outcome == "defect"
+        or (
+            result.outcome == "rejected"
+            and classified_failure.kind in (FailureKind.AUTHENTICATION, FailureKind.AUTHORIZATION)
+        )
+    ):
+        return MutationAttempt.uncertain(empty, classified_failure, client.receipt(call, result))
     branch = {"daily": "dailyLimitReached", "defect": "defect"}.get(result.outcome, "providerRejected")
     return MutationAttempt.branch_result(branch, empty, client.receipt(call, result), result.error)
 
@@ -733,14 +756,12 @@ class CreateInvoiceOperation:
             invoice = _invoice(wire)
             warnings = len(_field(wire, "Warnings", list, []))
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.uncertain(
-                requested,
+            return MutationAttempt.retry(
                 failure(
                     operation,
                     FailureKind.PROTOCOL,
                     "Xero accepted the invoice but returned an unusable invoice",
-                ),
-                self._client.receipt(call, result),
+                )
             )
         return MutationAttempt.branch_result(
             "created",
@@ -815,14 +836,12 @@ class RecordPaymentOperation:
                 raise ValueError("payment applies to another invoice")
             warnings = len(_field(wire, "Warnings", list, []))
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.uncertain(
-                requested,
+            return MutationAttempt.retry(
                 failure(
                     operation,
                     FailureKind.PROTOCOL,
                     "Xero accepted the payment but returned an unusable payment",
-                ),
-                self._client.receipt(call, result),
+                )
             )
         return MutationAttempt.branch_result(
             "recorded",

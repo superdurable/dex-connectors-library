@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, TypeVar, cast
@@ -25,6 +25,7 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
+    Decision,
     DecisionKind,
     DispatchNotAllowedError,
     Fence,
@@ -38,7 +39,17 @@ from ._generated.definitions import (
     SEARCH_ISSUES_DEFINITION,
     TRANSITION_ISSUE_DEFINITION,
 )
-from .client import Client, Exchange, SessionError, failure, path_escape, rejected_fields, rejection_failure
+from .client import (
+    DEFINITE_WRITE_REFUSAL_STATUSES,
+    Classification,
+    Client,
+    Exchange,
+    SessionError,
+    failure,
+    path_escape,
+    rejected_fields,
+    rejection_failure,
+)
 from .models import (
     AccountReference,
     AddCommentInput,
@@ -557,11 +568,13 @@ async def _transition_snapshot(
         cloud_id=cloud_id,
         query={"fields": "status", "expand": "transitions"},
     )
-    result = _read_result(
-        client, call, "transitionIssue", "issue", response, TransitionIssueOutput(), issue_id, True
-    )
-    if result is not None:
-        return None, cast(MutationAttempt[TransitionIssueOutput], result)
+    classified = _classify_definite_transition_read(client, response)
+    if classified.outcome == "retry":
+        assert classified.failure is not None
+        return None, MutationAttempt.retry(classified.failure, classified.retry_after)
+    if classified.outcome != "success":
+        receipt = client.receipt(call, response, issue_id)
+        return None, _mutation(classified.outcome, TransitionIssueOutput(), receipt, classified.failure)
     try:
         source = _object(json.loads(response.body))
         found_id, key = _field_string(source, "id"), _field_string(source, "key")
@@ -580,14 +593,117 @@ async def _transition_snapshot(
                 )
         return (found_id, key, status, tuple(transitions)), None
     except (ValueError, TypeError, KeyError):
-        return None, _mutation(
-            "invalidResponse",
-            TransitionIssueOutput(),
-            client.receipt(call, response, issue_id),
+        return None, MutationAttempt.retry(
             failure(
                 "transitionIssue", FailureKind.PROTOCOL, "Jira returned an invalid issue or transition list"
-            ),
+            )
         )
+
+
+def _classify_definite_transition_read(client: Client, response: Exchange) -> Classification:
+    """Keep a branch only for a complete 404 or definite refusal; other unusable reads Retry."""
+    classified = client.classify_read("transitionIssue", "issue", response)
+    if classified.outcome in ("success", "retry", "defect"):
+        return classified
+    if classified.outcome in ("notFound", "providerRejected"):
+        if response.is_complete and response.status in DEFINITE_WRITE_REFUSAL_STATUSES:
+            return classified
+        return Classification(
+            "retry",
+            failure(
+                "transitionIssue",
+                FailureKind.AVAILABILITY,
+                f"Jira answered the issue read with HTTP {response.status}, "
+                "which proves nothing about the issue",
+            ),
+            client.retry_after(response),
+        )
+    return Classification("retry", classified.failure)
+
+
+@dataclass(frozen=True)
+class _TransitionCheckpoint:
+    """The transition an attempt recorded before sending it; Go and TypeScript encode the same JSON."""
+
+    transition_id: str
+    transition_name: str
+    source_status_id: str
+    destination_status_id: str
+
+
+@dataclass(frozen=True)
+class _TransitionHistory:
+    """What the last heartbeat proves about earlier attempts of this Call."""
+
+    plan: _TransitionCheckpoint | None
+    can_select: bool
+    """No earlier attempt can have sent a transition."""
+
+    async def record_not_sent(self, call: Call) -> None:
+        """Let the next attempt select after a Retry before any send; never overwrite a possible send."""
+        if not self.can_select or self.plan is not None or call.context is None:
+            return
+        try:
+            await call.context.heartbeat(
+                {"callId": str(call.id), "attempt": call.context.attempt, "state": "notSent"}
+            )
+        except Exception:
+            pass  # A lost record only makes the next attempt read without transitioning.
+
+
+def _read_transition_history(call: Call) -> _TransitionHistory:
+    """Read this Call's state from the last heartbeat; raise when the heartbeat is unreadable.
+
+    Dex can lose a recorded heartbeat, so a later attempt may select only after this Call's notSent
+    record from the previous attempt, including an earlier release's notSent or canResend marker.
+    """
+    context = call.context
+    assert context is not None
+    attempt = context.attempt
+    fresh = _TransitionHistory(None, attempt == 1)
+    if not context.has_last_heartbeat_value():
+        return fresh
+    value = context.get_last_heartbeat_value(dict[str, Any])
+    if not isinstance(value, dict):
+        return fresh
+    call_id = str(call.id)
+    transition_id, transition_name = value.get("transitionId"), value.get("transitionName", "")
+    source_status_id, destination_status_id = value.get("sourceStatusId"), value.get("destinationStatusId")
+    identifiers = (transition_id, source_status_id, destination_status_id)
+    if (
+        "state" not in value
+        and value.get("callId") == call_id
+        and all(isinstance(item, str) and item for item in identifiers)
+        and isinstance(transition_name, str)
+    ):
+        plan = _TransitionCheckpoint(
+            str(transition_id), transition_name, str(source_status_id), str(destination_status_id)
+        )
+        return _TransitionHistory(plan, False)
+    markers = value.get("singleDispatchMarkers")
+    marker = value if "state" in value else markers.get(call_id) if isinstance(markers, dict) else None
+    can_select = (
+        isinstance(marker, dict)
+        and marker.get("callId") == call_id
+        and marker.get("attempt") == attempt - 1
+        and not marker.get("providerId")
+        and marker.get("state") in ("notSent", "canResend")
+    )
+    return _TransitionHistory(None, can_select or attempt == 1)
+
+
+def _transition_checkpoint_heartbeat(
+    call: Call, attempt: int, chosen: TransitionReference, source_status_id: str
+) -> dict[str, Any]:
+    """Encode the checkpoint exactly as the Go connector does."""
+    return {
+        "callId": str(call.id),
+        "attempt": attempt,
+        "transitionId": chosen.id,
+        "transitionName": chosen.name,
+        "sourceStatusId": source_status_id,
+        "destinationStatusId": chosen.destination_status.id,
+    }
 
 
 class TransitionIssueOperation:
@@ -623,14 +739,41 @@ class TransitionIssueOperation:
                 Receipt(),
                 failure("transitionIssue", FailureKind.VALIDATION, str(error)),
             )
+        if call.context is None:
+            return _mutation(
+                "defect",
+                TransitionIssueOutput(),
+                Receipt(),
+                failure(
+                    "transitionIssue", FailureKind.LOCAL_DEFECT, "Jira transition requires a Dex Step context"
+                ),
+            )
+        try:
+            history = _read_transition_history(call)
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    "transitionIssue",
+                    FailureKind.AVAILABILITY,
+                    "Jira transition checkpoint is unreadable, so nothing was sent in this attempt",
+                )
+            )
         try:
             credentials, cloud_id = await self.client.session(call, "transitionIssue")
         except SessionError as error:
-            return cast(
-                MutationAttempt[TransitionIssueOutput], _session_result(error, TransitionIssueOutput(), True)
-            )
+            # After a possible earlier transition, a credential failure is no proof that nothing moved.
+            if error.retryable or not history.can_select:
+                await history.record_not_sent(call)
+                return MutationAttempt.retry(error.failure, error.retry_after)
+            return _mutation("defect", TransitionIssueOutput(), Receipt(), error.failure)
         snapshot, early = await _transition_snapshot(self.client, call, credentials, cloud_id, issue_id)
         if early is not None:
+            if early.kind == "retry":
+                await history.record_not_sent(call)
+            # After a possible earlier transition, a local failure is no proof that nothing moved.
+            if early.branch == "defect" and not history.can_select:
+                assert early.failure is not None
+                return MutationAttempt.retry(early.failure)
             return early
         assert snapshot is not None
         found_id, key, status, available = snapshot
@@ -638,6 +781,9 @@ class TransitionIssueOperation:
         output = TransitionIssueOutput(
             issue_id=found_id, issue_key=key, previous_status=status, status=status
         )
+        send = _TransitionSend(self.client, call, credentials, cloud_id, issue_id, resolution)
+        if history.plan is not None:
+            return await send.resume_recorded(history.plan, status, available, output, receipt)
         if destination and _equal_fold(status.name, destination):
             return _mutation("transitioned", replace(output, is_already_in_destination_status=True), receipt)
         matches = [
@@ -647,6 +793,16 @@ class TransitionIssueOperation:
             and (not transition_name or _equal_fold(item.name.strip(), transition_name))
             and (not destination or _equal_fold(item.destination_status.name, destination))
         ]
+        if len(matches) == 1 and matches[0].destination_status.id == status.id:
+            return _mutation(
+                "transitioned",
+                replace(output, transition=matches[0], is_already_in_destination_status=True),
+                receipt,
+            )
+        if not history.can_select:
+            return MutationAttempt.retry(
+                failure("transitionIssue", FailureKind.AVAILABILITY, _UNPROVEN_EARLIER_TRANSITION)
+            )
         if len(matches) != 1:
             kind = FailureKind.CONFLICT if not matches else FailureKind.VALIDATION
             message = (
@@ -661,29 +817,107 @@ class TransitionIssueOperation:
                 failure("transitionIssue", kind, message),
             )
         chosen = matches[0]
-        output = replace(output, transition=chosen)
-        if chosen.destination_status.id == status.id:
-            return _mutation("transitioned", replace(output, is_already_in_destination_status=True), receipt)
-        payload: dict[str, Any] = {"transition": {"id": chosen.id}}
-        if resolution:
-            payload["fields"] = {"resolution": {"name": resolution}}
-        response = await self.client.request(
-            call,
-            credentials,
-            "POST",
-            "/issue/" + path_escape(issue_id) + "/transitions",
-            cloud_id=cloud_id,
-            payload=payload,
+        try:
+            await call.context.heartbeat(
+                _transition_checkpoint_heartbeat(call, call.context.attempt, chosen, status.id)
+            )
+        except Exception:
+            await history.record_not_sent(call)
+            return MutationAttempt.retry(
+                failure(
+                    "transitionIssue",
+                    FailureKind.AVAILABILITY,
+                    "Jira transition checkpoint could not be recorded, so the issue was not transitioned",
+                )
+            )
+        return await send.send(chosen, output)
+
+
+_UNPROVEN_EARLIER_TRANSITION = (
+    "an earlier attempt may have transitioned the issue and its transition checkpoint is missing, "
+    "so no transition is selected or sent; the Step retries until its budget ends"
+)
+
+
+class _TransitionSend:
+    """Sends one Jira transition for an attempt and classifies the answer."""
+
+    def __init__(
+        self, client: Client, call: Call, credentials: Any, cloud_id: str, issue_id: str, resolution: str
+    ) -> None:
+        self.client, self.call, self.credentials = client, call, credentials
+        self.cloud_id, self.issue_id, self.resolution = cloud_id, issue_id, resolution
+
+    async def resume_recorded(
+        self,
+        checkpoint: _TransitionCheckpoint,
+        status: IssueStatus,
+        available: tuple[TransitionReference, ...],
+        output: TransitionIssueOutput,
+        receipt: Receipt,
+    ) -> MutationAttempt[TransitionIssueOutput]:
+        """Continue the transition an earlier attempt of this Call recorded."""
+        if status.id == checkpoint.destination_status_id:
+            recorded = TransitionReference(checkpoint.transition_id, checkpoint.transition_name, status)
+            return _mutation(
+                "transitioned",
+                replace(output, transition=recorded, is_already_in_destination_status=True),
+                receipt,
+            )
+        unavailable = replace(output, available_transitions=available)
+        if status.id != checkpoint.source_status_id:
+            return _mutation(
+                "transitionUnavailable",
+                unavailable,
+                receipt,
+                failure(
+                    "transitionIssue",
+                    FailureKind.CONFLICT,
+                    f"the issue moved to status {status.id}, which is neither the source nor the destination "
+                    f"of transition {checkpoint.transition_id}, so it was not sent again",
+                ),
+            )
+        for transition in available:
+            if (
+                transition.id == checkpoint.transition_id
+                and transition.destination_status.id == checkpoint.destination_status_id
+            ):
+                return await self.send(transition, output)
+        return _mutation(
+            "transitionUnavailable",
+            unavailable,
+            receipt,
+            failure(
+                "transitionIssue",
+                FailureKind.CONFLICT,
+                f"transition {checkpoint.transition_id} is no longer available from status {status.id}",
+            ),
         )
-        receipt = self.client.receipt(call, response, key)
+
+    async def send(
+        self, chosen: TransitionReference, output: TransitionIssueOutput
+    ) -> MutationAttempt[TransitionIssueOutput]:
+        """Post the chosen transition once in this attempt and classify Jira's answer."""
+        output = replace(output, transition=chosen)
+        payload: dict[str, Any] = {"transition": {"id": chosen.id}}
+        if self.resolution:
+            payload["fields"] = {"resolution": {"name": self.resolution}}
+        path = "/issue/" + path_escape(self.issue_id) + "/transitions"
+        # A rejected token refreshes and resends once: a 401 proves Jira did not apply the transition.
+        response = await self.client.request(
+            self.call, self.credentials, "POST", path, cloud_id=self.cloud_id, payload=payload
+        )
+        receipt = self.client.receipt(self.call, response, output.issue_key)
         if response.request_defect:
             return _mutation(
-                "defect", output, receipt,
+                "defect",
+                output,
+                receipt,
                 failure("transitionIssue", FailureKind.LOCAL_DEFECT, "Jira request could not be built"),
             )
         if not response.transport_error and 200 <= response.status < 300:
             return _mutation("transitioned", replace(output, status=chosen.destination_status), receipt)
-        if response.status == 404:
+        if response.status == 404 and response.is_complete:
             return _mutation(
                 "notFound",
                 output,
@@ -694,12 +928,21 @@ class TransitionIssueOperation:
                     "Jira issue was not found or is not visible to the connection",
                 ),
             )
-        if response.status == 429:
+        if not response.transport_error and response.status == 429:
             return MutationAttempt.retry(
                 failure(
                     "transitionIssue",
                     FailureKind.RATE_LIMIT,
                     "Jira rate limited the transition before performing it",
+                ),
+                self.client.retry_after(response),
+            )
+        if not response.transport_error and response.status == 503:
+            return MutationAttempt.retry(
+                failure(
+                    "transitionIssue",
+                    FailureKind.AVAILABILITY,
+                    "Jira transitions are temporarily unavailable",
                 ),
                 self.client.retry_after(response),
             )
@@ -709,45 +952,25 @@ class TransitionIssueOperation:
                     "transitionIssue",
                     FailureKind.TRANSPORT,
                     "Jira could not be reached, so the issue was not transitioned",
-                )
+                ),
+                0,
             )
-        reread, read_failure = await _transition_snapshot(self.client, call, credentials, cloud_id, issue_id)
-        if reread is not None and reread[2].id == chosen.destination_status.id:
-            return _mutation("transitioned", replace(output, status=reread[2]), receipt)
-        if read_failure is not None:
-            return MutationAttempt.retry(
-                failure(
-                    "transitionIssue",
-                    FailureKind.AVAILABILITY,
-                    "Jira transition outcome could not be read back",
-                )
-            )
-        assert reread is not None
+        if response.is_complete and response.status in DEFINITE_WRITE_REFUSAL_STATUSES:
+            return await self.classify_refused(chosen, output, response, receipt)
         if not response.transport_error and response.status < 400:
-            return _mutation(
-                "invalidResponse",
-                output,
-                receipt,
+            return MutationAttempt.retry(
                 failure(
                     "transitionIssue",
                     FailureKind.PROTOCOL,
                     f"Jira returned unexpected HTTP {response.status} for the transition",
-                ),
+                )
             )
-        if 400 <= response.status < 500 and response.status not in (408, 409, 429):
-            fields = rejected_fields(response.body)
-            return _mutation(
-                "providerRejected",
-                replace(output, status=reread[2], rejected_field_ids=fields),
-                receipt,
-                rejection_failure("transitionIssue", "transition", response.status, fields),
-            )
-        if response.status == 409:
+        if not response.transport_error and response.status == 409:
             return MutationAttempt.retry(
                 failure(
                     "transitionIssue",
                     FailureKind.CONFLICT,
-                    "Jira reported a conflicting update, so the transition is retried",
+                    "Jira reported a conflicting update; the outcome of the transition is unknown",
                 ),
                 self.client.retry_after(response),
             )
@@ -755,9 +978,35 @@ class TransitionIssueOperation:
             failure(
                 "transitionIssue",
                 FailureKind.AVAILABILITY,
-                "Jira did not confirm the transition and the issue has not moved yet",
+                "Jira did not confirm the transition; "
+                "the next attempt reads the issue before sending it again",
             ),
             self.client.retry_after(response),
+        )
+
+    async def classify_refused(
+        self, chosen: TransitionReference, output: TransitionIssueOutput, response: Exchange, receipt: Receipt
+    ) -> MutationAttempt[TransitionIssueOutput]:
+        """Reread the issue, because a concurrent duplicate may have made the transition first."""
+        reread, read_failure = await _transition_snapshot(
+            self.client, self.call, self.credentials, self.cloud_id, self.issue_id
+        )
+        if read_failure is not None or reread is None:
+            return MutationAttempt.retry(
+                failure(
+                    "transitionIssue",
+                    FailureKind.AVAILABILITY,
+                    "Jira refused the transition and the issue could not be read back",
+                )
+            )
+        if reread[2].id == chosen.destination_status.id:
+            return _mutation("transitioned", replace(output, status=reread[2]), receipt)
+        fields = rejected_fields(response.body)
+        return _mutation(
+            "providerRejected",
+            replace(output, status=reread[2], rejected_field_ids=fields),
+            receipt,
+            rejection_failure("transitionIssue", "transition", response.status, fields),
         )
 
 
@@ -955,6 +1204,8 @@ class _WriteDispatch:
     ) -> None:
         self.client, self.call, self.credentials = client, call, credentials
         self.cloud_id, self.path, self.payload = cloud_id, path, payload
+        self.observed_statuses: list[int] = []
+        """Statuses seen when headers arrived, kept when the write window cuts the body read."""
 
     async def send(self, deadline: datetime) -> Exchange:
         """Send once after Fence has persisted the claim."""
@@ -966,7 +1217,78 @@ class _WriteDispatch:
             cloud_id=self.cloud_id,
             payload=self.payload,
             fenced=True,
+            observed_statuses=self.observed_statuses,
         )
+
+    def has_observed_success(self) -> bool:
+        """Report that Jira answered 2xx before the write window expired."""
+        return bool(self.observed_statuses) and 200 <= self.observed_statuses[-1] < 300
+
+
+@dataclass(frozen=True)
+class _SendCapPolicy:
+    """One fenced attempt's send-cap facts from its Fence decision."""
+
+    can_resend_unknown_outcome: bool = False
+    """Another send stays within the cap."""
+    has_possible_earlier_send: bool = False
+    """An earlier send of this call may have taken effect."""
+    has_uncheckpointed_acceptance: bool = False
+    """Jira accepted this send without a recorded provider ID, so reconciliation never retries."""
+
+
+def _accepted_write_policy(has_recorded_provider_id: bool) -> _SendCapPolicy:
+    """Reconcile a write Jira accepted in this attempt; it is never sent again."""
+    return _SendCapPolicy(
+        has_possible_earlier_send=True, has_uncheckpointed_acceptance=not has_recorded_provider_id
+    )
+
+
+def _needs_read_back(decision: Decision) -> bool:
+    """Report a possible earlier send, including SEND_ALLOWED after a canResend marker."""
+    return (
+        decision.kind != DecisionKind.SEND_ALLOWED
+        or decision.prior_send_upper_bound > 0
+        or bool(decision.marker and decision.marker.provider_id)
+    )
+
+
+def _resend_or_select_uncertain(
+    policy: _SendCapPolicy, value: T, receipt: Receipt, cause: Failure
+) -> MutationAttempt[T]:
+    if policy.can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return MutationAttempt.retry(cause)
+    return MutationAttempt.uncertain(value, cause, receipt)
+
+
+async def _reject_or_select_uncertain(
+    fence: Fence,
+    policy: _SendCapPolicy,
+    operation: str,
+    branch: str,
+    value: T,
+    receipt: Receipt,
+    cause: Failure,
+) -> MutationAttempt[T]:
+    """Select a refusal branch only when no earlier send of this call may have written."""
+    if policy.has_possible_earlier_send:
+        return MutationAttempt.uncertain(value, cause, receipt)
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        return MutationAttempt.retry(
+            failure(operation, FailureKind.AVAILABILITY, "Jira rejection checkpoint could not be recorded")
+        )
+    return _mutation(branch, value, receipt, cause)
+
+
+def _defect_or_select_uncertain(
+    policy: _SendCapPolicy, value: T, receipt: Receipt, cause: Failure
+) -> MutationAttempt[T]:
+    if policy.has_possible_earlier_send:
+        return MutationAttempt.uncertain(value, cause, receipt)
+    return _mutation("defect", value, receipt, cause)
 
 
 class _FencedWrite:
@@ -981,6 +1303,17 @@ class _FencedWrite:
     def _prepare(self, input: Any) -> tuple[Any, str, dict[str, Any]]:
         raise NotImplementedError
 
+    async def _find(
+        self,
+        call: Call,
+        credentials: Any,
+        cloud_id: str,
+        requested: Any,
+        marker: dict[str, str],
+        provider_id: str,
+    ) -> tuple[dict[str, Any] | None, str]:
+        raise NotImplementedError
+
     async def _reconcile(
         self,
         call: Call,
@@ -989,10 +1322,50 @@ class _FencedWrite:
         requested: Any,
         marker: dict[str, str],
         provider_id: str,
+        policy: _SendCapPolicy,
         cause: Failure,
         receipt: Receipt,
     ) -> MutationAttempt[Any]:
-        raise NotImplementedError
+        """Read back a possible write; a missing write resends while the policy allows.
+
+        A write Jira already identified is never sent again.
+        """
+        candidate, status = await self._find(call, credentials, cloud_id, requested, marker, provider_id)
+        if status == "found" and candidate is not None:
+            return self._accepted(requested, candidate, receipt)
+        if status == "retry":
+            if policy.has_uncheckpointed_acceptance:
+                return MutationAttempt.uncertain(requested, cause, receipt)
+            return self._read_back_retry()
+        if provider_id:
+            return MutationAttempt.uncertain(requested, cause, receipt)
+        return _resend_or_select_uncertain(policy, requested, receipt, cause)
+
+    async def _find_before_resend(
+        self,
+        call: Call,
+        credentials: Any,
+        cloud_id: str,
+        requested: Any,
+        marker: dict[str, str],
+        receipt: Receipt,
+    ) -> MutationAttempt[Any] | None:
+        """Return the outcome of an earlier send that read-back finds, or None to resend."""
+        candidate, status = await self._find(call, credentials, cloud_id, requested, marker, "")
+        if status == "found" and candidate is not None:
+            return self._accepted(requested, candidate, receipt)
+        if status == "retry":
+            return self._read_back_retry()
+        return None
+
+    def _read_back_retry(self) -> MutationAttempt[Any]:
+        return MutationAttempt.retry(
+            failure(
+                self.operation,
+                FailureKind.AVAILABILITY,
+                f"Jira {self.subject} read-back is temporarily unavailable",
+            )
+        )
 
     def _accepted(self, requested: Any, resource: dict[str, Any], receipt: Receipt) -> MutationAttempt[Any]:
         raise NotImplementedError
@@ -1012,7 +1385,7 @@ class _FencedWrite:
                 failure(self.operation, FailureKind.VALIDATION, str(error)),
             )
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
             decision = await fence.decide()
         except ValueError:
             return _mutation(
@@ -1024,15 +1397,22 @@ class _FencedWrite:
                 ),
             )
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                requested,
-                failure(self.operation, FailureKind.PROTOCOL, "Jira dispatch checkpoint cannot be trusted"),
-                Receipt(),
+            return MutationAttempt.retry(
+                failure(
+                    self.operation,
+                    FailureKind.AVAILABILITY,
+                    "Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt",
+                )
             )
+        policy = _SendCapPolicy(
+            can_resend_unknown_outcome=decision.prior_send_upper_bound + 1 < call.max_sends,
+            has_possible_earlier_send=decision.prior_send_upper_bound > 0,
+        )
         try:
             credentials, cloud_id = await self.client.session(call, self.operation)
         except SessionError as error:
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            # notSent after a possible earlier send would hide it, so only a first send records it.
+            if not _needs_read_back(decision):
                 try:
                     await fence.record_not_sent()
                 except Exception:
@@ -1044,16 +1424,16 @@ class _FencedWrite:
                         ),
                         error.retry_after,
                     )
-                return cast(MutationAttempt[Any], _session_result(error, requested, True))
             if error.retryable:
                 return MutationAttempt.retry(error.failure, error.retry_after)
-            return MutationAttempt.uncertain(requested, error.failure, Receipt())
+            return _defect_or_select_uncertain(policy, requested, Receipt(), error.failure)
         marker = _marker(call)
         receipt = self.client.receipt(call)
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            provider_id = (
-                decision.marker.provider_id if decision.marker and decision.marker.call_id == call.id else ""
-            )
+        provider_id = decision.marker.provider_id if decision.marker else ""
+        earlier_send = failure(
+            self.operation, FailureKind.AVAILABILITY, f"Jira {self.subject} dispatch may have succeeded"
+        )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or provider_id:
             return await self._reconcile(
                 call,
                 credentials,
@@ -1061,18 +1441,36 @@ class _FencedWrite:
                 requested,
                 marker,
                 provider_id,
-                failure(
-                    self.operation,
-                    FailureKind.AVAILABILITY,
-                    f"Jira {self.subject} dispatch may have succeeded",
-                ),
+                _SendCapPolicy(),
+                earlier_send,
                 receipt,
             )
+        if _needs_read_back(decision):
+            found = await self._find_before_resend(call, credentials, cloud_id, requested, marker, receipt)
+            if found is not None:
+                return found
         payload["properties"] = [marker]
         dispatch = _WriteDispatch(self.client, call, credentials, cloud_id, path, payload)
         try:
             response = await fence.dispatch(dispatch.send)
         except TimeoutError:
+            if dispatch.has_observed_success():
+                # Jira accepted the write before the window cut its body, so it is never resent.
+                return await self._reconcile(
+                    call,
+                    credentials,
+                    cloud_id,
+                    requested,
+                    marker,
+                    "",
+                    _accepted_write_policy(False),
+                    failure(
+                        self.operation,
+                        FailureKind.TRANSPORT,
+                        f"Jira accepted the {self.subject} but the write deadline cut off its response",
+                    ),
+                    receipt,
+                )
             return await self._reconcile(
                 call,
                 credentials,
@@ -1080,6 +1478,7 @@ class _FencedWrite:
                 requested,
                 marker,
                 "",
+                policy,
                 failure(self.operation, FailureKind.AVAILABILITY, f"Jira {self.subject} dispatch timed out"),
                 receipt,
             )
@@ -1092,14 +1491,17 @@ class _FencedWrite:
                 )
             )
         except (DispatchNotAllowedError, ValueError):
-            return _mutation(
-                "defect",
+            return _defect_or_select_uncertain(
+                policy,
                 requested,
                 receipt,
                 failure(self.operation, FailureKind.LOCAL_DEFECT, "Jira dispatch was not allowed"),
             )
         classified = self.client.classify_write(self.operation, self.subject, response)
         receipt = self.client.receipt(call, response)
+        if classified.outcome == "defect":
+            assert classified.failure is not None
+            return _defect_or_select_uncertain(policy, requested, receipt, classified.failure)
         if classified.outcome == "retry":
             try:
                 await fence.record_can_resend()
@@ -1117,7 +1519,20 @@ class _FencedWrite:
         if classified.outcome == "uncertain":
             assert classified.failure is not None
             return await self._reconcile(
-                call, credentials, cloud_id, requested, marker, "", classified.failure, receipt
+                call, credentials, cloud_id, requested, marker, "", policy, classified.failure, receipt
+            )
+        if classified.outcome == "acceptedUnreadable":
+            assert classified.failure is not None
+            return await self._reconcile(
+                call,
+                credentials,
+                cloud_id,
+                requested,
+                marker,
+                "",
+                _accepted_write_policy(False),
+                classified.failure,
+                receipt,
             )
         if classified.outcome in ("rejected", "notFound"):
             if response.status == 401 and await _refresh_after_rejection(self.client, call):
@@ -1138,18 +1553,20 @@ class _FencedWrite:
                         "Jira access token was refreshed for retry",
                     )
                 )
-            if response.status == 409:
-                assert classified.failure is not None
-                return await self._reconcile(
-                    call, credentials, cloud_id, requested, marker, "", classified.failure, receipt
-                )
             branch = (
                 "notFound"
                 if classified.outcome == "notFound" and self.operation == "addComment"
                 else "providerRejected"
             )
-            return _mutation(
-                branch, self._rejected(requested, classified.rejected_fields), receipt, classified.failure
+            assert classified.failure is not None
+            return await _reject_or_select_uncertain(
+                fence,
+                policy,
+                self.operation,
+                branch,
+                self._rejected(requested, classified.rejected_fields),
+                receipt,
+                classified.failure,
             )
         try:
             resource = _object(json.loads(response.body))
@@ -1157,10 +1574,12 @@ class _FencedWrite:
         except (ValueError, TypeError):
             resource, provider_id = {}, ""
         if _NUMERIC.fullmatch(provider_id):
+            has_recorded_provider_id = True
             try:
                 await fence.record_provider_id(provider_id)
             except Exception:
-                pass  # A lost identity checkpoint never authorizes a duplicate write.
+                # Without the identity checkpoint, reconciliation never retries.
+                has_recorded_provider_id = False
             if self.operation == "addComment" or _ISSUE.fullmatch(_field_string(resource, "key")):
                 return self._accepted(requested, resource, receipt)
             return await self._reconcile(
@@ -1170,6 +1589,7 @@ class _FencedWrite:
                 requested,
                 marker,
                 provider_id,
+                _accepted_write_policy(has_recorded_provider_id),
                 failure(
                     self.operation,
                     FailureKind.PROTOCOL,
@@ -1184,6 +1604,7 @@ class _FencedWrite:
             requested,
             marker,
             "",
+            _accepted_write_policy(False),
             failure(
                 self.operation,
                 FailureKind.PROTOCOL,
@@ -1269,7 +1690,7 @@ class CreateIssueOperation(_FencedWrite):
             replace(receipt, provider_object_id=key),
         )
 
-    async def _reconcile(
+    async def _find(
         self,
         call: Call,
         credentials: Any,
@@ -1277,23 +1698,8 @@ class CreateIssueOperation(_FencedWrite):
         requested: CreateIssueOutput,
         marker: dict[str, str],
         provider_id: str,
-        cause: Failure,
-        receipt: Receipt,
-    ) -> MutationAttempt[CreateIssueOutput]:
-        candidate, status = await _find_created(
-            self.client, call, credentials, cloud_id, requested, marker, provider_id
-        )
-        if status == "found" and candidate is not None:
-            return self._accepted(requested, candidate, receipt)
-        if status == "retry":
-            return MutationAttempt.retry(
-                failure(
-                    self.operation,
-                    FailureKind.AVAILABILITY,
-                    "Jira issue read-back is temporarily unavailable",
-                )
-            )
-        return MutationAttempt.uncertain(requested, cause, receipt)
+    ) -> tuple[dict[str, Any] | None, str]:
+        return await _find_created(self.client, call, credentials, cloud_id, requested, marker, provider_id)
 
 
 class AddCommentOperation(_FencedWrite):
@@ -1342,7 +1748,7 @@ class AddCommentOperation(_FencedWrite):
             replace(receipt, provider_object_id=comment_id),
         )
 
-    async def _reconcile(
+    async def _find(
         self,
         call: Call,
         credentials: Any,
@@ -1350,20 +1756,7 @@ class AddCommentOperation(_FencedWrite):
         requested: AddCommentOutput,
         marker: dict[str, str],
         provider_id: str,
-        cause: Failure,
-        receipt: Receipt,
-    ) -> MutationAttempt[AddCommentOutput]:
-        candidate, status = await _find_comment(
+    ) -> tuple[dict[str, Any] | None, str]:
+        return await _find_comment(
             self.client, call, credentials, cloud_id, requested.issue_id_or_key, marker, provider_id
         )
-        if status == "found" and candidate is not None:
-            return self._accepted(requested, candidate, receipt)
-        if status == "retry":
-            return MutationAttempt.retry(
-                failure(
-                    self.operation,
-                    FailureKind.AVAILABILITY,
-                    "Jira comment read-back is temporarily unavailable",
-                )
-            )
-        return MutationAttempt.uncertain(requested, cause, receipt)

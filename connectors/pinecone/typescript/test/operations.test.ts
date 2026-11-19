@@ -2,12 +2,42 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { PineconeClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const call = { id: 'pinecone-unit-call', context: { cancellationSignal: new AbortController().signal } } as Call;
 const credentials = { resolve: async () => ({ apiKey: new SecretString('safe-test-key') }) };
+
+describe('Pinecone credential classification', () => {
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed credential material', new CredentialMaterialError('credential api_key is required'), true],
+    ['SDK provider decoding failure', new TypeError('project credential decoding failed'), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure without sending', async (_name, credentialFailure, isTerminal) => {
+    let requests = 0;
+    const client = new PineconeClient({ baseUrl: 'https://example.com' }, { resolve: async () => { throw credentialFailure; } }, { send: async () => { requests++; throw new Error('unexpected request'); } });
+    const expected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await client.upsertVectors().invoke(call, { vectors: [{ id: 'one', values: [1] }] })).toMatchObject(expected);
+    expect(await client.queryVectors().invoke(call, { vector: [1], topK: 1 })).toMatchObject(expected);
+    expect(requests).toBe(0);
+  });
+});
+
+describe('Pinecone upsert unknown outcomes', () => {
+  it.each([[405, '{}'], [425, '{}'], [200, '{"missing":true}'], [200, '{'], [200, '{"upsertedCount":3}']])('retries HTTP %i body %s', async (status, body) => {
+    const client = new PineconeClient({ baseUrl: 'https://example.com' }, credentials, { send: async () => ({ status, headers: {}, body: Buffer.from(body) }) });
+    expect(await client.upsertVectors().invoke(call, { vectors: [{ id: 'one', values: [1] }] })).toMatchObject({ kind: 'retry' });
+  });
+});
 
 describe('Pinecone input and configuration', () => {
   it('rejects missing credentials and unsafe configuration', () => {
@@ -20,13 +50,16 @@ describe('Pinecone input and configuration', () => {
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('defect');
   });
-  it('classifies unavailable credentials as terminal authentication', async () => {
-    const client = new PineconeClient({ baseUrl: 'https://example.com' }, { resolve: async () => { throw new Error('secret sentinel'); } });
+  it('classifies a rejected credential as terminal authentication and an unlisted error as Retry', async () => {
+    const client = new PineconeClient({ baseUrl: 'https://example.com' }, { resolve: async () => { throw new CredentialBrokerRejectedError(); } });
     const result = await client.queryVectors().invoke(call, { vector: [1], topK: 1 });
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('defect');
     expect(result.failure?.kind).toBe('AUTHENTICATION');
-    expect(result.failure?.message).not.toContain('sentinel');
+    const unlisted = new PineconeClient({ baseUrl: 'https://example.com' }, { resolve: async () => { throw new Error('secret sentinel'); } });
+    const retried = await unlisted.queryVectors().invoke(call, { vector: [1], topK: 1 });
+    expect(retried.kind).toBe('retry');
+    expect(retried.failure?.message).not.toContain('sentinel');
   });
   it('omits Go empty fields from the provider JSON body', async () => {
     let encoded = '';

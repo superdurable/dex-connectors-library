@@ -322,15 +322,18 @@ export interface SetIssueStateStepConfig<StepInput, OperationInput = SetIssueSta
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized issue after an accepted update now retries, because sending the same state again is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the setIssueState Step from a named connection. */
 export function newSetIssueStateStep<StepInput, OperationInput = SetIssueStateInput, OperationOutput = UpdatedIssueState>(configuration: SetIssueStateStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.setIssueState(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -359,15 +362,18 @@ export interface ReplaceIssueLabelsStepConfig<StepInput, OperationInput = Replac
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized label list after an accepted replacement now retries, because sending the same set again is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the replaceIssueLabels Step from a named connection. */
 export function newReplaceIssueLabelsStep<StepInput, OperationInput = ReplaceIssueLabelsInput, OperationOutput = ReplacedIssueLabels>(configuration: ReplaceIssueLabelsStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, replaced, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, replaced, insufficientScope, authorizationRevoked, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.replaceIssueLabels(), connection: connection.reference, branches: [
     goToBranch("replaced", replaced),

@@ -1,0 +1,500 @@
+{
+  "connector": "gitee",
+  "scenarios": [
+    {
+      "callId": "164b0f47-dfb7-5d34-9c01-dc76b3f0fe9b",
+      "exchanges": [
+        {
+          "body": "{\"id\":101,\"full_name\":\"open-source/demo\",\"name\":\"demo\",\"description\":\"Example repository\",\"html_url\":\"https://gitee.com/open-source/demo\",\"private\":false,\"default_branch\":\"master\",\"stargazers_count\":5,\"forks_count\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "repository": {
+            "defaultBranch": "master",
+            "description": "Example repository",
+            "forksCount": 2,
+            "fullName": "open-source/demo",
+            "htmlUrl": "https://gitee.com/open-source/demo",
+            "id": 101,
+            "name": "demo",
+            "private": false,
+            "starsCount": 5
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-found",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "2cea3440-695d-57db-bf5c-076fa0d626d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-notFound",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "660e9e95-7194-5a08-88d4-89cca99cac3d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-providerRejected",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "ae029e5c-a96b-53b9-b995-8e30d46c53cf",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-invalidResponse",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "2a65d8ae-0594-5a62-b79b-8f90001e83e8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-defect",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "ca75001f-3791-5044-bf88-94c9fc1971e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-rateLimit429",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "f43d3db1-29e8-5721-8370-27c36fac7bfb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-availability503",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "451588ae-943d-5aec-b253-66fac556d37e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-transportFailure",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "d2a2dad0-c920-5df2-9c98-d8c3dc855a69",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-invalidShape",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "d43ad0d2-792b-5c0f-8c14-332c14852940",
+      "exchanges": [
+        {
+          "body": "{\"this_is_more_than_16_bytes\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-oversized",
+      "operation": "getRepository"
+    },
+    {
+      "callId": "2a22f79f-6acc-5456-8a6c-091049160044",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Location": "https://example.com/collect"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v5/repos/open-source/demo",
+          "query": {
+            "access_token": [
+              "test-gitee-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "repository": {
+            "defaultBranch": "",
+            "description": "",
+            "forksCount": 0,
+            "fullName": "",
+            "htmlUrl": "",
+            "id": 0,
+            "name": "",
+            "private": false,
+            "starsCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "open-source",
+        "repo": "demo"
+      },
+      "name": "getRepository-redirect",
+      "operation": "getRepository"
+    }
+  ],
+  "schemaVersion": 1
+}

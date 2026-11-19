@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/superdurable/dex-connectors-library/schema"
 )
 
 func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
@@ -18,17 +20,25 @@ func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
 		Kind                string   `json:"kind"`
 		Branches            []string `json:"branches"`
 		OptionalInputFields []string `json:"optionalInputFields"`
+		// IsSafeToRepeat marks a safe Mutation, whose declared uncertain and invalidResponse branches may be unreachable.
+		IsSafeToRepeat bool `json:"isSafeToRepeat,omitempty"`
+		// RetiredBranches lists declared branches the connector no longer selects; they need no replay coverage.
+		RetiredBranches []string `json:"retiredBranches,omitempty"`
 	}
 	operations := make(map[string]conformanceOperation, len(manifest.Spec.Operations))
 	goPackage := newConnectorGoPackage(manifestPath)
 	for _, operation := range manifest.Spec.Operations {
 		entry := conformanceOperation{Kind: operation.Kind}
+		entry.IsSafeToRepeat = operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() == schema.RepeatOnUnknownSafe
 		entry.OptionalInputFields, err = conformanceOptionalInputFields(goPackage, operation.InputType)
 		if err != nil {
 			return err
 		}
 		for _, branch := range operation.Branches {
 			entry.Branches = append(entry.Branches, branch.ID)
+			if branch.Retired {
+				entry.RetiredBranches = append(entry.RetiredBranches, branch.ID)
+			}
 		}
 		operations[operation.Name] = entry
 	}

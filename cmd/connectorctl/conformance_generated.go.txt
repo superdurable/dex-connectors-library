@@ -546,18 +546,16 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
  for name, value := range exchange.Query { recorder.matchValues(index, "query "+name, query[name], conformanceExpectedValues(value)) }
  for name, values := range query { if _, asserted := exchange.Query[name]; !asserted { recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: unasserted query %s=%q", index, name, values)) } }
  if strings.HasPrefix(conformanceHeaderValue(request.Header, "Content-Type"), "application/x-www-form-urlencoded") || len(exchange.Form) != 0 {
-  body, readErr := io.ReadAll(request.Body)
+  body, readErr := conformanceReadRequestBody(request)
   if readErr != nil { recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr)) }
-  request.Body = io.NopCloser(bytes.NewReader(body))
   form, parseErr := url.ParseQuery(string(body))
   if parseErr != nil { recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: parse form: %v", index, parseErr)) }
   for name, value := range exchange.Form { recorder.matchValues(index, "form "+name, form[name], conformanceExpectedValues(value)) }
   for name, values := range form { if _, asserted := exchange.Form[name]; !asserted { recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: unasserted form %s=%q", index, name, values)) } }
  }
  if len(exchange.RequestBody) != 0 {
-  body, readErr := io.ReadAll(request.Body)
+  body, readErr := conformanceReadRequestBody(request)
   if readErr != nil { recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr)) }
-  request.Body = io.NopCloser(bytes.NewReader(body))
   var observed, expected any
   if err := json.Unmarshal(exchange.RequestBody, &expected); err != nil { recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: invalid expected body", index)) } else if descriptor, isObject := expected.(map[string]any); isObject && descriptor["$rawMime"] != nil {
    var payload map[string]string
@@ -585,9 +583,8 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
   }
  }
  if len(exchange.RequestBody) == 0 && len(exchange.Form) == 0 && request.Body != nil {
-  body, readErr := io.ReadAll(request.Body)
+  body, readErr := conformanceReadRequestBody(request)
   if readErr != nil { recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr)) }
-  request.Body = io.NopCloser(bytes.NewReader(body))
   if len(body) != 0 { recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: unasserted body", index)) }
  }
  for name, value := range exchange.RequestHeaders {
@@ -750,6 +747,14 @@ func conformanceHeaderValues(headers http.Header, name string) []string {
   if strings.EqualFold(headerName, name) { values = append(values, headerValues...) }
  }
  return values
+}
+
+// conformanceReadRequestBody reads and restores the body; a nil body, as a GET sends, reads as empty.
+func conformanceReadRequestBody(request *http.Request) ([]byte, error) {
+ if request.Body == nil { return nil, nil }
+ body, err := io.ReadAll(request.Body)
+ request.Body = io.NopCloser(bytes.NewReader(body))
+ return body, err
 }
 
 func conformanceHeaderValue(headers http.Header, name string) string {

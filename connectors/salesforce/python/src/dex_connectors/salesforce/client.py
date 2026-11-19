@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from urllib.parse import quote, urlencode, urlsplit
@@ -26,6 +26,11 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -113,6 +118,7 @@ class Outcome:
     retry_after: float = 0
     provider_errors: tuple[ProviderError, ...] = ()
     api_usage: str = ""
+    status: int = 0
 
 
 class Client:
@@ -220,7 +226,27 @@ class Client:
                     "Salesforce authorization is revoked or expired; reauthorize the connection",
                 ),
             )
-        except Exception:
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
+            return None, Outcome(
+                "defect",
+                failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    "Salesforce connection credentials are missing or invalid",
+                ),
+            )
+        except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return None, Outcome(
+                    "defect",
+                    failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "Salesforce connection credentials are missing or invalid",
+                    ),
+                )
             return None, Outcome(
                 "retry",
                 failure(
@@ -354,7 +380,7 @@ class Client:
                     pass
             if 200 <= status < 300 or status == 300:
                 return response, None
-            return response, self.classify(operation, response, duplicate_retry)
+            return response, replace(self.classify(operation, response, duplicate_retry), status=status)
         return None, Outcome(
             "defect",
             failure(

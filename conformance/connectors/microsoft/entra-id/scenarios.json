@@ -1389,19 +1389,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "user": {
-            "id": "",
-            "isAccountEnabled": false,
-            "isOnPremisesSyncEnabled": false,
-            "userPrincipalName": ""
-          },
-          "wasAlreadyCreated": false
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1417,7 +1408,7 @@
         "usageLocation": "GB",
         "userPrincipalName": "ada.lovelace@contoso.com"
       },
-      "name": "createUser-invalid-response",
+      "name": "createUser-unusable-response-retries",
       "operation": "createUser",
       "randomRequestFields": [
         "/passwordProfile/password"
@@ -1792,16 +1783,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "isAccountEnabled": false,
-          "isOnPremisesSyncEnabled": false,
-          "userPrincipalName": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1809,7 +1794,7 @@
       "input": {
         "userKey": "11111111-2222-4333-8444-555555555555"
       },
-      "name": "disableUser-invalid-response",
+      "name": "disableUser-unusable-response-retries",
       "operation": "disableUser"
     },
     {
@@ -2177,16 +2162,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "isAccountEnabled": false,
-          "isOnPremisesSyncEnabled": false,
-          "userPrincipalName": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2194,7 +2173,7 @@
       "input": {
         "userKey": "11111111-2222-4333-8444-555555555555"
       },
-      "name": "enableUser-invalid-response",
+      "name": "enableUser-unusable-response-retries",
       "operation": "enableUser"
     },
     {
@@ -2523,13 +2502,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "userKey": "11111111-2222-4333-8444-555555555555"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2537,7 +2513,7 @@
       "input": {
         "userKey": "11111111-2222-4333-8444-555555555555"
       },
-      "name": "revokeSignInSessions-invalid-response",
+      "name": "revokeSignInSessions-unusable-response-retries",
       "operation": "revokeSignInSessions"
     },
     {
@@ -2983,15 +2959,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "groupId": "",
-          "userId": "",
-          "wasAlreadyMember": false
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3000,7 +2971,7 @@
         "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
         "userId": "11111111-2222-4333-8444-555555555555"
       },
-      "name": "addUserToGroup-invalid-response",
+      "name": "addUserToGroup-unusable-response-retries",
       "operation": "addUserToGroup"
     },
     {
@@ -3362,15 +3333,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "groupId": "",
-          "userId": "",
-          "wasAlreadyRemoved": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3379,7 +3345,7 @@
         "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
         "userId": "11111111-2222-4333-8444-555555555555"
       },
-      "name": "removeUserFromGroup-invalid-response",
+      "name": "removeUserFromGroup-unusable-response-retries",
       "operation": "removeUserFromGroup"
     },
     {
@@ -3746,16 +3712,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "11111111-2222-4333-8444-555555555555",
-          "isAccountEnabled": true,
-          "isOnPremisesSyncEnabled": false,
-          "userPrincipalName": "ada.lovelace@contoso.com"
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3763,7 +3723,7 @@
       "input": {
         "userKey": "11111111-2222-4333-8444-555555555555"
       },
-      "name": "disableUser-stale-read",
+      "name": "disableUser-stale-read-retries",
       "operation": "disableUser"
     },
     {
@@ -3814,16 +3774,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "11111111-2222-4333-8444-555555555555",
-          "isAccountEnabled": false,
-          "isOnPremisesSyncEnabled": false,
-          "userPrincipalName": "ada.lovelace@contoso.com"
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3831,7 +3785,7 @@
       "input": {
         "userKey": "11111111-2222-4333-8444-555555555555"
       },
-      "name": "enableUser-stale-read",
+      "name": "enableUser-stale-read-retries",
       "operation": "enableUser"
     },
     {

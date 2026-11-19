@@ -4,6 +4,8 @@
 package llm
 
 import (
+	"fmt"
+
 	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 	"github.com/superdurable/dex-connectors-library/sdkgo/textgen/openaichat"
 )
@@ -21,7 +23,15 @@ var openAICompatibleChatProfile = openaichat.Profile{
 	Streaming: openaichat.StreamingPolicyAlways,
 }
 
-// newOpenAICompatibleWireFormat returns the shared OpenAI Chat Completions wire format.
-func newOpenAICompatibleWireFormat(*Config) (textgen.WireFormat, error) {
-	return openaichat.NewWireFormat(&openAICompatibleChatProfile)
+// newOpenAICompatibleWireFormat returns the shared OpenAI Chat Completions wire
+// format, or the Responses API wire format when config.OpenAICompatibleAPI is responses.
+func newOpenAICompatibleWireFormat(config *Config) (textgen.WireFormat, error) {
+	switch config.OpenAICompatibleAPI {
+	case "", OpenAICompatibleAPIChatCompletions:
+		return openaichat.NewWireFormat(&openAICompatibleChatProfile)
+	case OpenAICompatibleAPIResponses:
+		return responsesWireFormatFor(ProviderOpenaiCompatible), nil
+	default:
+		return textgen.WireFormat{}, fmt.Errorf("configuration openaiCompatibleApi is invalid")
+	}
 }

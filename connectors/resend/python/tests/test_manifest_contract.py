@@ -34,7 +34,10 @@ def test_manifest_operations_branches_and_mocks() -> None:
             (branch["id"], branch["description"], branch.get("optional", False))
             for branch in operation["branches"]
         ] == [(branch.id, branch.description, branch.optional) for branch in definition.branches or ()]
-        assert operation["execution"] == {"executeMethodTimeout": "30s", "durability": "async"}
+        expected_execution = {"executeMethodTimeout": "30s", "durability": "async"}
+        if kind == "mutation":
+            expected_execution["repeatOnUnknown"] = "safe"
+        assert operation["execution"] == expected_execution
         defaults = definition.step_defaults
         assert defaults.execute_method_timeout == timedelta(seconds=30)
         assert defaults.execute_durability == 2

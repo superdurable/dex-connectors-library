@@ -46,12 +46,15 @@ export const GetMessageMetadata = { kind: "query", idempotency: "none", authoriz
 export const SendMessageBranch = {
   Sent: "sent",
   ProviderRejected: "providerRejected",
+  Uncertain: "uncertain",
   Defect: "defect",
 } as const;
 /** Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match. */
 export const SendMessageBranchSent = SendMessageBranch.Sent;
 /** Gmail conclusively rejected the message. */
 export const SendMessageBranchProviderRejected = SendMessageBranch.ProviderRejected;
+/** Gmail may have sent the message, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it. */
+export const SendMessageBranchUncertain = SendMessageBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const SendMessageBranchDefect = SendMessageBranch.Defect;
 /** Manifest definition for sendMessage. */
@@ -60,6 +63,7 @@ export const SendMessageDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match." },
     { id: "providerRejected", description: "Gmail conclusively rejected the message.", optional: true },
+    { id: "uncertain", description: "Gmail may have sent the message, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 7, totalDurationMs: 300000 } },
@@ -74,6 +78,7 @@ export const ReplyToMessageBranch = {
   Sent: "sent",
   ProviderRejected: "providerRejected",
   InvalidResponse: "invalidResponse",
+  Uncertain: "uncertain",
   Defect: "defect",
 } as const;
 /** Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains. */
@@ -82,6 +87,8 @@ export const ReplyToMessageBranchSent = ReplyToMessageBranch.Sent;
 export const ReplyToMessageBranchProviderRejected = ReplyToMessageBranch.ProviderRejected;
 /** Gmail returned an invalid or oversized source message response before sending the reply. */
 export const ReplyToMessageBranchInvalidResponse = ReplyToMessageBranch.InvalidResponse;
+/** Gmail may have sent the reply, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it. */
+export const ReplyToMessageBranchUncertain = ReplyToMessageBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const ReplyToMessageBranchDefect = ReplyToMessageBranch.Defect;
 /** Manifest definition for replyToMessage. */
@@ -91,6 +98,7 @@ export const ReplyToMessageDefinition: MutationDefinition = {
     { id: "sent", description: "Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains." },
     { id: "providerRejected", description: "Gmail conclusively rejected the reply.", optional: true },
     { id: "invalidResponse", description: "Gmail returned an invalid or oversized source message response before sending the reply.", optional: true },
+    { id: "uncertain", description: "Gmail may have sent the reply, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 7, totalDurationMs: 300000 } },

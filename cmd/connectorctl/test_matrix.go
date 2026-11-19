@@ -59,6 +59,7 @@ var repositoryToolingTestOnlyPaths = map[string]bool{
 	"script/agent_rules_test.py":                        true,
 	"script/branch_off_main_policy.py":                  true,
 	"script/branch_off_main_policy_test.py":             true,
+	"script/ci_local_verification_test.py":              true,
 	"script/ci_summary_test.py":                         true,
 	"script/ci_workflow_test.py":                        true,
 	"script/connector_conformance_test.py":              true,

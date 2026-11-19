@@ -5,13 +5,25 @@
 import asyncio
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlencode, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -53,12 +65,26 @@ _ASSIGNEE_TYPE = re.compile(r"^[a-z_]{1,32}$")
 _GMAIL_ID = re.compile(r"^[A-Za-z0-9]{1,64}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses that prove Hiver applied nothing when their body reads cleanly without a created ID."""
+
 MAXIMUM_PAGE_SIZE = 100
 """Hiver's largest list page, which every conversationReceived poll request asks for."""
 MINIMUM_POLL_PAGES_PER_POLL = 2
 """Leaves room for the list's first page plus one sweep page in each conversationReceived poll."""
 MAXIMUM_POLL_PAGES_PER_POLL = 5
 """Keeps one conversationReceived poll within the poll kit's 500 events per page."""
+
+
+@dataclass(slots=True)
+class ResponseObservation:
+    """The status of a fenced write's response, set as soon as its headers arrive.
+
+    It survives a write-window timeout that cancels the body read, so an accepted
+    write is never mistaken for an unknown outcome.
+    """
+
+    status: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +97,8 @@ class Exchange:
     body: bytes = b""
     failure: Failure | None = None
     retry_after: float = 0
+    is_error_body_unreadable: bool = False
+    """A refusal-status body was oversized, broke while reading, or reflected the credential."""
 
 
 class Client:
@@ -177,14 +205,33 @@ class Client:
 
     async def token(self, call: Call) -> str | None:
         """Resolve a current, header-safe key for one attempt."""
+        token, _ = await self.resolve_token(call)
+        return token
+
+    async def resolve_token(self, call: Call) -> tuple[str | None, bool]:
+        """Resolve a header-safe key, or None and whether the failure is terminal.
+
+        A revoked, absent, or malformed credential is terminal; any other
+        resolution error may clear on a later attempt.
+        """
         try:
             credentials = await self.credentials.resolve(call)
-            if not isinstance(credentials, Credentials):
-                return None
-            token = credentials.api_key.reveal()
-            return token if is_header_safe_credential(token) else None
-        except Exception:
-            return None
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return None, True
+        except Exception as error:
+            # The generated connection module imports this module, so import it lazily.
+            from ._generated.connection import is_credential_material_error
+
+            return None, is_credential_material_error(error)
+        if not isinstance(credentials, Credentials):
+            return None, True
+        token = credentials.api_key.reveal()
+        return (token, False) if is_header_safe_credential(token) else (None, True)
 
     async def _wait_for_slot(self) -> None:
         async with self._pacer_lock:
@@ -238,6 +285,7 @@ class Client:
         payload: object | None,
         fields: list[tuple[str, str]] | None,
         fenced: bool,
+        observation: ResponseObservation | None = None,
     ) -> Exchange:
         target = self.api_base_url + path
         if query:
@@ -284,6 +332,8 @@ class Client:
                 ),
             )
         status = response.status_code
+        if observation is not None:
+            observation.status = status
         retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
         if status == 429:
             self._rate_limit_penalty = min(60, max(self.request_interval * 4, self._rate_limit_penalty * 2))
@@ -294,8 +344,19 @@ class Client:
         else:
             self._rate_limit_penalty = 0
         if status < 200 or status >= 300:
-            await response.aclose()
-            return classify_status(operation, status, response.headers, retry_after)
+            classified = classify_status(operation, status, response.headers, retry_after)
+            if status not in DEFINITE_REFUSAL_STATUSES:
+                await response.aclose()
+                return classified
+            # A refusal is definite only when its body reads in full; callers check it.
+            try:
+                error_body = await read_bounded_body(response, self.max_response_bytes)
+            except (BodyTooLargeError, ProviderTransportError):
+                return replace(classified, is_error_body_unreadable=True)
+            if token and token.encode() in error_body:
+                # A credential-reflecting refusal body is untrusted, so it is treated like an unreadable one.
+                return replace(classified, is_error_body_unreadable=True)
+            return replace(classified, body=error_body)
         try:
             body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:

@@ -71,6 +71,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.paypal.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored PayPal credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -80,19 +96,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("PayPal stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("PayPal stored credential does not match the connector credential fields")
         if set(material) - set(('client_id', 'client_secret')):
-            raise ValueError("PayPal stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("PayPal stored credential does not match the connector credential fields")
         client_id = material.get("client_id")
         if client_id is not None and not (isinstance(client_id, str)):
-            raise ValueError("PayPal credential client_id has an invalid type")
+            raise CredentialMaterialError("PayPal credential client_id has an invalid type")
         client_secret = material.get("client_secret")
         if client_secret is not None and not (isinstance(client_secret, str)):
-            raise ValueError("PayPal credential client_secret has an invalid type")
+            raise CredentialMaterialError("PayPal credential client_secret has an invalid type")
         if not client_id:
-            raise ValueError("PayPal credential client_id is required")
+            raise CredentialMaterialError("PayPal credential client_id is required")
         if not client_secret:
-            raise ValueError("PayPal credential client_secret is required")
+            raise CredentialMaterialError("PayPal credential client_secret is required")
         return Credentials(client_id, SecretString(client_secret))
 
 

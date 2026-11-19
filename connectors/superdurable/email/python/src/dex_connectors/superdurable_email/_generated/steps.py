@@ -138,6 +138,7 @@ def new_send_message_step(
     defect: dex.StepTarget[MutationResult[SentMessage]] | None = None,
     result_attribute: dex.Attribute[MutationResult[SentMessage]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, SendMessageInput, SentMessage]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Email (IMAP and SMTP) Step connection name must match its connection reference")
@@ -169,6 +170,7 @@ def new_send_message_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -190,6 +192,7 @@ def new_reply_to_message_step(
     defect: dex.StepTarget[MutationResult[SentMessage]] | None = None,
     result_attribute: dex.Attribute[MutationResult[SentMessage]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, ReplyToMessageInput, SentMessage]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Email (IMAP and SMTP) Step connection name must match its connection reference")
@@ -225,6 +228,7 @@ def new_reply_to_message_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -244,6 +248,8 @@ def new_move_message_step(
     defect: dex.StepTarget[MutationResult[MovedMessage]] | None = None,
     result_attribute: dex.Attribute[MutationResult[MovedMessage]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, MoveMessageInput, MovedMessage]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Email (IMAP and SMTP) Step connection name must match its connection reference")
@@ -294,6 +300,8 @@ def new_set_flags_step(
     defect: dex.StepTarget[MutationResult[MessageFlags]] | None = None,
     result_attribute: dex.Attribute[MutationResult[MessageFlags]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, SetFlagsInput, MessageFlags]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Email (IMAP and SMTP) Step connection name must match its connection reference")

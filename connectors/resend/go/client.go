@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -164,8 +165,21 @@ func (operation GetEmailOperation) Invoke(call sdkgo.Call, input GetEmailInput) 
 	})
 }
 
+// errCredentialsTemporarilyUnavailable marks a resolve failure a later attempt may clear; nothing was sent.
+var errCredentialsTemporarilyUnavailable = errors.New("credentials temporarily unavailable")
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func (client *Client) newRequest(call sdkgo.Call, method, path string, body []byte) (*http.Request, error) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, errCredentialsTemporarilyUnavailable
+	}
 	if err != nil {
 		return nil, fmt.Errorf("credentials unavailable")
 	}
@@ -187,6 +201,9 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, body []by
 
 func runQuery[T any](client *Client, call sdkgo.Call, operation, path string, success, notFound, rejected, invalid, defect sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {
 	request, err := client.newRequest(call, http.MethodGet, path, nil)
+	if errors.Is(err, errCredentialsTemporarilyUnavailable) {
+		return sdkgo.NewQueryRetry[T](newFailure(operation, sdkgo.FailureAvailability, "connection credentials are temporarily unavailable"), 0)
+	}
 	if err != nil {
 		return queryFailure[T](operation, defect, sdkgo.FailureAuthentication, "connection credentials or request are invalid")
 	}
@@ -223,6 +240,9 @@ func runQuery[T any](client *Client, call sdkgo.Call, operation, path string, su
 
 func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path string, body []byte, extraHeader, extraValue string, success, notFound, rejected, invalid, defect sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.MutationAttempt[T] {
 	request, err := client.newRequest(call, method, path, body)
+	if errors.Is(err, errCredentialsTemporarilyUnavailable) {
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "connection credentials are temporarily unavailable; nothing was sent"), 0)
+	}
 	if err != nil {
 		return mutationFailure[T](operation, defect, sdkgo.FailureAuthentication, "connection credentials or request are invalid")
 	}
@@ -240,30 +260,36 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureRateLimit, "provider rate limited the request"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
-	case response.StatusCode == http.StatusConflict:
-		conflict, _ := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes)
-		names := providerhttp.ReadErrorTokens(conflict, []string{"/name"})
-		if len(names) == 1 && names[0] == "invalid_idempotent_request" {
-			return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "idempotency key was used for a different request")
-		}
-		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is processing the same request"), 0)
 	case response.StatusCode == http.StatusNotFound && notFound != "":
 		return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
-	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted:
+	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted && isDefiniteRefusalStatus(response.StatusCode):
 		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
+	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted:
+		// The Idempotency-Key makes a resend replay the first send, so an unknown answer, including 409, retries.
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider answered HTTP "+strconv.Itoa(response.StatusCode)+", so the outcome is unknown"), 0)
 	}
 	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return mutationFailure[T](operation, invalid, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider response was interrupted"), 0)
 	}
 	value, err := decode(content)
 	if err != nil {
-		return mutationFailure[T](operation, invalid, sdkgo.FailureProtocol, "provider response is incomplete or malformed")
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureProtocol, "provider response is incomplete or malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
+}
+
+// isDefiniteRefusalStatus reports a status that proves Resend refused the request.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func queryFailure[T any](operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[T] {

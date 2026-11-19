@@ -27,7 +27,7 @@ async function invokeEntra(scenario: Scenario, recorder: ExchangeRecorder, conte
   const provider = scenario.name === 'getUser-401-renewed'
     ? { resolve: async () => ({ ...credentials, accessToken: new SecretString('stale-token') }), resolveWithRefresh: async () => ({ ...credentials, accessToken: new SecretString('stale-token') }), resolveAfterRejection: async () => ({ ...credentials, accessToken: new SecretString('fresh-token') }) }
     : { resolve: async () => credentials, resolveWithRefresh: async () => credentials };
-  const client = new EntraClient({ maxResponseBytes: scenario.name === 'removeUserFromGroup-invalid-response' ? 2 : 4_194_304 }, provider,
+  const client = new EntraClient({ maxResponseBytes: scenario.name === 'removeUserFromGroup-unusable-response-retries' ? 2 : 4_194_304 }, provider,
     { send: sender, graphBaseURL: 'http://127.0.0.1:12345/v1.0', now: () => new Date('2026-01-01T00:00:00Z'), ...(randomSource ? { randomInt: maximum => randomSource.goRandomInt(maximum) } : {}) });
   if (scenario.name.includes('propagation')) Object.assign(context, { firstAttemptAt: new Date('2026-01-01T00:00:00Z') });
   const call = scenarioCall(scenario, connection, 'microsoft-entra-id', context,

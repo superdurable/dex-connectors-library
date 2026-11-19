@@ -89,7 +89,7 @@ export const CreateItemBranchCreated = CreateItemBranch.Created;
 export const CreateItemBranchNotFound = CreateItemBranch.NotFound;
 /** monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created. */
 export const CreateItemBranchProviderRejected = CreateItemBranch.ProviderRejected;
-/** An earlier create may have been accepted, but its result cannot be confirmed; the item must not be created again automatically. */
+/** The send cap is reached, or monday.com returned an item value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the item may exist and must not be created again automatically. */
 export const CreateItemBranchUncertain = CreateItemBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateItemBranchDefect = CreateItemBranch.Defect;
@@ -100,7 +100,7 @@ export const CreateItemDefinition: MutationDefinition = {
     { id: "created", description: "monday.com created the item, or replayed the item this Step already created, and returned it." },
     { id: "notFound", description: "The board or group does not exist or the connection cannot see it; nothing was created.", optional: true },
     { id: "providerRejected", description: "monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created.", optional: true },
-    { id: "uncertain", description: "An earlier create may have been accepted, but its result cannot be confirmed; the item must not be created again automatically.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, or monday.com returned an item value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the item may exist and must not be created again automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 10, totalDurationMs: 300000 } },
@@ -124,7 +124,7 @@ export const UpdateItemColumnValuesBranchUpdated = UpdateItemColumnValuesBranch.
 export const UpdateItemColumnValuesBranchNotFound = UpdateItemColumnValuesBranch.NotFound;
 /** monday.com conclusively rejected the change, such as an invalid column value, a missing status label, or missing permission. */
 export const UpdateItemColumnValuesBranchProviderRejected = UpdateItemColumnValuesBranch.ProviderRejected;
-/** monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe. */
+/** monday.com's response echoed the connection credential, so it was discarded; the values may have been set, and repeating the Step is safe. An oversized or malformed item is retried instead. */
 export const UpdateItemColumnValuesBranchInvalidResponse = UpdateItemColumnValuesBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateItemColumnValuesBranchDefect = UpdateItemColumnValuesBranch.Defect;
@@ -135,7 +135,7 @@ export const UpdateItemColumnValuesDefinition: MutationDefinition = {
     { id: "updated", description: "monday.com set the column values and returned the item." },
     { id: "notFound", description: "The board or item does not exist or the connection cannot see it; nothing was changed.", optional: true },
     { id: "providerRejected", description: "monday.com conclusively rejected the change, such as an invalid column value, a missing status label, or missing permission.", optional: true },
-    { id: "invalidResponse", description: "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe.", optional: true },
+    { id: "invalidResponse", description: "monday.com's response echoed the connection credential, so it was discarded; the values may have been set, and repeating the Step is safe. An oversized or malformed item is retried instead.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -158,7 +158,7 @@ export const AddUpdateBranchAdded = AddUpdateBranch.Added;
 export const AddUpdateBranchNotFound = AddUpdateBranch.NotFound;
 /** monday.com conclusively rejected the update, such as missing permission; nothing was added. */
 export const AddUpdateBranchProviderRejected = AddUpdateBranch.ProviderRejected;
-/** An earlier update may have been accepted, but its result cannot be confirmed; the update must not be added again automatically. */
+/** The send cap is reached, or monday.com returned an update value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the update may exist and must not be added again automatically. */
 export const AddUpdateBranchUncertain = AddUpdateBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddUpdateBranchDefect = AddUpdateBranch.Defect;
@@ -169,7 +169,7 @@ export const AddUpdateDefinition: MutationDefinition = {
     { id: "added", description: "monday.com added the update, or replayed the update this Step already added, and returned it." },
     { id: "notFound", description: "The item does not exist or the connection cannot see it; nothing was added.", optional: true },
     { id: "providerRejected", description: "monday.com conclusively rejected the update, such as missing permission; nothing was added.", optional: true },
-    { id: "uncertain", description: "An earlier update may have been accepted, but its result cannot be confirmed; the update must not be added again automatically.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, or monday.com returned an update value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the update may exist and must not be added again automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 10, totalDurationMs: 300000 } },
