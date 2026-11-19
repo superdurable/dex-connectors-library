@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: getresponse
   displayName: GetResponse
-  description: List and inspect contact metadata through the GetResponse API v3.
+  description: List, inspect, create, update, and delete contacts through the GetResponse API v3.
   company: GetResponse
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: getresponse
   languages:
@@ -55,6 +55,26 @@ spec:
         - Save the full key without an api-key prefix in the secret api_key field. Dex sends it as X-Auth-Token with the required api-key prefix. Revoke or rotate it on that API page.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. This initial release does not support GetResponse MAX because its X-Domain header and account endpoint need separate configuration.
   operations:
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: CreateContactOutput
+      kind: mutation
+      description: Queue a new contact in a GetResponse list.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: accepted, goName: Accepted, description: GetResponse accepted the contact for processing.}
+        - {id: providerRejected, goName: ProviderRejected, description: GetResponse definitively rejected the contact., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The contact may have been queued without confirmation., optional: true}
+      mocks:
+        - name: acceptedDefault
+          branch: accepted
+          default: true
+          description: One sample contact is queued for a list.
+          output: {email: 'ada@example.com', campaignId: abc123}
     - name: listContacts
       goName: ListContacts
       inputType: ListContactsInput
@@ -96,3 +116,44 @@ spec:
           default: true
           description: Metadata for one sample contact.
           output: {contactId: abc123, email: 'ada@example.com', name: Ada Lovelace}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Set a contact's email or name to the supplied absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: GetResponse updated the contact.}
+        - {id: notFound, goName: NotFound, description: No contact with this ID is visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GetResponse definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GetResponse returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample contact has a changed name.
+          output: {contactId: abc123, email: 'ada@example.com', name: Ada Byron}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: DeleteContactOutput
+      kind: mutation
+      description: Delete a contact by its stable GetResponse ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: GetResponse deleted the contact.}
+        - {id: notFound, goName: NotFound, description: No contact with this ID is visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GetResponse definitively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample contact is deleted.
+          output: {contactId: abc123}

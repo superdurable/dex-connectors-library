@@ -17,10 +17,17 @@ import (
 
 // Mock is a scripted google-cloud-storage connection. Script each operation through its accessor.
 type Mock struct {
-	connection     cloudstorage.Connection
-	listObjects    *connectormock.Query[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage]
-	downloadObject *connectormock.Query[cloudstorage.DownloadObjectInput, cloudstorage.DownloadedObject]
-	uploadObject   *connectormock.Mutation[cloudstorage.UploadObjectInput, cloudstorage.Object]
+	connection           cloudstorage.Connection
+	listBuckets          *connectormock.Query[cloudstorage.ListBucketsInput, cloudstorage.BucketsPage]
+	getBucket            *connectormock.Query[cloudstorage.GetBucketInput, cloudstorage.Bucket]
+	createBucket         *connectormock.Mutation[cloudstorage.CreateBucketInput, cloudstorage.Bucket]
+	updateBucketLabels   *connectormock.Mutation[cloudstorage.UpdateBucketLabelsInput, cloudstorage.Bucket]
+	deleteBucket         *connectormock.Mutation[cloudstorage.DeleteBucketInput, cloudstorage.DeletedBucket]
+	listObjects          *connectormock.Query[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage]
+	downloadObject       *connectormock.Query[cloudstorage.DownloadObjectInput, cloudstorage.DownloadedObject]
+	uploadObject         *connectormock.Mutation[cloudstorage.UploadObjectInput, cloudstorage.Object]
+	updateObjectMetadata *connectormock.Mutation[cloudstorage.UpdateObjectMetadataInput, cloudstorage.Object]
+	deleteObject         *connectormock.Mutation[cloudstorage.DeleteObjectInput, cloudstorage.DeletedObject]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,13 +35,27 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listObjects:    connectormock.NewQuery[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage](t, cloudstorage.ListObjectsDefinition),
-		downloadObject: connectormock.NewQuery[cloudstorage.DownloadObjectInput, cloudstorage.DownloadedObject](t, cloudstorage.DownloadObjectDefinition),
-		uploadObject:   connectormock.NewMutation[cloudstorage.UploadObjectInput, cloudstorage.Object](t, cloudstorage.UploadObjectDefinition),
+		listBuckets:          connectormock.NewQuery[cloudstorage.ListBucketsInput, cloudstorage.BucketsPage](t, cloudstorage.ListBucketsDefinition),
+		getBucket:            connectormock.NewQuery[cloudstorage.GetBucketInput, cloudstorage.Bucket](t, cloudstorage.GetBucketDefinition),
+		createBucket:         connectormock.NewMutation[cloudstorage.CreateBucketInput, cloudstorage.Bucket](t, cloudstorage.CreateBucketDefinition),
+		updateBucketLabels:   connectormock.NewMutation[cloudstorage.UpdateBucketLabelsInput, cloudstorage.Bucket](t, cloudstorage.UpdateBucketLabelsDefinition),
+		deleteBucket:         connectormock.NewMutation[cloudstorage.DeleteBucketInput, cloudstorage.DeletedBucket](t, cloudstorage.DeleteBucketDefinition),
+		listObjects:          connectormock.NewQuery[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage](t, cloudstorage.ListObjectsDefinition),
+		downloadObject:       connectormock.NewQuery[cloudstorage.DownloadObjectInput, cloudstorage.DownloadedObject](t, cloudstorage.DownloadObjectDefinition),
+		uploadObject:         connectormock.NewMutation[cloudstorage.UploadObjectInput, cloudstorage.Object](t, cloudstorage.UploadObjectDefinition),
+		updateObjectMetadata: connectormock.NewMutation[cloudstorage.UpdateObjectMetadataInput, cloudstorage.Object](t, cloudstorage.UpdateObjectMetadataDefinition),
+		deleteObject:         connectormock.NewMutation[cloudstorage.DeleteObjectInput, cloudstorage.DeletedObject](t, cloudstorage.DeleteObjectDefinition),
 	}
+	mock.listBuckets.Default(ListBucketsDefault())
+	mock.getBucket.Default(GetBucketDefault())
+	mock.createBucket.Default(CreateBucketDefault())
+	mock.updateBucketLabels.Default(UpdateBucketLabelsDefault())
+	mock.deleteBucket.Default(DeleteBucketDefault())
 	mock.listObjects.Default(ListObjectsDefault())
 	mock.downloadObject.Default(DownloadObjectDefault())
 	mock.uploadObject.Default(UploadObjectDefault())
+	mock.updateObjectMetadata.Default(UpdateObjectMetadataDefault())
+	mock.deleteObject.Default(DeleteObjectDefault())
 	connection, err := cloudstorage.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-cloud-storage", Name: connectionName})
 	if err != nil {
 		t.Fatalf("google-cloud-storage mock connection: %v", err)
@@ -45,6 +66,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() cloudstorage.Connection { return mock.connection }
+
+// ListBuckets returns the listBuckets script.
+func (mock *Mock) ListBuckets() *connectormock.Query[cloudstorage.ListBucketsInput, cloudstorage.BucketsPage] {
+	return mock.listBuckets
+}
+
+// GetBucket returns the getBucket script.
+func (mock *Mock) GetBucket() *connectormock.Query[cloudstorage.GetBucketInput, cloudstorage.Bucket] {
+	return mock.getBucket
+}
+
+// CreateBucket returns the createBucket script.
+func (mock *Mock) CreateBucket() *connectormock.Mutation[cloudstorage.CreateBucketInput, cloudstorage.Bucket] {
+	return mock.createBucket
+}
+
+// UpdateBucketLabels returns the updateBucketLabels script.
+func (mock *Mock) UpdateBucketLabels() *connectormock.Mutation[cloudstorage.UpdateBucketLabelsInput, cloudstorage.Bucket] {
+	return mock.updateBucketLabels
+}
+
+// DeleteBucket returns the deleteBucket script.
+func (mock *Mock) DeleteBucket() *connectormock.Mutation[cloudstorage.DeleteBucketInput, cloudstorage.DeletedBucket] {
+	return mock.deleteBucket
+}
 
 // ListObjects returns the listObjects script.
 func (mock *Mock) ListObjects() *connectormock.Query[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage] {
@@ -61,8 +107,33 @@ func (mock *Mock) UploadObject() *connectormock.Mutation[cloudstorage.UploadObje
 	return mock.uploadObject
 }
 
+// UpdateObjectMetadata returns the updateObjectMetadata script.
+func (mock *Mock) UpdateObjectMetadata() *connectormock.Mutation[cloudstorage.UpdateObjectMetadataInput, cloudstorage.Object] {
+	return mock.updateObjectMetadata
+}
+
+// DeleteObject returns the deleteObject script.
+func (mock *Mock) DeleteObject() *connectormock.Mutation[cloudstorage.DeleteObjectInput, cloudstorage.DeletedObject] {
+	return mock.deleteObject
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListBuckets() sdkgo.Query[cloudstorage.ListBucketsInput, cloudstorage.BucketsPage] {
+	return operations.mock.listBuckets
+}
+func (operations mockOperations) GetBucket() sdkgo.Query[cloudstorage.GetBucketInput, cloudstorage.Bucket] {
+	return operations.mock.getBucket
+}
+func (operations mockOperations) CreateBucket() sdkgo.Mutation[cloudstorage.CreateBucketInput, cloudstorage.Bucket] {
+	return operations.mock.createBucket
+}
+func (operations mockOperations) UpdateBucketLabels() sdkgo.Mutation[cloudstorage.UpdateBucketLabelsInput, cloudstorage.Bucket] {
+	return operations.mock.updateBucketLabels
+}
+func (operations mockOperations) DeleteBucket() sdkgo.Mutation[cloudstorage.DeleteBucketInput, cloudstorage.DeletedBucket] {
+	return operations.mock.deleteBucket
+}
 func (operations mockOperations) ListObjects() sdkgo.Query[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage] {
 	return operations.mock.listObjects
 }
@@ -71,6 +142,195 @@ func (operations mockOperations) DownloadObject() sdkgo.Query[cloudstorage.Downl
 }
 func (operations mockOperations) UploadObject() sdkgo.Mutation[cloudstorage.UploadObjectInput, cloudstorage.Object] {
 	return operations.mock.uploadObject
+}
+func (operations mockOperations) UpdateObjectMetadata() sdkgo.Mutation[cloudstorage.UpdateObjectMetadataInput, cloudstorage.Object] {
+	return operations.mock.updateObjectMetadata
+}
+func (operations mockOperations) DeleteObject() sdkgo.Mutation[cloudstorage.DeleteObjectInput, cloudstorage.DeletedObject] {
+	return operations.mock.deleteObject
+}
+
+// ListBucketsListed selects the listed branch: Google returned a bucket page.
+func ListBucketsListed(value cloudstorage.BucketsPage, failure *sdkgo.Failure) connectormock.Case[cloudstorage.BucketsPage] {
+	return connectormock.Branch(cloudstorage.ListBucketsBranchListed, value, failure)
+}
+
+// ListBucketsProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func ListBucketsProviderRejected(value cloudstorage.BucketsPage, failure *sdkgo.Failure) connectormock.Case[cloudstorage.BucketsPage] {
+	return connectormock.Branch(cloudstorage.ListBucketsBranchProviderRejected, value, failure)
+}
+
+// ListBucketsInvalidResponse selects the invalidResponse branch: Google returned malformed bucket JSON.
+func ListBucketsInvalidResponse(value cloudstorage.BucketsPage, failure *sdkgo.Failure) connectormock.Case[cloudstorage.BucketsPage] {
+	return connectormock.Branch(cloudstorage.ListBucketsBranchInvalidResponse, value, failure)
+}
+
+// ListBucketsDefect selects the defect branch: Local bucket input or connection credentials are invalid.
+func ListBucketsDefect(value cloudstorage.BucketsPage, failure *sdkgo.Failure) connectormock.Case[cloudstorage.BucketsPage] {
+	return connectormock.Branch(cloudstorage.ListBucketsBranchDefect, value, failure)
+}
+
+// ListBucketsRetry asks Dex to retry the listBuckets Step, after the delay when it is positive.
+func ListBucketsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudstorage.BucketsPage] {
+	return connectormock.Retry[cloudstorage.BucketsPage](failure, after)
+}
+
+// ListBucketsListedDefault is the manifest mock listedDefault: One example bucket is visible.
+func ListBucketsListedDefault() connectormock.Case[cloudstorage.BucketsPage] {
+	value := connectormock.MustDecodeOutput[cloudstorage.BucketsPage](`{"buckets":[{"name":"example-bucket","location":"US"}],"nextPageToken":""}`)
+	return connectormock.Branch(cloudstorage.ListBucketsBranchListed, value, nil)
+}
+
+// ListBucketsDefault is the manifest default, listedDefault, which New installs.
+func ListBucketsDefault() connectormock.Case[cloudstorage.BucketsPage] {
+	return ListBucketsListedDefault()
+}
+
+// GetBucketFound selects the found branch: Google returned the bucket.
+func GetBucketFound(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.GetBucketBranchFound, value, failure)
+}
+
+// GetBucketNotFound selects the notFound branch: The bucket does not exist.
+func GetBucketNotFound(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.GetBucketBranchNotFound, value, failure)
+}
+
+// GetBucketProviderRejected selects the providerRejected branch: Google definitively rejected the request.
+func GetBucketProviderRejected(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.GetBucketBranchProviderRejected, value, failure)
+}
+
+// GetBucketInvalidResponse selects the invalidResponse branch: Google returned malformed bucket JSON.
+func GetBucketInvalidResponse(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.GetBucketBranchInvalidResponse, value, failure)
+}
+
+// GetBucketDefect selects the defect branch: Local bucket input or connection credentials are invalid.
+func GetBucketDefect(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.GetBucketBranchDefect, value, failure)
+}
+
+// GetBucketRetry asks Dex to retry the getBucket Step, after the delay when it is positive.
+func GetBucketRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Retry[cloudstorage.Bucket](failure, after)
+}
+
+// GetBucketFoundDefault is the manifest mock foundDefault: The example bucket is available.
+func GetBucketFoundDefault() connectormock.Case[cloudstorage.Bucket] {
+	value := connectormock.MustDecodeOutput[cloudstorage.Bucket](`{"name":"example-bucket","location":"US"}`)
+	return connectormock.Branch(cloudstorage.GetBucketBranchFound, value, nil)
+}
+
+// GetBucketDefault is the manifest default, foundDefault, which New installs.
+func GetBucketDefault() connectormock.Case[cloudstorage.Bucket] { return GetBucketFoundDefault() }
+
+// CreateBucketCreated selects the created branch: The requested bucket exists.
+func CreateBucketCreated(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.CreateBucketBranchCreated, value, failure)
+}
+
+// CreateBucketNameTaken selects the nameTaken branch: Another bucket owns the requested name.
+func CreateBucketNameTaken(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.CreateBucketBranchNameTaken, value, failure)
+}
+
+// CreateBucketProviderRejected selects the providerRejected branch: Google definitively rejected the creation.
+func CreateBucketProviderRejected(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.CreateBucketBranchProviderRejected, value, failure)
+}
+
+// CreateBucketUncertain returns an uncertain createBucket outcome.
+func CreateBucketUncertain(value cloudstorage.Bucket, failure sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateBucketDefect selects the defect branch: Local bucket input or connection credentials are invalid.
+func CreateBucketDefect(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.CreateBucketBranchDefect, value, failure)
+}
+
+// CreateBucketRetry asks Dex to retry the createBucket Step, after the delay when it is positive.
+func CreateBucketRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Retry[cloudstorage.Bucket](failure, after)
+}
+
+// CreateBucketCreatedDefault is the manifest mock createdDefault: The example bucket was created.
+func CreateBucketCreatedDefault() connectormock.Case[cloudstorage.Bucket] {
+	value := connectormock.MustDecodeOutput[cloudstorage.Bucket](`{"name":"example-bucket","location":"US","projectNumber":"123456789"}`)
+	return connectormock.Branch(cloudstorage.CreateBucketBranchCreated, value, nil)
+}
+
+// CreateBucketDefault is the manifest default, createdDefault, which New installs.
+func CreateBucketDefault() connectormock.Case[cloudstorage.Bucket] {
+	return CreateBucketCreatedDefault()
+}
+
+// UpdateBucketLabelsUpdated selects the updated branch: Google updated the requested labels.
+func UpdateBucketLabelsUpdated(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.UpdateBucketLabelsBranchUpdated, value, failure)
+}
+
+// UpdateBucketLabelsNotFound selects the notFound branch: The bucket does not exist.
+func UpdateBucketLabelsNotFound(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.UpdateBucketLabelsBranchNotFound, value, failure)
+}
+
+// UpdateBucketLabelsProviderRejected selects the providerRejected branch: Google definitively rejected the update.
+func UpdateBucketLabelsProviderRejected(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.UpdateBucketLabelsBranchProviderRejected, value, failure)
+}
+
+// UpdateBucketLabelsDefect selects the defect branch: Local bucket input or connection credentials are invalid.
+func UpdateBucketLabelsDefect(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Branch(cloudstorage.UpdateBucketLabelsBranchDefect, value, failure)
+}
+
+// UpdateBucketLabelsRetry asks Dex to retry the updateBucketLabels Step, after the delay when it is positive.
+func UpdateBucketLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudstorage.Bucket] {
+	return connectormock.Retry[cloudstorage.Bucket](failure, after)
+}
+
+// UpdateBucketLabelsUpdatedDefault is the manifest mock updatedDefault: The example bucket labels were updated.
+func UpdateBucketLabelsUpdatedDefault() connectormock.Case[cloudstorage.Bucket] {
+	value := connectormock.MustDecodeOutput[cloudstorage.Bucket](`{"name":"example-bucket","location":"US"}`)
+	return connectormock.Branch(cloudstorage.UpdateBucketLabelsBranchUpdated, value, nil)
+}
+
+// UpdateBucketLabelsDefault is the manifest default, updatedDefault, which New installs.
+func UpdateBucketLabelsDefault() connectormock.Case[cloudstorage.Bucket] {
+	return UpdateBucketLabelsUpdatedDefault()
+}
+
+// DeleteBucketDeleted selects the deleted branch: The bucket is absent.
+func DeleteBucketDeleted(value cloudstorage.DeletedBucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.DeletedBucket] {
+	return connectormock.Branch(cloudstorage.DeleteBucketBranchDeleted, value, failure)
+}
+
+// DeleteBucketProviderRejected selects the providerRejected branch: Google definitively rejected the deletion.
+func DeleteBucketProviderRejected(value cloudstorage.DeletedBucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.DeletedBucket] {
+	return connectormock.Branch(cloudstorage.DeleteBucketBranchProviderRejected, value, failure)
+}
+
+// DeleteBucketDefect selects the defect branch: Local bucket input or connection credentials are invalid.
+func DeleteBucketDefect(value cloudstorage.DeletedBucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.DeletedBucket] {
+	return connectormock.Branch(cloudstorage.DeleteBucketBranchDefect, value, failure)
+}
+
+// DeleteBucketRetry asks Dex to retry the deleteBucket Step, after the delay when it is positive.
+func DeleteBucketRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudstorage.DeletedBucket] {
+	return connectormock.Retry[cloudstorage.DeletedBucket](failure, after)
+}
+
+// DeleteBucketDeletedDefault is the manifest mock deletedDefault: The example bucket is absent.
+func DeleteBucketDeletedDefault() connectormock.Case[cloudstorage.DeletedBucket] {
+	value := connectormock.MustDecodeOutput[cloudstorage.DeletedBucket](`{"name":"example-bucket"}`)
+	return connectormock.Branch(cloudstorage.DeleteBucketBranchDeleted, value, nil)
+}
+
+// DeleteBucketDefault is the manifest default, deletedDefault, which New installs.
+func DeleteBucketDefault() connectormock.Case[cloudstorage.DeletedBucket] {
+	return DeleteBucketDeletedDefault()
 }
 
 // ListObjectsListed selects the listed branch: Google returned an object page.
@@ -184,4 +444,71 @@ func UploadObjectUploadedDefault() connectormock.Case[cloudstorage.Object] {
 // UploadObjectDefault is the manifest default, uploadedDefault, which New installs.
 func UploadObjectDefault() connectormock.Case[cloudstorage.Object] {
 	return UploadObjectUploadedDefault()
+}
+
+// UpdateObjectMetadataUpdated selects the updated branch: Google updated the object metadata.
+func UpdateObjectMetadataUpdated(value cloudstorage.Object, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Branch(cloudstorage.UpdateObjectMetadataBranchUpdated, value, failure)
+}
+
+// UpdateObjectMetadataNotFound selects the notFound branch: The object does not exist.
+func UpdateObjectMetadataNotFound(value cloudstorage.Object, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Branch(cloudstorage.UpdateObjectMetadataBranchNotFound, value, failure)
+}
+
+// UpdateObjectMetadataProviderRejected selects the providerRejected branch: Google definitively rejected the update.
+func UpdateObjectMetadataProviderRejected(value cloudstorage.Object, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Branch(cloudstorage.UpdateObjectMetadataBranchProviderRejected, value, failure)
+}
+
+// UpdateObjectMetadataDefect selects the defect branch: Local object input or connection credentials are invalid.
+func UpdateObjectMetadataDefect(value cloudstorage.Object, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Branch(cloudstorage.UpdateObjectMetadataBranchDefect, value, failure)
+}
+
+// UpdateObjectMetadataRetry asks Dex to retry the updateObjectMetadata Step, after the delay when it is positive.
+func UpdateObjectMetadataRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Retry[cloudstorage.Object](failure, after)
+}
+
+// UpdateObjectMetadataUpdatedDefault is the manifest mock updatedDefault: The example object metadata was updated.
+func UpdateObjectMetadataUpdatedDefault() connectormock.Case[cloudstorage.Object] {
+	value := connectormock.MustDecodeOutput[cloudstorage.Object](`{"name":"example.txt","generation":"123"}`)
+	return connectormock.Branch(cloudstorage.UpdateObjectMetadataBranchUpdated, value, nil)
+}
+
+// UpdateObjectMetadataDefault is the manifest default, updatedDefault, which New installs.
+func UpdateObjectMetadataDefault() connectormock.Case[cloudstorage.Object] {
+	return UpdateObjectMetadataUpdatedDefault()
+}
+
+// DeleteObjectDeleted selects the deleted branch: The object is absent.
+func DeleteObjectDeleted(value cloudstorage.DeletedObject, failure *sdkgo.Failure) connectormock.Case[cloudstorage.DeletedObject] {
+	return connectormock.Branch(cloudstorage.DeleteObjectBranchDeleted, value, failure)
+}
+
+// DeleteObjectProviderRejected selects the providerRejected branch: Google definitively rejected the deletion.
+func DeleteObjectProviderRejected(value cloudstorage.DeletedObject, failure *sdkgo.Failure) connectormock.Case[cloudstorage.DeletedObject] {
+	return connectormock.Branch(cloudstorage.DeleteObjectBranchProviderRejected, value, failure)
+}
+
+// DeleteObjectDefect selects the defect branch: Local object input or connection credentials are invalid.
+func DeleteObjectDefect(value cloudstorage.DeletedObject, failure *sdkgo.Failure) connectormock.Case[cloudstorage.DeletedObject] {
+	return connectormock.Branch(cloudstorage.DeleteObjectBranchDefect, value, failure)
+}
+
+// DeleteObjectRetry asks Dex to retry the deleteObject Step, after the delay when it is positive.
+func DeleteObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudstorage.DeletedObject] {
+	return connectormock.Retry[cloudstorage.DeletedObject](failure, after)
+}
+
+// DeleteObjectDeletedDefault is the manifest mock deletedDefault: The example object is absent.
+func DeleteObjectDeletedDefault() connectormock.Case[cloudstorage.DeletedObject] {
+	value := connectormock.MustDecodeOutput[cloudstorage.DeletedObject](`{"bucket":"example-bucket","name":"example.txt"}`)
+	return connectormock.Branch(cloudstorage.DeleteObjectBranchDeleted, value, nil)
+}
+
+// DeleteObjectDefault is the manifest default, deletedDefault, which New installs.
+func DeleteObjectDefault() connectormock.Case[cloudstorage.DeletedObject] {
+	return DeleteObjectDeletedDefault()
 }

@@ -17,10 +17,23 @@ import (
 
 // Mock is a scripted gitlab connection. Script each operation through its accessor.
 type Mock struct {
-	connection        gitlab.Connection
-	getProject        *connectormock.Query[gitlab.GetProjectInput, gitlab.Project]
-	listIssues        *connectormock.Query[gitlab.ListIssuesInput, gitlab.IssuesPage]
-	updateIssueLabels *connectormock.Mutation[gitlab.UpdateIssueLabelsInput, gitlab.Issue]
+	connection         gitlab.Connection
+	createIssue        *connectormock.Mutation[gitlab.CreateIssueInput, gitlab.Issue]
+	createIssueComment *connectormock.Mutation[gitlab.CreateIssueCommentInput, gitlab.IssueComment]
+	getIssue           *connectormock.Query[gitlab.GetIssueInput, gitlab.Issue]
+	editIssue          *connectormock.Mutation[gitlab.EditIssueInput, gitlab.Issue]
+	lockIssue          *connectormock.Mutation[gitlab.GetIssueInput, gitlab.Issue]
+	deleteIssue        *connectormock.Mutation[gitlab.GetIssueInput, gitlab.DeleteIssueOutput]
+	getProject         *connectormock.Query[gitlab.GetProjectInput, gitlab.Project]
+	listIssues         *connectormock.Query[gitlab.ListIssuesInput, gitlab.IssuesPage]
+	updateIssueLabels  *connectormock.Mutation[gitlab.UpdateIssueLabelsInput, gitlab.Issue]
+	createRelease      *connectormock.Mutation[gitlab.CreateReleaseInput, gitlab.Release]
+	getRelease         *connectormock.Query[gitlab.GetReleaseInput, gitlab.Release]
+	listReleases       *connectormock.Query[gitlab.ListReleasesInput, gitlab.ReleasesPage]
+	updateRelease      *connectormock.Mutation[gitlab.UpdateReleaseInput, gitlab.Release]
+	deleteRelease      *connectormock.Mutation[gitlab.GetReleaseInput, gitlab.DeleteReleaseOutput]
+	listRepositoryTree *connectormock.Query[gitlab.ListRepositoryTreeInput, gitlab.RepositoryTreePage]
+	listUserProjects   *connectormock.Query[gitlab.ListUserProjectsInput, gitlab.UserProjectsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,13 +41,39 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getProject:        connectormock.NewQuery[gitlab.GetProjectInput, gitlab.Project](t, gitlab.GetProjectDefinition),
-		listIssues:        connectormock.NewQuery[gitlab.ListIssuesInput, gitlab.IssuesPage](t, gitlab.ListIssuesDefinition),
-		updateIssueLabels: connectormock.NewMutation[gitlab.UpdateIssueLabelsInput, gitlab.Issue](t, gitlab.UpdateIssueLabelsDefinition),
+		createIssue:        connectormock.NewMutation[gitlab.CreateIssueInput, gitlab.Issue](t, gitlab.CreateIssueDefinition),
+		createIssueComment: connectormock.NewMutation[gitlab.CreateIssueCommentInput, gitlab.IssueComment](t, gitlab.CreateIssueCommentDefinition),
+		getIssue:           connectormock.NewQuery[gitlab.GetIssueInput, gitlab.Issue](t, gitlab.GetIssueDefinition),
+		editIssue:          connectormock.NewMutation[gitlab.EditIssueInput, gitlab.Issue](t, gitlab.EditIssueDefinition),
+		lockIssue:          connectormock.NewMutation[gitlab.GetIssueInput, gitlab.Issue](t, gitlab.LockIssueDefinition),
+		deleteIssue:        connectormock.NewMutation[gitlab.GetIssueInput, gitlab.DeleteIssueOutput](t, gitlab.DeleteIssueDefinition),
+		getProject:         connectormock.NewQuery[gitlab.GetProjectInput, gitlab.Project](t, gitlab.GetProjectDefinition),
+		listIssues:         connectormock.NewQuery[gitlab.ListIssuesInput, gitlab.IssuesPage](t, gitlab.ListIssuesDefinition),
+		updateIssueLabels:  connectormock.NewMutation[gitlab.UpdateIssueLabelsInput, gitlab.Issue](t, gitlab.UpdateIssueLabelsDefinition),
+		createRelease:      connectormock.NewMutation[gitlab.CreateReleaseInput, gitlab.Release](t, gitlab.CreateReleaseDefinition),
+		getRelease:         connectormock.NewQuery[gitlab.GetReleaseInput, gitlab.Release](t, gitlab.GetReleaseDefinition),
+		listReleases:       connectormock.NewQuery[gitlab.ListReleasesInput, gitlab.ReleasesPage](t, gitlab.ListReleasesDefinition),
+		updateRelease:      connectormock.NewMutation[gitlab.UpdateReleaseInput, gitlab.Release](t, gitlab.UpdateReleaseDefinition),
+		deleteRelease:      connectormock.NewMutation[gitlab.GetReleaseInput, gitlab.DeleteReleaseOutput](t, gitlab.DeleteReleaseDefinition),
+		listRepositoryTree: connectormock.NewQuery[gitlab.ListRepositoryTreeInput, gitlab.RepositoryTreePage](t, gitlab.ListRepositoryTreeDefinition),
+		listUserProjects:   connectormock.NewQuery[gitlab.ListUserProjectsInput, gitlab.UserProjectsPage](t, gitlab.ListUserProjectsDefinition),
 	}
+	mock.createIssue.Default(CreateIssueDefault())
+	mock.createIssueComment.Default(CreateIssueCommentDefault())
+	mock.getIssue.Default(GetIssueDefault())
+	mock.editIssue.Default(EditIssueDefault())
+	mock.lockIssue.Default(LockIssueDefault())
+	mock.deleteIssue.Default(DeleteIssueDefault())
 	mock.getProject.Default(GetProjectDefault())
 	mock.listIssues.Default(ListIssuesDefault())
 	mock.updateIssueLabels.Default(UpdateIssueLabelsDefault())
+	mock.createRelease.Default(CreateReleaseDefault())
+	mock.getRelease.Default(GetReleaseDefault())
+	mock.listReleases.Default(ListReleasesDefault())
+	mock.updateRelease.Default(UpdateReleaseDefault())
+	mock.deleteRelease.Default(DeleteReleaseDefault())
+	mock.listRepositoryTree.Default(ListRepositoryTreeDefault())
+	mock.listUserProjects.Default(ListUserProjectsDefault())
 	connection, err := gitlab.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "gitlab", Name: connectionName})
 	if err != nil {
 		t.Fatalf("gitlab mock connection: %v", err)
@@ -45,6 +84,36 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() gitlab.Connection { return mock.connection }
+
+// CreateIssue returns the createIssue script.
+func (mock *Mock) CreateIssue() *connectormock.Mutation[gitlab.CreateIssueInput, gitlab.Issue] {
+	return mock.createIssue
+}
+
+// CreateIssueComment returns the createIssueComment script.
+func (mock *Mock) CreateIssueComment() *connectormock.Mutation[gitlab.CreateIssueCommentInput, gitlab.IssueComment] {
+	return mock.createIssueComment
+}
+
+// GetIssue returns the getIssue script.
+func (mock *Mock) GetIssue() *connectormock.Query[gitlab.GetIssueInput, gitlab.Issue] {
+	return mock.getIssue
+}
+
+// EditIssue returns the editIssue script.
+func (mock *Mock) EditIssue() *connectormock.Mutation[gitlab.EditIssueInput, gitlab.Issue] {
+	return mock.editIssue
+}
+
+// LockIssue returns the lockIssue script.
+func (mock *Mock) LockIssue() *connectormock.Mutation[gitlab.GetIssueInput, gitlab.Issue] {
+	return mock.lockIssue
+}
+
+// DeleteIssue returns the deleteIssue script.
+func (mock *Mock) DeleteIssue() *connectormock.Mutation[gitlab.GetIssueInput, gitlab.DeleteIssueOutput] {
+	return mock.deleteIssue
+}
 
 // GetProject returns the getProject script.
 func (mock *Mock) GetProject() *connectormock.Query[gitlab.GetProjectInput, gitlab.Project] {
@@ -61,8 +130,61 @@ func (mock *Mock) UpdateIssueLabels() *connectormock.Mutation[gitlab.UpdateIssue
 	return mock.updateIssueLabels
 }
 
+// CreateRelease returns the createRelease script.
+func (mock *Mock) CreateRelease() *connectormock.Mutation[gitlab.CreateReleaseInput, gitlab.Release] {
+	return mock.createRelease
+}
+
+// GetRelease returns the getRelease script.
+func (mock *Mock) GetRelease() *connectormock.Query[gitlab.GetReleaseInput, gitlab.Release] {
+	return mock.getRelease
+}
+
+// ListReleases returns the listReleases script.
+func (mock *Mock) ListReleases() *connectormock.Query[gitlab.ListReleasesInput, gitlab.ReleasesPage] {
+	return mock.listReleases
+}
+
+// UpdateRelease returns the updateRelease script.
+func (mock *Mock) UpdateRelease() *connectormock.Mutation[gitlab.UpdateReleaseInput, gitlab.Release] {
+	return mock.updateRelease
+}
+
+// DeleteRelease returns the deleteRelease script.
+func (mock *Mock) DeleteRelease() *connectormock.Mutation[gitlab.GetReleaseInput, gitlab.DeleteReleaseOutput] {
+	return mock.deleteRelease
+}
+
+// ListRepositoryTree returns the listRepositoryTree script.
+func (mock *Mock) ListRepositoryTree() *connectormock.Query[gitlab.ListRepositoryTreeInput, gitlab.RepositoryTreePage] {
+	return mock.listRepositoryTree
+}
+
+// ListUserProjects returns the listUserProjects script.
+func (mock *Mock) ListUserProjects() *connectormock.Query[gitlab.ListUserProjectsInput, gitlab.UserProjectsPage] {
+	return mock.listUserProjects
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateIssue() sdkgo.Mutation[gitlab.CreateIssueInput, gitlab.Issue] {
+	return operations.mock.createIssue
+}
+func (operations mockOperations) CreateIssueComment() sdkgo.Mutation[gitlab.CreateIssueCommentInput, gitlab.IssueComment] {
+	return operations.mock.createIssueComment
+}
+func (operations mockOperations) GetIssue() sdkgo.Query[gitlab.GetIssueInput, gitlab.Issue] {
+	return operations.mock.getIssue
+}
+func (operations mockOperations) EditIssue() sdkgo.Mutation[gitlab.EditIssueInput, gitlab.Issue] {
+	return operations.mock.editIssue
+}
+func (operations mockOperations) LockIssue() sdkgo.Mutation[gitlab.GetIssueInput, gitlab.Issue] {
+	return operations.mock.lockIssue
+}
+func (operations mockOperations) DeleteIssue() sdkgo.Mutation[gitlab.GetIssueInput, gitlab.DeleteIssueOutput] {
+	return operations.mock.deleteIssue
+}
 func (operations mockOperations) GetProject() sdkgo.Query[gitlab.GetProjectInput, gitlab.Project] {
 	return operations.mock.getProject
 }
@@ -71,6 +193,250 @@ func (operations mockOperations) ListIssues() sdkgo.Query[gitlab.ListIssuesInput
 }
 func (operations mockOperations) UpdateIssueLabels() sdkgo.Mutation[gitlab.UpdateIssueLabelsInput, gitlab.Issue] {
 	return operations.mock.updateIssueLabels
+}
+func (operations mockOperations) CreateRelease() sdkgo.Mutation[gitlab.CreateReleaseInput, gitlab.Release] {
+	return operations.mock.createRelease
+}
+func (operations mockOperations) GetRelease() sdkgo.Query[gitlab.GetReleaseInput, gitlab.Release] {
+	return operations.mock.getRelease
+}
+func (operations mockOperations) ListReleases() sdkgo.Query[gitlab.ListReleasesInput, gitlab.ReleasesPage] {
+	return operations.mock.listReleases
+}
+func (operations mockOperations) UpdateRelease() sdkgo.Mutation[gitlab.UpdateReleaseInput, gitlab.Release] {
+	return operations.mock.updateRelease
+}
+func (operations mockOperations) DeleteRelease() sdkgo.Mutation[gitlab.GetReleaseInput, gitlab.DeleteReleaseOutput] {
+	return operations.mock.deleteRelease
+}
+func (operations mockOperations) ListRepositoryTree() sdkgo.Query[gitlab.ListRepositoryTreeInput, gitlab.RepositoryTreePage] {
+	return operations.mock.listRepositoryTree
+}
+func (operations mockOperations) ListUserProjects() sdkgo.Query[gitlab.ListUserProjectsInput, gitlab.UserProjectsPage] {
+	return operations.mock.listUserProjects
+}
+
+// CreateIssueCreated selects the created branch: GitLab created the issue.
+func CreateIssueCreated(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.CreateIssueBranchCreated, value, failure)
+}
+
+// CreateIssueProviderRejected selects the providerRejected branch: GitLab definitively rejected the issue.
+func CreateIssueProviderRejected(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.CreateIssueBranchProviderRejected, value, failure)
+}
+
+// CreateIssueDefect selects the defect branch: Local input or credentials are invalid.
+func CreateIssueDefect(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.CreateIssueBranchDefect, value, failure)
+}
+
+// CreateIssueUncertain returns an uncertain createIssue outcome.
+func CreateIssueUncertain(value gitlab.Issue, failure sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateIssueRetry asks Dex to retry the createIssue Step, after the delay when it is positive.
+func CreateIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.Issue] {
+	return connectormock.Retry[gitlab.Issue](failure, after)
+}
+
+// CreateIssueCreatedDefault is the manifest mock createdDefault: A sample issue was created.
+func CreateIssueCreatedDefault() connectormock.Case[gitlab.Issue] {
+	value := connectormock.MustDecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Review release notes","labels":[],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
+	return connectormock.Branch(gitlab.CreateIssueBranchCreated, value, nil)
+}
+
+// CreateIssueDefault is the manifest default, createdDefault, which New installs.
+func CreateIssueDefault() connectormock.Case[gitlab.Issue] { return CreateIssueCreatedDefault() }
+
+// CreateIssueCommentCreated selects the created branch: GitLab created the comment.
+func CreateIssueCommentCreated(value gitlab.IssueComment, failure *sdkgo.Failure) connectormock.Case[gitlab.IssueComment] {
+	return connectormock.Branch(gitlab.CreateIssueCommentBranchCreated, value, failure)
+}
+
+// CreateIssueCommentProviderRejected selects the providerRejected branch: GitLab definitively rejected the comment.
+func CreateIssueCommentProviderRejected(value gitlab.IssueComment, failure *sdkgo.Failure) connectormock.Case[gitlab.IssueComment] {
+	return connectormock.Branch(gitlab.CreateIssueCommentBranchProviderRejected, value, failure)
+}
+
+// CreateIssueCommentDefect selects the defect branch: Local input or credentials are invalid.
+func CreateIssueCommentDefect(value gitlab.IssueComment, failure *sdkgo.Failure) connectormock.Case[gitlab.IssueComment] {
+	return connectormock.Branch(gitlab.CreateIssueCommentBranchDefect, value, failure)
+}
+
+// CreateIssueCommentUncertain returns an uncertain createIssueComment outcome.
+func CreateIssueCommentUncertain(value gitlab.IssueComment, failure sdkgo.Failure) connectormock.Case[gitlab.IssueComment] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateIssueCommentRetry asks Dex to retry the createIssueComment Step, after the delay when it is positive.
+func CreateIssueCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.IssueComment] {
+	return connectormock.Retry[gitlab.IssueComment](failure, after)
+}
+
+// CreateIssueCommentCreatedDefault is the manifest mock createdDefault: A sample comment was created.
+func CreateIssueCommentCreatedDefault() connectormock.Case[gitlab.IssueComment] {
+	value := connectormock.MustDecodeOutput[gitlab.IssueComment](`{"id":45,"body":"Reviewed"}`)
+	return connectormock.Branch(gitlab.CreateIssueCommentBranchCreated, value, nil)
+}
+
+// CreateIssueCommentDefault is the manifest default, createdDefault, which New installs.
+func CreateIssueCommentDefault() connectormock.Case[gitlab.IssueComment] {
+	return CreateIssueCommentCreatedDefault()
+}
+
+// GetIssueFound selects the found branch: GitLab returned the issue.
+func GetIssueFound(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.GetIssueBranchFound, value, failure)
+}
+
+// GetIssueNotFound selects the notFound branch: The issue does not exist or is inaccessible.
+func GetIssueNotFound(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.GetIssueBranchNotFound, value, failure)
+}
+
+// GetIssueProviderRejected selects the providerRejected branch: GitLab definitively rejected the read.
+func GetIssueProviderRejected(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.GetIssueBranchProviderRejected, value, failure)
+}
+
+// GetIssueInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func GetIssueInvalidResponse(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.GetIssueBranchInvalidResponse, value, failure)
+}
+
+// GetIssueDefect selects the defect branch: Local input or credentials are invalid.
+func GetIssueDefect(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.GetIssueBranchDefect, value, failure)
+}
+
+// GetIssueRetry asks Dex to retry the getIssue Step, after the delay when it is positive.
+func GetIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.Issue] {
+	return connectormock.Retry[gitlab.Issue](failure, after)
+}
+
+// GetIssueFoundDefault is the manifest mock foundDefault: One sample issue was found.
+func GetIssueFoundDefault() connectormock.Case[gitlab.Issue] {
+	value := connectormock.MustDecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Review release notes","labels":[],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
+	return connectormock.Branch(gitlab.GetIssueBranchFound, value, nil)
+}
+
+// GetIssueDefault is the manifest default, foundDefault, which New installs.
+func GetIssueDefault() connectormock.Case[gitlab.Issue] { return GetIssueFoundDefault() }
+
+// EditIssueUpdated selects the updated branch: GitLab updated the issue.
+func EditIssueUpdated(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.EditIssueBranchUpdated, value, failure)
+}
+
+// EditIssueNotFound selects the notFound branch: The issue does not exist or is inaccessible.
+func EditIssueNotFound(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.EditIssueBranchNotFound, value, failure)
+}
+
+// EditIssueProviderRejected selects the providerRejected branch: GitLab definitively rejected the edit.
+func EditIssueProviderRejected(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.EditIssueBranchProviderRejected, value, failure)
+}
+
+// EditIssueInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func EditIssueInvalidResponse(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.EditIssueBranchInvalidResponse, value, failure)
+}
+
+// EditIssueDefect selects the defect branch: Local input or credentials are invalid.
+func EditIssueDefect(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.EditIssueBranchDefect, value, failure)
+}
+
+// EditIssueRetry asks Dex to retry the editIssue Step, after the delay when it is positive.
+func EditIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.Issue] {
+	return connectormock.Retry[gitlab.Issue](failure, after)
+}
+
+// EditIssueUpdatedDefault is the manifest mock updatedDefault: A sample issue was updated.
+func EditIssueUpdatedDefault() connectormock.Case[gitlab.Issue] {
+	value := connectormock.MustDecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Revised release notes","labels":[],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
+	return connectormock.Branch(gitlab.EditIssueBranchUpdated, value, nil)
+}
+
+// EditIssueDefault is the manifest default, updatedDefault, which New installs.
+func EditIssueDefault() connectormock.Case[gitlab.Issue] { return EditIssueUpdatedDefault() }
+
+// LockIssueLocked selects the locked branch: GitLab locked the issue.
+func LockIssueLocked(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.LockIssueBranchLocked, value, failure)
+}
+
+// LockIssueNotFound selects the notFound branch: The issue does not exist or is inaccessible.
+func LockIssueNotFound(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.LockIssueBranchNotFound, value, failure)
+}
+
+// LockIssueProviderRejected selects the providerRejected branch: GitLab definitively rejected the lock.
+func LockIssueProviderRejected(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.LockIssueBranchProviderRejected, value, failure)
+}
+
+// LockIssueInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func LockIssueInvalidResponse(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.LockIssueBranchInvalidResponse, value, failure)
+}
+
+// LockIssueDefect selects the defect branch: Local input or credentials are invalid.
+func LockIssueDefect(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
+	return connectormock.Branch(gitlab.LockIssueBranchDefect, value, failure)
+}
+
+// LockIssueRetry asks Dex to retry the lockIssue Step, after the delay when it is positive.
+func LockIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.Issue] {
+	return connectormock.Retry[gitlab.Issue](failure, after)
+}
+
+// LockIssueLockedDefault is the manifest mock lockedDefault: A sample issue was locked.
+func LockIssueLockedDefault() connectormock.Case[gitlab.Issue] {
+	value := connectormock.MustDecodeOutput[gitlab.Issue](`{"id":123,"iid":7,"title":"Review release notes","labels":[],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}`)
+	return connectormock.Branch(gitlab.LockIssueBranchLocked, value, nil)
+}
+
+// LockIssueDefault is the manifest default, lockedDefault, which New installs.
+func LockIssueDefault() connectormock.Case[gitlab.Issue] { return LockIssueLockedDefault() }
+
+// DeleteIssueDeleted selects the deleted branch: GitLab deleted the issue.
+func DeleteIssueDeleted(value gitlab.DeleteIssueOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteIssueOutput] {
+	return connectormock.Branch(gitlab.DeleteIssueBranchDeleted, value, failure)
+}
+
+// DeleteIssueNotFound selects the notFound branch: The issue does not exist or is inaccessible.
+func DeleteIssueNotFound(value gitlab.DeleteIssueOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteIssueOutput] {
+	return connectormock.Branch(gitlab.DeleteIssueBranchNotFound, value, failure)
+}
+
+// DeleteIssueProviderRejected selects the providerRejected branch: GitLab definitively rejected the deletion.
+func DeleteIssueProviderRejected(value gitlab.DeleteIssueOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteIssueOutput] {
+	return connectormock.Branch(gitlab.DeleteIssueBranchProviderRejected, value, failure)
+}
+
+// DeleteIssueDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteIssueDefect(value gitlab.DeleteIssueOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteIssueOutput] {
+	return connectormock.Branch(gitlab.DeleteIssueBranchDefect, value, failure)
+}
+
+// DeleteIssueRetry asks Dex to retry the deleteIssue Step, after the delay when it is positive.
+func DeleteIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.DeleteIssueOutput] {
+	return connectormock.Retry[gitlab.DeleteIssueOutput](failure, after)
+}
+
+// DeleteIssueDeletedDefault is the manifest mock deletedDefault: A sample issue was deleted.
+func DeleteIssueDeletedDefault() connectormock.Case[gitlab.DeleteIssueOutput] {
+	value := connectormock.MustDecodeOutput[gitlab.DeleteIssueOutput](`{"projectId":"meridian/web","issueIid":7}`)
+	return connectormock.Branch(gitlab.DeleteIssueBranchDeleted, value, nil)
+}
+
+// DeleteIssueDefault is the manifest default, deletedDefault, which New installs.
+func DeleteIssueDefault() connectormock.Case[gitlab.DeleteIssueOutput] {
+	return DeleteIssueDeletedDefault()
 }
 
 // GetProjectFound selects the found branch: Read one GitLab project by numeric ID or namespace path.
@@ -190,4 +556,280 @@ func UpdateIssueLabelsUpdatedDefault() connectormock.Case[gitlab.Issue] {
 // UpdateIssueLabelsDefault is the manifest default, updatedDefault, which New installs.
 func UpdateIssueLabelsDefault() connectormock.Case[gitlab.Issue] {
 	return UpdateIssueLabelsUpdatedDefault()
+}
+
+// CreateReleaseCreated selects the created branch: GitLab created the release.
+func CreateReleaseCreated(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.CreateReleaseBranchCreated, value, failure)
+}
+
+// CreateReleaseProviderRejected selects the providerRejected branch: GitLab definitively rejected the release.
+func CreateReleaseProviderRejected(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.CreateReleaseBranchProviderRejected, value, failure)
+}
+
+// CreateReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func CreateReleaseDefect(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.CreateReleaseBranchDefect, value, failure)
+}
+
+// CreateReleaseUncertain returns an uncertain createRelease outcome.
+func CreateReleaseUncertain(value gitlab.Release, failure sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateReleaseRetry asks Dex to retry the createRelease Step, after the delay when it is positive.
+func CreateReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.Release] {
+	return connectormock.Retry[gitlab.Release](failure, after)
+}
+
+// CreateReleaseCreatedDefault is the manifest mock createdDefault: A sample release was created.
+func CreateReleaseCreatedDefault() connectormock.Case[gitlab.Release] {
+	value := connectormock.MustDecodeOutput[gitlab.Release](`{"tag_name":"v1.2.0","name":"Release 1.2","description":"Notes"}`)
+	return connectormock.Branch(gitlab.CreateReleaseBranchCreated, value, nil)
+}
+
+// CreateReleaseDefault is the manifest default, createdDefault, which New installs.
+func CreateReleaseDefault() connectormock.Case[gitlab.Release] { return CreateReleaseCreatedDefault() }
+
+// GetReleaseFound selects the found branch: GitLab returned the release.
+func GetReleaseFound(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.GetReleaseBranchFound, value, failure)
+}
+
+// GetReleaseNotFound selects the notFound branch: No release with this tag is visible.
+func GetReleaseNotFound(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.GetReleaseBranchNotFound, value, failure)
+}
+
+// GetReleaseProviderRejected selects the providerRejected branch: GitLab definitively rejected the read.
+func GetReleaseProviderRejected(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.GetReleaseBranchProviderRejected, value, failure)
+}
+
+// GetReleaseInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func GetReleaseInvalidResponse(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.GetReleaseBranchInvalidResponse, value, failure)
+}
+
+// GetReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func GetReleaseDefect(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.GetReleaseBranchDefect, value, failure)
+}
+
+// GetReleaseRetry asks Dex to retry the getRelease Step, after the delay when it is positive.
+func GetReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.Release] {
+	return connectormock.Retry[gitlab.Release](failure, after)
+}
+
+// GetReleaseFoundDefault is the manifest mock foundDefault: A sample release was found.
+func GetReleaseFoundDefault() connectormock.Case[gitlab.Release] {
+	value := connectormock.MustDecodeOutput[gitlab.Release](`{"tag_name":"v1.2.0","name":"Release 1.2","description":"Notes"}`)
+	return connectormock.Branch(gitlab.GetReleaseBranchFound, value, nil)
+}
+
+// GetReleaseDefault is the manifest default, foundDefault, which New installs.
+func GetReleaseDefault() connectormock.Case[gitlab.Release] { return GetReleaseFoundDefault() }
+
+// ListReleasesListed selects the listed branch: GitLab returned a release page.
+func ListReleasesListed(value gitlab.ReleasesPage, failure *sdkgo.Failure) connectormock.Case[gitlab.ReleasesPage] {
+	return connectormock.Branch(gitlab.ListReleasesBranchListed, value, failure)
+}
+
+// ListReleasesNotFound selects the notFound branch: The project is inaccessible.
+func ListReleasesNotFound(value gitlab.ReleasesPage, failure *sdkgo.Failure) connectormock.Case[gitlab.ReleasesPage] {
+	return connectormock.Branch(gitlab.ListReleasesBranchNotFound, value, failure)
+}
+
+// ListReleasesProviderRejected selects the providerRejected branch: GitLab definitively rejected the read.
+func ListReleasesProviderRejected(value gitlab.ReleasesPage, failure *sdkgo.Failure) connectormock.Case[gitlab.ReleasesPage] {
+	return connectormock.Branch(gitlab.ListReleasesBranchProviderRejected, value, failure)
+}
+
+// ListReleasesInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func ListReleasesInvalidResponse(value gitlab.ReleasesPage, failure *sdkgo.Failure) connectormock.Case[gitlab.ReleasesPage] {
+	return connectormock.Branch(gitlab.ListReleasesBranchInvalidResponse, value, failure)
+}
+
+// ListReleasesDefect selects the defect branch: Local input or credentials are invalid.
+func ListReleasesDefect(value gitlab.ReleasesPage, failure *sdkgo.Failure) connectormock.Case[gitlab.ReleasesPage] {
+	return connectormock.Branch(gitlab.ListReleasesBranchDefect, value, failure)
+}
+
+// ListReleasesRetry asks Dex to retry the listReleases Step, after the delay when it is positive.
+func ListReleasesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.ReleasesPage] {
+	return connectormock.Retry[gitlab.ReleasesPage](failure, after)
+}
+
+// ListReleasesListedDefault is the manifest mock listedDefault: One sample release was listed.
+func ListReleasesListedDefault() connectormock.Case[gitlab.ReleasesPage] {
+	value := connectormock.MustDecodeOutput[gitlab.ReleasesPage](`{"releases":[{"tag_name":"v1.2.0","name":"Release 1.2","description":"Notes"}]}`)
+	return connectormock.Branch(gitlab.ListReleasesBranchListed, value, nil)
+}
+
+// ListReleasesDefault is the manifest default, listedDefault, which New installs.
+func ListReleasesDefault() connectormock.Case[gitlab.ReleasesPage] {
+	return ListReleasesListedDefault()
+}
+
+// UpdateReleaseUpdated selects the updated branch: GitLab updated the release.
+func UpdateReleaseUpdated(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.UpdateReleaseBranchUpdated, value, failure)
+}
+
+// UpdateReleaseNotFound selects the notFound branch: No release with this tag is visible.
+func UpdateReleaseNotFound(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.UpdateReleaseBranchNotFound, value, failure)
+}
+
+// UpdateReleaseProviderRejected selects the providerRejected branch: GitLab definitively rejected the update.
+func UpdateReleaseProviderRejected(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.UpdateReleaseBranchProviderRejected, value, failure)
+}
+
+// UpdateReleaseInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func UpdateReleaseInvalidResponse(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.UpdateReleaseBranchInvalidResponse, value, failure)
+}
+
+// UpdateReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateReleaseDefect(value gitlab.Release, failure *sdkgo.Failure) connectormock.Case[gitlab.Release] {
+	return connectormock.Branch(gitlab.UpdateReleaseBranchDefect, value, failure)
+}
+
+// UpdateReleaseRetry asks Dex to retry the updateRelease Step, after the delay when it is positive.
+func UpdateReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.Release] {
+	return connectormock.Retry[gitlab.Release](failure, after)
+}
+
+// UpdateReleaseUpdatedDefault is the manifest mock updatedDefault: A sample release was updated.
+func UpdateReleaseUpdatedDefault() connectormock.Case[gitlab.Release] {
+	value := connectormock.MustDecodeOutput[gitlab.Release](`{"tag_name":"v1.2.0","name":"Release 1.2 revised","description":"Notes"}`)
+	return connectormock.Branch(gitlab.UpdateReleaseBranchUpdated, value, nil)
+}
+
+// UpdateReleaseDefault is the manifest default, updatedDefault, which New installs.
+func UpdateReleaseDefault() connectormock.Case[gitlab.Release] { return UpdateReleaseUpdatedDefault() }
+
+// DeleteReleaseDeleted selects the deleted branch: GitLab deleted the release.
+func DeleteReleaseDeleted(value gitlab.DeleteReleaseOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteReleaseOutput] {
+	return connectormock.Branch(gitlab.DeleteReleaseBranchDeleted, value, failure)
+}
+
+// DeleteReleaseNotFound selects the notFound branch: No release with this tag is visible.
+func DeleteReleaseNotFound(value gitlab.DeleteReleaseOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteReleaseOutput] {
+	return connectormock.Branch(gitlab.DeleteReleaseBranchNotFound, value, failure)
+}
+
+// DeleteReleaseProviderRejected selects the providerRejected branch: GitLab definitively rejected the deletion.
+func DeleteReleaseProviderRejected(value gitlab.DeleteReleaseOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteReleaseOutput] {
+	return connectormock.Branch(gitlab.DeleteReleaseBranchProviderRejected, value, failure)
+}
+
+// DeleteReleaseInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func DeleteReleaseInvalidResponse(value gitlab.DeleteReleaseOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteReleaseOutput] {
+	return connectormock.Branch(gitlab.DeleteReleaseBranchInvalidResponse, value, failure)
+}
+
+// DeleteReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteReleaseDefect(value gitlab.DeleteReleaseOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteReleaseOutput] {
+	return connectormock.Branch(gitlab.DeleteReleaseBranchDefect, value, failure)
+}
+
+// DeleteReleaseRetry asks Dex to retry the deleteRelease Step, after the delay when it is positive.
+func DeleteReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.DeleteReleaseOutput] {
+	return connectormock.Retry[gitlab.DeleteReleaseOutput](failure, after)
+}
+
+// DeleteReleaseDeletedDefault is the manifest mock deletedDefault: A sample release was deleted.
+func DeleteReleaseDeletedDefault() connectormock.Case[gitlab.DeleteReleaseOutput] {
+	value := connectormock.MustDecodeOutput[gitlab.DeleteReleaseOutput](`{"projectId":"meridian/web","tagName":"v1.2.0"}`)
+	return connectormock.Branch(gitlab.DeleteReleaseBranchDeleted, value, nil)
+}
+
+// DeleteReleaseDefault is the manifest default, deletedDefault, which New installs.
+func DeleteReleaseDefault() connectormock.Case[gitlab.DeleteReleaseOutput] {
+	return DeleteReleaseDeletedDefault()
+}
+
+// ListRepositoryTreeListed selects the listed branch: GitLab returned repository entries.
+func ListRepositoryTreeListed(value gitlab.RepositoryTreePage, failure *sdkgo.Failure) connectormock.Case[gitlab.RepositoryTreePage] {
+	return connectormock.Branch(gitlab.ListRepositoryTreeBranchListed, value, failure)
+}
+
+// ListRepositoryTreeNotFound selects the notFound branch: The project or path is inaccessible.
+func ListRepositoryTreeNotFound(value gitlab.RepositoryTreePage, failure *sdkgo.Failure) connectormock.Case[gitlab.RepositoryTreePage] {
+	return connectormock.Branch(gitlab.ListRepositoryTreeBranchNotFound, value, failure)
+}
+
+// ListRepositoryTreeProviderRejected selects the providerRejected branch: GitLab definitively rejected the read.
+func ListRepositoryTreeProviderRejected(value gitlab.RepositoryTreePage, failure *sdkgo.Failure) connectormock.Case[gitlab.RepositoryTreePage] {
+	return connectormock.Branch(gitlab.ListRepositoryTreeBranchProviderRejected, value, failure)
+}
+
+// ListRepositoryTreeInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func ListRepositoryTreeInvalidResponse(value gitlab.RepositoryTreePage, failure *sdkgo.Failure) connectormock.Case[gitlab.RepositoryTreePage] {
+	return connectormock.Branch(gitlab.ListRepositoryTreeBranchInvalidResponse, value, failure)
+}
+
+// ListRepositoryTreeDefect selects the defect branch: Local input or credentials are invalid.
+func ListRepositoryTreeDefect(value gitlab.RepositoryTreePage, failure *sdkgo.Failure) connectormock.Case[gitlab.RepositoryTreePage] {
+	return connectormock.Branch(gitlab.ListRepositoryTreeBranchDefect, value, failure)
+}
+
+// ListRepositoryTreeRetry asks Dex to retry the listRepositoryTree Step, after the delay when it is positive.
+func ListRepositoryTreeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.RepositoryTreePage] {
+	return connectormock.Retry[gitlab.RepositoryTreePage](failure, after)
+}
+
+// ListRepositoryTreeListedDefault is the manifest mock listedDefault: A source file was listed.
+func ListRepositoryTreeListedDefault() connectormock.Case[gitlab.RepositoryTreePage] {
+	value := connectormock.MustDecodeOutput[gitlab.RepositoryTreePage](`{"entries":[{"id":"abc123","name":"main.go","path":"cmd/main.go","type":"blob"}]}`)
+	return connectormock.Branch(gitlab.ListRepositoryTreeBranchListed, value, nil)
+}
+
+// ListRepositoryTreeDefault is the manifest default, listedDefault, which New installs.
+func ListRepositoryTreeDefault() connectormock.Case[gitlab.RepositoryTreePage] {
+	return ListRepositoryTreeListedDefault()
+}
+
+// ListUserProjectsListed selects the listed branch: GitLab returned user projects.
+func ListUserProjectsListed(value gitlab.UserProjectsPage, failure *sdkgo.Failure) connectormock.Case[gitlab.UserProjectsPage] {
+	return connectormock.Branch(gitlab.ListUserProjectsBranchListed, value, failure)
+}
+
+// ListUserProjectsNotFound selects the notFound branch: The user is inaccessible.
+func ListUserProjectsNotFound(value gitlab.UserProjectsPage, failure *sdkgo.Failure) connectormock.Case[gitlab.UserProjectsPage] {
+	return connectormock.Branch(gitlab.ListUserProjectsBranchNotFound, value, failure)
+}
+
+// ListUserProjectsProviderRejected selects the providerRejected branch: GitLab definitively rejected the read.
+func ListUserProjectsProviderRejected(value gitlab.UserProjectsPage, failure *sdkgo.Failure) connectormock.Case[gitlab.UserProjectsPage] {
+	return connectormock.Branch(gitlab.ListUserProjectsBranchProviderRejected, value, failure)
+}
+
+// ListUserProjectsInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+func ListUserProjectsInvalidResponse(value gitlab.UserProjectsPage, failure *sdkgo.Failure) connectormock.Case[gitlab.UserProjectsPage] {
+	return connectormock.Branch(gitlab.ListUserProjectsBranchInvalidResponse, value, failure)
+}
+
+// ListUserProjectsDefect selects the defect branch: Local input or credentials are invalid.
+func ListUserProjectsDefect(value gitlab.UserProjectsPage, failure *sdkgo.Failure) connectormock.Case[gitlab.UserProjectsPage] {
+	return connectormock.Branch(gitlab.ListUserProjectsBranchDefect, value, failure)
+}
+
+// ListUserProjectsRetry asks Dex to retry the listUserProjects Step, after the delay when it is positive.
+func ListUserProjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gitlab.UserProjectsPage] {
+	return connectormock.Retry[gitlab.UserProjectsPage](failure, after)
+}
+
+// ListUserProjectsListedDefault is the manifest mock listedDefault: A personal project was listed.
+func ListUserProjectsListedDefault() connectormock.Case[gitlab.UserProjectsPage] {
+	value := connectormock.MustDecodeOutput[gitlab.UserProjectsPage](`{"projects":[{"id":123,"name":"web","path_with_namespace":"meridian/web","web_url":"https://gitlab.com/meridian/web"}]}`)
+	return connectormock.Branch(gitlab.ListUserProjectsBranchListed, value, nil)
+}
+
+// ListUserProjectsDefault is the manifest default, listedDefault, which New installs.
+func ListUserProjectsDefault() connectormock.Case[gitlab.UserProjectsPage] {
+	return ListUserProjectsListedDefault()
 }

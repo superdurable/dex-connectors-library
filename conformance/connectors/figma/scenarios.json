@@ -681,6 +681,408 @@
       },
       "name": "getFileComments-transport",
       "operation": "getFileComments"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"Meridian Design\",\"lastModified\":\"2026-10-28T12:00:00Z\",\"nodes\":{\"0:1\":{\"document\":{\"id\":\"0:1\",\"type\":\"CANVAS\",\"name\":\"Home\"}},\"1:2\":{\"document\":{\"id\":\"1:2\",\"type\":\"FRAME\",\"name\":\"Hero\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA/nodes",
+          "query": {
+            "ids": [
+              "0:1,1:2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "lastModified": "2026-10-28T12:00:00Z",
+          "name": "Meridian Design",
+          "nodes": {
+            "0:1": {
+              "document": {
+                "id": "0:1",
+                "name": "Home",
+                "type": "CANVAS"
+              }
+            },
+            "1:2": {
+              "document": {
+                "id": "1:2",
+                "name": "Hero",
+                "type": "FRAME"
+              }
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "0:1",
+          "1:2"
+        ]
+      },
+      "name": "getFileNodes-success",
+      "operation": "getFileNodes"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA/nodes",
+          "query": {
+            "ids": [
+              "0:1,1:2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "lastModified": "",
+          "name": "",
+          "nodes": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "0:1",
+          "1:2"
+        ]
+      },
+      "name": "getFileNodes-notFound",
+      "operation": "getFileNodes"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA/nodes",
+          "query": {
+            "ids": [
+              "0:1,1:2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "lastModified": "",
+          "name": "",
+          "nodes": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "0:1",
+          "1:2"
+        ]
+      },
+      "name": "getFileNodes-providerRejected",
+      "operation": "getFileNodes"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA/nodes",
+          "query": {
+            "ids": [
+              "0:1,1:2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lastModified": "",
+          "name": "",
+          "nodes": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "0:1",
+          "1:2"
+        ]
+      },
+      "name": "getFileNodes-invalidResponse",
+      "operation": "getFileNodes"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA/nodes",
+          "query": {
+            "ids": [
+              "0:1,1:2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "0:1",
+          "1:2"
+        ]
+      },
+      "name": "getFileNodes-rateLimited",
+      "operation": "getFileNodes"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA/nodes",
+          "query": {
+            "ids": [
+              "0:1,1:2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "0:1",
+          "1:2"
+        ]
+      },
+      "name": "getFileNodes-serverUnavailable",
+      "operation": "getFileNodes"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA/nodes",
+          "query": {
+            "ids": [
+              "0:1,1:2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "0:1",
+          "1:2"
+        ]
+      },
+      "name": "getFileNodes-serviceUnavailable",
+      "operation": "getFileNodes"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA/nodes",
+          "query": {
+            "ids": [
+              "0:1,1:2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "0:1",
+          "1:2"
+        ]
+      },
+      "name": "getFileNodes-transportFailure",
+      "operation": "getFileNodes"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "lastModified": "",
+          "name": "",
+          "nodes": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA",
+        "nodeIds": [
+          "bad"
+        ]
+      },
+      "name": "getFileNodes-defect",
+      "operation": "getFileNodes"
     }
   ],
   "schemaVersion": 1

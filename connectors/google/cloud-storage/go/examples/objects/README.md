@@ -1,6 +1,8 @@
 # Object list Flow
 
-Run the Worker with a `google-cloud-storage` Dex Web connection configured from the [connector setup](../../../README.md). The Flow starts with a `ListObjectsInput` containing a bucket name, optional prefix, page size, and page token. It stores the returned page in its declared Attribute and completes with that page. The checked-in provider mock supplies one `example.txt` object with generation `123` for deterministic local verification.
+Run the Worker with a `google-cloud-storage` Dex Web connection configured from the [connector setup](../../../README.md). The object Flow starts with a `ListObjectsInput` containing a bucket name, optional prefix, page size, and page token. It stores the returned page in its declared Attribute and completes with that page. The checked-in provider mock supplies one `example.txt` object with generation `123` for deterministic local verification.
+
+The same Worker registers `GoogleCloudStorageBuckets`, which starts with a `ListBucketsInput` containing the project ID or number and optional page selection. Its mock returns `example-bucket` in `US`. Both Flows use the static connection and are exercised by the real Dex mock integration test.
 
 From this module, generate and inspect the FDG 2.0 graph:
 

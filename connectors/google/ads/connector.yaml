@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-ads
   displayName: Google Ads
-  description: Discover Google Ads customers directly accessible to the connected Google identity.
+  description: Discover Google Ads customers and manage campaigns through typed Dex Steps.
   company: Google
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: google-ads
   languages:
@@ -90,6 +90,87 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: CampaignPage
+      kind: query
+      description: Search one page of campaigns with performance totals.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google Ads returned a campaign page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google Ads rejected the campaign search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google Ads returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The customer or manager ID is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One paused campaign was listed., output: {rows: [{campaign: {resourceName: customers/1234567890/campaigns/7, id: '7', name: Example campaign, status: PAUSED}}]}}
+    - name: getCampaign
+      goName: GetCampaign
+      inputType: GetCampaignInput
+      outputType: CampaignRow
+      kind: query
+      description: Read one campaign and its performance totals.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google Ads returned the campaign.}
+        - {id: notFound, goName: NotFound, description: No matching campaign is visible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google Ads rejected the campaign search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google Ads returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The customer, manager, or campaign ID is invalid.", optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One paused campaign was found., output: {campaign: {resourceName: customers/1234567890/campaigns/7, id: '7', name: Example campaign, status: PAUSED}}}
+    - name: createCampaign
+      goName: CreateCampaign
+      inputType: CreateCampaignInput
+      outputType: CampaignMutationResult
+      kind: mutation
+      description: Create a paused Search campaign with an existing budget.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Google Ads created the paused campaign.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google Ads rejected the create., optional: true}
+        - {id: defect, goName: Defect, description: Required campaign fields or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A prior create may have succeeded., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A paused campaign was created., output: {resourceName: customers/1234567890/campaigns/7}}
+    - name: updateCampaignStatus
+      goName: UpdateCampaignStatus
+      inputType: UpdateCampaignStatusInput
+      outputType: CampaignMutationResult
+      kind: mutation
+      description: Set a campaign to ENABLED or PAUSED with an absolute update mask.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Google Ads set the campaign status.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google Ads rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google Ads returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Campaign identity, status, or credentials are invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A campaign was paused., output: {resourceName: customers/1234567890/campaigns/7}}
+    - name: removeCampaign
+      goName: RemoveCampaign
+      inputType: GetCampaignInput
+      outputType: CampaignMutationResult
+      kind: mutation
+      description: Remove a campaign by resource name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Google Ads removed the campaign.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google Ads rejected the removal., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google Ads returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Campaign identity or credentials are invalid., optional: true}
+      mocks:
+        - {name: removedDefault, branch: removed, default: true, description: A campaign was removed., output: {resourceName: customers/1234567890/campaigns/7}}
     - name: listAccessibleCustomers
       goName: ListAccessibleCustomers
       inputType: ListAccessibleCustomersInput
@@ -98,7 +179,7 @@ spec:
       description: List customer resource names directly accessible to the authorized Google identity.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Google Ads returned the directly accessible customer names.}
         - {id: providerRejected, goName: ProviderRejected, description: Google Ads conclusively rejected the read., optional: true}

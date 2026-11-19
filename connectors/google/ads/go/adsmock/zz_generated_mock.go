@@ -18,6 +18,11 @@ import (
 // Mock is a scripted google-ads connection. Script each operation through its accessor.
 type Mock struct {
 	connection              ads.Connection
+	listCampaigns           *connectormock.Query[ads.ListCampaignsInput, ads.CampaignPage]
+	getCampaign             *connectormock.Query[ads.GetCampaignInput, ads.CampaignRow]
+	createCampaign          *connectormock.Mutation[ads.CreateCampaignInput, ads.CampaignMutationResult]
+	updateCampaignStatus    *connectormock.Mutation[ads.UpdateCampaignStatusInput, ads.CampaignMutationResult]
+	removeCampaign          *connectormock.Mutation[ads.GetCampaignInput, ads.CampaignMutationResult]
 	listAccessibleCustomers *connectormock.Query[ads.ListAccessibleCustomersInput, ads.AccessibleCustomers]
 }
 
@@ -26,8 +31,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listCampaigns:           connectormock.NewQuery[ads.ListCampaignsInput, ads.CampaignPage](t, ads.ListCampaignsDefinition),
+		getCampaign:             connectormock.NewQuery[ads.GetCampaignInput, ads.CampaignRow](t, ads.GetCampaignDefinition),
+		createCampaign:          connectormock.NewMutation[ads.CreateCampaignInput, ads.CampaignMutationResult](t, ads.CreateCampaignDefinition),
+		updateCampaignStatus:    connectormock.NewMutation[ads.UpdateCampaignStatusInput, ads.CampaignMutationResult](t, ads.UpdateCampaignStatusDefinition),
+		removeCampaign:          connectormock.NewMutation[ads.GetCampaignInput, ads.CampaignMutationResult](t, ads.RemoveCampaignDefinition),
 		listAccessibleCustomers: connectormock.NewQuery[ads.ListAccessibleCustomersInput, ads.AccessibleCustomers](t, ads.ListAccessibleCustomersDefinition),
 	}
+	mock.listCampaigns.Default(ListCampaignsDefault())
+	mock.getCampaign.Default(GetCampaignDefault())
+	mock.createCampaign.Default(CreateCampaignDefault())
+	mock.updateCampaignStatus.Default(UpdateCampaignStatusDefault())
+	mock.removeCampaign.Default(RemoveCampaignDefault())
 	mock.listAccessibleCustomers.Default(ListAccessibleCustomersDefault())
 	connection, err := ads.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-ads", Name: connectionName})
 	if err != nil {
@@ -40,6 +55,31 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ads.Connection { return mock.connection }
 
+// ListCampaigns returns the listCampaigns script.
+func (mock *Mock) ListCampaigns() *connectormock.Query[ads.ListCampaignsInput, ads.CampaignPage] {
+	return mock.listCampaigns
+}
+
+// GetCampaign returns the getCampaign script.
+func (mock *Mock) GetCampaign() *connectormock.Query[ads.GetCampaignInput, ads.CampaignRow] {
+	return mock.getCampaign
+}
+
+// CreateCampaign returns the createCampaign script.
+func (mock *Mock) CreateCampaign() *connectormock.Mutation[ads.CreateCampaignInput, ads.CampaignMutationResult] {
+	return mock.createCampaign
+}
+
+// UpdateCampaignStatus returns the updateCampaignStatus script.
+func (mock *Mock) UpdateCampaignStatus() *connectormock.Mutation[ads.UpdateCampaignStatusInput, ads.CampaignMutationResult] {
+	return mock.updateCampaignStatus
+}
+
+// RemoveCampaign returns the removeCampaign script.
+func (mock *Mock) RemoveCampaign() *connectormock.Mutation[ads.GetCampaignInput, ads.CampaignMutationResult] {
+	return mock.removeCampaign
+}
+
 // ListAccessibleCustomers returns the listAccessibleCustomers script.
 func (mock *Mock) ListAccessibleCustomers() *connectormock.Query[ads.ListAccessibleCustomersInput, ads.AccessibleCustomers] {
 	return mock.listAccessibleCustomers
@@ -47,8 +87,204 @@ func (mock *Mock) ListAccessibleCustomers() *connectormock.Query[ads.ListAccessi
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCampaigns() sdkgo.Query[ads.ListCampaignsInput, ads.CampaignPage] {
+	return operations.mock.listCampaigns
+}
+func (operations mockOperations) GetCampaign() sdkgo.Query[ads.GetCampaignInput, ads.CampaignRow] {
+	return operations.mock.getCampaign
+}
+func (operations mockOperations) CreateCampaign() sdkgo.Mutation[ads.CreateCampaignInput, ads.CampaignMutationResult] {
+	return operations.mock.createCampaign
+}
+func (operations mockOperations) UpdateCampaignStatus() sdkgo.Mutation[ads.UpdateCampaignStatusInput, ads.CampaignMutationResult] {
+	return operations.mock.updateCampaignStatus
+}
+func (operations mockOperations) RemoveCampaign() sdkgo.Mutation[ads.GetCampaignInput, ads.CampaignMutationResult] {
+	return operations.mock.removeCampaign
+}
 func (operations mockOperations) ListAccessibleCustomers() sdkgo.Query[ads.ListAccessibleCustomersInput, ads.AccessibleCustomers] {
 	return operations.mock.listAccessibleCustomers
+}
+
+// ListCampaignsListed selects the listed branch: Google Ads returned a campaign page.
+func ListCampaignsListed(value ads.CampaignPage, failure *sdkgo.Failure) connectormock.Case[ads.CampaignPage] {
+	return connectormock.Branch(ads.ListCampaignsBranchListed, value, failure)
+}
+
+// ListCampaignsProviderRejected selects the providerRejected branch: Google Ads rejected the campaign search.
+func ListCampaignsProviderRejected(value ads.CampaignPage, failure *sdkgo.Failure) connectormock.Case[ads.CampaignPage] {
+	return connectormock.Branch(ads.ListCampaignsBranchProviderRejected, value, failure)
+}
+
+// ListCampaignsInvalidResponse selects the invalidResponse branch: Google Ads returned malformed or oversized JSON.
+func ListCampaignsInvalidResponse(value ads.CampaignPage, failure *sdkgo.Failure) connectormock.Case[ads.CampaignPage] {
+	return connectormock.Branch(ads.ListCampaignsBranchInvalidResponse, value, failure)
+}
+
+// ListCampaignsDefect selects the defect branch: The customer or manager ID is invalid.
+func ListCampaignsDefect(value ads.CampaignPage, failure *sdkgo.Failure) connectormock.Case[ads.CampaignPage] {
+	return connectormock.Branch(ads.ListCampaignsBranchDefect, value, failure)
+}
+
+// ListCampaignsRetry asks Dex to retry the listCampaigns Step, after the delay when it is positive.
+func ListCampaignsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.CampaignPage] {
+	return connectormock.Retry[ads.CampaignPage](failure, after)
+}
+
+// ListCampaignsListedDefault is the manifest mock listedDefault: One paused campaign was listed.
+func ListCampaignsListedDefault() connectormock.Case[ads.CampaignPage] {
+	value := connectormock.MustDecodeOutput[ads.CampaignPage](`{"rows":[{"campaign":{"resourceName":"customers/1234567890/campaigns/7","id":"7","name":"Example campaign","status":"PAUSED"}}]}`)
+	return connectormock.Branch(ads.ListCampaignsBranchListed, value, nil)
+}
+
+// ListCampaignsDefault is the manifest default, listedDefault, which New installs.
+func ListCampaignsDefault() connectormock.Case[ads.CampaignPage] { return ListCampaignsListedDefault() }
+
+// GetCampaignFound selects the found branch: Google Ads returned the campaign.
+func GetCampaignFound(value ads.CampaignRow, failure *sdkgo.Failure) connectormock.Case[ads.CampaignRow] {
+	return connectormock.Branch(ads.GetCampaignBranchFound, value, failure)
+}
+
+// GetCampaignNotFound selects the notFound branch: No matching campaign is visible.
+func GetCampaignNotFound(value ads.CampaignRow, failure *sdkgo.Failure) connectormock.Case[ads.CampaignRow] {
+	return connectormock.Branch(ads.GetCampaignBranchNotFound, value, failure)
+}
+
+// GetCampaignProviderRejected selects the providerRejected branch: Google Ads rejected the campaign search.
+func GetCampaignProviderRejected(value ads.CampaignRow, failure *sdkgo.Failure) connectormock.Case[ads.CampaignRow] {
+	return connectormock.Branch(ads.GetCampaignBranchProviderRejected, value, failure)
+}
+
+// GetCampaignInvalidResponse selects the invalidResponse branch: Google Ads returned malformed or oversized JSON.
+func GetCampaignInvalidResponse(value ads.CampaignRow, failure *sdkgo.Failure) connectormock.Case[ads.CampaignRow] {
+	return connectormock.Branch(ads.GetCampaignBranchInvalidResponse, value, failure)
+}
+
+// GetCampaignDefect selects the defect branch: The customer, manager, or campaign ID is invalid.
+func GetCampaignDefect(value ads.CampaignRow, failure *sdkgo.Failure) connectormock.Case[ads.CampaignRow] {
+	return connectormock.Branch(ads.GetCampaignBranchDefect, value, failure)
+}
+
+// GetCampaignRetry asks Dex to retry the getCampaign Step, after the delay when it is positive.
+func GetCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.CampaignRow] {
+	return connectormock.Retry[ads.CampaignRow](failure, after)
+}
+
+// GetCampaignFoundDefault is the manifest mock foundDefault: One paused campaign was found.
+func GetCampaignFoundDefault() connectormock.Case[ads.CampaignRow] {
+	value := connectormock.MustDecodeOutput[ads.CampaignRow](`{"campaign":{"resourceName":"customers/1234567890/campaigns/7","id":"7","name":"Example campaign","status":"PAUSED"}}`)
+	return connectormock.Branch(ads.GetCampaignBranchFound, value, nil)
+}
+
+// GetCampaignDefault is the manifest default, foundDefault, which New installs.
+func GetCampaignDefault() connectormock.Case[ads.CampaignRow] { return GetCampaignFoundDefault() }
+
+// CreateCampaignCreated selects the created branch: Google Ads created the paused campaign.
+func CreateCampaignCreated(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.CreateCampaignBranchCreated, value, failure)
+}
+
+// CreateCampaignProviderRejected selects the providerRejected branch: Google Ads rejected the create.
+func CreateCampaignProviderRejected(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.CreateCampaignBranchProviderRejected, value, failure)
+}
+
+// CreateCampaignDefect selects the defect branch: Required campaign fields or credentials are invalid.
+func CreateCampaignDefect(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.CreateCampaignBranchDefect, value, failure)
+}
+
+// CreateCampaignUncertain returns an uncertain createCampaign outcome.
+func CreateCampaignUncertain(value ads.CampaignMutationResult, failure sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCampaignRetry asks Dex to retry the createCampaign Step, after the delay when it is positive.
+func CreateCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Retry[ads.CampaignMutationResult](failure, after)
+}
+
+// CreateCampaignCreatedDefault is the manifest mock createdDefault: A paused campaign was created.
+func CreateCampaignCreatedDefault() connectormock.Case[ads.CampaignMutationResult] {
+	value := connectormock.MustDecodeOutput[ads.CampaignMutationResult](`{"resourceName":"customers/1234567890/campaigns/7"}`)
+	return connectormock.Branch(ads.CreateCampaignBranchCreated, value, nil)
+}
+
+// CreateCampaignDefault is the manifest default, createdDefault, which New installs.
+func CreateCampaignDefault() connectormock.Case[ads.CampaignMutationResult] {
+	return CreateCampaignCreatedDefault()
+}
+
+// UpdateCampaignStatusUpdated selects the updated branch: Google Ads set the campaign status.
+func UpdateCampaignStatusUpdated(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.UpdateCampaignStatusBranchUpdated, value, failure)
+}
+
+// UpdateCampaignStatusProviderRejected selects the providerRejected branch: Google Ads rejected the update.
+func UpdateCampaignStatusProviderRejected(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.UpdateCampaignStatusBranchProviderRejected, value, failure)
+}
+
+// UpdateCampaignStatusInvalidResponse selects the invalidResponse branch: Google Ads returned malformed or oversized JSON.
+func UpdateCampaignStatusInvalidResponse(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.UpdateCampaignStatusBranchInvalidResponse, value, failure)
+}
+
+// UpdateCampaignStatusDefect selects the defect branch: Campaign identity, status, or credentials are invalid.
+func UpdateCampaignStatusDefect(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.UpdateCampaignStatusBranchDefect, value, failure)
+}
+
+// UpdateCampaignStatusRetry asks Dex to retry the updateCampaignStatus Step, after the delay when it is positive.
+func UpdateCampaignStatusRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Retry[ads.CampaignMutationResult](failure, after)
+}
+
+// UpdateCampaignStatusUpdatedDefault is the manifest mock updatedDefault: A campaign was paused.
+func UpdateCampaignStatusUpdatedDefault() connectormock.Case[ads.CampaignMutationResult] {
+	value := connectormock.MustDecodeOutput[ads.CampaignMutationResult](`{"resourceName":"customers/1234567890/campaigns/7"}`)
+	return connectormock.Branch(ads.UpdateCampaignStatusBranchUpdated, value, nil)
+}
+
+// UpdateCampaignStatusDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCampaignStatusDefault() connectormock.Case[ads.CampaignMutationResult] {
+	return UpdateCampaignStatusUpdatedDefault()
+}
+
+// RemoveCampaignRemoved selects the removed branch: Google Ads removed the campaign.
+func RemoveCampaignRemoved(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.RemoveCampaignBranchRemoved, value, failure)
+}
+
+// RemoveCampaignProviderRejected selects the providerRejected branch: Google Ads rejected the removal.
+func RemoveCampaignProviderRejected(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.RemoveCampaignBranchProviderRejected, value, failure)
+}
+
+// RemoveCampaignInvalidResponse selects the invalidResponse branch: Google Ads returned malformed or oversized JSON.
+func RemoveCampaignInvalidResponse(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.RemoveCampaignBranchInvalidResponse, value, failure)
+}
+
+// RemoveCampaignDefect selects the defect branch: Campaign identity or credentials are invalid.
+func RemoveCampaignDefect(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Branch(ads.RemoveCampaignBranchDefect, value, failure)
+}
+
+// RemoveCampaignRetry asks Dex to retry the removeCampaign Step, after the delay when it is positive.
+func RemoveCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.CampaignMutationResult] {
+	return connectormock.Retry[ads.CampaignMutationResult](failure, after)
+}
+
+// RemoveCampaignRemovedDefault is the manifest mock removedDefault: A campaign was removed.
+func RemoveCampaignRemovedDefault() connectormock.Case[ads.CampaignMutationResult] {
+	value := connectormock.MustDecodeOutput[ads.CampaignMutationResult](`{"resourceName":"customers/1234567890/campaigns/7"}`)
+	return connectormock.Branch(ads.RemoveCampaignBranchRemoved, value, nil)
+}
+
+// RemoveCampaignDefault is the manifest default, removedDefault, which New installs.
+func RemoveCampaignDefault() connectormock.Case[ads.CampaignMutationResult] {
+	return RemoveCampaignRemovedDefault()
 }
 
 // ListAccessibleCustomersListed selects the listed branch: Google Ads returned the directly accessible customer names.

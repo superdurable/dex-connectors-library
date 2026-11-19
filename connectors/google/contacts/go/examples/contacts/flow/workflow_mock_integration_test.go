@@ -24,7 +24,8 @@ import (
 func TestContactsUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := contactsmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	updateFlow := NewUpdateFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, updateFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,14 @@ func TestContactsUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "people/c123", output.Contacts[0].ResourceName)
 	require.Equal(t, "Example Contact", output.Contacts[0].DisplayName)
 	require.Len(t, mock.ListContacts().Calls(), 1)
+	updateFlowID := "google-contacts-update-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, updateFlow, updateFlowID, contacts.UpdateContactInput{ResourceName: "people/c123", Etag: "etag-1", GivenName: "Example"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateResult, err := client.WaitForFlow(ctx, updateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateResult.Status, updateResult.ErrorMessage)
+	var updated contacts.Contact
+	require.NoError(t, updateResult.DecodeSingleOutput(&updated))
+	require.Equal(t, "people/c123", updated.ResourceName)
+	require.Len(t, mock.UpdateContact().Calls(), 1)
 }

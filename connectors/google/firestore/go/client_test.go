@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -40,6 +41,55 @@ func newTestClient(t *testing.T, baseURL string) *Client {
 	client, err := New(Config{BaseURL: baseURL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials})
 	require.NoError(t, err)
 	return client
+}
+
+func TestCreateDocumentPriorSendConflictNeedsConfirmation(t *testing.T) {
+	for _, testCase := range []struct {
+		name           string
+		readBackStatus int
+		readBackBody   string
+	}{
+		{name: "read failure", readBackStatus: http.StatusInternalServerError},
+		{name: "mismatched fields", readBackStatus: http.StatusOK, readBackBody: `{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fields":{"title":{"stringValue":"Other"}}}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var postCount atomic.Int32
+			var getCount atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case http.MethodPost:
+					if postCount.Add(1) == 1 {
+						w.WriteHeader(http.StatusInternalServerError)
+					} else {
+						w.WriteHeader(http.StatusConflict)
+					}
+				case http.MethodGet:
+					if getCount.Add(1) == 1 {
+						w.WriteHeader(http.StatusNotFound)
+					} else {
+						w.WriteHeader(testCase.readBackStatus)
+						_, err := w.Write([]byte(testCase.readBackBody))
+						require.NoError(t, err)
+					}
+				default:
+					w.WriteHeader(http.StatusMethodNotAllowed)
+				}
+			}))
+			defer server.Close()
+			client := newTestClient(t, server.URL)
+			attemptContext := singledispatchtest.NewContext("firestore-create-conflict", "create-step")
+			input := WriteDocumentInput{ProjectID: "sample-project", CollectionID: "events", DocumentID: "sample-event", FieldsJSON: `{"title":{"stringValue":"Hello"}}`}
+			_, err := sdkgo.RunMutation(attemptContext, client.CreateDocument(), testConnection, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			attemptContext.AdvanceAttempt()
+			_, err = sdkgo.RunMutation(attemptContext, client.CreateDocument(), testConnection, input)
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			require.EqualValues(t, 2, postCount.Load())
+			require.EqualValues(t, 2, getCount.Load())
+		})
+	}
 }
 
 func TestListDocumentsProjectsOneCursorPage(t *testing.T) {

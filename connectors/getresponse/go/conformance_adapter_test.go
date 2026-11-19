@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/v3"
@@ -19,8 +20,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	reference := sdkgo.ConnectionRef{Provider: "getresponse", Name: "getresponse"}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {APIKey: sdkgo.NewSecretString("test-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listContacts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), reference),
-		"getContact":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
+	mutationContext := singledispatchtest.NewContext("getresponse-provider-test", "query")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			mutationContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listContacts":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), reference),
+		"getContact":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
+		"createContact": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateContact(), reference, scenario.CallID),
+		"updateContact": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.UpdateContact(), reference, scenario.CallID),
+		"deleteContact": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.DeleteContact(), reference, scenario.CallID),
 	}}
 }
