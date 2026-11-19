@@ -36,3 +36,7 @@ without it.
 Provider references: [SiliconFlow quick start](https://docs.siliconflow.cn/docs/userguide/quickstart),
 [API key setup](https://cloud.siliconflow.cn/account/ak), and
 [model retrieval in the SiliconFlow guide](https://docs.siliconflow.cn/docs/usercases/use-siliconcloud-in-yan).
+
+## Python
+
+The `python/` package provides the `listModels` Query. Run its checked-in example from `python/examples/`.
