@@ -1,6 +1,6 @@
 # YouTube Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.4.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.5.0` after this release is published.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/youtube`.
 
@@ -153,3 +153,6 @@ GOWORK=off go vet ./...
 ## TypeScript package
 
 The `typescript/` package declares `@superdurable/connector-google-youtube` v0.1.0 with all five operations and no Triggers. It uses generated Dex Step factories and OAuth refresh wiring. The runnable [video lookup Flow](typescript/examples/video-lookup/README.md) shows a read-only Google OAuth connection named `youtube-video-reader`; adding a playlist item requires the manage authorization method. The package's Go-recorded conformance fixtures and real Dex Worker integration test run locally with a provider stand-in. Live Google OAuth and YouTube API behavior remain unverified.
+## Expanded Go operations
+
+Go also exposes `listChannels`, `updateChannel`, `getPlaylist`, `listPlaylists`, `createPlaylist`, `updatePlaylist`, `deletePlaylist`, `getPlaylistItem`, `deletePlaylistItem`, `listVideos`, `listVideoCategories`, `rateVideo`, `deleteVideo`, and `updateVideo` through operation-specific Step factories. `createPlaylist` is a limited write. It appends a visible request marker to the provider description for read-back confirmation and strips that marker from the returned Result. An ambiguous listing retries below the send cap and selects `uncertain` at the cap.

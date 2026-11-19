@@ -242,6 +242,1758 @@
       "input": {},
       "name": "listSites-transportFailure",
       "operation": "listSites"
+    },
+    {
+      "callId": "search-console-getSite",
+      "exchanges": [
+        {
+          "body": "{\"siteUrl\":\"sc-domain:example.com\",\"permissionLevel\":\"siteOwner\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "permissionLevel": "siteOwner",
+          "siteUrl": "sc-domain:example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSite-success",
+      "operation": "getSite"
+    },
+    {
+      "callId": "search-console-getSite",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "permissionLevel": "",
+          "siteUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSite-invalidResponse",
+      "operation": "getSite"
+    },
+    {
+      "callId": "search-console-getSite",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "permissionLevel": "",
+          "siteUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSite-notFound",
+      "operation": "getSite"
+    },
+    {
+      "callId": "search-console-getSite",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "permissionLevel": "",
+          "siteUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSite-providerRejected",
+      "operation": "getSite"
+    },
+    {
+      "callId": "search-console-getSite",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSite-final429",
+      "operation": "getSite"
+    },
+    {
+      "callId": "search-console-getSite",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSite-final503",
+      "operation": "getSite"
+    },
+    {
+      "callId": "search-console-getSite",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSite-transportFailure",
+      "operation": "getSite"
+    },
+    {
+      "callId": "search-console-getSite",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "permissionLevel": "",
+          "siteUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "bad"
+      },
+      "name": "getSite-defect",
+      "operation": "getSite"
+    },
+    {
+      "callId": "search-console-querySearchAnalytics",
+      "exchanges": [
+        {
+          "body": "{\"rows\":[{\"keys\":[\"example\"],\"clicks\":5,\"impressions\":100,\"ctr\":0.05,\"position\":3.2}],\"responseAggregationType\":\"byProperty\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/searchAnalytics/query",
+          "requestBody": {
+            "dimensions": [
+              "query"
+            ],
+            "endDate": "2026-11-07",
+            "rowLimit": 10,
+            "startDate": "2026-11-01",
+            "startRow": 1,
+            "type": "web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "responseAggregationType": "byProperty",
+          "rows": [
+            {
+              "clicks": 5,
+              "ctr": 0.05,
+              "impressions": 100,
+              "keys": [
+                "example"
+              ],
+              "position": 3.2
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "query"
+        ],
+        "endDate": "2026-11-07",
+        "rowLimit": 10,
+        "siteUrl": "sc-domain:example.com",
+        "startDate": "2026-11-01",
+        "startRow": 1,
+        "type": "web"
+      },
+      "name": "querySearchAnalytics-success",
+      "operation": "querySearchAnalytics"
+    },
+    {
+      "callId": "search-console-querySearchAnalytics",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/searchAnalytics/query",
+          "requestBody": {
+            "dimensions": [
+              "query"
+            ],
+            "endDate": "2026-11-07",
+            "rowLimit": 10,
+            "startDate": "2026-11-01",
+            "startRow": 1,
+            "type": "web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "query"
+        ],
+        "endDate": "2026-11-07",
+        "rowLimit": 10,
+        "siteUrl": "sc-domain:example.com",
+        "startDate": "2026-11-01",
+        "startRow": 1,
+        "type": "web"
+      },
+      "name": "querySearchAnalytics-invalidResponse",
+      "operation": "querySearchAnalytics"
+    },
+    {
+      "callId": "search-console-querySearchAnalytics",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/searchAnalytics/query",
+          "requestBody": {
+            "dimensions": [
+              "query"
+            ],
+            "endDate": "2026-11-07",
+            "rowLimit": 10,
+            "startDate": "2026-11-01",
+            "startRow": 1,
+            "type": "web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "query"
+        ],
+        "endDate": "2026-11-07",
+        "rowLimit": 10,
+        "siteUrl": "sc-domain:example.com",
+        "startDate": "2026-11-01",
+        "startRow": 1,
+        "type": "web"
+      },
+      "name": "querySearchAnalytics-notFound",
+      "operation": "querySearchAnalytics"
+    },
+    {
+      "callId": "search-console-querySearchAnalytics",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/searchAnalytics/query",
+          "requestBody": {
+            "dimensions": [
+              "query"
+            ],
+            "endDate": "2026-11-07",
+            "rowLimit": 10,
+            "startDate": "2026-11-01",
+            "startRow": 1,
+            "type": "web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "query"
+        ],
+        "endDate": "2026-11-07",
+        "rowLimit": 10,
+        "siteUrl": "sc-domain:example.com",
+        "startDate": "2026-11-01",
+        "startRow": 1,
+        "type": "web"
+      },
+      "name": "querySearchAnalytics-providerRejected",
+      "operation": "querySearchAnalytics"
+    },
+    {
+      "callId": "search-console-querySearchAnalytics",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/searchAnalytics/query",
+          "requestBody": {
+            "dimensions": [
+              "query"
+            ],
+            "endDate": "2026-11-07",
+            "rowLimit": 10,
+            "startDate": "2026-11-01",
+            "startRow": 1,
+            "type": "web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "query"
+        ],
+        "endDate": "2026-11-07",
+        "rowLimit": 10,
+        "siteUrl": "sc-domain:example.com",
+        "startDate": "2026-11-01",
+        "startRow": 1,
+        "type": "web"
+      },
+      "name": "querySearchAnalytics-final429",
+      "operation": "querySearchAnalytics"
+    },
+    {
+      "callId": "search-console-querySearchAnalytics",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/searchAnalytics/query",
+          "requestBody": {
+            "dimensions": [
+              "query"
+            ],
+            "endDate": "2026-11-07",
+            "rowLimit": 10,
+            "startDate": "2026-11-01",
+            "startRow": 1,
+            "type": "web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "query"
+        ],
+        "endDate": "2026-11-07",
+        "rowLimit": 10,
+        "siteUrl": "sc-domain:example.com",
+        "startDate": "2026-11-01",
+        "startRow": 1,
+        "type": "web"
+      },
+      "name": "querySearchAnalytics-final503",
+      "operation": "querySearchAnalytics"
+    },
+    {
+      "callId": "search-console-querySearchAnalytics",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/searchAnalytics/query",
+          "requestBody": {
+            "dimensions": [
+              "query"
+            ],
+            "endDate": "2026-11-07",
+            "rowLimit": 10,
+            "startDate": "2026-11-01",
+            "startRow": 1,
+            "type": "web"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "query"
+        ],
+        "endDate": "2026-11-07",
+        "rowLimit": 10,
+        "siteUrl": "sc-domain:example.com",
+        "startDate": "2026-11-01",
+        "startRow": 1,
+        "type": "web"
+      },
+      "name": "querySearchAnalytics-transportFailure",
+      "operation": "querySearchAnalytics"
+    },
+    {
+      "callId": "search-console-querySearchAnalytics",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "query"
+        ],
+        "endDate": "2026-11-07",
+        "rowLimit": 10,
+        "siteUrl": "bad",
+        "startDate": "2026-11-01",
+        "startRow": 1,
+        "type": "web"
+      },
+      "name": "querySearchAnalytics-defect",
+      "operation": "querySearchAnalytics"
+    },
+    {
+      "callId": "search-console-listSitemaps",
+      "exchanges": [
+        {
+          "body": "{\"sitemap\":[{\"path\":\"https://example.com/sitemap.xml\",\"type\":\"sitemap\",\"errors\":\"2\",\"warnings\":\"1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps",
+          "query": {
+            "sitemapIndex": [
+              "https://example.com/sitemap-index.xml"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "sitemaps": [
+            {
+              "errors": 2,
+              "path": "https://example.com/sitemap.xml",
+              "type": "sitemap",
+              "warnings": 1
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com",
+        "sitemapIndex": "https://example.com/sitemap-index.xml"
+      },
+      "name": "listSitemaps-success",
+      "operation": "listSitemaps"
+    },
+    {
+      "callId": "search-console-listSitemaps",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps",
+          "query": {
+            "sitemapIndex": [
+              "https://example.com/sitemap-index.xml"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "sitemaps": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com",
+        "sitemapIndex": "https://example.com/sitemap-index.xml"
+      },
+      "name": "listSitemaps-invalidResponse",
+      "operation": "listSitemaps"
+    },
+    {
+      "callId": "search-console-listSitemaps",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps",
+          "query": {
+            "sitemapIndex": [
+              "https://example.com/sitemap-index.xml"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "sitemaps": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com",
+        "sitemapIndex": "https://example.com/sitemap-index.xml"
+      },
+      "name": "listSitemaps-notFound",
+      "operation": "listSitemaps"
+    },
+    {
+      "callId": "search-console-listSitemaps",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps",
+          "query": {
+            "sitemapIndex": [
+              "https://example.com/sitemap-index.xml"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "sitemaps": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com",
+        "sitemapIndex": "https://example.com/sitemap-index.xml"
+      },
+      "name": "listSitemaps-providerRejected",
+      "operation": "listSitemaps"
+    },
+    {
+      "callId": "search-console-listSitemaps",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps",
+          "query": {
+            "sitemapIndex": [
+              "https://example.com/sitemap-index.xml"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com",
+        "sitemapIndex": "https://example.com/sitemap-index.xml"
+      },
+      "name": "listSitemaps-final429",
+      "operation": "listSitemaps"
+    },
+    {
+      "callId": "search-console-listSitemaps",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps",
+          "query": {
+            "sitemapIndex": [
+              "https://example.com/sitemap-index.xml"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com",
+        "sitemapIndex": "https://example.com/sitemap-index.xml"
+      },
+      "name": "listSitemaps-final503",
+      "operation": "listSitemaps"
+    },
+    {
+      "callId": "search-console-listSitemaps",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps",
+          "query": {
+            "sitemapIndex": [
+              "https://example.com/sitemap-index.xml"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "sc-domain:example.com",
+        "sitemapIndex": "https://example.com/sitemap-index.xml"
+      },
+      "name": "listSitemaps-transportFailure",
+      "operation": "listSitemaps"
+    },
+    {
+      "callId": "search-console-listSitemaps",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "sitemaps": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteUrl": "bad",
+        "sitemapIndex": "https://example.com/sitemap-index.xml"
+      },
+      "name": "listSitemaps-defect",
+      "operation": "listSitemaps"
+    },
+    {
+      "callId": "search-console-getSitemap",
+      "exchanges": [
+        {
+          "body": "{\"path\":\"https://example.com/sitemap.xml\",\"type\":\"sitemap\",\"errors\":\"2\",\"warnings\":\"1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps/https://example.com/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "errors": 2,
+          "path": "https://example.com/sitemap.xml",
+          "type": "sitemap",
+          "warnings": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "feedPath": "https://example.com/sitemap.xml",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSitemap-success",
+      "operation": "getSitemap"
+    },
+    {
+      "callId": "search-console-getSitemap",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps/https://example.com/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "path": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "feedPath": "https://example.com/sitemap.xml",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSitemap-invalidResponse",
+      "operation": "getSitemap"
+    },
+    {
+      "callId": "search-console-getSitemap",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps/https://example.com/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "path": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "feedPath": "https://example.com/sitemap.xml",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSitemap-notFound",
+      "operation": "getSitemap"
+    },
+    {
+      "callId": "search-console-getSitemap",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps/https://example.com/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "path": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "feedPath": "https://example.com/sitemap.xml",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSitemap-providerRejected",
+      "operation": "getSitemap"
+    },
+    {
+      "callId": "search-console-getSitemap",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps/https://example.com/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "feedPath": "https://example.com/sitemap.xml",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSitemap-final429",
+      "operation": "getSitemap"
+    },
+    {
+      "callId": "search-console-getSitemap",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps/https://example.com/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "feedPath": "https://example.com/sitemap.xml",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSitemap-final503",
+      "operation": "getSitemap"
+    },
+    {
+      "callId": "search-console-getSitemap",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webmasters/v3/sites/sc-domain:example.com/sitemaps/https://example.com/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "feedPath": "https://example.com/sitemap.xml",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "getSitemap-transportFailure",
+      "operation": "getSitemap"
+    },
+    {
+      "callId": "search-console-getSitemap",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "path": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "feedPath": "https://example.com/sitemap.xml",
+        "siteUrl": "bad"
+      },
+      "name": "getSitemap-defect",
+      "operation": "getSitemap"
+    },
+    {
+      "callId": "search-console-inspectURL",
+      "exchanges": [
+        {
+          "body": "{\"inspectionResult\":{\"indexStatusResult\":{\"verdict\":\"PASS\",\"coverageState\":\"Submitted and indexed\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/urlInspection/index:inspect",
+          "requestBody": {
+            "inspectionUrl": "https://example.com/page",
+            "languageCode": "en-US",
+            "siteUrl": "sc-domain:example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "inspected",
+        "failureKind": "",
+        "output": {
+          "indexStatusResult": {
+            "coverageState": "Submitted and indexed",
+            "verdict": "PASS"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inspectionUrl": "https://example.com/page",
+        "languageCode": "en-US",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "inspectURL-success",
+      "operation": "inspectURL"
+    },
+    {
+      "callId": "search-console-inspectURL",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/urlInspection/index:inspect",
+          "requestBody": {
+            "inspectionUrl": "https://example.com/page",
+            "languageCode": "en-US",
+            "siteUrl": "sc-domain:example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "indexStatusResult": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inspectionUrl": "https://example.com/page",
+        "languageCode": "en-US",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "inspectURL-invalidResponse",
+      "operation": "inspectURL"
+    },
+    {
+      "callId": "search-console-inspectURL",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/urlInspection/index:inspect",
+          "requestBody": {
+            "inspectionUrl": "https://example.com/page",
+            "languageCode": "en-US",
+            "siteUrl": "sc-domain:example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "indexStatusResult": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inspectionUrl": "https://example.com/page",
+        "languageCode": "en-US",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "inspectURL-notFound",
+      "operation": "inspectURL"
+    },
+    {
+      "callId": "search-console-inspectURL",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/urlInspection/index:inspect",
+          "requestBody": {
+            "inspectionUrl": "https://example.com/page",
+            "languageCode": "en-US",
+            "siteUrl": "sc-domain:example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "indexStatusResult": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inspectionUrl": "https://example.com/page",
+        "languageCode": "en-US",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "inspectURL-providerRejected",
+      "operation": "inspectURL"
+    },
+    {
+      "callId": "search-console-inspectURL",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/urlInspection/index:inspect",
+          "requestBody": {
+            "inspectionUrl": "https://example.com/page",
+            "languageCode": "en-US",
+            "siteUrl": "sc-domain:example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inspectionUrl": "https://example.com/page",
+        "languageCode": "en-US",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "inspectURL-final429",
+      "operation": "inspectURL"
+    },
+    {
+      "callId": "search-console-inspectURL",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/urlInspection/index:inspect",
+          "requestBody": {
+            "inspectionUrl": "https://example.com/page",
+            "languageCode": "en-US",
+            "siteUrl": "sc-domain:example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inspectionUrl": "https://example.com/page",
+        "languageCode": "en-US",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "inspectURL-final503",
+      "operation": "inspectURL"
+    },
+    {
+      "callId": "search-console-inspectURL",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/urlInspection/index:inspect",
+          "requestBody": {
+            "inspectionUrl": "https://example.com/page",
+            "languageCode": "en-US",
+            "siteUrl": "sc-domain:example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-search-console-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inspectionUrl": "https://example.com/page",
+        "languageCode": "en-US",
+        "siteUrl": "sc-domain:example.com"
+      },
+      "name": "inspectURL-transportFailure",
+      "operation": "inspectURL"
+    },
+    {
+      "callId": "search-console-inspectURL",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "indexStatusResult": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inspectionUrl": "https://example.com/page",
+        "languageCode": "en-US",
+        "siteUrl": "bad"
+      },
+      "name": "inspectURL-defect",
+      "operation": "inspectURL"
     }
   ],
   "schemaVersion": 1

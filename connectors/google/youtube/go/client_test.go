@@ -797,6 +797,28 @@ func (provider *manageRefreshingCredentialProvider) ResolveAfterRejection(contex
 	return youtube.Credentials{AuthMethodID: youtube.ManageAuthMethodID, AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 
+func TestCreatePlaylistDoesNotResendWithinOneFenceAfterUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		require.Equal(t, http.MethodPost, request.Method)
+		require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+		response.WriteHeader(http.StatusUnauthorized)
+		_, _ = response.Write([]byte(`{"error":{"code":401,"errors":[{"reason":"authError"}]}}`))
+	}))
+	t.Cleanup(server.Close)
+	provider := &manageRefreshingCredentialProvider{}
+	client, err := youtube.New(youtube.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	ctx := singledispatchtest.NewContext("youtube-flow", "create-playlist-single-send")
+	result, err := sdkgo.RunMutation(ctx, client.CreatePlaylist(), youtubeConnection, youtube.CreatePlaylistInput{Title: "Compiler picks", PrivacyStatus: "private"})
+	require.NoError(t, err)
+	require.Equal(t, youtube.CreatePlaylistBranchProviderRejected, result.Branch)
+	require.Equal(t, 1, requests)
+	require.Zero(t, provider.forcedRefreshes)
+}
+
 func TestAddPlaylistItemKeepsClaimAfterAmbiguousResendFollowingRefresh(t *testing.T) {
 	var mutex sync.Mutex
 	var inserts []string

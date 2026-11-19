@@ -1,6 +1,6 @@
 {
   "connectorId": "gemini",
-  "releaseTag": "connectors/google/gemini/go/v0.23.0",
+  "releaseTag": "connectors/google/gemini/go/v0.24.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-gemini",

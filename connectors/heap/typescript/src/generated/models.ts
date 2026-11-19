@@ -7,9 +7,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Heap server-side API HTTPS root. Blank uses the displayed US endpoint; for an EU project use https://c.eu.heap-api.com. Do not append /api/add_user_properties. */
+  /** Heap server-side API HTTPS root. Blank uses the displayed US endpoint; for an EU project use https://c.eu.heap-api.com. Do not append an /api path. */
   baseUrl?: string;
-  /** Non-secret numeric environment ID from https://heapanalytics.com > Projects > the Main Production environment; copy its app ID as decimal digits. Blank prevents requests. */
+  /** Non-secret numeric environment ID from https://heapanalytics.com > Account > Manage > Projects > the chosen environment; copy its app ID as decimal digits. Blank prevents requests. */
   appId: string;
   /** Maximum duration of one request as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
   timeoutMs?: number;

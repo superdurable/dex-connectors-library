@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listEmployees/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[gusto.EmployeesPage](`{"employees":[{"employeeId":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","companyId":"7d61f73e-a18c-46a5-88e2-2bfa894657d7"}]}`)
+			return err
+		}},
 		{name: "getEmployee/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[gusto.Employee](`{"employeeId":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","companyId":"7d61f73e-a18c-46a5-88e2-2bfa894657d7"}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListEmployees().Definition().Operation.OperationID != "listEmployees" {
+		t.Errorf("listEmployees mock has another definition")
+	}
 	if mock.GetEmployee().Definition().Operation.OperationID != "getEmployee" {
 		t.Errorf("getEmployee mock has another definition")
 	}

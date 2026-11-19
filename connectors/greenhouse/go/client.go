@@ -71,10 +71,16 @@ type providerResponse struct {
 	body       []byte
 	status     int
 	retryAfter time.Duration
+	link       string
 	err        error
 }
 
 func (client *Client) get(call sdkgo.Call, candidateID int64) providerResponse {
+	query := url.Values{"ids": {fmt.Sprint(candidateID)}, "per_page": {"1"}, "fields": {"id,first_name,last_name"}}
+	return client.getCandidates(call, query)
+}
+
+func (client *Client) getCandidates(call sdkgo.Call, query url.Values) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil {
 		if sdkgo.IsReauthorizationRequired(err) {
@@ -89,7 +95,7 @@ func (client *Client) get(call sdkgo.Call, candidateID int64) providerResponse {
 		return providerResponse{err: errCredential}
 	}
 	for attempt := 0; attempt < 2; attempt++ {
-		response := client.sendCandidateRequest(call, credentials.AccessToken.Reveal(), candidateID)
+		response := client.sendCandidateRequest(call, credentials.AccessToken.Reveal(), query)
 		if response.status != http.StatusUnauthorized || attempt > 0 {
 			return response
 		}
@@ -111,8 +117,7 @@ func (client *Client) get(call sdkgo.Call, candidateID int64) providerResponse {
 	return providerResponse{err: errRequest}
 }
 
-func (client *Client) sendCandidateRequest(call sdkgo.Call, token string, candidateID int64) providerResponse {
-	query := url.Values{"ids": {fmt.Sprint(candidateID)}, "per_page": {"1"}, "fields": {"id,first_name,last_name"}}
+func (client *Client) sendCandidateRequest(call sdkgo.Call, token string, query url.Values) providerResponse {
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+"/candidates?"+query.Encode(), nil)
 	if err != nil {
 		return providerResponse{err: errRequest}
@@ -126,5 +131,5 @@ func (client *Client) sendCandidateRequest(call sdkgo.Call, token string, candid
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, link: response.Header.Get("Link"), err: err}
 }

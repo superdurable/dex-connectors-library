@@ -19,9 +19,10 @@ import (
 const ConnectorID = "google-search-console"
 
 type Config struct {
-	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
-	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	BaseURL           string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
+	Timeout           time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	MaxResponseBytes  int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	InspectionBaseURL string        `json:"inspectionBaseUrl,omitempty" yaml:"inspectionBaseUrl,omitempty"`
 }
 
 type Credentials struct {
@@ -43,11 +44,31 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetSite() sdkgo.Query[GetSiteInput, Site]
+	QuerySearchAnalytics() sdkgo.Query[QuerySearchAnalyticsInput, SearchAnalyticsResult]
+	ListSitemaps() sdkgo.Query[ListSitemapsInput, SitemapsPage]
+	GetSitemap() sdkgo.Query[GetSitemapInput, Sitemap]
+	InspectURL() sdkgo.Query[InspectURLInput, URLInspectionResult]
 	ListSites() sdkgo.Query[ListSitesInput, SitesPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetSite() sdkgo.Query[GetSiteInput, Site] {
+	return operations.client.GetSite()
+}
+func (operations clientOperations) QuerySearchAnalytics() sdkgo.Query[QuerySearchAnalyticsInput, SearchAnalyticsResult] {
+	return operations.client.QuerySearchAnalytics()
+}
+func (operations clientOperations) ListSitemaps() sdkgo.Query[ListSitemapsInput, SitemapsPage] {
+	return operations.client.ListSitemaps()
+}
+func (operations clientOperations) GetSitemap() sdkgo.Query[GetSitemapInput, Sitemap] {
+	return operations.client.GetSitemap()
+}
+func (operations clientOperations) InspectURL() sdkgo.Query[InspectURLInput, URLInspectionResult] {
+	return operations.client.InspectURL()
+}
 func (operations clientOperations) ListSites() sdkgo.Query[ListSitesInput, SitesPage] {
 	return operations.client.ListSites()
 }
@@ -189,9 +210,10 @@ func (Connection) GoString() string { return "searchconsole.Connection{[REDACTED
 
 func DefaultConfig() Config {
 	return Config{
-		BaseURL:          "https://www.googleapis.com",
-		Timeout:          time.Duration(15000000000),
-		MaxResponseBytes: 1048576,
+		BaseURL:           "https://www.googleapis.com",
+		Timeout:           time.Duration(15000000000),
+		MaxResponseBytes:  1048576,
+		InspectionBaseURL: "https://searchconsole.googleapis.com",
 	}
 }
 
@@ -205,6 +227,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.InspectionBaseURL == "" {
+		config.InspectionBaseURL = defaults.InspectionBaseURL
 	}
 	return config
 }
@@ -221,6 +246,12 @@ func (config Config) Validate() error {
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.InspectionBaseURL != "" {
+		parsed, err := url.Parse(config.InspectionBaseURL)
+		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
+			return fmt.Errorf("configuration inspectionBaseUrl must be an absolute URL")
+		}
 	}
 	return nil
 }
@@ -250,6 +281,391 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetSiteBranchFound sdkgo.BranchID = "found"
+const GetSiteBranchNotFound sdkgo.BranchID = "notFound"
+const GetSiteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSiteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSiteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSiteDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSite"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSiteBranchFound, Description: "Google returned the property."},
+		{ID: GetSiteBranchNotFound, Description: "The property is not accessible.", Optional: true},
+		{ID: GetSiteBranchProviderRejected, Description: "Google conclusively rejected the read.", Optional: true},
+		{ID: GetSiteBranchInvalidResponse, Description: "Google returned malformed property JSON.", Optional: true},
+		{ID: GetSiteBranchDefect, Description: "Local property URL or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSiteResult = sdkgo.QueryResult[Site]
+
+type GetSiteStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=google-search-console"`
+	operationID                    struct{}                                `connector:"operationId=getSite"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSiteInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSiteResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSiteResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSiteResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSiteResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSiteResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Site]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetSiteStep[IN any](config GetSiteStepConfig[IN]) sdkgo.QueryStep[IN, GetSiteInput, Site] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-search-console connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSiteInput, Site]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSite(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSiteResult] {
+			branches := make([]sdkgo.BranchTarget[GetSiteResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSiteBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSiteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSiteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSiteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSiteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const QuerySearchAnalyticsBranchQueried sdkgo.BranchID = "queried"
+const QuerySearchAnalyticsBranchNotFound sdkgo.BranchID = "notFound"
+const QuerySearchAnalyticsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const QuerySearchAnalyticsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const QuerySearchAnalyticsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var QuerySearchAnalyticsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "querySearchAnalytics"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: QuerySearchAnalyticsBranchQueried, Description: "Google returned search performance rows."},
+		{ID: QuerySearchAnalyticsBranchNotFound, Description: "The property is not accessible.", Optional: true},
+		{ID: QuerySearchAnalyticsBranchProviderRejected, Description: "Google conclusively rejected the query.", Optional: true},
+		{ID: QuerySearchAnalyticsBranchInvalidResponse, Description: "Google returned malformed analytics JSON.", Optional: true},
+		{ID: QuerySearchAnalyticsBranchDefect, Description: "Local property, date, row input, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type QuerySearchAnalyticsResult = sdkgo.QueryResult[SearchAnalyticsResult]
+
+type QuerySearchAnalyticsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                 `connector:"connectorId=google-search-console"`
+	operationID                    struct{}                                                 `connector:"operationId=querySearchAnalytics"`
+	StepType                       string                                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                     Connection                                               `connector:"connection"`
+	ConnectionName                 string                                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) QuerySearchAnalyticsInput                       `connector:"mapToOperationInput"`
+	Queried                        sdkgo.Target[QuerySearchAnalyticsResult]                 `connector:"branch=queried"`
+	NotFound                       sdkgo.Target[QuerySearchAnalyticsResult]                 `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[QuerySearchAnalyticsResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[QuerySearchAnalyticsResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[QuerySearchAnalyticsResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SearchAnalyticsResult]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewQuerySearchAnalyticsStep[IN any](config QuerySearchAnalyticsStepConfig[IN]) sdkgo.QueryStep[IN, QuerySearchAnalyticsInput, SearchAnalyticsResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-search-console connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QuerySearchAnalyticsInput, SearchAnalyticsResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.QuerySearchAnalytics(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[QuerySearchAnalyticsResult] {
+			branches := make([]sdkgo.BranchTarget[QuerySearchAnalyticsResult], 0, 5)
+			if config.Queried.HasStep() {
+				branches = append(branches, config.Queried.BranchTarget(QuerySearchAnalyticsBranchQueried))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(QuerySearchAnalyticsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(QuerySearchAnalyticsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(QuerySearchAnalyticsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(QuerySearchAnalyticsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSitemapsBranchListed sdkgo.BranchID = "listed"
+const ListSitemapsBranchNotFound sdkgo.BranchID = "notFound"
+const ListSitemapsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSitemapsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSitemapsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSitemapsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSitemaps"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSitemapsBranchListed, Description: "Google returned the sitemaps."},
+		{ID: ListSitemapsBranchNotFound, Description: "The property is not accessible.", Optional: true},
+		{ID: ListSitemapsBranchProviderRejected, Description: "Google conclusively rejected the list.", Optional: true},
+		{ID: ListSitemapsBranchInvalidResponse, Description: "Google returned malformed sitemap JSON.", Optional: true},
+		{ID: ListSitemapsBranchDefect, Description: "Local property URL or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSitemapsResult = sdkgo.QueryResult[SitemapsPage]
+
+type ListSitemapsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=google-search-console"`
+	operationID                    struct{}                                        `connector:"operationId=listSitemaps"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSitemapsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSitemapsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListSitemapsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListSitemapsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSitemapsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSitemapsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SitemapsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListSitemapsStep[IN any](config ListSitemapsStepConfig[IN]) sdkgo.QueryStep[IN, ListSitemapsInput, SitemapsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-search-console connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSitemapsInput, SitemapsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSitemaps(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSitemapsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSitemapsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSitemapsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListSitemapsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSitemapsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSitemapsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSitemapsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSitemapBranchFound sdkgo.BranchID = "found"
+const GetSitemapBranchNotFound sdkgo.BranchID = "notFound"
+const GetSitemapBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSitemapBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSitemapBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSitemapDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSitemap"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSitemapBranchFound, Description: "Google returned the sitemap."},
+		{ID: GetSitemapBranchNotFound, Description: "The sitemap is not submitted.", Optional: true},
+		{ID: GetSitemapBranchProviderRejected, Description: "Google conclusively rejected the read.", Optional: true},
+		{ID: GetSitemapBranchInvalidResponse, Description: "Google returned malformed sitemap JSON.", Optional: true},
+		{ID: GetSitemapBranchDefect, Description: "Local property or sitemap URL or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSitemapResult = sdkgo.QueryResult[Sitemap]
+
+type GetSitemapStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=google-search-console"`
+	operationID                    struct{}                                   `connector:"operationId=getSitemap"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSitemapInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSitemapResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSitemapResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSitemapResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSitemapResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSitemapResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Sitemap]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetSitemapStep[IN any](config GetSitemapStepConfig[IN]) sdkgo.QueryStep[IN, GetSitemapInput, Sitemap] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-search-console connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSitemapInput, Sitemap]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSitemap(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSitemapResult] {
+			branches := make([]sdkgo.BranchTarget[GetSitemapResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSitemapBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSitemapBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSitemapBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSitemapBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSitemapBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const InspectURLBranchInspected sdkgo.BranchID = "inspected"
+const InspectURLBranchNotFound sdkgo.BranchID = "notFound"
+const InspectURLBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const InspectURLBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const InspectURLBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var InspectURLDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "inspectURL"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: InspectURLBranchInspected, Description: "Google returned the indexed URL status."},
+		{ID: InspectURLBranchNotFound, Description: "The property or URL is not accessible.", Optional: true},
+		{ID: InspectURLBranchProviderRejected, Description: "Google conclusively rejected the inspection.", Optional: true},
+		{ID: InspectURLBranchInvalidResponse, Description: "Google returned malformed inspection JSON.", Optional: true},
+		{ID: InspectURLBranchDefect, Description: "Local property or page URL or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type InspectURLResult = sdkgo.QueryResult[URLInspectionResult]
+
+type InspectURLStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=google-search-console"`
+	operationID                    struct{}                                               `connector:"operationId=inspectURL"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) InspectURLInput                               `connector:"mapToOperationInput"`
+	Inspected                      sdkgo.Target[InspectURLResult]                         `connector:"branch=inspected"`
+	NotFound                       sdkgo.Target[InspectURLResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[InspectURLResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[InspectURLResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[InspectURLResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[URLInspectionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewInspectURLStep[IN any](config InspectURLStepConfig[IN]) sdkgo.QueryStep[IN, InspectURLInput, URLInspectionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-search-console connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, InspectURLInput, URLInspectionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.InspectURL(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[InspectURLResult] {
+			branches := make([]sdkgo.BranchTarget[InspectURLResult], 0, 5)
+			if config.Inspected.HasStep() {
+				branches = append(branches, config.Inspected.BranchTarget(InspectURLBranchInspected))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(InspectURLBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(InspectURLBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(InspectURLBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(InspectURLBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListSitesBranchListed sdkgo.BranchID = "listed"

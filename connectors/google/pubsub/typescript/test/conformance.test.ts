@@ -8,7 +8,8 @@ import { PubSubClient } from '../src/client.js';
 import { ListTopicsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/pubsub/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/pubsub/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listTopics');
 const connection = { provider: 'google-pubsub', name: 'google-pubsub' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePubSub, ''));
 
