@@ -1,0 +1,64 @@
+{
+  "connectorId": "enlvon",
+  "releaseTag": "connectors/enlvon/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-enlvon",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_search_policies_step",
+      "kind": "query",
+      "operationId": "searchPolicies",
+      "inputType": "SearchPoliciesInput",
+      "description": "Search electricity policy cards by natural-language query.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchPoliciesInput contains a natural-language electricity policy query and bounded result count.",
+        "properties": {
+          "query": {
+            "description": "Query is a nonempty natural-language electricity policy search.",
+            "type": "string"
+          },
+          "topK": {
+            "description": "TopK is the number of cards from 1 to 50; zero uses the provider's documented default of 10.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

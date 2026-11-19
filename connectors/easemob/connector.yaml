@@ -9,6 +9,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: easemob
+  languages:
+    python:
+      version: v0.1.0
+      operations: [getUserDetail]
+      triggers: []
   codegen:
     go:
       package: easemob
