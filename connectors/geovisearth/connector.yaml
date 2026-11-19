@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: geovisearth
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-geovisearth"
+      operations: [getCurrentWeather]
+      triggers: []
   codegen:
     go:
       package: geovisearth
