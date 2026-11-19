@@ -261,24 +261,18 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		}
 		return bucketMutationRetry("createBucket", sdkgo.FailureRateLimit, "Google deferred bucket creation", response.retryAfter)
 	}
-	if response.status == http.StatusConflict && response.err == nil && isDefiniteBucketNameConflict(response.body) {
-		if decision.MaximumPriorSends == 0 {
-			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
-				return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket refusal checkpoint is unavailable", 0)
-			}
-			return bucketMutationBranch("createBucket", "nameTaken", Bucket{}, sdkgo.FailureProviderRejection, "bucket name is already in use")
-		}
-		bucket, isConfirmed, isInconclusive := operation.readBackCreatedBucket(call, input)
+	if response.status == http.StatusConflict {
+		bucket, isConfirmed, _ := operation.readBackCreatedBucket(call, input)
 		if isConfirmed {
 			return sdkgo.NewMutationBranch(CreateBucketBranchCreated, bucket, nil, sdkgo.Receipt{})
 		}
 		if decision.MaximumPriorSends+1 >= call.MaxSends() {
 			return bucketCreateUncertain("bucket creation cannot be confirmed after conflict")
 		}
-		if decision.MaximumPriorSends+1 < call.MaxSends() {
-			return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "an earlier bucket creation may have succeeded", response.retryAfter)
+		if isDefiniteBucketNameConflict(response.body) {
+			return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket name conflict does not confirm creation", response.retryAfter)
 		}
-		return bucketCreateUncertain("an earlier bucket creation may have succeeded")
+		return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket creation cannot be confirmed after conflict", response.retryAfter)
 	}
 	if response.err != nil || response.status >= 500 || response.status == http.StatusRequestTimeout {
 		if decision.MaximumPriorSends+1 >= call.MaxSends() {
@@ -342,9 +336,10 @@ func isDefiniteGoogleStorageRefusal(status int, body []byte) bool {
 			Code    int    `json:"code"`
 			Message string `json:"message"`
 		} `json:"error"`
-		ID any `json:"id"`
+		ID   any `json:"id"`
+		Name any `json:"name"`
 	}
-	return json.Unmarshal(body, &refusal) == nil && refusal.Error.Code == status && refusal.Error.Message != "" && refusal.ID == nil
+	return json.Unmarshal(body, &refusal) == nil && refusal.Error.Code == status && refusal.Error.Message != "" && refusal.ID == nil && refusal.Name == nil
 }
 
 func (operation CreateBucketOperation) readBackCreatedBucket(call sdkgo.Call, input CreateBucketInput) (Bucket, bool, bool) {

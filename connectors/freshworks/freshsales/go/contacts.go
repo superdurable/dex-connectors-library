@@ -135,7 +135,7 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 		return contactChangeBranch(UpdateContactBranchDefect, sdkgo.FailureValidation, "contact ID or name is invalid")
 	}
 	body, status, delay, err := operation.client.requestJSON(call, call.Context, http.MethodPut, "/contacts/"+input.ContactID, map[string]any{"contact": map[string]string{"first_name": input.FirstName, "last_name": input.LastName}})
-	if attempt := classifyContactChange(status, delay, err); attempt != nil {
+	if attempt := classifyContactChange(body, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	contact, decodeErr := decodeContact(body)
@@ -143,7 +143,7 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 		return contactChangeRetry(sdkgo.FailureProtocol, "contact update answer is unconfirmed", 0)
 	}
 	confirmedBody, status, delay, err := operation.client.get(call, "/contacts/"+input.ContactID)
-	if attempt := classifyContactChange(status, delay, err); attempt != nil {
+	if attempt := classifyContactChange(confirmedBody, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	confirmed, decodeErr := decodeContact(confirmedBody)
@@ -169,6 +169,9 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 	case status == http.StatusNotFound || status == http.StatusNoContent:
 		return deletedContactSuccess(call, input.ContactID)
 	case status != http.StatusOK:
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			return deletedContactRetry(sdkgo.FailureAvailability, "contact deletion response does not prove refusal", delay)
+		}
 		return deletedContactBranch(DeleteContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
 	case err != nil:
 		return deletedContactRetry(sdkgo.FailureTransport, "contact deletion response interrupted", 0)
@@ -208,7 +211,7 @@ func decodeContactsPage(body []byte, pageNumber int) (ContactsPage, error) {
 	return page, nil
 }
 
-func classifyContactChange(status int, delay time.Duration, err error) *sdkgo.MutationAttempt[ContactMetadata] {
+func classifyContactChange(body []byte, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[ContactMetadata] {
 	var attempt sdkgo.MutationAttempt[ContactMetadata]
 	switch {
 	case errors.Is(err, errCredential):
@@ -217,10 +220,14 @@ func classifyContactChange(status int, delay time.Duration, err error) *sdkgo.Mu
 		attempt = contactChangeRetry(sdkgo.FailureRateLimit, "Freshsales rate limited contact update", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		attempt = contactChangeRetry(sdkgo.FailureAvailability, "contact update outcome unconfirmed", delay)
-	case status == http.StatusNotFound:
+	case status == http.StatusNotFound && err == nil && isDefiniteFreshsalesRefusal(status, body):
 		attempt = contactChangeBranch(UpdateContactBranchNotFound, sdkgo.FailureNotFound, "Freshsales did not find contact")
 	case status != http.StatusOK:
-		attempt = contactChangeBranch(UpdateContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			attempt = contactChangeRetry(sdkgo.FailureAvailability, "contact update response does not prove refusal", delay)
+		} else {
+			attempt = contactChangeBranch(UpdateContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
+		}
 	case errors.Is(err, providerhttp.ErrBodyTooLarge):
 		attempt = contactChangeRetry(sdkgo.FailureResponseTooLarge, "contact update response exceeded limit", 0)
 	case err != nil:

@@ -264,7 +264,7 @@ func (operation DeleteEventOperation) Invoke(call sdkgo.Call, input DeleteEventI
 		return deleteEventRetry(sdkgo.FailureProtocol, "Eventbrite deletion answer could not be confirmed", 0)
 	}
 	if !*answer.Deleted {
-		return deleteEventBranch(DeleteEventBranchProviderRejected, sdkgo.FailureProviderRejection, "Eventbrite did not delete the event")
+		return deleteEventRetry(sdkgo.FailureProtocol, "Eventbrite did not confirm event deletion", 0)
 	}
 	return deleteEventSuccess(call, input.EventID)
 }

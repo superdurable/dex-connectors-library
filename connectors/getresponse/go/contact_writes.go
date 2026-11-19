@@ -234,7 +234,6 @@ type createContactDispatch struct {
 	payload    []byte
 	body       []byte
 	status     int
-	body       []byte
 	retryAfter time.Duration
 }
 

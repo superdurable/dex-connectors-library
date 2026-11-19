@@ -183,7 +183,7 @@ func (operation UpdateSalesActivityOperation) Invoke(call sdkgo.Call, input Upda
 	}
 	path := "/sales_activities/" + input.SalesActivityID
 	body, status, delay, err := operation.client.requestJSON(call, call.Context, http.MethodPut, path, map[string]any{"sales_activity": map[string]string{"title": input.Title}})
-	if attempt := classifySalesActivityUpdate("updateSalesActivity", status, delay, err); attempt != nil {
+	if attempt := classifySalesActivityUpdate("updateSalesActivity", body, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	updated, decodeErr := decodeSalesActivity(body)
@@ -191,7 +191,7 @@ func (operation UpdateSalesActivityOperation) Invoke(call sdkgo.Call, input Upda
 		return createRetry[SalesActivityMetadata]("updateSalesActivity", sdkgo.FailureProtocol, "sales activity update answer unconfirmed", 0)
 	}
 	confirmedBody, status, delay, err := operation.client.get(call, path)
-	if attempt := classifySalesActivityUpdate("updateSalesActivity", status, delay, err); attempt != nil {
+	if attempt := classifySalesActivityUpdate("updateSalesActivity", confirmedBody, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	confirmed, decodeErr := decodeSalesActivity(confirmedBody)
@@ -210,7 +210,7 @@ func (operation DeleteSalesActivityOperation) Invoke(call sdkgo.Call, input Dele
 	return invokeNamedDelete(operation.client, call, "deleteSalesActivity", "/sales_activities/"+input.SalesActivityID, id, DeleteSalesActivityBranchDeleted, DeleteSalesActivityBranchProviderRejected, DeleteSalesActivityBranchDefect)
 }
 
-func classifySalesActivityUpdate(operation string, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[SalesActivityMetadata] {
+func classifySalesActivityUpdate(operation string, body []byte, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[SalesActivityMetadata] {
 	var attempt sdkgo.MutationAttempt[SalesActivityMetadata]
 	switch {
 	case errors.Is(err, errCredential):
@@ -219,10 +219,14 @@ func classifySalesActivityUpdate(operation string, status int, delay time.Durati
 		attempt = createRetry[SalesActivityMetadata](operation, sdkgo.FailureRateLimit, "Freshsales rate limited sales activity update", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		attempt = createRetry[SalesActivityMetadata](operation, sdkgo.FailureAvailability, "sales activity update outcome unconfirmed", delay)
-	case status == http.StatusNotFound:
+	case status == http.StatusNotFound && err == nil && isDefiniteFreshsalesRefusal(status, body):
 		attempt = createBranch[SalesActivityMetadata](operation, UpdateSalesActivityBranchNotFound, sdkgo.FailureProviderRejection, "sales activity does not exist")
 	case status != http.StatusOK:
-		attempt = createBranch[SalesActivityMetadata](operation, UpdateSalesActivityBranchProviderRejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			attempt = createRetry[SalesActivityMetadata](operation, sdkgo.FailureAvailability, "sales activity update response does not prove refusal", delay)
+		} else {
+			attempt = createBranch[SalesActivityMetadata](operation, UpdateSalesActivityBranchProviderRejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
+		}
 	case err != nil:
 		attempt = createRetry[SalesActivityMetadata](operation, sdkgo.FailureTransport, "sales activity response interrupted", 0)
 	default:

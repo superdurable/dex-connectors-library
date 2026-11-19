@@ -68,3 +68,15 @@ func TestCreateEventFailClosedDoesNotSend(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 }
+
+func TestDeleteEventFalseAcknowledgementRetries(t *testing.T) {
+	provider := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, err := response.Write([]byte(`{"deleted":false}`))
+		require.NoError(t, err)
+	}))
+	defer provider.Close()
+	ctx := singledispatchtest.NewContext("eventbrite-false-delete", "delete-event")
+	_, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).DeleteEvent(), testConnection, DeleteEventInput{EventID: "12345"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}

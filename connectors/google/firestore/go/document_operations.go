@@ -304,19 +304,16 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input WriteDocu
 		}
 		return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureRateLimit, "Firestore deferred creation", response.retryAfter)
 	}
-	if response.status == http.StatusConflict && response.err == nil && isDefiniteFirestoreConflict(response.body) {
-		if decision.MaximumPriorSends == 0 {
-			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
-				return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureAvailability, "conflict checkpoint is unavailable", 0)
-			}
-			return firestoreMutationBranch("createDocument", "alreadyExists", FirestoreDocument{}, sdkgo.FailureProviderRejection, "document ID already exists")
-		}
+	if response.status == http.StatusConflict {
 		document, confirmed, _ := operation.readBackCreatedDocument(call, input, name, body)
 		if confirmed {
 			return sdkgo.NewMutationBranch(sdkgo.BranchID("created"), withoutFirestoreCreateMarker(document), nil, sdkgo.Receipt{})
 		}
 		if decision.MaximumPriorSends+1 >= call.MaxSends() {
 			return uncertainDocumentCreate()
+		}
+		if isDefiniteFirestoreConflict(response.body) {
+			return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureAvailability, "document ID conflict does not confirm creation", response.retryAfter)
 		}
 		return firestoreMutationRetry[FirestoreDocument]("createDocument", sdkgo.FailureAvailability, "creation could not be confirmed after conflict", 0)
 	}

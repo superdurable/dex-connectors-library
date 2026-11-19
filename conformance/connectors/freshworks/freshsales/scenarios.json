@@ -1932,16 +1932,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "lastName": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1987,16 +1981,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "emailAddress": "",
-          "firstName": "",
-          "id": 0,
-          "lastName": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2386,14 +2374,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "contactId": "",
-          "deleted": false
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4233,14 +4217,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": 0,
-          "name": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4284,14 +4264,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": 0,
-          "name": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4667,14 +4643,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": 0
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6590,14 +6562,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "id": 0,
-          "name": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6641,14 +6609,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": 0,
-          "name": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7024,14 +6988,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": 0
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7860,14 +7820,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "description": "",
-          "id": 0
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7911,14 +7867,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "description": "",
-          "id": 0
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -8294,14 +8246,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": 0
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -9957,16 +9905,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "endDate": "",
-          "fromDate": "",
-          "id": 0,
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10010,16 +9952,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "endDate": "",
-          "fromDate": "",
-          "id": 0,
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10397,14 +10333,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": 0
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -12071,16 +12003,10 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "endDate": "",
-          "id": 0,
-          "startDate": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -12124,16 +12050,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "endDate": "",
-          "id": 0,
-          "startDate": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -12511,14 +12431,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "deleted": false,
-          "id": 0
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

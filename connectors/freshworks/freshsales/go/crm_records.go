@@ -75,7 +75,7 @@ func invokeNamedUpdate(client *Client, call sdkgo.Call, operation, path, envelop
 		return namedBranch(operation, branches.defect, sdkgo.FailureValidation, err.Error())
 	}
 	body, status, delay, err := client.requestJSON(call, call.Context, http.MethodPut, path, map[string]any{envelope: map[string]string{"name": name}})
-	if attempt := classifyNamedUpdate(operation, branches, status, delay, err); attempt != nil {
+	if attempt := classifyNamedUpdate(operation, branches, body, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	updated, decodeErr := decodeCRMRecord(body, envelope)
@@ -83,7 +83,7 @@ func invokeNamedUpdate(client *Client, call sdkgo.Call, operation, path, envelop
 		return namedRetry(operation, sdkgo.FailureProtocol, "update answer is unconfirmed", 0)
 	}
 	confirmedBody, status, delay, err := client.get(call, path)
-	if attempt := classifyNamedUpdate(operation, branches, status, delay, err); attempt != nil {
+	if attempt := classifyNamedUpdate(operation, branches, confirmedBody, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	confirmed, decodeErr := decodeCRMRecord(confirmedBody, envelope)
@@ -105,6 +105,9 @@ func invokeNamedDelete(client *Client, call sdkgo.Call, operation, path string, 
 	case status == http.StatusNotFound || status == http.StatusNoContent:
 		return sdkgo.NewMutationBranch(success, DeletedCRMRecord{ID: id, Deleted: true}, nil, createReceipt(call, strconv.FormatInt(id, 10)))
 	case status != http.StatusOK:
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			return deletedNamedRetry(operation, sdkgo.FailureAvailability, "deletion response does not prove refusal", delay)
+		}
 		return deletedNamedBranch(operation, rejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
 	case err != nil:
 		return deletedNamedRetry(operation, sdkgo.FailureTransport, "deletion response interrupted", 0)
@@ -177,7 +180,7 @@ func decodeCRMRecordsPage(body []byte, envelope string, pageNumber int) (CRMReco
 	return page, nil
 }
 
-func classifyNamedUpdate(operation string, branches namedRecordBranches, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[CRMRecordMetadata] {
+func classifyNamedUpdate(operation string, branches namedRecordBranches, body []byte, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[CRMRecordMetadata] {
 	var attempt sdkgo.MutationAttempt[CRMRecordMetadata]
 	switch {
 	case errors.Is(err, errCredential):
@@ -186,10 +189,14 @@ func classifyNamedUpdate(operation string, branches namedRecordBranches, status 
 		attempt = namedRetry(operation, sdkgo.FailureRateLimit, "Freshsales rate limited update", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		attempt = namedRetry(operation, sdkgo.FailureAvailability, "update outcome unconfirmed", delay)
-	case status == http.StatusNotFound:
+	case status == http.StatusNotFound && err == nil && isDefiniteFreshsalesRefusal(status, body):
 		attempt = namedBranch(operation, branches.notFound, sdkgo.FailureNotFound, "Freshsales did not find record")
 	case status != http.StatusOK:
-		attempt = namedBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			attempt = namedRetry(operation, sdkgo.FailureAvailability, "update response does not prove refusal", delay)
+		} else {
+			attempt = namedBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
+		}
 	case err != nil:
 		attempt = namedRetry(operation, sdkgo.FailureTransport, "update response interrupted", 0)
 	default:

@@ -178,7 +178,7 @@ func (operation UpdateAppointmentOperation) Invoke(call sdkgo.Call, input Update
 	}
 	path := "/appointments/" + input.AppointmentID
 	body, status, delay, err := operation.client.requestJSON(call, call.Context, http.MethodPut, path, map[string]any{"appointment": map[string]string{"title": input.Title}})
-	if attempt := classifyAppointmentUpdate("updateAppointment", status, delay, err); attempt != nil {
+	if attempt := classifyAppointmentUpdate("updateAppointment", body, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	updated, decodeErr := decodeAppointment(body)
@@ -186,7 +186,7 @@ func (operation UpdateAppointmentOperation) Invoke(call sdkgo.Call, input Update
 		return createRetry[AppointmentMetadata]("updateAppointment", sdkgo.FailureProtocol, "appointment update answer unconfirmed", 0)
 	}
 	confirmedBody, status, delay, err := operation.client.get(call, path)
-	if attempt := classifyAppointmentUpdate("updateAppointment", status, delay, err); attempt != nil {
+	if attempt := classifyAppointmentUpdate("updateAppointment", confirmedBody, status, delay, err); attempt != nil {
 		return *attempt
 	}
 	confirmed, decodeErr := decodeAppointment(confirmedBody)
@@ -205,7 +205,7 @@ func (operation DeleteAppointmentOperation) Invoke(call sdkgo.Call, input Delete
 	return invokeNamedDelete(operation.client, call, "deleteAppointment", "/appointments/"+input.AppointmentID, id, DeleteAppointmentBranchDeleted, DeleteAppointmentBranchProviderRejected, DeleteAppointmentBranchDefect)
 }
 
-func classifyAppointmentUpdate(operation string, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[AppointmentMetadata] {
+func classifyAppointmentUpdate(operation string, body []byte, status int, delay time.Duration, err error) *sdkgo.MutationAttempt[AppointmentMetadata] {
 	var attempt sdkgo.MutationAttempt[AppointmentMetadata]
 	switch {
 	case errors.Is(err, errCredential):
@@ -214,10 +214,14 @@ func classifyAppointmentUpdate(operation string, status int, delay time.Duration
 		attempt = createRetry[AppointmentMetadata](operation, sdkgo.FailureRateLimit, "Freshsales rate limited appointment update", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		attempt = createRetry[AppointmentMetadata](operation, sdkgo.FailureAvailability, "appointment update outcome unconfirmed", delay)
-	case status == http.StatusNotFound:
+	case status == http.StatusNotFound && err == nil && isDefiniteFreshsalesRefusal(status, body):
 		attempt = createBranch[AppointmentMetadata](operation, UpdateAppointmentBranchNotFound, sdkgo.FailureProviderRejection, "appointment does not exist")
 	case status != http.StatusOK:
-		attempt = createBranch[AppointmentMetadata](operation, UpdateAppointmentBranchProviderRejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			attempt = createRetry[AppointmentMetadata](operation, sdkgo.FailureAvailability, "appointment update response does not prove refusal", delay)
+		} else {
+			attempt = createBranch[AppointmentMetadata](operation, UpdateAppointmentBranchProviderRejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
+		}
 	case err != nil:
 		attempt = createRetry[AppointmentMetadata](operation, sdkgo.FailureTransport, "appointment response interrupted", 0)
 	default:

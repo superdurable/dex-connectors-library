@@ -105,9 +105,12 @@ func (operation UpdateNoteOperation) Invoke(call sdkgo.Call, input UpdateNoteInp
 		return createRetry[NoteMetadata]("updateNote", sdkgo.FailureRateLimit, "Freshsales rate limited note update", delay)
 	case status == http.StatusRequestTimeout || status >= 500 || errors.Is(err, errRequest):
 		return createRetry[NoteMetadata]("updateNote", sdkgo.FailureAvailability, "note update outcome unconfirmed", delay)
-	case status == http.StatusNotFound:
+	case status == http.StatusNotFound && err == nil && isDefiniteFreshsalesRefusal(status, body):
 		return createBranch[NoteMetadata]("updateNote", UpdateNoteBranchNotFound, sdkgo.FailureProviderRejection, "note does not exist")
 	case status != http.StatusOK:
+		if err != nil || !isDefiniteFreshsalesRefusal(status, body) {
+			return createRetry[NoteMetadata]("updateNote", sdkgo.FailureAvailability, "note update response does not prove refusal", delay)
+		}
 		return createBranch[NoteMetadata]("updateNote", UpdateNoteBranchProviderRejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
 	case err != nil:
 		return createRetry[NoteMetadata]("updateNote", sdkgo.FailureTransport, "note update response interrupted", 0)
