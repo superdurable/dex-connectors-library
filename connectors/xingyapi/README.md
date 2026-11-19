@@ -7,3 +7,5 @@ Sign in at the [developer console](https://open.xingyapi.com), create or select 
 The Query returns only `isOnline` and the decimal `accountID` string when online. It discards the API's name, mobile, email, and other personal fields. A `code=50001` response with the documented no-account message becomes offline. Transient errors retry; authentication, permission, and malformed responses do not. The Key and provider message never enter Flow output or failures. Redirects are disabled.
 
 Run the [instance online status Flow](go/examples/get-instance-online-status) with `dexcli dev`. The mock covers the typed Dex Step and persistence path. A live XingyAPI Key, managed instance, and account-specific permissions have not been verified.
+
+The [TypeScript package](typescript/README.md) implements `getInstanceOnlineStatus` with a [runnable Dex Flow](typescript/examples/basic/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.

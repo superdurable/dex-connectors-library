@@ -1,0 +1,60 @@
+{
+  "connectorId": "xingyapi",
+  "releaseTag": "connectors/xingyapi/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-xingyapi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetInstanceOnlineStatusStep",
+      "kind": "query",
+      "operationId": "getInstanceOnlineStatus",
+      "inputType": "GetInstanceOnlineStatusInput",
+      "description": "Check a managed Enterprise WeChat instance's login status.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "checked",
+          "field": "checked",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetInstanceOnlineStatusInput identifies an existing managed Enterprise WeChat instance.",
+        "properties": {
+          "instanceGUID": {
+            "description": "InstanceGUID is the inst_xxxx identifier shown on the provider's 实例 page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instanceGUID"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
