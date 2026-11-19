@@ -958,6 +958,10 @@ func (manifest Manifest) Validate() error {
 		if operation.Kind == "query" && branches["uncertain"] {
 			problems = append(problems, operation.Name+": query cannot declare uncertain")
 		}
+		// The at-cap path of a limited or unsafe write needs a branch to select.
+		if operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() != RepeatOnUnknownSafe && !branches["uncertain"] {
+			problems = append(problems, operation.Name+": a limited or unsafe mutation must declare an uncertain branch")
+		}
 		if operation.MockChecks != nil {
 			if len(operation.Mocks) == 0 {
 				problems = append(problems, operation.Name+": mockChecks requires the operation to declare mocks, because only the generated mock package runs them")
