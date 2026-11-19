@@ -9,3 +9,5 @@ The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `Con
 Provider contract: [official developer documentation](https://fireworks-simulator.huo15.com/square). Real provider authorization is unverified without a customer-controlled Key.
 
 The [Python package](python/) implements `listModels` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
+
+The [TypeScript package](typescript/) implements the same Query and Go-recorded scenarios. Its runnable Flow tests retry and persistence against a real Dex Worker and Client.
