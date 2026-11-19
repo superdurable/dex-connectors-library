@@ -1,0 +1,509 @@
+{
+  "connector": "lianlianpay",
+  "scenarios": [
+    {
+      "callId": "20000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"ret_code\":\"0000\",\"txn_seqno\":\"ORDER123\",\"txn_status\":\"SUCCESS\",\"user_id\":\"private payer\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "merchantOrderId": "ORDER123",
+          "status": "SUCCESS"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-found",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"ret_code\":\"9999\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "merchantOrderId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-providerRejected",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"ret_code\":\"0000\",\"txn_seqno\":\"ORDER123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "merchantOrderId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-invalidResponse",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "merchantOrderId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": " "
+      },
+      "name": "queryPaymentStatus-defect",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-429",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-503",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-transport",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"ret_code\":\"0000\",\"txn_seqno\":\"ORDER123\",\"txn_status\":\"SUCCESS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "merchantOrderId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-oversized",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "merchantOrderId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-unauthorized",
+      "operation": "queryPaymentStatus"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"ret_code\":\"0000\",\"txn_seqno\":\"OTHER\",\"txn_status\":\"SUCCESS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/query/mch/v1/accp/txn/order-query",
+          "requestBody": {
+            "mch_id": "2020042200284052",
+            "txn_seqno": "ORDER123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Mch_id": [
+              "2020042200284052"
+            ],
+            "Signature-Data": [
+              "q+e8cyYNs1Yim+OoRu6d+bq+PJE5LKxbOFvDvjVZqI3y8tOCykmR46crZVBZcaQwhhNgwcH5RSgPd3HgMKOdcO2hbTn6N21hEBelhNFoXu6G1l7pdC2H0CqN0z2uNxnH2A0kgaL41VxIB0EPLko4vVZqe4TvF0xEJjCKhoRpJIY="
+            ],
+            "Signature-Type": [
+              "RSA"
+            ],
+            "Timestamp": [
+              "20260101080000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "merchantOrderId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "merchantOrderId": "ORDER123"
+      },
+      "name": "queryPaymentStatus-wrongOrder",
+      "operation": "queryPaymentStatus"
+    }
+  ],
+  "schemaVersion": 1
+}
