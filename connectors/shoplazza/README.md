@@ -15,3 +15,7 @@ GOWORK=off go vet ./...
 ```
 
 Provider tests use a local HTTP server. The example integration test uses a real Dex dev server and generated provider mock. Live Shoplazza authorization, `read_shop` grant, token rotation, and API behavior need verification with a user-controlled store connection.
+
+## TypeScript
+
+`@superdurable/connector-shoplazza` provides the `getShop` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
