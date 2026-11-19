@@ -1265,7 +1265,7 @@
       "callId": "ed8c802e-9694-5543-bb90-110354d3532e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"NOT_FOUND\",\"error_description\":\"Resource not found\",\"status_code\":404}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1305,7 +1305,7 @@
       "callId": "ed8c802e-9694-5543-bb90-110354d3532e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Request rejected\",\"status_code\":403}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1655,7 +1655,7 @@
       "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid event request\",\"status_code\":400}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1760,7 +1760,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -1768,15 +1768,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
       "input": {
@@ -2290,7 +2285,7 @@
       "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"NOT_FOUND\",\"error_description\":\"Source event not found\",\"status_code\":404}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2335,7 +2330,7 @@
       "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid copy request\",\"status_code\":400}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2397,7 +2392,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -2405,15 +2400,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": "",
-          "name": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
       "input": {
@@ -2941,7 +2931,7 @@
       "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"NOT_FOUND\",\"error_description\":\"Resource not found\",\"status_code\":404}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2982,7 +2972,7 @@
       "callId": "011b7b8c-b978-54ba-9a45-081fc1e3b61b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Request rejected\",\"status_code\":403}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -3404,7 +3394,7 @@
       "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"NOT_FOUND\",\"error_description\":\"Resource not found\",\"status_code\":404}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -3444,7 +3434,7 @@
       "callId": "43aeb6c6-20d3-500a-b371-e291cbcbd699",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Request rejected\",\"status_code\":403}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -3848,7 +3838,7 @@
       "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"NOT_FOUND\",\"error_description\":\"Resource not found\",\"status_code\":404}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -3888,7 +3878,7 @@
       "callId": "f9014a06-c9af-5ba2-a8ab-6493c0bc43f7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Request rejected\",\"status_code\":403}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4258,7 +4248,7 @@
       "callId": "56b69387-69c8-5785-82e1-1682a72dd676",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Request rejected\",\"status_code\":400}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7042,7 +7032,7 @@
       "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"NOT_FOUND\",\"error_description\":\"Resource not found\",\"status_code\":404}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7093,7 +7083,7 @@
       "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Request rejected\",\"status_code\":400}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7453,7 +7443,7 @@
       "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid ticket class\",\"status_code\":400}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7538,7 +7528,7 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -7546,16 +7536,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "eventId": "",
-          "id": "",
-          "name": "",
-          "quantityTotal": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
       "input": {

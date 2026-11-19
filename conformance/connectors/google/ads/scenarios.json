@@ -1180,7 +1180,7 @@
       "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":400,\"message\":\"Invalid campaign\",\"status\":\"INVALID_ARGUMENT\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1751,7 +1751,7 @@
       "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":403,\"message\":\"Permission denied\",\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1843,13 +1843,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "resourceName": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2162,7 +2159,7 @@
       "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":403,\"message\":\"Permission denied\",\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2245,13 +2242,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "resourceName": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

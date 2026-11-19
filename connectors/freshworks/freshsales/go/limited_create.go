@@ -5,6 +5,7 @@ package freshsales
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -74,13 +75,16 @@ func invokeLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path
 		return createUncertain[T](call, operation, sdkgo.FailureAvailability, "create outcome unknown after send cap", "")
 	}
 	if status < 200 || status >= 300 {
-		if !isDefiniteFreshsalesRefusal(status) {
+		if sendErr != nil || !isDefiniteFreshsalesRefusal(status, body) {
 			if canResendUnknown {
 				return createRetry[T](operation, sdkgo.FailureAvailability, "create response does not prove refusal", delay)
 			}
 			return createUncertain[T](call, operation, sdkgo.FailureAvailability, "create response remains unknown after send cap", "")
 		}
 		if hasPriorSend {
+			if canResendUnknown {
+				return createRetry[T](operation, sdkgo.FailureProviderRejection, "earlier creation may have succeeded", delay)
+			}
 			return createUncertain[T](call, operation, sdkgo.FailureProviderRejection, "earlier creation may have succeeded", "")
 		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -89,22 +93,35 @@ func invokeLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path
 		return createBranch[T](operation, branches.rejected, sdkgo.FailureProviderRejection, "Freshsales rejected HTTP "+strconv.Itoa(status))
 	}
 	if sendErr != nil {
+		if canResendUnknown {
+			return createRetry[T](operation, sdkgo.FailureProtocol, "created resource identity unavailable", 0)
+		}
 		return createUncertain[T](call, operation, sdkgo.FailureProtocol, "created resource identity unavailable", "")
 	}
 	created, decodeErr := decode(body)
 	if decodeErr != nil || providerID(created) == "" {
+		if canResendUnknown {
+			return createRetry[T](operation, sdkgo.FailureProtocol, "created resource identity unusable", 0)
+		}
 		return createUncertain[T](call, operation, sdkgo.FailureProtocol, "created resource identity unusable", "")
 	}
 	_ = fence.RecordProviderID(providerID(created))
 	return sdkgo.NewMutationBranch(branches.success, created, nil, createReceipt(call, providerID(created)))
 }
 
-func isDefiniteFreshsalesRefusal(status int) bool {
+func isDefiniteFreshsalesRefusal(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		var refusal struct {
+			Errors struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"errors"`
+			ID any `json:"id"`
+		}
+		return json.Unmarshal(body, &refusal) == nil && refusal.ID == nil && refusal.Errors.Code != "" && refusal.Errors.Message != ""
 	default:
 		return false
 	}

@@ -857,7 +857,7 @@
       "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":409,\"message\":\"Document already exists\",\"status\":\"ALREADY_EXISTS\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -983,7 +983,7 @@
       "callId": "6844fcc5-ed6b-5f30-975a-8119b2c364fc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"message\":\"Permission denied\",\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1332,13 +1332,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1356,7 +1353,7 @@
       "callId": "53a2182e-9cbd-5fa8-b04f-939862503975",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"message\":\"Permission denied\",\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1459,7 +1456,7 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "RATE_LIMIT",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1613,7 +1610,7 @@
       "callId": "7aaf816f-d503-5117-99e1-83e565c04cc1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"message\":\"Permission denied\",\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1694,7 +1691,7 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "RATE_LIMIT",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2450,7 +2447,7 @@
           "status": 404
         },
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":409,\"message\":\"Document already exists\",\"status\":\"ALREADY_EXISTS\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2516,7 +2513,7 @@
           "status": 404
         },
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":409,\"message\":\"Document already exists\",\"status\":\"ALREADY_EXISTS\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

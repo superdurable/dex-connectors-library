@@ -75,7 +75,14 @@ func TestContactUpdateDetectsStaleRevision(t *testing.T) {
 
 func TestContactWriteBranchesAndRetries(t *testing.T) {
 	var status atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(int(status.Load())) }))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		code := int(status.Load())
+		w.WriteHeader(code)
+		if code == http.StatusForbidden {
+			_, err := w.Write([]byte(`{"error":{"code":403,"message":"Permission denied","status":"PERMISSION_DENIED"}}`))
+			require.NoError(t, err)
+		}
+	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 	updateInput := UpdateContactInput{ResourceName: "people/c123", Etag: "etag-1", GivenName: "Ada"}

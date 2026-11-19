@@ -166,19 +166,25 @@ func (operation DeleteReleaseOperation) Invoke(call sdkgo.Call, input GetRelease
 		return sdkgo.NewMutationRetry[DeleteReleaseOutput](retry, after)
 	}
 	if response.StatusCode == http.StatusNotFound {
+		if !operation.client.hasDefiniteMutationRefusal(response) {
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureAvailability, "deleteRelease", "release deletion outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteReleaseBranchNotFound, DeleteReleaseOutput{}, failure(sdkgo.FailureNotFound, "deleteRelease", "release not found"), sdkgo.Receipt{})
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent {
+		if !operation.client.hasDefiniteMutationRefusal(response) {
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureAvailability, "deleteRelease", "release deletion outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(DeleteReleaseBranchProviderRejected, DeleteReleaseOutput{}, failure(sdkgo.FailureProviderRejection, "deleteRelease", "GitLab rejected HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
 	}
 	if response.StatusCode == http.StatusOK {
 		body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 		if readErr != nil {
-			return sdkgo.NewMutationBranch(sdkgo.BranchID("invalidResponse"), DeleteReleaseOutput{}, failure(sdkgo.FailureProtocol, "deleteRelease", "release response could not be read"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureProtocol, "deleteRelease", "release response could not be read"), 0)
 		}
 		deleted, decodeErr := decodeRelease(body)
 		if decodeErr != nil || deleted.TagName != input.TagName {
-			return sdkgo.NewMutationBranch(sdkgo.BranchID("invalidResponse"), DeleteReleaseOutput{}, failure(sdkgo.FailureProtocol, "deleteRelease", "GitLab returned invalid release JSON"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureProtocol, "deleteRelease", "GitLab returned invalid release JSON"), 0)
 		}
 	}
 	return sdkgo.NewMutationBranch(DeleteReleaseBranchDeleted, DeleteReleaseOutput{ProjectID: input.ProjectID, TagName: input.TagName}, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "gitlab", ProviderObjectID: input.TagName})

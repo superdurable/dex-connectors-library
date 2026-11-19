@@ -151,6 +151,8 @@ func TestBucketCreationFirstConflictDoesNotClaimExistingBucket(t *testing.T) {
 		case http.MethodPost:
 			postCount.Add(1)
 			w.WriteHeader(http.StatusConflict)
+			_, err := w.Write([]byte(`{"error":{"code":409,"message":"Bucket already exists","errors":[{"reason":"conflict"}]}}`))
+			require.NoError(t, err)
 		case http.MethodGet:
 			getCount.Add(1)
 			_, err := w.Write([]byte(`{"name":"report-bucket","location":"US","projectNumber":"123456789"}`))
@@ -171,7 +173,12 @@ func TestBucketCreationFirstConflictDoesNotClaimExistingBucket(t *testing.T) {
 func TestBucketBranchesAndRetries(t *testing.T) {
 	var status atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(int(status.Load()))
+		code := int(status.Load())
+		w.WriteHeader(code)
+		if code == http.StatusForbidden {
+			_, err := w.Write([]byte(`{"error":{"code":403,"message":"Permission denied"}}`))
+			require.NoError(t, err)
+		}
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)

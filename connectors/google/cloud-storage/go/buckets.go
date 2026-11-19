@@ -261,7 +261,7 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		}
 		return bucketMutationRetry("createBucket", sdkgo.FailureRateLimit, "Google deferred bucket creation", response.retryAfter)
 	}
-	if response.status == http.StatusConflict && response.err == nil {
+	if response.status == http.StatusConflict && response.err == nil && isDefiniteBucketNameConflict(response.body) {
 		if decision.MaximumPriorSends == 0 {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket refusal checkpoint is unavailable", 0)
@@ -275,6 +275,9 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		if isInconclusive {
 			return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket ownership could not be checked", 0)
 		}
+		if decision.MaximumPriorSends+1 < call.MaxSends() {
+			return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "an earlier bucket creation may have succeeded", response.retryAfter)
+		}
 		return bucketCreateUncertain("an earlier bucket creation may have succeeded")
 	}
 	if response.err != nil || response.status >= 500 || response.status == http.StatusRequestTimeout {
@@ -284,13 +287,16 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.status) {
+		if response.err != nil || !isDefiniteGoogleStorageRefusal(response.status, response.body) {
 			if decision.MaximumPriorSends+1 >= call.MaxSends() {
 				return bucketCreateUncertain("bucket creation outcome is unknown after the send cap")
 			}
 			return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket response does not prove refusal", response.retryAfter)
 		}
 		if decision.MaximumPriorSends > 0 {
+			if decision.MaximumPriorSends+1 < call.MaxSends() {
+				return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "an earlier bucket creation may have succeeded", response.retryAfter)
+			}
 			return bucketCreateUncertain("an earlier bucket creation may have succeeded")
 		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
@@ -303,6 +309,42 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		return bucketMutationRetry("createBucket", sdkgo.FailureProtocol, "Google returned invalid bucket creation metadata", 0)
 	}
 	return sdkgo.NewMutationBranch(CreateBucketBranchCreated, bucket, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteBucketNameConflict(body []byte) bool {
+	var refusal struct {
+		Error struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+			Errors  []struct {
+				Reason string `json:"reason"`
+			} `json:"errors"`
+		} `json:"error"`
+		ID any `json:"id"`
+	}
+	if json.Unmarshal(body, &refusal) != nil || refusal.Error.Code != http.StatusConflict || refusal.Error.Message == "" || refusal.ID != nil {
+		return false
+	}
+	for _, providerError := range refusal.Error.Errors {
+		if providerError.Reason == "conflict" || providerError.Reason == "alreadyExists" {
+			return true
+		}
+	}
+	return false
+}
+
+func isDefiniteGoogleStorageRefusal(status int, body []byte) bool {
+	if !isDefiniteRefusalStatus(status) {
+		return false
+	}
+	var refusal struct {
+		Error struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+		ID any `json:"id"`
+	}
+	return json.Unmarshal(body, &refusal) == nil && refusal.Error.Code == status && refusal.Error.Message != "" && refusal.ID == nil
 }
 
 func (operation CreateBucketOperation) readBackCreatedBucket(call sdkgo.Call, input CreateBucketInput) (Bucket, bool, bool) {
@@ -355,13 +397,16 @@ func (operation UpdateBucketLabelsOperation) Invoke(call sdkgo.Call, input Updat
 	if errors.Is(response.err, errCredential) {
 		return bucketMutationBranch("updateBucketLabels", "defect", Bucket{}, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
-	if response.status == http.StatusNotFound && response.err == nil {
+	if response.status == http.StatusNotFound && response.err == nil && isDefiniteGoogleStorageRefusal(response.status, response.body) {
 		return bucketMutationBranch("updateBucketLabels", "notFound", Bucket{}, sdkgo.FailureProviderRejection, "bucket was not found")
 	}
 	if response.err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
 		return bucketMutationRetry("updateBucketLabels", sdkgo.FailureAvailability, "bucket label update is temporarily unavailable", response.retryAfter)
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteGoogleStorageRefusal(response.status, response.body) {
+			return bucketMutationRetry("updateBucketLabels", sdkgo.FailureAvailability, "bucket response does not prove refusal", response.retryAfter)
+		}
 		return bucketMutationBranch("updateBucketLabels", "providerRejected", Bucket{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
 	}
 	var bucket Bucket
@@ -403,6 +448,9 @@ func (operation DeleteBucketOperation) Invoke(call sdkgo.Call, input DeleteBucke
 	default:
 		if response.status >= 500 {
 			return bucketDeleteRetry(sdkgo.FailureAvailability, "Google Cloud Storage deletion is temporarily unavailable", response.retryAfter)
+		}
+		if !isDefiniteGoogleStorageRefusal(response.status, response.body) {
+			return bucketDeleteRetry(sdkgo.FailureAvailability, "bucket deletion response does not prove refusal", response.retryAfter)
 		}
 		return bucketDeleteBranch(DeleteBucketBranchProviderRejected, DeletedBucket{}, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.status))
 	}
