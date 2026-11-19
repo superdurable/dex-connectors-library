@@ -10,4 +10,6 @@ Kuaishou documents `app_id` and `access_token` as HTTPS query parameters. The co
 
 The runnable Flow is in [`go/examples/user-videos`](go/examples/user-videos). Provider tests verify request shape and outcome classification. Live `user_video_info` approval, OAuth2 authorization, and production videos remain unverified without user-controlled credentials.
 
+The [Python package](python/) implements the same `ListUserVideos` Query with Go-recorded replay and a real Dex Worker/Client mock example. Live provider authorization remains unverified.
+
 The [TypeScript package](typescript/README.md) implements the same `listUserVideos` Query, including Go-recorded conformance replay and a real Dex Worker and Client integration test.

@@ -10,6 +10,7 @@ metadata:
 spec:
   provider: kuaishou
   languages:
+    python: {version: v0.1.0, operations: [listUserVideos], triggers: []}
     typescript: {version: v0.1.0, operations: [listUserVideos], triggers: []}
   codegen:
     go:

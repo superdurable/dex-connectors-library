@@ -10,6 +10,7 @@ metadata:
 spec:
   provider: kunlun
   languages:
+    python: {version: v0.1.0, operations: [getTaskStatus], triggers: []}
     typescript: {version: v0.1.0, operations: [getTaskStatus], triggers: []}
   codegen:
     go:

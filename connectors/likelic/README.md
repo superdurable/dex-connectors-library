@@ -6,4 +6,6 @@ Sign in at [Likelic Agent](https://agent.likelic.com), obtain your Customer Code
 
 The [runnable Dex example](go/examples/list-rooms/) uses a synthetic mock. Live tenant authorization, room visibility, and pagination remain unverified without user-controlled provider credentials.
 
+The [Python package](python/) implements the same `ListRooms` Query with Go-recorded replay and a real Dex Worker/Client mock example. Live provider authorization remains unverified.
+
 The [TypeScript package](typescript/README.md) implements the same `listRooms` Query, including Go-recorded conformance replay and a real Dex Worker and Client integration test.
