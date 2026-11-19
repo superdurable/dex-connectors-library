@@ -1,0 +1,398 @@
+{
+  "connector": "qiniu",
+  "scenarios": [
+    {
+      "callId": "86714189-9f7d-5bdb-97f8-20dbee3c0288",
+      "exchanges": [
+        {
+          "body": "[\"demo-images\",\"demo-backup\"]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "buckets": [
+            "demo-images",
+            "demo-backup"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-listed",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "6d869cb6-c072-58dd-87a8-312ca9d7fa8d",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-empty",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "fa7723ae-db74-5847-b530-569b052b9184",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-providerRejected",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "6e62d3b6-c704-5e1a-9004-fa3368995682",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-invalidResponse",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "4377f2f4-f2f2-5da9-974b-8fdf0958f035",
+      "exchanges": [
+        {
+          "body": "{\"buckets\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-invalidShape",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "84833c32-918d-575b-8fc8-ab76ceed7dc5",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-null",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "f8cd2a5f-7b86-52fc-a1a3-4d211c3111f2",
+      "exchanges": [
+        {
+          "body": "[\"a\",\"b\",\"c\",\"d\"]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-oversized",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "0fed57a2-5a67-5f7d-9231-9174f1c58c54",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-defect",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "86dbeccb-88f3-5b3b-874e-ec3dcac53b19",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-rateLimit429",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "2bdafc53-eb6a-571a-80fb-24910d7908ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-availability503",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "afd839c1-e026-5c93-9d95-b44d0a89e98f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/buckets",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Qiniu test-access-key:dnR4qA0klRbiXcp_MPHEclgAgr8="
+            ],
+            "X-Qiniu-Date": [
+              "20261114T003005Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listBuckets-transportFailure",
+      "operation": "listBuckets"
+    }
+  ],
+  "schemaVersion": 1
+}
