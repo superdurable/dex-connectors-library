@@ -9,3 +9,5 @@ The checked-in [runnable parse status Flow](go/examples/get-parse-status/) uses 
 The [Python parse status Flow](python/examples/get_parse_status/) uses the same static connection. Its package replays the Go-recorded provider scenarios, and the example verifies retry and filtered output through a real Dex Worker and Client.
 
 Provider contract: [PDF API reference](https://doc2x.noedgeai.com/help/zh-cn/api/doc2x-api-v2-pdf-interface.html). Real provider authorization and status responses are unverified without a customer-controlled Key and existing task.
+
+The [TypeScript parse status Flow](typescript/examples/basic/) uses the same static connection and replays the Go-recorded HTTP scenarios. Its Dex integration test verifies 503 retry, persisted output, and secret-safe result through a real Worker and Client.

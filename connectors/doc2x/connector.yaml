@@ -15,6 +15,11 @@ spec:
       package: dex-connector-doc2x
       operations: [getParseStatus]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-doc2x"
+      operations: [getParseStatus]
+      triggers: []
   codegen:
     go:
       package: doc2x
