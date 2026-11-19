@@ -56,7 +56,7 @@ test-common-root-go:
 	GOWORK=off go vet ./...
 
 test-common-python-scripts:
-	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/ci_summary_test.py script/ci_local_verification_test.py script/set_mtimes_from_git_objects_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py script/python_latest_sdk_test.py script/go_download_retry_test.py
+	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/ci_summary_test.py script/ci_local_verification_test.py script/set_mtimes_from_git_objects_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py script/python_latest_sdk_test.py script/go_download_retry_test.py script/typescript_first_release_example_imports_test.py
 
 test-common-typescript-conformance:
 	npm ci --prefix connectors/stripe/typescript
@@ -158,8 +158,10 @@ test-typescript-connectors: download-root-go-modules
 		test -f "$$module/typescript/package-lock.json" || { echo "$$module/typescript/package-lock.json is missing" >&2; exit 1; }; \
 		python3 script/release/component_release.py validate-language-package --component-path "$$module/typescript" --language typescript --allow-pending-go-release || exit 1; \
 		npm ci --prefix "$$module/typescript" && npm run typecheck --prefix "$$module/typescript" && \
+		python3 script/typescript_first_release_example_imports.py "$$module/typescript" && \
 		npm run lint --prefix "$$module/typescript" && npm test --prefix "$$module/typescript" && \
-		"$$module/typescript/node_modules/.bin/tsx" script/typescript_input_schema_test.mts "$$module/typescript" || exit 1; \
+		"$$module/typescript/node_modules/.bin/tsx" script/typescript_input_schema_test.mts "$$module/typescript" && \
+		npm run build --prefix "$$module/typescript" || exit 1; \
 	done
 
 catalog-check:
