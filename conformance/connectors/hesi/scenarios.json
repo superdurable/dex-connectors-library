@@ -1,0 +1,307 @@
+{
+  "connector": "hesi",
+  "scenarios": [
+    {
+      "callId": "474dcf1c-64bf-50c3-8584-5587566f2645",
+      "exchanges": [
+        {
+          "body": "{\"value\":{\"accessToken\":\"short-lived-token\",\"corporationId\":\"corp\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/openapi/v1/auth/getAccessToken",
+          "requestBody": {
+            "appKey": "test-app-key",
+            "appSecurity": "test-app-security"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"count\":4,\"items\":[{\"id\":\"corp:dept\",\"name\":\"Example Department\",\"code\":\"001\",\"active\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/openapi/v1/departments",
+          "query": {
+            "accessToken": [
+              "short-lived-token"
+            ],
+            "count": [
+              "10"
+            ],
+            "start": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "departments": [
+            {
+              "active": true,
+              "code": "001",
+              "id": "corp:dept",
+              "name": "Example Department"
+            }
+          ],
+          "nextStart": 3,
+          "total": 4
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 10,
+        "start": 2
+      },
+      "name": "listDepartments-listed",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "f77bbd90-74e1-5f7e-b0d7-fd0f4f08f0d7",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/openapi/v1/auth/getAccessToken",
+          "requestBody": {
+            "appKey": "test-app-key",
+            "appSecurity": "test-app-security"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "departments": [],
+          "nextStart": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 10,
+        "start": 2
+      },
+      "name": "listDepartments-providerRejected",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "e641ecac-f08a-56cc-9033-17cbd1b95f95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/openapi/v1/auth/getAccessToken",
+          "requestBody": {
+            "appKey": "test-app-key",
+            "appSecurity": "test-app-security"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "departments": [],
+          "nextStart": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 10,
+        "start": 2
+      },
+      "name": "listDepartments-invalidResponse",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "cfb43b7a-76c1-569b-9a01-2fdbeea13e6a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "departments": [],
+          "nextStart": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 10,
+        "start": -1
+      },
+      "name": "listDepartments-defect",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "5ec18f02-e254-53f9-bb9d-5988979d826b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/openapi/v1/auth/getAccessToken",
+          "requestBody": {
+            "appKey": "test-app-key",
+            "appSecurity": "test-app-security"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 10,
+        "start": 2
+      },
+      "name": "listDepartments-rateLimit",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "733c7f10-ef40-5b42-8dcd-eff3b7616738",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/openapi/v1/auth/getAccessToken",
+          "requestBody": {
+            "appKey": "test-app-key",
+            "appSecurity": "test-app-security"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 10,
+        "start": 2
+      },
+      "name": "listDepartments-serverError",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "de623b70-be77-56a0-871a-d6e462758c12",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/openapi/v1/auth/getAccessToken",
+          "requestBody": {
+            "appKey": "test-app-key",
+            "appSecurity": "test-app-security"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 10,
+        "start": 2
+      },
+      "name": "listDepartments-transport",
+      "operation": "listDepartments"
+    }
+  ],
+  "schemaVersion": 1
+}
