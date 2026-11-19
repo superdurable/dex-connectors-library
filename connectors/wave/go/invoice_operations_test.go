@@ -84,3 +84,26 @@ func TestInvoiceOperationsUseWaveGraphQL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, SendInvoiceBranchSent, sent.Branch)
 }
+
+func TestInvoiceMutationIncompleteSuccessIsUnknown(t *testing.T) {
+	for _, body := range []string{
+		`{"data":{"invoicePatch":{}}}`,
+		`{"data":{"invoicePatch":{"didSucceed":false}}}`,
+		`{"data":{"invoicePatch":{"didSucceed":false,"inputErrors":[]}}}`,
+		`{"data":{"invoicePatch":{"didSucceed":false,"inputErrors":[{}]}}}`,
+		`{"data":{"invoicePatch":{"didSucceed":false,"inputErrors":[{"code":"INVALID"}],"invoice":{"id":"invoice-1"}}}}`,
+	} {
+		_, _, isValid := decodeInvoiceMutation([]byte(body), "invoicePatch")
+		require.False(t, isValid)
+	}
+	_, didSucceed, isValid := decodeInvoiceMutation([]byte(`{"data":{"invoicePatch":{"didSucceed":false,"inputErrors":[{"code":"INVALID"}]}}}`), "invoicePatch")
+	require.True(t, isValid)
+	require.False(t, didSucceed)
+	for _, body := range []string{
+		`{"data":{"invoiceDelete":{}}}`,
+		`{"data":{"invoiceDelete":{"didSucceed":false}}}`,
+	} {
+		_, isValid := decodeInvoiceStatusMutation([]byte(body), "invoiceDelete")
+		require.False(t, isValid)
+	}
+}

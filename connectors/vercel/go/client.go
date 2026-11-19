@@ -281,15 +281,45 @@ func isDefiniteWriteRefusal(response *http.Response, maximumResponseBytes int64)
 		return false
 	}
 	var rejection struct {
-		ID json.RawMessage `json:"id"`
+		ID      json.RawMessage `json:"id"`
 		Project json.RawMessage `json:"project"`
-		Domain json.RawMessage `json:"domain"`
-		Error struct {
-			Code string `json:"code"`
+		Domain  json.RawMessage `json:"domain"`
+		Error   struct {
+			Code    string `json:"code"`
 			Message string `json:"message"`
 		} `json:"error"`
 	}
 	return json.Unmarshal(body, &rejection) == nil && len(rejection.ID) == 0 && len(rejection.Project) == 0 && len(rejection.Domain) == 0 && (rejection.Error.Code != "" || rejection.Error.Message != "")
+}
+
+func isConfirmedDeletionResponse(response *http.Response, maximumResponseBytes int64) bool {
+	if response.StatusCode == http.StatusNoContent {
+		return true
+	}
+	if response.StatusCode != http.StatusOK {
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, maximumResponseBytes)
+	if err != nil || len(body) == 0 {
+		return false
+	}
+	var result map[string]json.RawMessage
+	if json.Unmarshal(body, &result) != nil || result == nil {
+		return false
+	}
+	if _, hasError := result["error"]; hasError {
+		return false
+	}
+	if success, hasSuccess := result["success"]; hasSuccess && string(success) != "true" {
+		return false
+	}
+	if deleted, hasDeleted := result["deleted"]; hasDeleted && string(deleted) == "false" {
+		return false
+	}
+	if removed, hasRemoved := result["removed"]; hasRemoved && string(removed) == "false" {
+		return false
+	}
+	return true
 }
 
 func shouldRetry(response *http.Response) bool {

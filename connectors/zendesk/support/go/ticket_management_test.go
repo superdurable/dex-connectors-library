@@ -35,11 +35,15 @@ func TestListTicketsReadsCursorPageAndProtectsProviderFields(t *testing.T) {
 }
 
 func TestDeleteTicketAcceptsNoContentAndRetriesServerFailure(t *testing.T) {
-	for _, status := range []int{http.StatusNoContent, http.StatusNotFound, http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusBadGateway} {
+	for _, status := range []int{http.StatusNoContent, http.StatusOK, http.StatusNotFound, http.StatusForbidden, http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusBadGateway} {
 		provider := newRecordingZendesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 			require.Equal(t, http.MethodDelete, request.Method)
 			require.Equal(t, "/api/v2/tickets/35436", request.URL.Path)
 			response.WriteHeader(status)
+			if status == http.StatusNotFound || status == http.StatusForbidden {
+				_, err := response.Write([]byte(`{"error":"InvalidRecord"}`))
+				require.NoError(t, err)
+			}
 		})
 		result, err := sdkgo.RunMutation(newZendeskDexContext("delete-ticket"), newZendeskClient(t, provider.URL).DeleteTicket(), zendeskConnection, support.DeleteTicketInput{TicketID: 35436})
 		switch status {
@@ -49,11 +53,23 @@ func TestDeleteTicketAcceptsNoContentAndRetriesServerFailure(t *testing.T) {
 		case http.StatusNotFound:
 			require.NoError(t, err)
 			require.Equal(t, support.DeleteTicketBranchNotFound, result.Branch)
+		case http.StatusForbidden:
+			require.NoError(t, err)
+			require.Equal(t, support.DeleteTicketBranchProviderRejected, result.Branch)
 		default:
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry)
 		}
 	}
+}
+
+func TestDeleteTicketRetriesEmptyRefusal(t *testing.T) {
+	provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		response.WriteHeader(http.StatusNotFound)
+	})
+	_, err := sdkgo.RunMutation(newZendeskDexContext("delete-ticket-empty-refusal"), newZendeskClient(t, provider.URL).DeleteTicket(), zendeskConnection, support.DeleteTicketInput{TicketID: 35436})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
 }
 
 func TestRecoverSuspendedTicketClassifiesProviderResponses(t *testing.T) {

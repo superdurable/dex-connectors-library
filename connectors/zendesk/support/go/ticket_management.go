@@ -150,16 +150,22 @@ func (operation DeleteTicketOperation) Invoke(call sdkgo.Call, input DeleteTicke
 	switch result.outcome {
 	case exchangeSucceeded:
 		if result.response.statusCode != http.StatusNoContent {
-			return sdkgo.NewMutationBranch(DeleteTicketBranchProviderRejected, DeleteTicketOutput{}, zendeskFailurePointer(sdkgo.FailureProtocol, operationName, "Zendesk returned an unexpected delete status"), receipt)
+			return sdkgo.NewMutationRetry[DeleteTicketOutput](zendeskFailure(sdkgo.FailureProtocol, operationName, "Zendesk returned an unexpected delete status"), 0)
 		}
 		return sdkgo.NewMutationBranch(DeleteTicketBranchDeleted, DeleteTicketOutput{TicketID: input.TicketID}, nil, receipt)
 	case exchangeRetryable:
 		return sdkgo.NewMutationRetry[DeleteTicketOutput](result.failure, result.retryAfter)
 	case exchangeNotFound:
+		if !isDefiniteNewWriteRefusal(result) {
+			return sdkgo.NewMutationRetry[DeleteTicketOutput](zendeskFailure(sdkgo.FailureAvailability, operationName, "ticket deletion outcome is unconfirmed"), result.retryAfter)
+		}
 		return sdkgo.NewMutationBranch(DeleteTicketBranchNotFound, DeleteTicketOutput{}, &result.failure, receipt)
 	case exchangeDefect:
 		return sdkgo.NewMutationBranch(DeleteTicketBranchDefect, DeleteTicketOutput{}, &result.failure, receipt)
 	default:
+		if !isDefiniteNewWriteRefusal(result) {
+			return sdkgo.NewMutationRetry[DeleteTicketOutput](zendeskFailure(sdkgo.FailureAvailability, operationName, "ticket deletion outcome is unconfirmed"), result.retryAfter)
+		}
 		return sdkgo.NewMutationBranch(DeleteTicketBranchProviderRejected, DeleteTicketOutput{}, &result.failure, receipt)
 	}
 }

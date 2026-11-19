@@ -255,7 +255,7 @@ func (RemoveProjectDomainOperation) IdempotencyKey(callID sdkgo.CallID, _ Projec
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke removes the assignment; an absent assignment already meets the target state.
+// Invoke removes the assignment and retries when the response does not confirm its state.
 func (operation RemoveProjectDomainOperation) Invoke(call sdkgo.Call, input ProjectDomainInput) sdkgo.MutationAttempt[RemovedProjectDomain] {
 	if !validProjectDomainInput(input) {
 		return mutationFailure[RemovedProjectDomain]("removeProjectDomain", "defect", sdkgo.FailureValidation, "Vercel project domain input is invalid")
@@ -272,11 +272,14 @@ func (operation RemoveProjectDomainOperation) Invoke(call sdkgo.Call, input Proj
 		kind, delay := retryFailure(response, "removeProjectDomain")
 		return sdkgo.NewMutationRetry[RemovedProjectDomain](kind, delay)
 	}
-	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusNotFound {
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent {
 		if !isDefiniteWriteRefusal(response, operation.client.maxResponseBytes) {
 			return mutationRetry[RemovedProjectDomain]("removeProjectDomain", sdkgo.FailureAvailability, 0)
 		}
 		return mutationFailure[RemovedProjectDomain]("removeProjectDomain", "providerRejected", sdkgo.FailureProviderRejection, "Vercel rejected domain removal")
+	}
+	if !isConfirmedDeletionResponse(response, operation.client.maxResponseBytes) {
+		return mutationRetry[RemovedProjectDomain]("removeProjectDomain", sdkgo.FailureProtocol, 0)
 	}
 	return sdkgo.NewMutationBranch(sdkgo.BranchID("removed"), RemovedProjectDomain{ProjectID: input.ProjectID, Name: input.Domain}, nil, sdkgo.Receipt{})
 }

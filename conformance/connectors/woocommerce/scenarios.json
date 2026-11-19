@@ -1030,7 +1030,7 @@
       "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
       "exchanges": [
         {
-          "body": "{\"code\":\"woocommerce_rest_invalid_param\",\"message\":\"rejected\"}",
+          "body": "{\"code\":\"woocommerce_rest_invalid_param\",\"message\":\"rejected\",\"data\":{\"status\":403}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1511,7 +1511,7 @@
       "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"woocommerce_rest_invalid_param\",\"message\":\"rejected\",\"data\":{\"status\":403}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1534,10 +1534,16 @@
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },

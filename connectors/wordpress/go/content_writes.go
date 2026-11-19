@@ -205,11 +205,35 @@ func isDefiniteWordPressRefusal(response *http.Response, maximumResponseBytes in
 	if err != nil {
 		return false
 	}
-	var rejection struct {
-		ID json.RawMessage `json:"id"`
-		Data json.RawMessage `json:"data"`
-		Code string `json:"code"`
-		Message string `json:"message"`
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil {
+		return false
 	}
-	return json.Unmarshal(body, &rejection) == nil && len(rejection.ID) == 0 && len(rejection.Data) == 0 && rejection.Code != "" && rejection.Message != ""
+	for field := range fields {
+		if field != "code" && field != "message" && field != "data" {
+			return false
+		}
+	}
+	var rejection struct {
+		Data    json.RawMessage `json:"data"`
+		Code    string          `json:"code"`
+		Message string          `json:"message"`
+	}
+	if json.Unmarshal(body, &rejection) != nil || strings.TrimSpace(rejection.Code) == "" || strings.TrimSpace(rejection.Message) == "" {
+		return false
+	}
+	if len(rejection.Data) == 0 {
+		return true
+	}
+	var data map[string]json.RawMessage
+	if json.Unmarshal(rejection.Data, &data) != nil {
+		return false
+	}
+	for field := range data {
+		if field != "status" && field != "params" && field != "details" {
+			return false
+		}
+	}
+	var status int
+	return json.Unmarshal(data["status"], &status) == nil && status == response.StatusCode
 }

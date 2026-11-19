@@ -216,9 +216,9 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 	var wire struct {
 		Data *struct {
 			CustomerCreate *struct {
-				DidSucceed  bool              `json:"didSucceed"`
-				Customer    *CustomerProfile  `json:"customer"`
-				InputErrors []json.RawMessage `json:"inputErrors"`
+				DidSucceed  *bool            `json:"didSucceed"`
+				Customer    *CustomerProfile `json:"customer"`
+				InputErrors []waveInputError `json:"inputErrors"`
 			} `json:"customerCreate"`
 		} `json:"data"`
 		Errors []json.RawMessage `json:"errors"`
@@ -226,7 +226,10 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 	if json.Unmarshal(response.body, &wire) != nil || wire.Data == nil || wire.Data.CustomerCreate == nil || len(wire.Errors) > 0 {
 		return waveMutationRetry[CustomerProfile]("createCustomer", sdkgo.FailureProtocol)
 	}
-	if !wire.Data.CustomerCreate.DidSucceed {
+	if wire.Data.CustomerCreate.DidSucceed == nil || !*wire.Data.CustomerCreate.DidSucceed && (!hasWaveInputErrorCode(wire.Data.CustomerCreate.InputErrors) || wire.Data.CustomerCreate.Customer != nil) {
+		return waveMutationRetry[CustomerProfile]("createCustomer", sdkgo.FailureProtocol)
+	}
+	if !*wire.Data.CustomerCreate.DidSucceed {
 		if decision.MaximumPriorSends > 0 {
 			return waveMutationRetry[CustomerProfile]("createCustomer", sdkgo.FailureAvailability)
 		}
@@ -287,9 +290,9 @@ func (operation UpdateCustomerOperation) Invoke(call sdkgo.Call, input UpdateCus
 	var wire struct {
 		Data *struct {
 			CustomerPatch *struct {
-				DidSucceed  bool              `json:"didSucceed"`
-				Customer    *CustomerProfile  `json:"customer"`
-				InputErrors []json.RawMessage `json:"inputErrors"`
+				DidSucceed  *bool            `json:"didSucceed"`
+				Customer    *CustomerProfile `json:"customer"`
+				InputErrors []waveInputError `json:"inputErrors"`
 			} `json:"customerPatch"`
 		} `json:"data"`
 		Errors []json.RawMessage `json:"errors"`
@@ -297,7 +300,10 @@ func (operation UpdateCustomerOperation) Invoke(call sdkgo.Call, input UpdateCus
 	if json.Unmarshal(response.body, &wire) != nil || wire.Data == nil || wire.Data.CustomerPatch == nil || len(wire.Errors) > 0 {
 		return waveMutationRetry[CustomerProfile]("updateCustomer", sdkgo.FailureProtocol)
 	}
-	if !wire.Data.CustomerPatch.DidSucceed {
+	if wire.Data.CustomerPatch.DidSucceed == nil || !*wire.Data.CustomerPatch.DidSucceed && (!hasWaveInputErrorCode(wire.Data.CustomerPatch.InputErrors) || wire.Data.CustomerPatch.Customer != nil) {
+		return waveMutationRetry[CustomerProfile]("updateCustomer", sdkgo.FailureProtocol)
+	}
+	if !*wire.Data.CustomerPatch.DidSucceed {
 		return waveMutationBranch[CustomerProfile]("updateCustomer", "providerRejected", sdkgo.FailureProviderRejection, "Wave rejected the customer update")
 	}
 	profile := wire.Data.CustomerPatch.Customer
@@ -351,8 +357,8 @@ func (operation DeleteCustomerOperation) Invoke(call sdkgo.Call, input DeleteCus
 	var wire struct {
 		Data *struct {
 			CustomerDelete *struct {
-				DidSucceed  bool              `json:"didSucceed"`
-				InputErrors []json.RawMessage `json:"inputErrors"`
+				DidSucceed  *bool            `json:"didSucceed"`
+				InputErrors []waveInputError `json:"inputErrors"`
 			} `json:"customerDelete"`
 		} `json:"data"`
 		Errors []json.RawMessage `json:"errors"`
@@ -360,7 +366,10 @@ func (operation DeleteCustomerOperation) Invoke(call sdkgo.Call, input DeleteCus
 	if json.Unmarshal(response.body, &wire) != nil || wire.Data == nil || wire.Data.CustomerDelete == nil || len(wire.Errors) > 0 {
 		return waveMutationRetry[DeletedCustomer]("deleteCustomer", sdkgo.FailureProtocol)
 	}
-	if !wire.Data.CustomerDelete.DidSucceed {
+	if wire.Data.CustomerDelete.DidSucceed == nil || !*wire.Data.CustomerDelete.DidSucceed && !hasWaveInputErrorCode(wire.Data.CustomerDelete.InputErrors) {
+		return waveMutationRetry[DeletedCustomer]("deleteCustomer", sdkgo.FailureProtocol)
+	}
+	if !*wire.Data.CustomerDelete.DidSucceed {
 		return waveMutationBranch[DeletedCustomer]("deleteCustomer", "providerRejected", sdkgo.FailureProviderRejection, "Wave rejected customer deletion")
 	}
 	return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), DeletedCustomer{ID: input.CustomerID}, nil, sdkgo.Receipt{})
@@ -435,6 +444,19 @@ func isDefiniteWaveWriteRefusal(response providerResponse) bool {
 	}
 	for _, providerError := range envelope.Errors {
 		if providerError.Extensions.Code != "" {
+			return true
+		}
+	}
+	return false
+}
+
+type waveInputError struct {
+	Code string `json:"code"`
+}
+
+func hasWaveInputErrorCode(inputErrors []waveInputError) bool {
+	for _, inputError := range inputErrors {
+		if strings.TrimSpace(inputError.Code) != "" {
 			return true
 		}
 	}

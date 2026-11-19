@@ -273,7 +273,7 @@ func (DeleteProjectOperation) IdempotencyKey(callID sdkgo.CallID, _ DeleteProjec
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke removes the project; an absent project already meets the target state.
+// Invoke removes the project and retries when the response does not confirm its state.
 func (operation DeleteProjectOperation) Invoke(call sdkgo.Call, input DeleteProjectInput) sdkgo.MutationAttempt[DeletedProject] {
 	if !validProjectIdentifier(input.ProjectID) || !validTeamID(input.TeamID) {
 		return mutationFailure[DeletedProject]("deleteProject", "defect", sdkgo.FailureValidation, "Vercel project ID or team ID is invalid")
@@ -290,11 +290,14 @@ func (operation DeleteProjectOperation) Invoke(call sdkgo.Call, input DeleteProj
 		kind, delay := retryFailure(response, "deleteProject")
 		return sdkgo.NewMutationRetry[DeletedProject](kind, delay)
 	}
-	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNotFound {
+	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusOK {
 		if !isDefiniteWriteRefusal(response, operation.client.maxResponseBytes) {
 			return mutationRetry[DeletedProject]("deleteProject", sdkgo.FailureAvailability, 0)
 		}
 		return mutationFailure[DeletedProject]("deleteProject", "providerRejected", sdkgo.FailureProviderRejection, "Vercel rejected project deletion")
+	}
+	if !isConfirmedDeletionResponse(response, operation.client.maxResponseBytes) {
+		return mutationRetry[DeletedProject]("deleteProject", sdkgo.FailureProtocol, 0)
 	}
 	return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), DeletedProject{ProjectID: input.ProjectID}, nil, sdkgo.Receipt{})
 }

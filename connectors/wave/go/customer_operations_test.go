@@ -60,3 +60,30 @@ func TestCustomerOperationsUseWaveGraphQL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, DeleteCustomerBranchDeleted, deleted.Branch)
 }
+
+func TestCustomerSafeWritesRetryIncompleteSuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var body struct {
+			Query string `json:"query"`
+		}
+		require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+		var response string
+		switch {
+		case strings.Contains(body.Query, "mutation UpdateCustomer"):
+			response = `{"data":{"customerPatch":{"didSucceed":false}}}`
+		case strings.Contains(body.Query, "mutation DeleteCustomer"):
+			response = `{"data":{"customerDelete":{}}}`
+		default:
+			t.Fatal("unexpected Wave GraphQL operation")
+		}
+		_, err := writer.Write([]byte(response))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL, 0)
+	_, updateErr := sdkgo.RunMutation(queryContext{}, client.UpdateCustomer(), testConnection, UpdateCustomerInput{BusinessID: "business-1", CustomerID: "customer-1", Name: "Updated Customer"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, updateErr, &retry)
+	_, deleteErr := sdkgo.RunMutation(queryContext{}, client.DeleteCustomer(), testConnection, DeleteCustomerInput{CustomerID: "customer-1"})
+	require.ErrorAs(t, deleteErr, &retry)
+}

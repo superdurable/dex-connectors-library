@@ -115,7 +115,7 @@ func (DeleteDeploymentOperation) IdempotencyKey(callID sdkgo.CallID, _ DeleteDep
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke removes the named deployment; an absent deployment already meets the target state.
+// Invoke removes the named deployment and retries when the response does not confirm its state.
 func (operation DeleteDeploymentOperation) Invoke(call sdkgo.Call, input DeleteDeploymentInput) sdkgo.MutationAttempt[DeletedDeployment] {
 	if !validDeploymentID(input.DeploymentID) || !validTeamID(input.TeamID) {
 		return mutationFailure[DeletedDeployment]("deleteDeployment", "defect", sdkgo.FailureValidation, "Vercel deployment or team ID is invalid")
@@ -134,11 +134,14 @@ func (operation DeleteDeploymentOperation) Invoke(call sdkgo.Call, input DeleteD
 		kind, delay := retryFailure(response, "deleteDeployment")
 		return sdkgo.NewMutationRetry[DeletedDeployment](kind, delay)
 	}
-	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNotFound {
+	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusOK {
 		if !isDefiniteWriteRefusal(response, operation.client.maxResponseBytes) {
 			return mutationRetry[DeletedDeployment]("deleteDeployment", sdkgo.FailureAvailability, 0)
 		}
 		return mutationFailure[DeletedDeployment]("deleteDeployment", "providerRejected", sdkgo.FailureProviderRejection, "Vercel rejected deletion")
+	}
+	if !isConfirmedDeletionResponse(response, operation.client.maxResponseBytes) {
+		return mutationRetry[DeletedDeployment]("deleteDeployment", sdkgo.FailureProtocol, 0)
 	}
 	return sdkgo.NewMutationBranch(sdkgo.BranchID("deleted"), DeletedDeployment{DeploymentID: input.DeploymentID}, nil, sdkgo.Receipt{})
 }

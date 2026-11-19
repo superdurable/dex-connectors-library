@@ -7823,7 +7823,7 @@
       "callId": "1e3777d1-1799-5d14-8d18-cbc57a742319",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"InvalidRecord\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7961,7 +7961,7 @@
       "callId": "1e3777d1-1799-5d14-8d18-cbc57a742319",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"InvalidRecord\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7999,7 +7999,7 @@
       "callId": "1e3777d1-1799-5d14-8d18-cbc57a742319",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":\"InvalidRecord\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",

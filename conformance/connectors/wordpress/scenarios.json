@@ -1799,7 +1799,7 @@
       "callId": "6898b37c-de3c-5c84-8336-a51f314873e1",
       "exchanges": [
         {
-          "body": "{\"code\":\"rest_forbidden\",\"message\":\"rejected\"}",
+          "body": "{\"code\":\"rest_forbidden\",\"message\":\"rejected\",\"data\":{\"status\":403}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4301,7 +4301,7 @@
       "callId": "50a3baed-333b-52fc-a963-c45a5eb04d52",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"code\":\"rest_forbidden\",\"message\":\"rejected\",\"data\":{\"status\":403}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4326,10 +4326,19 @@
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },

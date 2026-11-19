@@ -52,6 +52,8 @@ If the store returns HTTP 401 despite valid keys, check whether the web server f
 
 Provider error text is never copied into a Failure. Responses are bounded and redirects are not followed. A create with an unknown outcome may be resent within its cap; a saved order ID is read back before any resend.
 
+New writes accept a matching `data.status` as a definite refusal only with a nonempty error code and message and no resource identity or acceptance marker. Empty, malformed, contradictory, or oversized responses retry; a limited create cannot select a refusal after a possible earlier send.
+
 ## Mocks
 
 The generated `woocommercemock` package returns one realistic default per operation from `connector.yaml`. The [mock-backed real Dex test](go/examples/resource-read/flow/workflow_mock_integration_test.go) executes the example Flow through a Worker and checks its mapped input and branch.

@@ -66,3 +66,19 @@ func TestProductOperationsUseWaveGraphQL(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, archived.Value.IsArchived)
 }
+
+func TestProductMutationIncompleteSuccessIsUnknown(t *testing.T) {
+	for _, body := range []string{
+		`{"data":{"productPatch":{}}}`,
+		`{"data":{"productPatch":{"didSucceed":false}}}`,
+		`{"data":{"productPatch":{"didSucceed":false,"inputErrors":[]}}}`,
+		`{"data":{"productPatch":{"didSucceed":false,"inputErrors":[{}]}}}`,
+		`{"data":{"productPatch":{"didSucceed":false,"inputErrors":[{"code":"INVALID"}],"product":{"id":"product-1"}}}}`,
+	} {
+		_, _, isValid := decodeProductMutation([]byte(body), "productPatch")
+		require.False(t, isValid)
+	}
+	_, didSucceed, isValid := decodeProductMutation([]byte(`{"data":{"productPatch":{"didSucceed":false,"inputErrors":[{"code":"INVALID"}]}}}`), "productPatch")
+	require.True(t, isValid)
+	require.False(t, didSucceed)
+}

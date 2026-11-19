@@ -28,7 +28,7 @@ The Go, Python, and TypeScript `getCustomer` Query reads one customer from a Wav
 
 Wave's `customerCreate`, `productCreate`, `invoiceCreate`, and `invoiceSend` GraphQL mutations have no documented request idempotency token. After an unknown outcome, these Steps resend within their configured cap and select `uncertain` when the cap is reached; a user-chosen name alone cannot confirm which request created a record. For a sold product, obtain `incomeAccountId` from the Wave API Playground's business accounts query; `unitPrice` is a decimal amount in the business's major currency unit with at most five fractional digits. `sendInvoice` requires an approved invoice and a business with email sending enabled.
 
-Safe writes retry unlisted HTTP errors, empty refusals, and malformed success responses. A refusal branch requires a parsed provider error code.
+Safe writes retry unlisted HTTP errors, empty refusals, and malformed or incomplete success responses. A GraphQL `didSucceed: false` without an `inputErrors.code` is incomplete and retries; a refusal branch requires a parsed provider error code.
 
 ## Connection and configuration
 

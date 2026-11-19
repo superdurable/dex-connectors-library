@@ -369,16 +369,17 @@ func decodeInvoiceMutation(body []byte, field string) (invoiceWire, bool, bool) 
 		return invoiceWire{}, false, false
 	}
 	var result struct {
-		DidSucceed bool         `json:"didSucceed"`
-		Invoice    *invoiceWire `json:"invoice"`
+		DidSucceed  *bool            `json:"didSucceed"`
+		Invoice     *invoiceWire     `json:"invoice"`
+		InputErrors []waveInputError `json:"inputErrors"`
 	}
-	if json.Unmarshal(wire.Data[field], &result) != nil || result.Invoice == nil && result.DidSucceed {
+	if json.Unmarshal(wire.Data[field], &result) != nil || result.DidSucceed == nil || !*result.DidSucceed && (!hasWaveInputErrorCode(result.InputErrors) || result.Invoice != nil) || result.Invoice == nil && *result.DidSucceed {
 		return invoiceWire{}, false, false
 	}
 	if result.Invoice == nil {
-		return invoiceWire{}, result.DidSucceed, true
+		return invoiceWire{}, *result.DidSucceed, true
 	}
-	return *result.Invoice, result.DidSucceed, true
+	return *result.Invoice, *result.DidSucceed, true
 }
 func decodeInvoiceStatusMutation(body []byte, field string) (bool, bool) {
 	var wire struct {
@@ -389,12 +390,13 @@ func decodeInvoiceStatusMutation(body []byte, field string) (bool, bool) {
 		return false, false
 	}
 	var result struct {
-		DidSucceed bool `json:"didSucceed"`
+		DidSucceed  *bool            `json:"didSucceed"`
+		InputErrors []waveInputError `json:"inputErrors"`
 	}
-	if json.Unmarshal(wire.Data[field], &result) != nil {
+	if json.Unmarshal(wire.Data[field], &result) != nil || result.DidSucceed == nil || !*result.DidSucceed && !hasWaveInputErrorCode(result.InputErrors) {
 		return false, false
 	}
-	return result.DidSucceed, true
+	return *result.DidSucceed, true
 }
 func uncertainInvoice[T any](operation string) sdkgo.MutationAttempt[T] {
 	failure := waveFailure(operation, sdkgo.FailureTransport, "Wave invoice operation may have succeeded but could not be confirmed")

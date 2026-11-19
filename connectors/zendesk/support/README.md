@@ -150,6 +150,8 @@ User and organization updates and deletes retry unlisted HTTP errors, empty refu
 
 `deleteTicket` soft-deletes one ticket by ID. Zendesk requires an administrator or an agent with deletion permission. `recoverSuspendedTicket` converts one suspended ticket to a regular ticket; Zendesk changes its requester to the authenticated agent. Recovery has a three-send cap and selects `uncertain` after an unconfirmed final attempt. Operators can inspect the suspended-ticket queue and the recovered ticket before manually retrying.
 
+For `deleteTicket`, an empty refusal or unexpected successful status retries. A refusal branch requires a parsed Zendesk error without a provider identity.
+
 ### searchTickets
 
 `searchTickets` builds one Zendesk search query from typed filters and reads

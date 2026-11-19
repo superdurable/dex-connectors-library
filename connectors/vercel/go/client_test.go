@@ -7,8 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +18,29 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
+
+func TestDeletionResponseRequiresCompleteUncontradictedSuccess(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		status    int
+		body      string
+		confirmed bool
+	}{
+		{name: "no content", status: http.StatusNoContent, confirmed: true},
+		{name: "empty object", status: http.StatusOK, body: `{}`, confirmed: true},
+		{name: "empty body", status: http.StatusOK},
+		{name: "malformed body", status: http.StatusOK, body: `{`},
+		{name: "error in success", status: http.StatusOK, body: `{"error":{"code":"FAILED"}}`},
+		{name: "explicit failure", status: http.StatusOK, body: `{"success":false}`},
+		{name: "explicit incomplete deletion", status: http.StatusOK, body: `{"deleted":false}`},
+		{name: "unconfirmed not found", status: http.StatusNotFound, body: `{}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			response := &http.Response{StatusCode: testCase.status, Body: io.NopCloser(strings.NewReader(testCase.body))}
+			require.Equal(t, testCase.confirmed, isConfirmedDeletionResponse(response, 1024))
+		})
+	}
+}
 
 type testContext struct{ dex.Context }
 

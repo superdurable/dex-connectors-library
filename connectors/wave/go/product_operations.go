@@ -412,16 +412,17 @@ func decodeProductMutation(body []byte, field string) (ProductProfile, bool, boo
 		return ProductProfile{}, false, false
 	}
 	var result struct {
-		DidSucceed bool            `json:"didSucceed"`
-		Product    *ProductProfile `json:"product"`
+		DidSucceed  *bool            `json:"didSucceed"`
+		Product     *ProductProfile  `json:"product"`
+		InputErrors []waveInputError `json:"inputErrors"`
 	}
-	if json.Unmarshal(wire.Data[field], &result) != nil || result.Product == nil && result.DidSucceed {
+	if json.Unmarshal(wire.Data[field], &result) != nil || result.DidSucceed == nil || !*result.DidSucceed && (!hasWaveInputErrorCode(result.InputErrors) || result.Product != nil) || result.Product == nil && *result.DidSucceed {
 		return ProductProfile{}, false, false
 	}
 	if result.Product == nil {
-		return ProductProfile{}, result.DidSucceed, true
+		return ProductProfile{}, *result.DidSucceed, true
 	}
-	return *result.Product, result.DidSucceed, true
+	return *result.Product, *result.DidSucceed, true
 }
 func validProductProfile(product ProductProfile) bool {
 	return product.ID != "" && product.Name != "" && product.UnitPrice != ""

@@ -1032,13 +1032,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "deploymentId": "dpl_meridian1"
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2657,13 +2654,10 @@
         }
       ],
       "expected": {
-        "branch": "deleted",
-        "failureKind": "",
-        "output": {
-          "projectId": "prj_meridian1"
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
