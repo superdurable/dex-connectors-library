@@ -5,3 +5,5 @@ The Go connector reads [API 410 企业工商信息](https://openapi.qcc.com/data
 The provider requires enterprise real-name verification, an approved application scenario, and API 410 entitlement. Qichacha lists ¥0.20 per lookup and a 20-call trial. Each retry may incur another charge, so the connector makes at most two attempts for transport failures, HTTP 429, and HTTP 5xx. The AppKey and SecretKey are held as Dex credentials. The connector sends the AppKey in the required HTTPS query parameter and an uppercase MD5 signature in the `Token` header; neither appears in a result or error.
 
 See the [runnable Dex Flow](go/examples/enterprise-basic-details/README.md). Mock tests do not verify live authorization, billing, provider status codes, or response behavior.
+
+The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.
