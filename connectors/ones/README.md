@@ -9,3 +9,7 @@ Sign in to your ONES tenant from [ONES](https://ones.cn/). In **Personal Setting
 ## Go
 
 The [team catalog Flow](go/examples/team-catalog/) is a runnable Worker with static Dex Web connection name `ones`. `listed` completes the Flow; optional branches fail unless an application wires a business response. Transient failures retry safely. The local mock integration uses synthetic team data and a real Dex Worker and Client. Live authorization and team visibility remain unverified without a user-controlled tenant connection.
+
+## Python
+
+The first Python package implements the read-only operation and all Go-recorded provider branches. See [Python package](python/README.md) and its [runnable Flow](python/examples/team_list/README.md). Live provider authorization and responses are unverified.
