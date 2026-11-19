@@ -5,9 +5,10 @@
 The owner's Mac Studio tooling (`remote-test.py attest`) posts the commit status
 `mac-studio-verified` = `success` on a pull request head after a passing full local run. A
 pull request or merge group is trusted only when the newest such status on every included pull
-request head is `success` and its creator holds the `admin` or `maintain` repository role. Every
-other event, missing status, API error, or merge group that includes more than one pull request
-is untrusted, so CI runs every job as before. The script always exits 0 and writes
+request head is `success` and its creator holds the `admin` or `maintain` repository role. A push
+to main is trusted only when it adds one squash commit of exactly one merged pull request whose
+head passes the same check. Scheduled and manual runs, a missing status, an API error, or a merge
+group or push that includes more than one pull request are untrusted, so CI runs every job. The script always exits 0 and writes
 `trusted=true|false` to GITHUB_OUTPUT.
 """
 
@@ -30,6 +31,9 @@ STATUS_PAGE_SIZE = 100
 API_TIMEOUT_SECONDS = 20
 MERGE_GROUP_HEAD_REF_PATTERN = re.compile(
     r"^(?:refs/heads/)?gh-readonly-queue/(?P<base_branch>.+)/pr-(?P<pull_request_number>[1-9][0-9]*)-[0-9a-f]{40}$")
+# Scheduled and manual runs are never trusted, so the daily run stays complete.
+LOCALLY_VERIFIABLE_EVENTS = frozenset({"pull_request", "merge_group", "push"})
+TRUSTED_PUSH_REF = "refs/heads/main"
 # Compare statuses meaning the merge group base is already on its base branch.
 BASE_ON_BRANCH_COMPARE_STATUSES = frozenset({"identical", "ahead"})
 
@@ -56,6 +60,12 @@ class GitHubRepositoryReader(Protocol):
 
     def compare_commits_status(self, base: str, head: str) -> str:
         """Returns the compare status of head relative to base: identical, ahead, behind, or diverged."""
+
+    def get_commit_parent_shas(self, commit_sha: str) -> list[str]:
+        """Returns the commit's parent SHAs in order."""
+
+    def list_commit_pull_requests(self, commit_sha: str) -> list[Mapping[str, Any]]:
+        """Returns the pull requests associated with the commit, including merged ones."""
 
 
 class GitHubRESTRepositoryReader:
@@ -90,6 +100,16 @@ class GitHubRESTRepositoryReader:
         comparison = self._get_json(f"/compare/{base}...{urllib.parse.quote(head, safe='')}?per_page=1")
         return str(comparison.get("status") or "")
 
+    def get_commit_parent_shas(self, commit_sha: str) -> list[str]:
+        commit = self._get_json(f"/commits/{commit_sha}")
+        return [str(parent["sha"]) for parent in commit["parents"]]
+
+    def list_commit_pull_requests(self, commit_sha: str) -> list[Mapping[str, Any]]:
+        pull_requests = self._get_json(f"/commits/{commit_sha}/pulls?per_page=100")
+        if not isinstance(pull_requests, list):
+            raise ValueError("commit pull requests response is not a list")
+        return pull_requests
+
     def _get_json(self, path: str) -> Any:
         request = urllib.request.Request(self._repository_url + path, headers={
             "Accept": "application/vnd.github+json",
@@ -118,7 +138,35 @@ class LocalVerificationDecider:
             return self.decide_commit(head_sha)
         if event_name == "merge_group":
             return self.decide_merge_group(environment.get("MERGE_GROUP_HEAD_REF", ""), environment.get("MERGE_GROUP_BASE_SHA", ""))
+        if event_name == "push":
+            return self.decide_push(environment.get("PUSH_REF", ""), environment.get("PUSH_SHA", ""),
+                                    environment.get("PUSH_BEFORE_SHA", ""))
         return LocalVerificationDecision(False, f"{event_name or 'an unknown event'} runs never skip jobs")
+
+    def decide_push(self, ref: str, pushed_sha: str, before_sha: str) -> LocalVerificationDecision:
+        """Trusts a push to main that adds one squash commit of one merged, trusted pull request."""
+        if ref != TRUSTED_PUSH_REF:
+            return LocalVerificationDecision(False, f"pushes to {ref or 'an unknown ref'} never skip jobs")
+        if not pushed_sha or not before_sha:
+            return LocalVerificationDecision(False, "the push event has no head or before SHA")
+        # A push adding several commits lands several pull requests at once; never trust it.
+        parent_shas = self._repository_reader.get_commit_parent_shas(pushed_sha)
+        if parent_shas != [before_sha]:
+            return LocalVerificationDecision(
+                False, f"push {pushed_sha} does not add exactly one commit on top of {before_sha} (parents {parent_shas})")
+        pull_requests = self._repository_reader.list_commit_pull_requests(pushed_sha)
+        if len(pull_requests) != 1:
+            return LocalVerificationDecision(False, f"push {pushed_sha} belongs to {len(pull_requests)} pull requests, not exactly one")
+        pull_request = pull_requests[0]
+        pull_request_number = pull_request.get("number")
+        if (not pull_request.get("merged_at") or pull_request.get("merge_commit_sha") != pushed_sha
+                or (pull_request.get("base") or {}).get("ref") != TRUSTED_PUSH_REF.removeprefix("refs/heads/")):
+            return LocalVerificationDecision(
+                False, f"pull request #{pull_request_number} was not merged into main as {pushed_sha}")
+        # The squash commit never carries the status; the merged pull request head does.
+        head_sha = str(pull_request["head"]["sha"])
+        decision = self.decide_commit(head_sha)
+        return LocalVerificationDecision(decision.is_trusted, f"merged pull request #{pull_request_number}: {decision.reason}")
 
     def decide_merge_group(self, head_ref: str, base_sha: str) -> LocalVerificationDecision:
         """Trusts a merge group only when it holds exactly one trusted pull request."""
@@ -162,7 +210,7 @@ class LocalVerificationDecider:
 def decide_from_environment(environment: Mapping[str, str]) -> LocalVerificationDecision:
     """Returns the decision, treating every API or response error as untrusted."""
     event_name = environment.get("EVENT_NAME", "")
-    if event_name not in ("pull_request", "merge_group"):
+    if event_name not in LOCALLY_VERIFIABLE_EVENTS:
         return LocalVerificationDecision(False, f"{event_name or 'an unknown event'} runs never skip jobs")
     try:
         reader = GitHubRESTRepositoryReader(environment.get("GITHUB_API_URL", ""), environment.get("GITHUB_REPOSITORY", ""),
