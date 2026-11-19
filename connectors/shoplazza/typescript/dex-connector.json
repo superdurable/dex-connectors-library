@@ -1,0 +1,52 @@
+{
+  "connectorId": "shoplazza",
+  "releaseTag": "connectors/shoplazza/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-shoplazza",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetShopStep",
+      "kind": "query",
+      "operationId": "getShop",
+      "inputType": "GetShopInput",
+      "description": "Read the current store's ID, name, domain, and currency without contact or address data.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetShopInput identifies the configured store; it needs no additional fields.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
