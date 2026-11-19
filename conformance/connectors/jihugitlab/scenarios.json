@@ -1,0 +1,372 @@
+{
+  "connector": "jihugitlab",
+  "scenarios": [
+    {
+      "callId": "cf271886-7976-5de8-998c-e4cbaf2b2a7e",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"name\":\"Example Project\",\"path_with_namespace\":\"example-group/example-project\"}]",
+          "headers": {
+            "X-Next-Page": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v4/projects",
+          "query": {
+            "membership": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPage": 3,
+          "projects": [
+            {
+              "id": 42,
+              "name": "Example Project",
+              "path": "example-group/example-project"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 10
+      },
+      "name": "listMemberProjects-listed",
+      "operation": "listMemberProjects"
+    },
+    {
+      "callId": "b042c4af-fcf0-594f-84ec-30c3cdda78ba",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v4/projects",
+          "query": {
+            "membership": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPage": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 10
+      },
+      "name": "listMemberProjects-empty",
+      "operation": "listMemberProjects"
+    },
+    {
+      "callId": "d9f59423-451d-5370-a3bd-7f609da703ff",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v4/projects",
+          "query": {
+            "membership": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "private-test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPage": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 10
+      },
+      "name": "listMemberProjects-providerRejected",
+      "operation": "listMemberProjects"
+    },
+    {
+      "callId": "609f1141-f10b-546f-96fe-f8a0264be893",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v4/projects",
+          "query": {
+            "membership": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPage": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 10
+      },
+      "name": "listMemberProjects-invalidResponse",
+      "operation": "listMemberProjects"
+    },
+    {
+      "callId": "e41ff392-68c2-5a7f-8a7d-cbd19cb1878b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPage": 0,
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "perPage": 10
+      },
+      "name": "listMemberProjects-defect",
+      "operation": "listMemberProjects"
+    },
+    {
+      "callId": "8d582a0a-10a2-5779-96bb-0545afb88a25",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v4/projects",
+          "query": {
+            "membership": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 10
+      },
+      "name": "listMemberProjects-rateLimit",
+      "operation": "listMemberProjects"
+    },
+    {
+      "callId": "bd68f9c8-e3f0-561a-b510-19b93d0ee7fb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v4/projects",
+          "query": {
+            "membership": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "private-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 10
+      },
+      "name": "listMemberProjects-serverError",
+      "operation": "listMemberProjects"
+    },
+    {
+      "callId": "37f6549b-52fd-5e78-b6a8-004962af80c0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v4/projects",
+          "query": {
+            "membership": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "private-test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 10
+      },
+      "name": "listMemberProjects-transport",
+      "operation": "listMemberProjects"
+    }
+  ],
+  "schemaVersion": 1
+}

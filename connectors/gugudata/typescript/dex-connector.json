@@ -1,0 +1,60 @@
+{
+  "connectorId": "gugudata",
+  "releaseTag": "connectors/gugudata/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-gugudata",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newSegmentTextStep",
+      "kind": "query",
+      "operationId": "segmentText",
+      "inputType": "SegmentTextInput",
+      "description": "Split a short text into words in their original order.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "segmented",
+          "field": "segmented",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SegmentTextInput selects short text for Chinese NLP segmentation.",
+        "properties": {
+          "text": {
+            "description": "Text is nonblank UTF-8 text of at most 2000 UTF-16 code units.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

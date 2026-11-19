@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
+    typescript: {version: v0.1.0, operations: [getAccountBalance], triggers: []}
   provider: sendcloud
   codegen:
     go:

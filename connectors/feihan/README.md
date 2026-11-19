@@ -7,3 +7,9 @@ The [official API document](https://feihan.cn/apiDocs.html) specifies the produc
 HTTP 429 and 5xx and transport failures retry. Definite rejections take the optional `providerRejected` branch, which fails the example Flow unless deliberately wired. Responses are bounded to 256 KiB.
 
 The [runnable Dex Flow](go/examples/recharge-order/README.md) demonstrates a static connection, typed input, durable result, strict FDG, and a mock backed by a real Dex Worker and Client. Live provider authorization and production responses remain unverified. The logo embeds the [official Feihan site asset](https://www.feihan.cn/assets/image/favicon.ico).
+
+The [TypeScript package](typescript/) provides the same `queryRechargeOrder` Query and a [runnable Dex Worker/Client example](typescript/examples/basic/). Its provider adapter replays the Go-recorded response and retry scenarios without persisting the project password or KeyStr.
+
+## Python
+
+The first Python package is [`python/`](python/README.md). It implements the same read-only Query and replays the Go-recorded provider scenarios. Its runnable Flow includes a real Dex Worker and Client integration test.

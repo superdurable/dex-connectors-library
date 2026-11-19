@@ -1,0 +1,52 @@
+{
+  "connectorId": "qiniu",
+  "releaseTag": "connectors/qiniu/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-qiniu",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListBucketsStep",
+      "kind": "query",
+      "operationId": "listBuckets",
+      "inputType": "ListBucketsInput",
+      "description": "List storage bucket names owned by the signing AccessKey account.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListBucketsInput has no parameters; Qiniu lists buckets owned by the signing key.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

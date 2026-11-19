@@ -5,3 +5,5 @@ This connector reads [SendCloud user information](https://www.sendcloud.net/doc/
 SendCloud's [API rules](https://www.sendcloud.net/doc/email_v2/) define `result` and `statusCode`; code `50000` is a rate limit. Both API_USER and API_KEY are Dex credentials sent over HTTPS in a form POST body, which the [userinfo API](https://www.sendcloud.net/doc/email_v2/user_info/) documents, so they never appear in the URL. Errors and Flow outputs omit them. The [runnable Dex Flow](go/examples/account-balance/README.md) demonstrates the static connection and mock-backed verification.
 
 This is the Chinese email platform operated by [武汉闪达科技有限公司](https://www.sendcloud.net/aboutUs/), distinct from the European shipping service with a similar name. The logo comes from SendCloud's official site.
+
+The [TypeScript package](typescript/README.md) implements the same `getAccountBalance` Query with Go-recorded provider conformance and a real Dex Worker/Client example. Live SendCloud authorization requires user-controlled credentials and remains unverified here.
