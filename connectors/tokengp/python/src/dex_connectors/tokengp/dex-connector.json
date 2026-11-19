@@ -1,0 +1,52 @@
+{
+  "connectorId": "tokengp",
+  "releaseTag": "connectors/tokengp/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-tokengp",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_models_step",
+      "kind": "query",
+      "operationId": "listModels",
+      "inputType": "ListModelsInput",
+      "description": "List model IDs accessible to the connected API key.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListModelsInput has no arguments; the connection identifies the accessible catalog.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
