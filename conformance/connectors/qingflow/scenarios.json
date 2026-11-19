@@ -1,0 +1,228 @@
+{
+  "connector": "qingflow",
+  "scenarios": [
+    {
+      "callId": "7c175155-afb6-5bdc-b9b1-614b15912b17",
+      "exchanges": [
+        {
+          "body": "{\"errCode\":0,\"result\":{\"appList\":[{\"appKey\":\"app_example\",\"appName\":\"Operations\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "applications": [
+            {
+              "appKey": "app_example",
+              "appName": "Operations"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-listed",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "1699e563-ec0a-5e2e-91fe-2d0ce824d37b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "private-test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-providerRejected",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "c8be00ca-c31c-537b-9d90-95e9f3223814",
+      "exchanges": [
+        {
+          "body": "{\"errCode\":0,\"result\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-invalidResponse",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "c5a40193-4816-5e37-adb9-5b115fc36fec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-retry429",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "a3725994-40df-5425-903c-dfd8c5765266",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "private-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-retry503",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "2b2647f6-2dec-5a91-94de-9169d92ae3e1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/app",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "private-test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-transportFailure",
+      "operation": "listApplications"
+    },
+    {
+      "callId": "cdbc9079-6db9-5275-9f50-b9edcd8e7c39",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "applications": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listApplications-defect",
+      "operation": "listApplications"
+    }
+  ],
+  "schemaVersion": 1
+}
