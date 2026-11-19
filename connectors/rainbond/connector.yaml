@@ -13,6 +13,7 @@ spec:
       version: v0.1.0
       operations: [listTeams]
       triggers: []
+    typescript: {version: v0.1.0, operations: [listTeams], triggers: []}
   provider: rainbond
   codegen:
     go:
