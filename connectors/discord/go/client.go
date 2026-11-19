@@ -14,7 +14,9 @@
 // nonce window returns the message an earlier attempt created instead of
 // posting a duplicate. An unknown outcome resends while possible sends stay
 // below the Step's send cap, three by default, and selects Uncertain at the
-// cap. Discord enforces a nonce for only a few minutes, so the operation's
+// cap. A 2xx is never resent: an answer that is not a valid message is read
+// back by its message ID, or selects Uncertain without one. Discord enforces a
+// nonce for only a few minutes, so the operation's
 // retry window is two minutes. AddReaction is repeat-safe because Discord
 // keeps one reaction per user and emoji.
 //

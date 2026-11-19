@@ -40,8 +40,20 @@ func lastCreateMessageMarker(t *testing.T, ctx *singledispatchtest.Context) sing
 	t.Helper()
 	heartbeats := ctx.Heartbeats()
 	require.NotEmpty(t, heartbeats)
+	last := heartbeats[len(heartbeats)-1]
+	// sdkgo v0.38.0 writes one flat Marker; later releases key Markers by Call ID.
+	var checkpoint struct {
+		Markers map[string]singledispatch.Marker `json:"singleDispatchMarkers"`
+	}
+	require.NoError(t, json.Unmarshal(last, &checkpoint))
+	if len(checkpoint.Markers) > 0 {
+		require.Len(t, checkpoint.Markers, 1)
+		for _, marker := range checkpoint.Markers {
+			return marker
+		}
+	}
 	var marker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &marker))
+	require.NoError(t, json.Unmarshal(last, &marker))
 	return marker
 }
 
@@ -93,7 +105,6 @@ func TestCreateMessageResendBelowTheCapReturnsTheMessageForTheSameNonce(t *testi
 		"server error":                    {http.StatusBadGateway, `{"code":0}`},
 		"timeout status":                  {http.StatusRequestTimeout, `{}`},
 		"unlisted 4xx":                    {http.StatusTooEarly, `{}`},
-		"malformed 2xx":                   {http.StatusOK, `{"id":"x"}`},
 		"error body that names a message": {http.StatusForbidden, messageJSON(testMessageID, "Release @everyone")},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -193,17 +204,159 @@ func TestCreateMessageUnreadableCheckpointRetriesWithoutSending(t *testing.T) {
 	require.Empty(t, provider.recordedRequests())
 }
 
-func TestCreateMessageOversizedConfirmationResendsBelowTheCapAndIsUncertainAtIt(t *testing.T) {
+func TestCreateMessageOversizedConfirmationSelectsUncertainWithoutResending(t *testing.T) {
 	provider := newScriptedDiscord(t, scriptedResponse{http.StatusOK, messageJSON(testMessageID, strings.Repeat("x", 2000))})
 	client := newTestClient(t, provider.URL, discord.Config{MaxResponseBytes: 512})
 	ctx := singledispatchtest.NewContext("announcement-flow", "post")
-	_, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput, sdkgo.WithMaxSends(2))
-	requireRetry(t, err)
-	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput, sdkgo.WithMaxSends(2))
+	result, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+	require.NoError(t, err)
+	require.Equal(t, discord.CreateMessageBranchUncertain, result.Branch, "a 2xx proves Discord created the message")
+	require.Len(t, provider.recordedRequests(), 1)
+}
+
+func TestCreateMessageAcceptedAnswerWithoutAMessageIDSelectsUncertainWithoutResending(t *testing.T) {
+	for name, body := range map[string]string{
+		"unparseable":         `{`,
+		"invalid message ID":  `{"id":"x"}`,
+		"missing message ID":  `{"channel_id":"` + testChannelID + `"}`,
+		"message ID not text": `{"id":998877665544332211}`,
+		"message ID key case": `{"ID":"` + testMessageID + `"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newScriptedDiscord(t, scriptedResponse{http.StatusOK, body})
+			client := newTestClient(t, provider.URL, discord.Config{})
+			ctx := singledispatchtest.NewContext("announcement-flow", "post")
+			result, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+			require.NoError(t, err)
+			require.Equal(t, discord.CreateMessageBranchUncertain, result.Branch)
+			require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
+			require.Len(t, provider.recordedRequests(), 1)
+		})
+	}
+}
+
+// incompleteAcceptedMessageJSON is a 2xx answer with a valid message ID but no author, content, or type.
+const incompleteAcceptedMessageJSON = `{"id":"` + testMessageID + `","channel_id":"` + testChannelID + `"}`
+
+// newReadBackDiscord answers the POST with an incomplete accepted message and each GET with the next scripted response.
+func newReadBackDiscord(t *testing.T, onPost func(), readBacks ...scriptedResponse) *recordingDiscord {
+	t.Helper()
+	var readBackCount atomic.Int32
+	return newRecordingDiscord(t, func(response http.ResponseWriter, request recordedRequest) {
+		if request.method == http.MethodPost {
+			if onPost != nil {
+				onPost()
+			}
+			writeJSON(t, response, http.StatusOK, incompleteAcceptedMessageJSON)
+			return
+		}
+		index := min(int(readBackCount.Add(1))-1, len(readBacks)-1)
+		writeJSON(t, response, readBacks[index].status, readBacks[index].body)
+	})
+}
+
+func requireOnePostThenReadBacks(t *testing.T, requests []recordedRequest, readBackCount int) {
+	t.Helper()
+	require.Len(t, requests, 1+readBackCount)
+	require.Equal(t, http.MethodPost, requests[0].method)
+	for _, request := range requests[1:] {
+		require.Equal(t, http.MethodGet, request.method, "an accepted message is never resent")
+		require.Equal(t, "/channels/"+testChannelID+"/messages/"+testMessageID, request.path)
+	}
+}
+
+func TestCreateMessageAcceptedAnswerWithAMessageIDReadsTheMessageBack(t *testing.T) {
+	provider := newReadBackDiscord(t, nil, scriptedResponse{http.StatusOK, messageJSON(testMessageID, "Release @everyone")})
+	client := newTestClient(t, provider.URL, discord.Config{})
+	ctx := singledispatchtest.NewContext("announcement-flow", "post")
+	result, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+	require.NoError(t, err)
+	require.Equal(t, discord.CreateMessageBranchCreated, result.Branch)
+	require.Equal(t, testMessageID, result.Value.ID)
+	require.Equal(t, testMessageID, lastCreateMessageMarker(t, ctx).ProviderID)
+	requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
+}
+
+func TestCreateMessageUnknownReadBackRetriesWithTheSavedMessageIDAndNeverResends(t *testing.T) {
+	for name, maxSends := range map[string]int32{"manifest cap": 3, "application cap of one": 1} {
+		t.Run(name, func(t *testing.T) {
+			provider := newReadBackDiscord(t, nil,
+				scriptedResponse{http.StatusServiceUnavailable, `{"code":0}`},
+				scriptedResponse{http.StatusInternalServerError, `{"code":0}`},
+				scriptedResponse{http.StatusOK, messageJSON(testMessageID, "Release @everyone")},
+			)
+			client := newTestClient(t, provider.URL, discord.Config{})
+			ctx := singledispatchtest.NewContext("announcement-flow", "post")
+			for attempt := 1; attempt <= 2; attempt++ {
+				_, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput, sdkgo.WithMaxSends(maxSends))
+				requireRetry(t, err)
+				require.Equal(t, testMessageID, lastCreateMessageMarker(t, ctx).ProviderID)
+				ctx.AdvanceAttempt()
+			}
+			result, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput, sdkgo.WithMaxSends(maxSends))
+			require.NoError(t, err)
+			require.Equal(t, discord.CreateMessageBranchCreated, result.Branch)
+			require.Equal(t, testMessageID, result.Value.ID)
+			requireOnePostThenReadBacks(t, provider.recordedRequests(), 3)
+		})
+	}
+}
+
+func TestCreateMessageDefiniteReadBackRefusalSelectsUncertain(t *testing.T) {
+	for name, readBack := range map[string]scriptedResponse{
+		"unknown message":         {http.StatusNotFound, `{"code":10008}`},
+		"missing message history": {http.StatusForbidden, `{"code":50001}`},
+		"contradicting message":   {http.StatusOK, messageJSON("998877665544332212", "Release @everyone")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newReadBackDiscord(t, nil, readBack)
+			client := newTestClient(t, provider.URL, discord.Config{})
+			ctx := singledispatchtest.NewContext("announcement-flow", "post")
+			result, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+			if readBack.status == http.StatusOK {
+				// A contradicting answer is unknown, and the saved ID keeps the next attempt reading back.
+				requireRetry(t, err)
+				requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, discord.CreateMessageBranchUncertain, result.Branch)
+			require.Equal(t, testMessageID, result.Receipt.ProviderObjectID)
+			requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
+		})
+	}
+}
+
+func TestCreateMessageUnknownReadBackWithoutASavedMessageIDSelectsUncertain(t *testing.T) {
+	ctx := singledispatchtest.NewContext("announcement-flow", "post")
+	// The claim is already persisted, so only the message ID checkpoint fails.
+	provider := newReadBackDiscord(t, func() { ctx.SetWriteError(errors.New("heartbeat unavailable")) },
+		scriptedResponse{http.StatusServiceUnavailable, `{"code":0}`})
+	client := newTestClient(t, provider.URL, discord.Config{})
+	result, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput)
 	require.NoError(t, err)
 	require.Equal(t, discord.CreateMessageBranchUncertain, result.Branch)
-	require.Len(t, provider.recordedRequests(), 2, "the application's send cap of two replaces the manifest's three")
+	requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
+}
+
+func TestCreateMessageSavedMessageIDWithATransientCredentialFailureRetriesWithoutSending(t *testing.T) {
+	provider := newReadBackDiscord(t, nil, scriptedResponse{http.StatusServiceUnavailable, `{"code":0}`})
+	client := newTestClient(t, provider.URL, discord.Config{})
+	ctx := singledispatchtest.NewContext("announcement-flow", "post")
+	_, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	unavailable, err := discord.New(discord.Config{Endpoint: provider.URL}, failingDiscordCredentials{err: errors.New("broker timeout")})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(ctx, unavailable.CreateMessage(), discordConnection, fencedCreateMessageInput)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	revoked, err := discord.New(discord.Config{Endpoint: provider.URL}, failingDiscordCredentials{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(ctx, revoked.CreateMessage(), discordConnection, fencedCreateMessageInput)
+	require.NoError(t, err)
+	require.Equal(t, discord.CreateMessageBranchUncertain, result.Branch)
+	requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
 }
 
 func TestCreateMessageTerminalCredentialFailureAfterAPossibleSendSelectsUncertain(t *testing.T) {

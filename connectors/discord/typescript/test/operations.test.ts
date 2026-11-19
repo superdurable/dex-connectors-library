@@ -59,7 +59,7 @@ it.each([
   expect(requestCount).toBe(0);
 });
 
-it.each([[302, 'retry'], [425, 'retry'], [501, 'retry'], [200, 'retry'], [422, 'providerRejected']])('classifies a createMessage HTTP %i answer as %s', async (status, expected) => {
+it.each([[302, 'retry'], [425, 'retry'], [501, 'retry'], [200, 'uncertain'], [422, 'providerRejected']])('classifies a createMessage HTTP %i answer as %s', async (status, expected) => {
   const client = new DiscordClient({}, credential, { send: async () => ({ status, headers: {}, body: Buffer.from('{"code":0}') }) });
   const result = await client.createMessage().invoke(createMessageCall(), { channelId, content: 'hello' });
   expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);

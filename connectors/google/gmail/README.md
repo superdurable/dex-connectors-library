@@ -235,7 +235,10 @@ retries. A 429 or proven undispatched transport failure can checkpoint
 describes 5xx responses, 503 included, as errors raised while processing the
 request, and Sent Mail search can lag an accepted send, so a 503 counts as a
 possible send. The manifest retry policy allows seven attempts within five
-minutes: three sends plus their rate-limit, credential, and read-back retries.
+minutes: three sends, the Sent Mail search before each resend, and their
+rate-limit and credential retries. At the send cap, a Sent Mail search that
+finds no match, or that fails transiently, selects `uncertain` instead of
+Retry, because a failed Flow invites a person or agent to send again.
 Gmail does not
 dedupe by `Message-ID`; a lost heartbeat frame also cannot prove exactly-once
 delivery.

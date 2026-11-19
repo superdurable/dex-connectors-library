@@ -442,7 +442,9 @@ class CreateMessageOperation:
 
         An unknown outcome resends with the same enforced nonce while possible sends stay
         below ``call.max_sends`` and selects uncertain at the cap. A definite refusal of the
-        first send selects its branch and is never resent.
+        first send selects its branch and is never resent. A 2xx is never resent: an
+        unreadable answer selects uncertain, and an answer whose message ID is valid is
+        checkpointed and read back by that ID.
         """
         empty = Message()
         try:
@@ -493,20 +495,22 @@ class CreateMessageOperation:
                 FailureKind.AVAILABILITY,
                 "Discord dispatch checkpoint is unreadable; no message was sent in this attempt",
             )
+        # A saved message ID proves an accepted earlier send: read it back at any send count, never resend.
+        if (
+            decision.kind != DecisionKind.SEND_ALLOWED
+            and decision.marker is not None
+            and decision.marker.provider_id
+        ):
+            return await _read_back_saved_message(
+                self.client, call, input.channel_id, decision.marker.provider_id
+            )
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
             return _create_message_uncertain(
                 FailureKind.TRANSPORT,
                 "an earlier attempt may have created the Discord message, and the send cap is reached",
                 receipt,
             )
-        if decision.marker is not None and decision.marker.provider_id:
-            # No message ID is checkpointed, but a saved one would prove a created message; never resend it.
-            return _create_message_uncertain(
-                FailureKind.TRANSPORT,
-                "an earlier attempt created the Discord message, but its confirmation was lost",
-                receipt,
-            )
-        # The resend with the same enforced nonce is Discord's only read-back.
+        # Without a saved message ID, the resend with the same enforced nonce is Discord's only read-back.
         # This attempt's send would be the last one the cap allows when no further send remains.
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         # An earlier send may have created the message, so a refusal of this resend proves nothing.
@@ -557,6 +561,7 @@ class CreateMessageOperation:
             self.client,
             call,
             fence,
+            token,
             exchange,
             input.channel_id,
             can_resend_unknown_outcome,
@@ -569,6 +574,7 @@ async def _classify_create_message(
     client: Client,
     call: Call,
     fence: Fence,
+    token: str,
     exchange: FencedExchange,
     channel_id: str,
     can_resend_unknown_outcome: bool,
@@ -600,24 +606,134 @@ async def _classify_create_message(
             has_possible_earlier_send,
             receipt,
         )
+    # A 2xx proves Discord created the message, and nonce dedupe is unverified, so nothing below resends.
     if exchange.read_error:
-        # Discord answered 2xx before the body broke or overflowed; a resend with the same nonce returns it.
-        return _resend_or_select_uncertain(
-            can_resend_unknown_outcome,
-            FailureKind.TRANSPORT,
-            "Discord answered the message, but its response could not be read",
-            0,
-            receipt,
+        return _create_message_uncertain(
+            FailureKind.TRANSPORT, "Discord accepted the message, but its response could not be read", receipt
         )
     try:
         message = _message(_decode_json(exchange.body), channel_id)
     except ValueError as error:
-        # A resend inside the nonce window returns the same message, so a malformed answer is unknown.
-        return _resend_or_select_uncertain(
-            can_resend_unknown_outcome, FailureKind.PROTOCOL, str(error), 0, receipt
+        return await _read_back_accepted_message(
+            client, call, fence, token, channel_id, exchange.body, error, receipt
         )
-    # No message ID is checkpointed: a later resend with the same nonce returns this message.
     return MutationAttempt.branch_result(CREATED, message, client.receipt(call, message.id))
+
+
+async def _read_back_accepted_message(
+    client: Client,
+    call: Call,
+    fence: Fence,
+    token: str,
+    channel_id: str,
+    body: bytes,
+    decode_error: ValueError,
+    receipt: Receipt,
+) -> MutationAttempt[Message]:
+    """Confirm a 2xx whose body is not a valid message.
+
+    A valid top-level message ID is checkpointed and read back; without one the outcome is uncertain.
+    """
+    try:
+        fields = _decode_json(body)
+    except ValueError:
+        fields = None
+    message_id = fields.get("id") if isinstance(fields, dict) else None
+    if not isinstance(message_id, str) or _SNOWFLAKE.fullmatch(message_id) is None:
+        return _create_message_uncertain(
+            FailureKind.PROTOCOL,
+            "Discord accepted the message, but its response carries no message ID: " + str(decode_error),
+            receipt,
+        )
+    try:
+        await fence.record_provider_id(message_id)
+        is_message_id_saved = True
+    except Exception:
+        is_message_id_saved = False
+    return await _read_back_message(client, call, token, channel_id, message_id, is_message_id_saved)
+
+
+async def _read_back_saved_message(
+    client: Client, call: Call, channel_id: str, message_id: str
+) -> MutationAttempt[Message]:
+    """Read back the message ID an earlier attempt checkpointed."""
+    receipt = client.receipt(call, message_id)
+    if _SNOWFLAKE.fullmatch(message_id) is None:
+        return _create_message_uncertain(
+            FailureKind.PROTOCOL,
+            "an earlier attempt created the Discord message, but its checkpointed message ID is invalid",
+            receipt,
+        )
+    token, failure, branch = await client.resolve_token(call, "createMessage")
+    if failure is not None or token is None:
+        assert failure is not None
+        if branch == "retry":
+            # The checkpoint keeps the saved message ID, so the next attempt reads it back again.
+            return MutationAttempt.retry(failure)
+        return _create_message_uncertain(
+            failure.kind,
+            "an earlier attempt created the Discord message, but it cannot be read back: " + failure.message,
+            receipt,
+        )
+    return await _read_back_message(client, call, token, channel_id, message_id, True)
+
+
+async def _read_back_message(
+    client: Client, call: Call, token: str, channel_id: str, message_id: str, is_message_id_saved: bool
+) -> MutationAttempt[Message]:
+    """Read an accepted message by ID and select created when Discord returns it.
+
+    An unknown result retries only when the ID is checkpointed for the next attempt; a definite
+    refusal, such as 404 or a missing Read Message History permission, selects uncertain.
+    """
+    receipt = client.receipt(call, message_id)
+    failure = _failure(
+        "createMessage",
+        FailureKind.TRANSPORT,
+        "Discord accepted the message, but reading it back did not complete",
+    )
+    delay: float = 0
+    try:
+        request = client.http_client.build_request(
+            "GET",
+            client.base_url + "/channels/" + channel_id + "/messages/" + message_id,
+            headers={"Accept": "application/json", "Authorization": "Bot " + token, "User-Agent": USER_AGENT},
+        )
+    except (httpx.HTTPError, ValueError, TypeError):
+        return _create_message_uncertain(
+            FailureKind.LOCAL_DEFECT,
+            "Discord accepted the message, but its read-back request could not be built",
+            receipt,
+        )
+    try:
+        exchange = await client.send_fenced(request, [])
+    except Exception:
+        exchange = FencedExchange(read_error="request")
+    if 200 <= exchange.status_code < 300 and not exchange.read_error:
+        try:
+            message = _message(_decode_json(exchange.body), channel_id)
+        except ValueError:
+            message = None
+        if message is not None and message.id == message_id:
+            return MutationAttempt.branch_result(CREATED, message, receipt)
+        failure = _failure(
+            "createMessage",
+            FailureKind.PROTOCOL,
+            "Discord accepted the message, but its read-back answer is invalid",
+        )
+    elif exchange.status_code and not 200 <= exchange.status_code < 300:
+        response = ProviderResponse(exchange.status_code, exchange.headers, exchange.body)
+        _, classified, delay = _classify(response, "createMessage", client.now())
+        failure = _failure(
+            "createMessage",
+            classified.kind,
+            "Discord accepted the message, but reading it back failed: " + classified.message,
+        )
+        if not exchange.read_error and exchange.status_code in _REFUSAL_STATUSES:
+            return MutationAttempt.uncertain(Message(), failure, receipt)
+    if is_message_id_saved:
+        return MutationAttempt.retry(failure, delay)
+    return MutationAttempt.uncertain(Message(), failure, receipt)
 
 
 async def _classify_create_message_refusal(

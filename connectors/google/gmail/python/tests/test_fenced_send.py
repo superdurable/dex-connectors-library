@@ -508,6 +508,25 @@ async def test_reply_source_missing_after_unconfirmed_send_is_uncertain() -> Non
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("source_answer", [httpx.Response(409), httpx.Response(200, content=b"{")])
+async def test_reply_indefinite_source_read_counts_only_earlier_sends(source_answer: httpx.Response) -> None:
+    """An unclear source read before any POST retries while two earlier sends stay below the cap of three."""
+    context = HeartbeatContext(3)
+    call = _call(context, operation_id="replyToMessage")
+    context.previous = Marker(call.id, 2, State.CLAIMED, send_count=2)
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/messages/source-1"):
+            return source_answer
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.kind == "retry"
+    assert "POST" not in _methods(requests)
+    assert context.heartbeat_values == [], "a pre-send Retry after a possible send records nothing"
+
+
+@pytest.mark.asyncio
 async def test_reply_source_missing_on_first_attempt_is_provider_rejected() -> None:
     """A source 404 before any send stays providerRejected."""
     attempt, _ = await _invoke(

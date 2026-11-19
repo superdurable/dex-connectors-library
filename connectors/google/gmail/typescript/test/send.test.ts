@@ -563,6 +563,23 @@ describe('Gmail send and reply classification', () => {
     expect(posts).toBe(0);
   });
 
+  it.each([
+    { name: 'HTTP 409', status: 409 },
+    { name: 'a 2xx without reply metadata', status: 200 },
+  ])('retries an unclear source read ($name) while two earlier sends stay below the cap of three', async ({ status }) => {
+    let posts = 0;
+    const operation = sender(async request => {
+      if (request.url.includes('/source-1?')) return response(status, {});
+      if (request.method === 'POST') posts++;
+      return response(200, { messages: [] });
+    });
+    const earlier = { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 2, state: 'claimed', sendCount: 2 };
+    const checkpoint: { value?: unknown } = { value: earlier };
+    expect((await operation.replyToMessage(operationCall('replyToMessage', 3, checkpoint), replyInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
+    expect(posts).toBe(0);
+    expect(checkpoint.value, 'a pre-send Retry after a possible send records nothing').toBe(earlier);
+  });
+
   it('reads back only and selects uncertain when the application lowers the send cap to one', async () => {
     const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed' } };
     let posts = 0;

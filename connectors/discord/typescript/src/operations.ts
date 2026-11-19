@@ -86,7 +86,9 @@ export class CreateMessageOperation implements Mutation<CreateMessageInput, Mess
   /**
    * Validate, send under a single-dispatch fence, and decode one message. An unknown outcome resends
    * with the same enforced nonce while possible sends stay below the send cap and selects uncertain
-   * at the cap. A definite refusal of the first send selects its branch and is never resent.
+   * at the cap. A definite refusal of the first send selects its branch and is never resent. A 2xx is never
+   * resent: an unreadable answer selects uncertain, and an answer whose message ID is valid is checkpointed
+   * and read back by that ID.
    */
   async invoke(call: Call, input: CreateMessageInput): Promise<MutationAttempt<Message>> {
     let body: Record<string, unknown>;
@@ -113,11 +115,10 @@ export class CreateMessageOperation implements Mutation<CreateMessageInput, Mess
     const decision = fence.decide();
     // An unreadable checkpoint is an unknown outcome; the retry budget bounds these attempts.
     if (decision.kind === 'failClosed') return createMessageRetry('AVAILABILITY', 'Discord dispatch checkpoint is unreadable; no message was sent in this attempt');
+    // A saved message ID proves Discord accepted an earlier send, so it is read back at any send count and never resent.
+    if (decision.kind !== 'sendAllowed' && decision.marker?.providerId) return this.readBackSavedMessage(call, input.channelId, decision.marker.providerId);
     if (decision.kind === 'readBackRequired') return createMessageUncertain('TRANSPORT', 'an earlier attempt may have created the Discord message, and the send cap is reached', receipt);
-    // No message ID is checkpointed, but a saved one would prove a created message that must not be resent.
-    if (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId)
-      return createMessageUncertain('TRANSPORT', 'an earlier attempt created the Discord message, but its confirmation was lost', receipt);
-    // The resend with the same enforced nonce is Discord's only read-back.
+    // Without a saved message ID, the resend with the same enforced nonce is Discord's only read-back.
     const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
     // This attempt's send would be the last one the cap allows when no further send remains.
     const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
@@ -145,16 +146,64 @@ export class CreateMessageOperation implements Mutation<CreateMessageInput, Mess
     }
     if (exchange.status < 200 || exchange.status >= 300)
       return this.classifyRefusal(fence, exchange, input.channelId, canResendUnknownOutcome, hasPossibleEarlierSend, receipt);
-    // Discord answered 2xx before the body broke or overflowed; a resend with the same nonce returns the message.
-    if (exchange.error) return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'Discord answered the message, but its response could not be read', 0, receipt);
+    // A 2xx proves Discord created the message, and nonce deduplication is unverified, so nothing below resends.
+    if (exchange.error) return createMessageUncertain('TRANSPORT', 'Discord accepted the message, but its response could not be read', receipt);
     let message: Message;
     try { message = decodeMessage(decodeObject(exchange.body), input.channelId); }
-    catch (error) {
-      // A resend inside the nonce window returns the same message, so a malformed answer is an unknown outcome.
-      return resendOrSelectUncertain(canResendUnknownOutcome, 'PROTOCOL', error instanceof Error ? error.message : 'Discord response is invalid', 0, receipt);
-    }
-    // No message ID is checkpointed: a later resend with the same nonce returns this message.
+    catch (error) { return this.readBackAcceptedMessage(call, fence, resolution.token, input.channelId, exchange.body, error, receipt); }
     return newMutationBranch('created', message, this.client.receipt(call, message.id));
+  }
+
+  /** Confirm a 2xx whose body is not a valid message: a valid top-level message ID is checkpointed and read back. */
+  private async readBackAcceptedMessage(call: Call, fence: Fence, token: string, channelId: string, body: Uint8Array, decodeError: unknown, receipt: ReceiptDraft): Promise<MutationAttempt<Message>> {
+    let messageId: unknown;
+    try { messageId = decodeObject(body).id; } catch { messageId = undefined; }
+    if (typeof messageId !== 'string' || !snowflake.test(messageId))
+      return createMessageUncertain('PROTOCOL', `Discord accepted the message, but its response carries no message ID: ${decodeError instanceof Error ? decodeError.message : 'invalid response'}`, receipt);
+    let isMessageIdSaved = true;
+    try { await fence.recordProviderId(messageId); } catch { isMessageIdSaved = false; }
+    return this.readBackMessage(call, token, channelId, messageId, isMessageIdSaved);
+  }
+
+  /** Read back the message ID an earlier attempt checkpointed. */
+  private async readBackSavedMessage(call: Call, channelId: string, messageId: string): Promise<MutationAttempt<Message>> {
+    const receipt = this.client.receipt(call, messageId);
+    if (!snowflake.test(messageId)) return createMessageUncertain('PROTOCOL', 'an earlier attempt created the Discord message, but its checkpointed message ID is invalid', receipt);
+    const resolution = await this.client.resolveBotToken(call, 'createMessage');
+    if ('outcome' in resolution) {
+      // The checkpoint keeps the saved message ID, so the next attempt reads it back again.
+      if (resolution.outcome.disposition === 'retry') return newMutationRetry(resolution.outcome.failure, resolution.outcome.retryAfterMs);
+      return createMessageUncertain(resolution.outcome.failure.kind, `an earlier attempt created the Discord message, but it cannot be read back: ${resolution.outcome.failure.message}`, receipt);
+    }
+    return this.readBackMessage(call, resolution.token, channelId, messageId, true);
+  }
+
+  /**
+   * Read an accepted message by ID and select created when Discord returns it. An unknown result retries
+   * only when the ID is checkpointed for the next attempt; a definite refusal, such as 404 or a missing
+   * Read Message History permission, selects uncertain.
+   */
+  private async readBackMessage(call: Call, token: string, channelId: string, messageId: string, isMessageIdSaved: boolean): Promise<MutationAttempt<Message>> {
+    const receipt = this.client.receipt(call, messageId);
+    let failure: Failure = { kind: 'TRANSPORT', provider: 'discord', operation: 'createMessage', message: 'Discord accepted the message, but reading it back did not complete' };
+    let retryAfterMs = 0;
+    let exchange: FencedExchange;
+    try { exchange = await this.client.readAcceptedMessage(`/channels/${channelId}/messages/${messageId}`, token, call.context.cancellationSignal); }
+    catch { exchange = { status: 0, headers: {}, body: new Uint8Array(), error: 'request', requestSent: true }; }
+    const isSuccess = exchange.status >= 200 && exchange.status < 300;
+    if (isSuccess && !exchange.error) {
+      let message: Message | undefined;
+      try { message = decodeMessage(decodeObject(exchange.body), channelId); } catch { message = undefined; }
+      if (message?.id === messageId) return newMutationBranch('created', message, receipt);
+      failure = { ...failure, kind: 'PROTOCOL', message: 'Discord accepted the message, but its read-back answer is invalid' };
+    } else if (exchange.status !== 0 && !isSuccess) {
+      const classified = this.client.classifyErrorResponse('createMessage', { status: exchange.status, headers: exchange.headers, body: exchange.body }, receipt);
+      failure = { ...classified.failure, message: `Discord accepted the message, but reading it back failed: ${classified.failure.message}` };
+      retryAfterMs = classified.retryAfterMs;
+      if (!exchange.error && refusalStatuses.has(exchange.status)) return newMutationUncertain(zeroMessage, failure, receipt);
+    }
+    if (isMessageIdSaved) return newMutationRetry(failure, retryAfterMs);
+    return newMutationUncertain(zeroMessage, failure, receipt);
   }
 
   /**

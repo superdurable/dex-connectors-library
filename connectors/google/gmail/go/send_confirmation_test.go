@@ -793,6 +793,29 @@ func TestGmailReplySourceRejectedAfterUnconfirmedSendIsUncertain(t *testing.T) {
 	require.Equal(t, 1, sends)
 }
 
+// TestGmailReplyIndefiniteSourceReadCountsOnlyEarlierSends retries an unclear source read
+// before any POST even when the earlier sends leave room for only one more send.
+func TestGmailReplyIndefiniteSourceReadCountsOnlyEarlierSends(t *testing.T) {
+	fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusInternalServerError)})
+	client := newGmailClient(t, fake.URL)
+	stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+	for attempt := 1; attempt <= 2; attempt++ {
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, runGmailSendAttempt(stepContext, client, true).err, &retry)
+		stepContext.AdvanceAttempt()
+	}
+	fake.mutex.Lock()
+	fake.behavior.sourceReadStatusCode = http.StatusConflict
+	fake.mutex.Unlock()
+	heartbeatCount := len(stepContext.Heartbeats())
+	third := runGmailSendAttempt(stepContext, client, true)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, third.err, &retry, "two earlier sends stay below the cap of three")
+	require.Len(t, stepContext.Heartbeats(), heartbeatCount, "a pre-send Retry after a possible send records nothing")
+	sends, _, _, _ := fake.counts()
+	require.Equal(t, 2, sends)
+}
+
 // TestGmailReplySourceRejectedOnFirstAttemptIsProviderRejected keeps a clean first rejection terminal.
 func TestGmailReplySourceRejectedOnFirstAttemptIsProviderRejected(t *testing.T) {
 	fake := newGmailSendFake(t, sendFakeBehavior{sourceReadStatusCode: http.StatusNotFound})

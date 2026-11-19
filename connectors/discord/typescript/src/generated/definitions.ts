@@ -90,9 +90,9 @@ export const CreateMessageBranchCreated = CreateMessageBranch.Created;
 export const CreateMessageBranchNotFound = CreateMessageBranch.NotFound;
 /** Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token. */
 export const CreateMessageBranchProviderRejected = CreateMessageBranch.ProviderRejected;
-/** Kept for compatibility and no longer selected: an invalid or oversized answer is an unknown outcome that resends with the same nonce or selects uncertain at the send cap. */
+/** Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain. */
 export const CreateMessageBranchInvalidResponse = CreateMessageBranch.InvalidResponse;
-/** Discord may have created the message, and the send cap was reached before it could be confirmed; check the channel before sending again. */
+/** Discord may have created the message, or accepted it but could not confirm it by read-back, and no further send is allowed; check the channel before sending again. */
 export const CreateMessageBranchUncertain = CreateMessageBranch.Uncertain;
 /** Local input, connection configuration, or credentials are invalid. */
 export const CreateMessageBranchDefect = CreateMessageBranch.Defect;
@@ -103,8 +103,8 @@ export const CreateMessageDefinition: MutationDefinition = {
     { id: "created", description: "Discord created the message, or returned the message an earlier attempt created with the same nonce." },
     { id: "notFound", description: "Discord knows no channel with the ID.", optional: true },
     { id: "providerRejected", description: "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", optional: true },
-    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized answer is an unknown outcome that resends with the same nonce or selects uncertain at the send cap.", optional: true },
-    { id: "uncertain", description: "Discord may have created the message, and the send cap was reached before it could be confirmed; check the channel before sending again.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain.", optional: true },
+    { id: "uncertain", description: "Discord may have created the message, or accepted it but could not confirm it by read-back, and no further send is allowed; check the channel before sending again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

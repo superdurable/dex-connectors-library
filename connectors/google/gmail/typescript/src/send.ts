@@ -460,13 +460,16 @@ function isEarlierSendPossible(fence: Fence): boolean {
 /**
  * Select a rejection branch only when no earlier attempt may have sent. Otherwise that send may still be
  * delivered: a definite refusal proves only that this attempt failed, so it selects uncertain; an indefinite
- * one Retries below the send cap, so the next attempt reads back, and selects uncertain at the cap.
+ * one, which only the source read before any POST produces, Retries while earlier sends stay below the send
+ * cap and selects uncertain at it.
  */
 function rejectUnlessEarlierSendIsUnconfirmed(call: Call, fence: Fence, branch: string, receipt: ReceiptDraft, rejection: Failure, isDefinite = false): MutationAttempt<SendMessageOutput> {
   if (!isEarlierSendPossible(fence)) return newMutationBranch(branch, emptySend(), receipt, rejection);
   const unknown = { ...rejection, message: `${rejection.message}; an earlier send may still be delivered` };
   if (isDefinite) return newMutationUncertain(emptySend(), unknown, receipt);
-  return resendOrSelectUncertain(call, fence, unknown, receipt);
+  // This attempt sent nothing, so only earlier sends count against the cap.
+  if ((fence.decide().priorSendUpperBound ?? 0) < effectiveMaxSends(call, unknown.operation)) return newMutationRetry(unknown);
+  return newMutationUncertain(emptySend(), unknown, receipt);
 }
 
 // Statuses that prove Gmail refused the POST before processing it.

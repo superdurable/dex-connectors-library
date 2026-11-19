@@ -274,7 +274,7 @@ spec:
         dispatchFence: true
         repeatOnUnknown: limited
         maxSends: 3
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends plus their rate-limit, credential, and Sent Mail read-back retries; a send still unconfirmed at the cap selects uncertain instead of sending more copies."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends, the Sent Mail search before each resend, and their rate-limit and credential retries; at the cap, a Sent Mail search that finds no match or fails selects uncertain instead of Retry, because a failed Flow invites a duplicate send."}}
       mocks:
         - name: sentToCustomer
           branch: sent
@@ -326,7 +326,7 @@ spec:
         dispatchFence: true
         repeatOnUnknown: limited
         maxSends: 3
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends the reply with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends plus their rate-limit, credential, and Sent Mail read-back retries; a reply still unconfirmed at the cap selects uncertain instead of sending more copies."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends the reply with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends, the Sent Mail search before each resend, and their rate-limit and credential retries; at the cap, a Sent Mail search that finds no match or fails selects uncertain instead of Retry, because a failed Flow invites a duplicate reply."}}
       mocks:
         - name: repliedInThread
           branch: sent

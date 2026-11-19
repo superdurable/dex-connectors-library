@@ -76,7 +76,9 @@ func (CreateMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateMessag
 // enforce_nonce under a single-dispatch fence, then classifies the attempt.
 // An unknown outcome resends with the same nonce while possible sends stay
 // below call.MaxSends() and selects uncertain at the cap. A definite refusal
-// of the first send selects its branch and is never resent.
+// of the first send selects its branch and is never resent. A 2xx is never
+// resent: an unreadable answer selects uncertain, and an answer whose message
+// ID is valid is checkpointed and read back by that ID.
 func (operation CreateMessageOperation) Invoke(call sdkgo.Call, input CreateMessageInput) sdkgo.MutationAttempt[Message] {
 	requestBody, err := buildCreateMessageRequestBody(input, call.IdempotencyKey)
 	if err != nil {
@@ -92,19 +94,18 @@ func (operation CreateMessageOperation) Invoke(call sdkgo.Call, input CreateMess
 	}
 	receipt := operation.client.receipt(call, input.ChannelID)
 	decision := fence.Decide()
-	switch decision.Kind {
-	case singledispatch.FailClosed:
+	if decision.Kind == singledispatch.FailClosed {
 		// An unreadable checkpoint is an unknown outcome; the retry budget bounds these attempts.
 		return retryCreateMessage(sdkgo.FailureAvailability, "Discord dispatch checkpoint is unreadable; no message was sent in this attempt", 0)
-	case singledispatch.ReadBackRequired:
-		return uncertainCreateMessage(sdkgo.FailureTransport, "an earlier attempt may have created the Discord message, and the send cap is reached", receipt)
-	case singledispatch.ReadBackThenResendAllowed:
-		// No message ID is checkpointed, but a saved one would prove a created message that must not be resent.
-		if decision.Marker.ProviderID != "" {
-			return uncertainCreateMessage(sdkgo.FailureTransport, "an earlier attempt created the Discord message, but its confirmation was lost", receipt)
-		}
-		// The resend with the same enforced nonce is Discord's only read-back.
 	}
+	// A saved message ID proves Discord accepted an earlier send, so it is read back at any send count and never resent.
+	if decision.Kind != singledispatch.SendAllowed && decision.Marker.ProviderID != "" {
+		return operation.readBackSavedMessage(call, input.ChannelID, decision.Marker.ProviderID)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return uncertainCreateMessage(sdkgo.FailureTransport, "an earlier attempt may have created the Discord message, and the send cap is reached", receipt)
+	}
+	// Without a saved message ID, the resend with the same enforced nonce is Discord's only read-back.
 	// This attempt's send would be the last one the cap allows when no further send remains.
 	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
 	// An earlier send may have created the message, so a refusal of this resend cannot prove nothing changed.
@@ -145,9 +146,9 @@ func (operation CreateMessageOperation) Invoke(call sdkgo.Call, input CreateMess
 	if !isSuccessStatus {
 		return classifyCreateMessageRefusal(fence, hasPossibleEarlierSend, canResendUnknownOutcome, input.ChannelID, response, err, operation.client.now(), receipt)
 	}
+	// A 2xx proves Discord created the message, and nonce deduplication is unverified, so nothing below resends.
 	if err != nil {
-		// Discord answered 2xx before the body broke or exceeded the limit; a resend with the same nonce returns the message.
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "Discord answered the message, but its response could not be read", 0, receipt)
+		return uncertainCreateMessage(sdkgo.FailureTransport, "Discord accepted the message, but its response could not be read", receipt)
 	}
 	var decoded providerMessage
 	message, err := Message{}, decodeResponse(response.body, &decoded)
@@ -155,11 +156,77 @@ func (operation CreateMessageOperation) Invoke(call sdkgo.Call, input CreateMess
 		message, err = convertProviderMessage(decoded, input.ChannelID)
 	}
 	if err != nil {
-		// A resend inside the nonce window returns the same message, so a malformed answer is an unknown outcome.
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureProtocol, err.Error(), 0, receipt)
+		return operation.readBackAcceptedMessage(call, fence, credentials, input.ChannelID, response.body, err, receipt)
 	}
-	// No message ID is checkpointed: a later resend with the same nonce returns this message.
 	return sdkgo.NewMutationBranch(CreateMessageBranchCreated, message, nil, operation.client.receipt(call, message.ID))
+}
+
+// readBackAcceptedMessage confirms a 2xx whose body is not a valid message. A valid
+// top-level message ID is checkpointed and read back; without one the outcome is uncertain.
+func (operation CreateMessageOperation) readBackAcceptedMessage(call sdkgo.Call, fence *singledispatch.Fence, credentials Credentials, channelID string, body []byte, decodeErr error, receipt sdkgo.Receipt) sdkgo.MutationAttempt[Message] {
+	// A map matches the "id" key exactly, as the Python and TypeScript ports do.
+	var fields map[string]any
+	messageID := ""
+	if json.Unmarshal(body, &fields) == nil {
+		messageID, _ = fields["id"].(string)
+	}
+	if !snowflakePattern.MatchString(messageID) {
+		return uncertainCreateMessage(sdkgo.FailureProtocol, "Discord accepted the message, but its response carries no message ID: "+decodeErr.Error(), receipt)
+	}
+	isMessageIDSaved := fence.RecordProviderID(messageID) == nil
+	return operation.readBackMessage(call, credentials, channelID, messageID, isMessageIDSaved)
+}
+
+// readBackSavedMessage reads back the message ID an earlier attempt checkpointed.
+func (operation CreateMessageOperation) readBackSavedMessage(call sdkgo.Call, channelID string, messageID string) sdkgo.MutationAttempt[Message] {
+	receipt := operation.client.receipt(call, messageID)
+	if !snowflakePattern.MatchString(messageID) {
+		return uncertainCreateMessage(sdkgo.FailureProtocol, "an earlier attempt created the Discord message, but its checkpointed message ID is invalid", receipt)
+	}
+	credentials, outcome := operation.client.resolveCredentials(call, "createMessage")
+	if outcome != nil {
+		if outcome.disposition == outcomeRetry {
+			// The checkpoint keeps the saved message ID, so the next attempt reads it back again.
+			return sdkgo.NewMutationRetry[Message](outcome.failure, outcome.retryAfter)
+		}
+		return uncertainCreateMessage(outcome.failure.Kind, "an earlier attempt created the Discord message, but it cannot be read back: "+outcome.failure.Message, receipt)
+	}
+	return operation.readBackMessage(call, credentials, channelID, messageID, true)
+}
+
+// readBackMessage reads an accepted message by ID and selects created when Discord returns it.
+// An unknown result retries only when the ID is checkpointed for the next attempt; a definite
+// refusal, such as 404 or a missing Read Message History permission, selects uncertain.
+func (operation CreateMessageOperation) readBackMessage(call sdkgo.Call, credentials Credentials, channelID string, messageID string, isMessageIDSaved bool) sdkgo.MutationAttempt[Message] {
+	receipt := operation.client.receipt(call, messageID)
+	response, err := operation.client.send(call, credentials, providerRequest{method: http.MethodGet, path: "/channels/" + channelID + "/messages/" + messageID})
+	failure := providerFailure("createMessage", sdkgo.FailureTransport, "Discord accepted the message, but reading it back did not complete")
+	var retryAfter time.Duration
+	switch {
+	case errors.Is(err, errRequestNotBuilt):
+		return uncertainCreateMessage(sdkgo.FailureLocalDefect, "Discord accepted the message, but its read-back request could not be built", receipt)
+	case response.statusCode >= 200 && response.statusCode < 300 && err == nil:
+		var decoded providerMessage
+		message, convertErr := Message{}, decodeResponse(response.body, &decoded)
+		if convertErr == nil {
+			message, convertErr = convertProviderMessage(decoded, channelID)
+		}
+		if convertErr == nil && message.ID == messageID {
+			return sdkgo.NewMutationBranch(CreateMessageBranchCreated, message, nil, receipt)
+		}
+		failure = providerFailure("createMessage", sdkgo.FailureProtocol, "Discord accepted the message, but its read-back answer is invalid")
+	case response.statusCode != 0 && (response.statusCode < 200 || response.statusCode >= 300):
+		classified := classifyErrorResponse("createMessage", response, operation.client.now())
+		failure, retryAfter = classified.failure, classified.retryAfter
+		failure.Message = "Discord accepted the message, but reading it back failed: " + failure.Message
+		if err == nil && !response.isErrorBodyOversized && isRefusalStatus(response.statusCode) {
+			return sdkgo.NewMutationUncertain(Message{}, failure, receipt)
+		}
+	}
+	if isMessageIDSaved {
+		return sdkgo.NewMutationRetry[Message](failure, retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(Message{}, failure, receipt)
 }
 
 // classifyCreateMessageRefusal classifies a non-2xx answer: 429 and 503 prove no processing, a
