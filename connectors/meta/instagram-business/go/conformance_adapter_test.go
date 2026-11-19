@@ -20,6 +20,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {UserAccessToken: sdkgo.NewSecretString("test-instagram-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listMedia": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListMedia(), reference),
+		"getAccount": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccount(), reference),
+		"getMedia":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetMedia(), reference),
+		"listMedia":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListMedia(), reference),
 	}}
 }

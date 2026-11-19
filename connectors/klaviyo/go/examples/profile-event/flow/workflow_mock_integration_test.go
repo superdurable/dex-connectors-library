@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/klaviyo/go"
 	"github.com/superdurable/dex-connectors-library/connectors/klaviyo/go/klaviyomock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -23,7 +24,7 @@ import (
 func TestProfileEventUsesMockWithRealDex(t *testing.T) {
 	mock := klaviyomock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewProfileListFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -60,4 +61,15 @@ func TestProfileEventUsesMockWithRealDex(t *testing.T) {
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "member@meridian.co", calls[0].Input.Email)
+	listFlow := NewProfileListFlow(mock.Connection())
+	listID := "klaviyo-profile-list-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, listFlow, listID, klaviyo.ListProfilesInput{PageSize: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	listResult, err := client.WaitForFlow(ctx, listID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, listResult.Status, listResult.ErrorMessage)
+	var page klaviyo.ProfilesPage
+	require.NoError(t, listResult.DecodeSingleOutput(&page))
+	require.Len(t, page.Profiles, 1)
+	require.Len(t, mock.ListProfiles().Calls(), 1)
 }

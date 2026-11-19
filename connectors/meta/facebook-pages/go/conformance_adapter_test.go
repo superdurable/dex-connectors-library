@@ -33,6 +33,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			publishContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"updatePost":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdatePost(), reference, scenario.CallID),
+		"deletePost":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeletePost(), reference, scenario.CallID),
 		"listPosts":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPosts(), reference),
 		"getPost":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPost(), reference),
 		"publishTextPost": newConformanceMutationInvocation(t, scenario.Input, publishContext, client.PublishTextPost(), reference, scenario.CallID),
