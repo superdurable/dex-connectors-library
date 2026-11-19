@@ -8,6 +8,8 @@ metadata:
   categories: [files-documents]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-qiyuesuo", operations: [listContracts], triggers: []}
   provider: qiyuesuo
   codegen:
     go:
