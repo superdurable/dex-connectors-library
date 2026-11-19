@@ -11,3 +11,7 @@ The [interface and signature rules](https://open.zto.com/#/documents?menuId=3) r
 ## Runnable Flow
 
 The [waybill-trace example](go/examples/waybill-trace/README.md) starts `ZTOWaybillTrace` with `{"billCode":"73100059800035"}`. Its static ConnectionName is `zto`, and it stores only the minimized tracking result in a Dex Attribute. See the example README for the Worker command, strict FDG generation, and real Dex mock test.
+
+## Python
+
+The [`python/`](python/) package implements the `queryWaybillTrace` Query. Its checked-in example runs a Worker and a real Dex retry test; provider authorization remains unverified.
