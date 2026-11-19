@@ -8,6 +8,12 @@ metadata:
   categories: [files-documents]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-suxin"
+      operations: [listOrganizations]
+      triggers: []
   provider: suxin
   codegen:
     go:
