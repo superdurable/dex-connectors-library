@@ -148,6 +148,9 @@ jobs:
           PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
           MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          PUSH_REF: ${{ github.event_name == 'push' && github.ref || '' }}
+          PUSH_SHA: ${{ github.event_name == 'push' && github.sha || '' }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: python3 script/ci_local_verification.py
 
   # Repository-wide checks read every source file and manifest, so they run on every event and change.
@@ -331,8 +334,8 @@ jobs:
       - run: make test-sdkpython
 
   sdkpython-integration:
-    needs: [connector-plan, dex-version-plan, local-verification]
-    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.dex-version-plan.result == 'success' && github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.sdkpython == 'true' && needs.local-verification.outputs.trusted != 'true'"
+    needs: [connector-plan, dex-version-plan]
+    if: github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.sdkpython == 'true'
     runs-on: ubuntu-latest
     env:
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
@@ -379,8 +382,8 @@ jobs:
       - run: make test-sdkts
 
   sdkts-integration:
-    needs: [connector-plan, dex-version-plan, local-verification]
-    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.dex-version-plan.result == 'success' && github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.sdkts == 'true' && needs.local-verification.outputs.trusted != 'true'"
+    needs: [connector-plan, dex-version-plan]
+    if: github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.sdkts == 'true'
     runs-on: ubuntu-latest
     env:
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
@@ -526,8 +529,8 @@ jobs:
           echo "count=$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["include"]))' <<< "$matrix")" >> "$GITHUB_OUTPUT"
 
   database-language-integration:
-    needs: [database-language-plan, local-verification]
-    if: "!cancelled() && needs.database-language-plan.result == 'success' && github.event_name != 'pull_request' && needs.database-language-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
+    needs: database-language-plan
+    if: github.event_name != 'pull_request' && needs.database-language-plan.outputs.count != '0'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -666,8 +669,8 @@ jobs:
           echo "count=$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["include"]))' <<< "$matrix")" >> "$GITHUB_OUTPUT"
 
   email-language-integration:
-    needs: [email-language-plan, local-verification]
-    if: "!cancelled() && needs.email-language-plan.result == 'success' && github.event_name != 'pull_request' && needs.email-language-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
+    needs: email-language-plan
+    if: github.event_name != 'pull_request' && needs.email-language-plan.outputs.count != '0'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -840,8 +843,8 @@ jobs:
 
   workspace-connector-dependents:
     # Advisory: a dependency PR cannot also update its dependents under the one-released-module rule.
-    needs: [connector-plan, local-verification]
-    if: "!cancelled() && needs.connector-plan.result == 'success' && github.event_name != 'schedule' && needs.connector-plan.outputs.count != '0' && needs.local-verification.outputs.trusted != 'true'"
+    needs: connector-plan
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
     continue-on-error: true
     env:
@@ -887,8 +890,8 @@ jobs:
           [ "${failed}" = false ]
 
   dex-integration-sdk:
-    needs: [connector-plan, dex-version-plan, local-verification]
-    if: "!cancelled() && needs.connector-plan.result == 'success' && needs.dex-version-plan.result == 'success' && github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.sdkgo_integration == 'true' && needs.local-verification.outputs.trusted != 'true'"
+    needs: [connector-plan, dex-version-plan]
+    if: github.event_name != 'schedule' && github.event_name != 'pull_request' && needs.connector-plan.outputs.sdkgo_integration == 'true'
     runs-on: ubuntu-latest
     env:
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
