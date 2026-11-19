@@ -451,11 +451,18 @@ the same JSON for the same calls; the cross-language
 [`single-dispatch-markers.json`](../conformance/single-dispatch-markers.json)
 scenarios pin it.
 
-A Fence reads only its own Call ID's entry. A missing entry, an entry it cannot
-read or whose key differs from its Call ID, and any other heartbeat value,
-including the single marker that SDK releases before sdkgo v0.39.0, sdkpython
-0.13.0, and sdkts 0.13.0 recorded, count as no marker: attempt one may send,
-and a later attempt assumes every earlier attempt sent once. That bound can
+A Fence reads only its own Call ID's entry. SDK releases before sdkgo v0.39.0,
+sdkpython 0.13.0, and sdkts 0.13.0 recorded a single marker as the whole
+heartbeat. When that marker's Call ID equals the Fence's, the Fence reads it as
+its own entry, keeping its state and provider ID, so a redeployed Worker never
+resends a write that the earlier release recorded as accepted; a missing send
+count is read as the marker's attempt for `claimed` and its attempt minus one
+otherwise. Later heartbeats carry that entry forward in the map format, even
+when another Call ID's Fence records first, and Fences always write the map
+format. A missing entry, an entry it cannot read or whose key differs from its
+Call ID, a legacy marker of another Call ID, and any other heartbeat value
+count as no marker: attempt one may send, and a later attempt assumes every
+earlier attempt sent once. That bound can
 only overcount, so ignoring an unreadable checkpoint never permits more sends
 than the cap. Only a heartbeat read error from Dex, and an own entry with a
 send count that one send per attempt could not produce, fail closed. Earlier

@@ -291,7 +291,10 @@ operation, such as `executeNonIdempotent` or `postNonIdempotent`.
 be confirmed by read-back once its tier forbids another send: always for
 `unsafe`, and when `maxSends` is reached for `limited`. A transport failure
 before the request left the process, a 429, and a 503 return Retry. Exhausted
-retries never become uncertainty.
+retries never become uncertainty. Every `limited` or `unsafe` Mutation,
+including one that omits `repeatOnUnknown` and so defaults to `limited`, must
+declare an optional `uncertain` branch; `connectorctl validate` and the
+manifest JSON Schema reject one without it.
 
 For a module whose `go/go.mod` requires `sdkgo` v0.37.0 or later, `connectorctl
 generate` writes the resolved tier and cap into each Mutation definition
