@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -31,6 +32,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	messageID        func() (string, error)
+	now              func() time.Time
 }
 
 // New validates configuration without contacting Qince. Rotated credentials take effect on the next call.
@@ -59,7 +62,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if parsed.Hostname() != "openapi.qince.com" && !(strings.HasPrefix(parsed.Hostname(), "openapi.") && strings.HasSuffix(parsed.Hostname(), ".qince.com")) {
 		return nil, errors.New("Qince base URL must be an official OpenAPI qince.com host")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, messageID: newMessageID, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("client option is required")

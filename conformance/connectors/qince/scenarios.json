@@ -1,0 +1,276 @@
+{
+  "connector": "qince",
+  "scenarios": [
+    {
+      "callId": "41745d9d-8a60-57d4-a657-9070833203ce",
+      "exchanges": [
+        {
+          "body": "{\"return_code\":\"0\",\"msg_id\":\"11111111111111111111111111111111\",\"response_data\":[{\"id\":\"10\",\"org_code\":\"DD001\",\"org_name\":\"市场部\",\"org_status\":\"1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/organization/v1/queryOrganization/8519670967275282420/1731510000000/44896c68ddd1258091774fb2aac5b701/11111111111111111111111111111111",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "departments": [
+            {
+              "active": true,
+              "code": "DD001",
+              "id": "10",
+              "name": "市场部"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-listed",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "3b113c82-c4bb-5d17-995b-84f18a1f0459",
+      "exchanges": [
+        {
+          "body": "{\"return_code\":\"100103\",\"msg_id\":\"11111111111111111111111111111111\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/organization/v1/queryOrganization/8519670967275282420/1731510000000/44896c68ddd1258091774fb2aac5b701/11111111111111111111111111111111",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-providerRejected",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "78947ee7-087d-5159-b776-0401b16e38c4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/organization/v1/queryOrganization/8519670967275282420/1731510000000/44896c68ddd1258091774fb2aac5b701/11111111111111111111111111111111",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-invalidResponse",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "61729920-fac3-5325-845d-fcab2a37ea89",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-defect",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "651fd013-76c9-5cfd-9030-7263f21cf516",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/organization/v1/queryOrganization/8519670967275282420/1731510000000/44896c68ddd1258091774fb2aac5b701/11111111111111111111111111111111",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-http429",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "5abeaee6-76ed-57cf-bc2d-1771c628b29a",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/organization/v1/queryOrganization/8519670967275282420/1731510000000/44896c68ddd1258091774fb2aac5b701/11111111111111111111111111111111",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-http503",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "2a2a41fd-9a46-5054-a20e-1c02cfceaf51",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/organization/v1/queryOrganization/8519670967275282420/1731510000000/44896c68ddd1258091774fb2aac5b701/11111111111111111111111111111111",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-transport",
+      "operation": "listDepartments"
+    },
+    {
+      "callId": "b58ad9d9-f79c-508a-bfc5-eb3314d88c80",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/organization/v1/queryOrganization/8519670967275282420/1731510000000/44896c68ddd1258091774fb2aac5b701/11111111111111111111111111111111",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "departments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDepartments-oversized",
+      "operation": "listDepartments"
+    }
+  ],
+  "schemaVersion": 1
+}
