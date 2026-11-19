@@ -1,0 +1,52 @@
+{
+  "connectorId": "jiguang",
+  "releaseTag": "connectors/jiguang/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-jiguang",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_application_tags_step",
+      "kind": "query",
+      "operationId": "listApplicationTags",
+      "inputType": "ListApplicationTagsInput",
+      "description": "Read the JPush application's tag names without device identifiers.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListApplicationTagsInput has no parameters; the connection identifies the app.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

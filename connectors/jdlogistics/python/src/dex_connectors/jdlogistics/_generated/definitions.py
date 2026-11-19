@@ -1,0 +1,38 @@
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
+# ruff: noqa
+
+from datetime import timedelta
+
+from dex_connectors.sdk import (
+    BranchDefinition,
+    MutationDefinition,
+    OperationRef,
+    QueryDefinition,
+    RetryPolicy,
+    StepDefaults,
+    default_connector_step_execute_retry_policy,
+)
+
+CONNECTOR_ID = "jdlogistics"
+PROVIDER = "jdlogistics"
+QUERY_WAYBILL_TRACE_OPERATION_ID = "queryWaybillTrace"
+DEFECT = "defect"
+FOUND = "found"
+INVALID_RESPONSE = "invalidResponse"
+PROVIDER_REJECTED = "providerRejected"
+
+QUERY_WAYBILL_TRACE_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, QUERY_WAYBILL_TRACE_OPERATION_ID),
+    (
+        BranchDefinition(FOUND, "JD Logistics returned the requested waybill's tracking scans.", False),
+        BranchDefinition(PROVIDER_REJECTED, "JD Logistics conclusively rejected the query or authorization.", True),
+        BranchDefinition(INVALID_RESPONSE, "JD Logistics returned malformed or oversized tracking JSON.", True),
+        BranchDefinition(DEFECT, "The local credentials or input are missing or invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
