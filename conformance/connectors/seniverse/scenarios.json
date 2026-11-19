@@ -1,0 +1,331 @@
+{
+  "connector": "seniverse",
+  "scenarios": [
+    {
+      "callId": "e59635ba-cdbb-5d6f-8897-8d7044dc3ce9",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"location\":{\"id\":\"WX4FBXXFKE4F\",\"name\":\"北京\",\"country\":\"CN\"},\"now\":{\"text\":\"晴\",\"code\":\"0\",\"temperature\":\"20\"},\"last_update\":\"2026-01-01T12:00:00+08:00\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/weather/now.json",
+          "query": {
+            "key": [
+              "private-test-key"
+            ],
+            "language": [
+              "zh-Hans"
+            ],
+            "location": [
+              "北京"
+            ],
+            "unit": [
+              "c"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "country": "CN",
+          "lastUpdate": "2026-01-01T12:00:00+08:00",
+          "locationId": "WX4FBXXFKE4F",
+          "locationName": "北京",
+          "temperature": "20",
+          "temperatureUnit": "c",
+          "weatherCode": "0",
+          "weatherText": "晴"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "北京"
+      },
+      "name": "getCurrentWeather-success",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "dd87e4c5-b401-5f40-9a1a-9e7cedd944ca",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/weather/now.json",
+          "query": {
+            "key": [
+              "private-test-key"
+            ],
+            "language": [
+              "zh-Hans"
+            ],
+            "location": [
+              "北京"
+            ],
+            "unit": [
+              "c"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "country": "",
+          "lastUpdate": "",
+          "locationId": "",
+          "locationName": "",
+          "temperature": "",
+          "temperatureUnit": "",
+          "weatherCode": "",
+          "weatherText": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "北京"
+      },
+      "name": "getCurrentWeather-providerRejected",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "29dfec28-c5c0-5106-8fc9-46ad7e51bbf4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/weather/now.json",
+          "query": {
+            "key": [
+              "private-test-key"
+            ],
+            "language": [
+              "zh-Hans"
+            ],
+            "location": [
+              "北京"
+            ],
+            "unit": [
+              "c"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "country": "",
+          "lastUpdate": "",
+          "locationId": "",
+          "locationName": "",
+          "temperature": "",
+          "temperatureUnit": "",
+          "weatherCode": "",
+          "weatherText": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "北京"
+      },
+      "name": "getCurrentWeather-invalidResponse",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "7f039aff-00cf-5dba-b85a-cabfb5780956",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/weather/now.json",
+          "query": {
+            "key": [
+              "private-test-key"
+            ],
+            "language": [
+              "zh-Hans"
+            ],
+            "location": [
+              "北京"
+            ],
+            "unit": [
+              "c"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "北京"
+      },
+      "name": "getCurrentWeather-retry429",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "1e249ce3-1ecf-5755-aa5f-f7e49f504830",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/weather/now.json",
+          "query": {
+            "key": [
+              "private-test-key"
+            ],
+            "language": [
+              "zh-Hans"
+            ],
+            "location": [
+              "北京"
+            ],
+            "unit": [
+              "c"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "北京"
+      },
+      "name": "getCurrentWeather-retry503",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "85e9143b-1c58-5d60-927f-ce60343003a9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/weather/now.json",
+          "query": {
+            "key": [
+              "private-test-key"
+            ],
+            "language": [
+              "zh-Hans"
+            ],
+            "location": [
+              "北京"
+            ],
+            "unit": [
+              "c"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "北京"
+      },
+      "name": "getCurrentWeather-transportFailure",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "0187aa61-f4c2-5ef6-a134-151474569037",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "country": "",
+          "lastUpdate": "",
+          "locationId": "",
+          "locationName": "",
+          "temperature": "",
+          "temperatureUnit": "",
+          "weatherCode": "",
+          "weatherText": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": ""
+      },
+      "name": "getCurrentWeather-defect",
+      "operation": "getCurrentWeather"
+    }
+  ],
+  "schemaVersion": 1
+}
