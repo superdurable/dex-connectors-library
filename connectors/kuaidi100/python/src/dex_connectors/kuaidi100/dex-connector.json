@@ -1,0 +1,69 @@
+{
+  "connectorId": "kuaidi100",
+  "releaseTag": "connectors/kuaidi100/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-kuaidi100",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_query_tracking_step",
+      "kind": "query",
+      "operationId": "queryTracking",
+      "inputType": "QueryTrackingInput",
+      "description": "Query one carrier waybill for its current state and latest-first tracking events.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "retrieved",
+          "field": "retrieved",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryTrackingInput identifies one carrier waybill. Phone is only needed by carriers requiring recipient verification.",
+        "properties": {
+          "carrierCode": {
+            "description": "CarrierCode is the lowercase code from Kuaidi100's official carrier-code table.",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Phone is the sender or recipient phone for carriers such as SF Express and ZTO; it is never returned.",
+            "type": "string"
+          },
+          "trackingNumber": {
+            "description": "TrackingNumber is the 6–32 character carrier waybill number.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "carrierCode",
+          "trackingNumber"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
