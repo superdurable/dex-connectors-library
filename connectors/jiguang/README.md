@@ -10,4 +10,10 @@ The [REST API overview](https://docs.jiguang.cn/jpush/server/push/server_overvie
 
 The runnable example is in [`go/examples/tag-read`](go/examples/tag-read). Provider tests use a local HTTP server and the documentation's Basic auth example. Real JPush authorization and live tag discovery remain unverified without a user-controlled app.
 
+## TypeScript
+
+The [`typescript/`](typescript/) package implements `listApplicationTags` with the same Go conformance scenarios. Its [runnable Flow](typescript/examples/basic) uses the static `jiguang` connection and persists the provider result in Dex. Live provider authorization remains unverified.
+
+## Python
+
 The [Python package](python/README.md) implements the same Query with Go-recorded conformance and a [runnable Flow](python/examples/tag_read/README.md).

@@ -7,3 +7,7 @@ The endpoint is fixed at `https://api.jiandaoyun.com/api/v5/app/list`. Per the [
 The [runnable Flow](go/examples/list-apps-page/README.md) uses the static `fanruan` connection. Real API Key authorization and Dex Web form interaction remain unverified.
 
 The [Python v0.1.0 package](python/README.md) implements the same `listAppsPage` Query with Go-recorded request and outcome conformance. Its [runnable application directory Flow](python/examples/app_directory/README.md) uses the static `fanruan` connection, a real Dex Worker and Client, and an inert fake provider for retry and result verification. Live provider authorization remains unverified without a user-controlled key.
+
+## TypeScript
+
+The [`typescript/`](typescript/) package implements `listAppsPage` with the same Go conformance scenarios. Its [runnable Flow](typescript/examples/basic) uses the static `fanruan` connection and persists the provider result in Dex. Live provider authorization remains unverified.

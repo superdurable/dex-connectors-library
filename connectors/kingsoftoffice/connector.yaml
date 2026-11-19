@@ -10,6 +10,11 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listFolderFiles], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-kingsoftoffice"
+      operations: [listFolderFiles]
+      triggers: []
   provider: kingsoftoffice
   codegen:
     go:

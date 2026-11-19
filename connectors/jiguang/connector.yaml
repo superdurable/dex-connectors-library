@@ -10,6 +10,11 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listApplicationTags], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-jiguang"
+      operations: [listApplicationTags]
+      triggers: []
   provider: jiguang
   codegen:
     go:
