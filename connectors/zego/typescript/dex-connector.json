@@ -1,0 +1,59 @@
+{
+  "connectorId": "zego",
+  "releaseTag": "connectors/zego/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-zego",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetRoomUserCountStep",
+      "kind": "query",
+      "operationId": "getRoomUserCount",
+      "inputType": "GetRoomUserCountInput",
+      "description": "Read the current ZIM room member count without returning member identities.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "description": "Application-assigned ZIM room ID, at most 32 supported ASCII bytes."
+          }
+        },
+        "required": [
+          "roomId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
