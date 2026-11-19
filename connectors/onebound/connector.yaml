@@ -11,6 +11,7 @@ spec:
   provider: onebound
   languages:
     python: {version: v0.1.0, operations: [searchProducts], triggers: []}
+    typescript: {version: v0.1.0, operations: [searchProducts], triggers: []}
   codegen:
     go:
       package: onebound

@@ -11,6 +11,7 @@ spec:
   provider: pingcap
   languages:
     python: {version: v0.1.0, operations: [listProjects], triggers: []}
+    typescript: {version: v0.1.0, operations: [listProjects], triggers: []}
   codegen:
     go:
       package: pingcap

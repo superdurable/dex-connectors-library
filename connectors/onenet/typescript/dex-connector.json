@@ -1,0 +1,60 @@
+{
+  "connectorId": "onenet",
+  "releaseTag": "connectors/onenet/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-onenet",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newQueryDeviceDetailStep",
+      "kind": "query",
+      "operationId": "queryDeviceDetail",
+      "inputType": "QueryDeviceDetailInput",
+      "description": "Read one device's nonsecret status and metadata by device name in the configured product.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryDeviceDetailInput selects one device by its name in the configured product.",
+        "properties": {
+          "deviceName": {
+            "description": "DeviceName is the device name shown in OneNET Product Development > Device Management.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceName"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
