@@ -1,0 +1,60 @@
+{
+  "connectorId": "seventeentrack",
+  "releaseTag": "connectors/seventeentrack/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-seventeentrack",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_tracked_shipments_step",
+      "kind": "query",
+      "operationId": "listTrackedShipments",
+      "inputType": "ListTrackedShipmentsInput",
+      "description": "Page through registered shipment numbers and tracking statuses, omitting contacts, addresses, and raw events.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTrackedShipmentsInput selects a 40-record page of already registered shipments.",
+        "properties": {
+          "pageNumber": {
+            "description": "PageNumber is one-based; zero selects the first page.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageNumber"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
