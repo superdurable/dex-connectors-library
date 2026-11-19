@@ -16,7 +16,7 @@ spec:
       operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits, listIssues, createIssue, setIssueState, replaceIssueLabels, createIssueComment]
       triggers: []
     python:
-      version: v0.1.1
+      version: v0.2.0
       package: dex-connector-github
       operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits]
       triggers: []

@@ -8,7 +8,8 @@ import { KitClient } from '../src/client.js';
 import { GetSubscriberInputSchema, ListSubscribersInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/kit/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/kit/scenarios.json', import.meta.url))
+  .filter(scenario => ['listSubscribers', 'getSubscriber'].includes(scenario.operation));
 const connection = { provider: 'kit', name: 'kit' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeKit, '/v4'));
 

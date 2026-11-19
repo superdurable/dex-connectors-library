@@ -59,7 +59,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/llm/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go \
-  --version v0.25.0 --tag connectors/superdurable/llm/go/v0.25.0 \
+  --version v0.26.0 --tag connectors/superdurable/llm/go/v0.26.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/llm-release/connector-ui.tgz \
   --ui-digest /tmp/llm-release/connector-ui.tgz.sha256 \

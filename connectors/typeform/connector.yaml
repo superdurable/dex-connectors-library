@@ -16,7 +16,7 @@ spec:
       operations: [listForms, getForm, listResponses, upsertWebhook]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       package: "@superdurable/connector-typeform"
       operations: [listForms, getForm, listResponses, upsertWebhook]
       triggers: []

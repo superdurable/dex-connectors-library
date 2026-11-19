@@ -20,6 +20,134 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[keap.ContactProfile](`{"id":"123","givenName":"Example","familyName":"Contact"}`)
 			return err
 		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactsPage](`{"contacts":[{"id":"123","givenName":"Example","familyName":"Contact"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "upsertContact/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactProfile](`{"id":"123","givenName":"Example","familyName":"Contact"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactDeletion](`{"contactId":"123","deleted":true}`)
+			return err
+		}},
+		{name: "getCompany/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+			return err
+		}},
+		{name: "listCompanies/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompaniesPage](`{"companies":[{"id":"321","name":"Example Company"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createCompany/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+			return err
+		}},
+		{name: "updateCompany/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+			return err
+		}},
+		{name: "deleteCompany/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompanyDeletion](`{"companyId":"321","deleted":true}`)
+			return err
+		}},
+		{name: "getContactNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+			return err
+		}},
+		{name: "listContactNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNotesPage](`{"notes":[{"id":"456","contactId":"123","title":"Example note","text":"Example details"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createContactNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+			return err
+		}},
+		{name: "updateContactNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNote](`{"id":"456","contactId":"123","title":"Example note","text":"Example details"}`)
+			return err
+		}},
+		{name: "deleteContactNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactNoteDeletion](`{"contactId":"123","noteId":"456","deleted":true}`)
+			return err
+		}},
+		{name: "listContactTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactTagsPage](`{"tags":[{"id":"567","name":"Example tag"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "applyContactTag/appliedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactTagChange](`{"contactId":"123","tagId":"567","changed":true}`)
+			return err
+		}},
+		{name: "removeContactTag/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactTagChange](`{"contactId":"123","tagId":"567","changed":true}`)
+			return err
+		}},
+		{name: "getOrder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+			return err
+		}},
+		{name: "listOrders/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrdersPage](`{"orders":[{"id":"678","title":"Example order","status":"DRAFT"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createOrder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+			return err
+		}},
+		{name: "updateOrderTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrderProfile](`{"id":"678","title":"Example order","status":"DRAFT"}`)
+			return err
+		}},
+		{name: "deleteOrder/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.OrderDeletion](`{"orderId":"678","deleted":true}`)
+			return err
+		}},
+		{name: "getProduct/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ProductProfile](`{"id":"901","name":"Example product","sku":"EXAMPLE-1","priceMinor":1250}`)
+			return err
+		}},
+		{name: "listProducts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ProductsPage](`{"products":[{"id":"901","name":"Example product","sku":"EXAMPLE-1","priceMinor":1250}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createProduct/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ProductProfile](`{"id":"901","name":"Example product","sku":"EXAMPLE-1","priceMinor":1250}`)
+			return err
+		}},
+		{name: "updateProduct/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ProductProfile](`{"id":"901","name":"Example product","sku":"EXAMPLE-1","priceMinor":1250}`)
+			return err
+		}},
+		{name: "deleteProduct/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ProductDeletion](`{"productId":"901","deleted":true}`)
+			return err
+		}},
+		{name: "listEmails/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.EmailsPage](`{"emails":[{"id":"801","subject":"Example email","contactId":"123","sentToAddress":"contact@example.com"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createEmailRecord/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.EmailRecord](`{"id":"801","subject":"Example email","contactId":"123","sentToAddress":"contact@example.com"}`)
+			return err
+		}},
+		{name: "sendEmail/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.EmailSendReceipt](`{"contactId":"123","accepted":true}`)
+			return err
+		}},
+		{name: "deleteEmailRecord/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.EmailRecordDeletion](`{"emailId":"801","deleted":true}`)
+			return err
+		}},
+		{name: "listFiles/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.FilesPage](`{"files":[{"id":"701","fileName":"example.pdf","fileSizeBytes":1024,"isPublic":false}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "deleteFile/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.FileDeletion](`{"fileId":"701","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +160,101 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.UpsertContact().Definition().Operation.OperationID != "upsertContact" {
+		t.Errorf("upsertContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.GetCompany().Definition().Operation.OperationID != "getCompany" {
+		t.Errorf("getCompany mock has another definition")
+	}
+	if mock.ListCompanies().Definition().Operation.OperationID != "listCompanies" {
+		t.Errorf("listCompanies mock has another definition")
+	}
+	if mock.CreateCompany().Definition().Operation.OperationID != "createCompany" {
+		t.Errorf("createCompany mock has another definition")
+	}
+	if mock.UpdateCompany().Definition().Operation.OperationID != "updateCompany" {
+		t.Errorf("updateCompany mock has another definition")
+	}
+	if mock.DeleteCompany().Definition().Operation.OperationID != "deleteCompany" {
+		t.Errorf("deleteCompany mock has another definition")
+	}
+	if mock.GetContactNote().Definition().Operation.OperationID != "getContactNote" {
+		t.Errorf("getContactNote mock has another definition")
+	}
+	if mock.ListContactNotes().Definition().Operation.OperationID != "listContactNotes" {
+		t.Errorf("listContactNotes mock has another definition")
+	}
+	if mock.CreateContactNote().Definition().Operation.OperationID != "createContactNote" {
+		t.Errorf("createContactNote mock has another definition")
+	}
+	if mock.UpdateContactNote().Definition().Operation.OperationID != "updateContactNote" {
+		t.Errorf("updateContactNote mock has another definition")
+	}
+	if mock.DeleteContactNote().Definition().Operation.OperationID != "deleteContactNote" {
+		t.Errorf("deleteContactNote mock has another definition")
+	}
+	if mock.ListContactTags().Definition().Operation.OperationID != "listContactTags" {
+		t.Errorf("listContactTags mock has another definition")
+	}
+	if mock.ApplyContactTag().Definition().Operation.OperationID != "applyContactTag" {
+		t.Errorf("applyContactTag mock has another definition")
+	}
+	if mock.RemoveContactTag().Definition().Operation.OperationID != "removeContactTag" {
+		t.Errorf("removeContactTag mock has another definition")
+	}
+	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
+		t.Errorf("getOrder mock has another definition")
+	}
+	if mock.ListOrders().Definition().Operation.OperationID != "listOrders" {
+		t.Errorf("listOrders mock has another definition")
+	}
+	if mock.CreateOrder().Definition().Operation.OperationID != "createOrder" {
+		t.Errorf("createOrder mock has another definition")
+	}
+	if mock.UpdateOrderTitle().Definition().Operation.OperationID != "updateOrderTitle" {
+		t.Errorf("updateOrderTitle mock has another definition")
+	}
+	if mock.DeleteOrder().Definition().Operation.OperationID != "deleteOrder" {
+		t.Errorf("deleteOrder mock has another definition")
+	}
+	if mock.GetProduct().Definition().Operation.OperationID != "getProduct" {
+		t.Errorf("getProduct mock has another definition")
+	}
+	if mock.ListProducts().Definition().Operation.OperationID != "listProducts" {
+		t.Errorf("listProducts mock has another definition")
+	}
+	if mock.CreateProduct().Definition().Operation.OperationID != "createProduct" {
+		t.Errorf("createProduct mock has another definition")
+	}
+	if mock.UpdateProduct().Definition().Operation.OperationID != "updateProduct" {
+		t.Errorf("updateProduct mock has another definition")
+	}
+	if mock.DeleteProduct().Definition().Operation.OperationID != "deleteProduct" {
+		t.Errorf("deleteProduct mock has another definition")
+	}
+	if mock.ListEmails().Definition().Operation.OperationID != "listEmails" {
+		t.Errorf("listEmails mock has another definition")
+	}
+	if mock.CreateEmailRecord().Definition().Operation.OperationID != "createEmailRecord" {
+		t.Errorf("createEmailRecord mock has another definition")
+	}
+	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
+		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.DeleteEmailRecord().Definition().Operation.OperationID != "deleteEmailRecord" {
+		t.Errorf("deleteEmailRecord mock has another definition")
+	}
+	if mock.ListFiles().Definition().Operation.OperationID != "listFiles" {
+		t.Errorf("listFiles mock has another definition")
+	}
+	if mock.DeleteFile().Definition().Operation.OperationID != "deleteFile" {
+		t.Errorf("deleteFile mock has another definition")
 	}
 }

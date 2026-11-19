@@ -732,11 +732,11 @@ def validate_definition(definition: object, connector_module: str, version: str,
             raise RuntimeError(f"connector Step has no explanation in {source}: {node.get('id')}")
         if not any(edge.get("from") == node.get("id") and edge.get("metadata", {}).get("connectorBranch") is True for edge in edges):
             raise RuntimeError(f"connector Step has no branch targets in {source}: {node.get('id')}")
-    if "GetConnectorTriggerBindings" in source_text and not trigger_bindings:
-        raise RuntimeError(f"connector Trigger bindings are missing in {source}")
     for binding in trigger_bindings:
         if not isinstance(binding, dict) or any(not binding.get(field) for field in ("connectorId", "triggerName", "connectionName", "bindingName")):
             raise RuntimeError(f"invalid connector Trigger binding in {source}: {binding}")
+    if "GetConnectorTriggerBindings" in source_text and not trigger_bindings:
+        raise RuntimeError(f"connector Trigger bindings are missing in {source}")
     if "ResultAttribute:" in source_text and not any(edge.get("kind") == "resource_write" and edge.get("from") in {node.get("id") for node in connector_nodes} for edge in edges):
         raise RuntimeError(f"connector Result Attribute edge is missing in {source}")
     if "ProgressStream:" in source_text and not any("stream" in str(edge.get("kind", "")).lower() for edge in edges):
