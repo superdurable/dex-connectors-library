@@ -8,6 +8,11 @@ metadata:
   categories: [communication]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      operations: [getBalance]
+      triggers: []
   provider: cloopen
   codegen:
     go:
