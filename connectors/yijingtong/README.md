@@ -9,3 +9,7 @@ The [runnable Dex Flow](go/examples/warehouse-list/README.md) shows setup and ty
 ## Python
 
 The [`python/`](python/) package implements the `listWarehouses` Query. Its checked-in example runs a Worker and a real Dex retry test; provider authorization remains unverified.
+
+## TypeScript
+
+The TypeScript package under [`typescript/`](typescript/) implements `listWarehouses` with a runnable Dex Flow, Go-recorded conformance replay, and a real Dex integration test.
