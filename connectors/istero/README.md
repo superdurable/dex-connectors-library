@@ -11,3 +11,7 @@ Run the [example Flow](go/examples/account-status/) with its generated mock or a
 ## Python
 
 The first Python package lives in [`python/`](python/). It implements `getAccountStatus` with Go-equivalent branches and retries. Its runnable [account status Flow](python/examples/account_status/) uses the static `istero` connection and a real Dex Worker/Client integration test with a mock provider. Live ISAS authorization has not been verified.
+
+## TypeScript
+
+The [TypeScript package](typescript/) provides the same account-status Query with a runnable Dex Worker/Client example and Go-recorded conformance replay.

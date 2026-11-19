@@ -9,3 +9,7 @@ Run the [example Flow](go/examples/lookup-ip-location/) with its generated mock 
 ## Python
 
 The first Python package lives in [`python/`](python/). It implements `lookupIPLocation` with Go-equivalent branches and retries. Its runnable [`IP location Flow`](python/examples/ip_location/) uses a static `ipplus360` connection and a real Dex Worker/Client test with a mock provider. Live provider authorization has not been verified.
+
+## TypeScript
+
+The [TypeScript package](typescript/) provides the same Query with a runnable Dex Worker/Client example and Go-recorded conformance replay.
