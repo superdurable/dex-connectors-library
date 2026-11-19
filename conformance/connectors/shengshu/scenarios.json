@@ -45,6 +45,47 @@
       "operation": "getTaskStatus"
     },
     {
+      "callId": "1f621bed-211a-53b3-9d02-693eba81a894",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ent/v2/tasks/task-123/creations",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token secret-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "creationIds": [],
+          "credits": 0,
+          "errorCode": "",
+          "state": "",
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "task-123"
+      },
+      "name": "getTaskStatus-notFound",
+      "operation": "getTaskStatus"
+    },
+    {
       "callId": "4bcf4bf0-63be-5554-8046-93f4e941e6f7",
       "exchanges": [
         {
