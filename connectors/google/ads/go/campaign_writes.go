@@ -163,7 +163,7 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 		_ = fence.RecordProviderID(result.ResourceName)
 		return sdkgo.NewMutationBranch(CreateCampaignBranchCreated, result, nil, campaignReceipt(call, result.ResourceName))
 	}
-	if !isDefiniteAdsRefusal(response.status) {
+	if !isDefiniteAdsRefusal(response.status, response.body) {
 		if decision.MaximumPriorSends+1 < call.MaxSends() {
 			return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure("createCampaign", sdkgo.FailureAvailability, "campaign response does not prove refusal"), response.retryAfter)
 		}
@@ -178,12 +178,20 @@ func (operation CreateCampaignOperation) Invoke(call sdkgo.Call, input CreateCam
 	return campaignMutationBranch(CreateCampaignBranchProviderRejected, "createCampaign", sdkgo.FailureProviderRejection, "Google Ads rejected HTTP "+strconv.Itoa(response.status))
 }
 
-func isDefiniteAdsRefusal(status int) bool {
+func isDefiniteAdsRefusal(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		var rejection struct {
+			Error struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+			ResourceName string          `json:"resourceName"`
+			Results      json.RawMessage `json:"results"`
+		}
+		return json.Unmarshal(body, &rejection) == nil && rejection.Error.Code == status && rejection.Error.Message != "" && rejection.ResourceName == "" && len(rejection.Results) == 0
 	default:
 		return false
 	}
@@ -236,7 +244,7 @@ func safeCampaignMutation(response providerResponse, call sdkgo.Call, operation 
 		return campaignMutationBranch(defect, operation, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return campaignMutationBranch(invalid, operation, sdkgo.FailureResponseTooLarge, "Google Ads response exceeded the limit")
+		return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure(operation, sdkgo.FailureResponseTooLarge, "Google Ads response exceeded the limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure(operation, sdkgo.FailureTransport, "Google Ads request failed"), 0)
@@ -253,7 +261,7 @@ func safeCampaignMutation(response providerResponse, call sdkgo.Call, operation 
 	}
 	result, err := decodeCampaignMutation(response.body)
 	if err != nil {
-		return campaignMutationBranch(invalid, operation, sdkgo.FailureProtocol, "Google Ads returned invalid campaign JSON")
+		return sdkgo.NewMutationRetry[CampaignMutationResult](adsFailure(operation, sdkgo.FailureProtocol, "Google Ads returned invalid campaign JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, result, nil, campaignReceipt(call, result.ResourceName))
 }

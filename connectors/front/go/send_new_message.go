@@ -5,6 +5,7 @@ package front
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -139,7 +140,7 @@ func (operation SendNewMessageOperation) Invoke(call sdkgo.Call, input SendNewMe
 		}
 		return sdkgo.NewMutationBranch(SendNewMessageBranchDefect, SentMessage{}, &result.failure, sdkgo.Receipt{})
 	case exchangeRejected, exchangeNotFound:
-		if !isDefiniteRefusalStatus(result.response.statusCode) || result.isErrorBodyUnreadable {
+		if !isDefiniteRefusalStatus(result.response.statusCode) || result.isErrorBodyUnreadable || !hasDefiniteFrontMessageRefusal(result.response) {
 			if decision.MaximumPriorSends+1 < call.MaxSends() {
 				return sdkgo.NewMutationRetry[SentMessage](result.failure, result.retryAfter)
 			}
@@ -155,6 +156,18 @@ func (operation SendNewMessageOperation) Invoke(call sdkgo.Call, input SendNewMe
 	default:
 		return operation.uncertain(call, "message outcome is unknown", "")
 	}
+}
+
+func hasDefiniteFrontMessageRefusal(response frontResponse) bool {
+	var rejection struct {
+		Error struct {
+			Status  int    `json:"status"`
+			Title   string `json:"title"`
+			Message string `json:"message"`
+		} `json:"_error"`
+		MessageUID string `json:"message_uid"`
+	}
+	return json.Unmarshal(response.body, &rejection) == nil && rejection.Error.Status == response.statusCode && rejection.Error.Title != "" && rejection.Error.Message != "" && rejection.MessageUID == ""
 }
 
 func (operation SendNewMessageOperation) readBack(call sdkgo.Call, uid string) sdkgo.MutationAttempt[SentMessage] {

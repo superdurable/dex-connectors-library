@@ -1265,7 +1265,7 @@ var DeleteReleaseDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteReleaseBranchDeleted, Description: "GitLab deleted the release."},
 		{ID: DeleteReleaseBranchNotFound, Description: "No release with this tag is visible.", Optional: true},
 		{ID: DeleteReleaseBranchProviderRejected, Description: "GitLab definitively rejected the deletion.", Optional: true},
-		{ID: DeleteReleaseBranchInvalidResponse, Description: "GitLab returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteReleaseBranchInvalidResponse, Description: "Kept for compatibility; malformed deletion responses now retry.", Optional: true},
 		{ID: DeleteReleaseBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

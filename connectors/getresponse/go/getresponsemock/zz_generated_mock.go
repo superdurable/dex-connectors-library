@@ -223,7 +223,7 @@ func UpdateContactProviderRejected(value getresponse.ContactMetadata, failure *s
 	return connectormock.Branch(getresponse.UpdateContactBranchProviderRejected, value, failure)
 }
 
-// UpdateContactInvalidResponse selects the invalidResponse branch: GetResponse returned malformed or oversized JSON.
+// UpdateContactInvalidResponse selects the invalidResponse branch: Kept for compatibility; damaged update responses now retry.
 func UpdateContactInvalidResponse(value getresponse.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[getresponse.ContactMetadata] {
 	return connectormock.Branch(getresponse.UpdateContactBranchInvalidResponse, value, failure)
 }

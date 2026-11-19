@@ -161,11 +161,11 @@ func TestBucketCreationFirstConflictDoesNotClaimExistingBucket(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newTestClient(t, server.URL)
-	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("bucket-existing-flow", "create-step"), client.CreateBucket(), testConnection, CreateBucketInput{ProjectNumber: "123456789", Name: "report-bucket", Location: "US"})
-	require.NoError(t, err)
-	require.Equal(t, CreateBucketBranchNameTaken, result.Branch)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("bucket-existing-flow", "create-step"), client.CreateBucket(), testConnection, CreateBucketInput{ProjectNumber: "123456789", Name: "report-bucket", Location: "US"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
 	require.EqualValues(t, 1, postCount.Load())
-	require.Zero(t, getCount.Load())
+	require.EqualValues(t, 1, getCount.Load())
 }
 
 func TestBucketBranchesAndRetries(t *testing.T) {

@@ -438,7 +438,7 @@ var UpdateContactDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateContactBranchUpdated, Description: "GetResponse updated the contact."},
 		{ID: UpdateContactBranchNotFound, Description: "No contact with this ID is visible.", Optional: true},
 		{ID: UpdateContactBranchProviderRejected, Description: "GetResponse definitively rejected the request.", Optional: true},
-		{ID: UpdateContactBranchInvalidResponse, Description: "GetResponse returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateContactBranchInvalidResponse, Description: "Kept for compatibility; damaged update responses now retry.", Optional: true},
 		{ID: UpdateContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

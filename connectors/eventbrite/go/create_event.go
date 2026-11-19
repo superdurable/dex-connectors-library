@@ -154,7 +154,7 @@ func (client *Client) invokeEventCreation(call sdkgo.Call, operation, method, pa
 		}
 		return eventCreationUncertain(call, operation, sdkgo.FailureAvailability, "event creation outcome is unknown after the send cap", "")
 	}
-	if status == http.StatusNotFound && branches.notFound != "" {
+	if status == http.StatusNotFound && branches.notFound != "" && isDefiniteEventbriteRefusal(status, responseBody) {
 		if hasPriorSend {
 			return eventCreationUncertain(call, operation, sdkgo.FailureNotFound, "source event disappeared after an earlier copy may have succeeded", "")
 		}
@@ -164,7 +164,7 @@ func (client *Client) invokeEventCreation(call sdkgo.Call, operation, method, pa
 		return eventCreationBranch(operation, branches.notFound, sdkgo.FailureNotFound, "Eventbrite did not find the source event")
 	}
 	if status < 200 || status >= 300 {
-		if !isDefiniteEventbriteRefusal(status) {
+		if !isDefiniteEventbriteRefusal(status, responseBody) {
 			if canResendUnknown {
 				return eventCreationRetry(operation, sdkgo.FailureAvailability, "event response does not prove refusal", retryAfter)
 			}
@@ -189,12 +189,18 @@ func (client *Client) invokeEventCreation(call sdkgo.Call, operation, method, pa
 	return sdkgo.NewMutationBranch(branches.success, created, nil, eventCreationReceipt(call, created.ID))
 }
 
-func isDefiniteEventbriteRefusal(status int) bool {
+func isDefiniteEventbriteRefusal(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		var rejection struct {
+			Error       string          `json:"error"`
+			Description string          `json:"error_description"`
+			ID          json.RawMessage `json:"id"`
+			Success     bool            `json:"success"`
+		}
+		return json.Unmarshal(body, &rejection) == nil && rejection.Error != "" && rejection.Description != "" && len(rejection.ID) == 0 && !rejection.Success
 	default:
 		return false
 	}

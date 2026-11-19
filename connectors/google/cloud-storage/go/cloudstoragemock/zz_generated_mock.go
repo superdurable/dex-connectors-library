@@ -230,7 +230,7 @@ func CreateBucketCreated(value cloudstorage.Bucket, failure *sdkgo.Failure) conn
 	return connectormock.Branch(cloudstorage.CreateBucketBranchCreated, value, failure)
 }
 
-// CreateBucketNameTaken selects the nameTaken branch: Another bucket owns the requested name.
+// CreateBucketNameTaken selects the nameTaken branch: Kept for compatibility; a conflict without request-specific proof repeats or becomes uncertain.
 func CreateBucketNameTaken(value cloudstorage.Bucket, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Bucket] {
 	return connectormock.Branch(cloudstorage.CreateBucketBranchNameTaken, value, failure)
 }

@@ -304,7 +304,7 @@ spec:
         - {id: deleted, goName: Deleted, description: GitLab deleted the release.}
         - {id: notFound, goName: NotFound, description: No release with this tag is visible., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: GitLab definitively rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: GitLab returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kept for compatibility; malformed deletion responses now retry., optional: true, retired: true, retiredReason: A malformed response after deletion cannot prove failure; deletion now retries and reads back.}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: A sample release was deleted., output: {projectId: meridian/web, tagName: v1.2.0}}

@@ -1180,7 +1180,7 @@
       "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":400,\"message\":\"Invalid campaign\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1241,6 +1241,136 @@
         "name": "Example campaign"
       },
       "name": "createCampaign-providerRejected",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":400,\"message\":\"Invalid campaign\"},\"resourceName\":\"customers/1/campaigns/2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-contradictoryRefusal",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-emptyRefusal",
       "operation": "createCampaign"
     },
     {
@@ -1690,6 +1820,171 @@
       "operation": "createCampaign"
     },
     {
+      "attempts": 3,
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"error\":{\"code\":400,\"message\":\"Invalid campaign\"},\"resourceName\":\"customers/1/campaigns/2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCampaign-resendUnprovedRefusal",
+      "operation": "createCampaign"
+    },
+    {
       "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
       "exchanges": [
         {
@@ -1843,13 +2138,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "resourceName": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2245,13 +2537,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "resourceName": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

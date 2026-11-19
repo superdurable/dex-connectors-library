@@ -1008,7 +1008,7 @@
       "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Invalid contact\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1063,6 +1063,118 @@
         "lastName": "Lovelace"
       },
       "name": "createContact-providerRejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Invalid contact\"}],\"id\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com",
+              "first_name": "Ada",
+              "last_name": "Lovelace"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createContact-contradictoryRefusal",
+      "operation": "createContact"
+    },
+    {
+      "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com",
+              "first_name": "Ada",
+              "last_name": "Lovelace"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createContact-emptyRefusal",
       "operation": "createContact"
     },
     {
@@ -1490,6 +1602,151 @@
         }
       ],
       "name": "createContact-sendCap",
+      "operation": "createContact"
+    },
+    {
+      "attempts": 3,
+      "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com",
+              "first_name": "Ada",
+              "last_name": "Lovelace"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com",
+              "first_name": "Ada",
+              "last_name": "Lovelace"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"errors\":[{\"message\":\"Invalid contact\"}],\"id\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "contact": {
+              "email": "ada@example.com",
+              "first_name": "Ada",
+              "last_name": "Lovelace"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ff9dd21d-e0d8-5af8-94b9-d72926876a07",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContact-resendUnprovedRefusal",
       "operation": "createContact"
     },
     {
@@ -3364,7 +3621,7 @@
       "callId": "dbbc4d76-cf97-543e-9781-ad0224d01964",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Invalid account\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5689,7 +5946,7 @@
       "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Invalid deal\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7036,7 +7293,7 @@
       "callId": "601bdd5c-af3c-53dd-873d-8a16b65b651e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Invalid note\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -9018,7 +9275,7 @@
       "callId": "d20c7213-732a-5e1d-8053-792d0d4b362c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Invalid appointment\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -11102,7 +11359,7 @@
       "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Invalid activity\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

@@ -151,7 +151,7 @@ spec:
       branches:
         - {id: updated, goName: Updated, description: Google Ads set the campaign status.}
         - {id: providerRejected, goName: ProviderRejected, description: Google Ads rejected the update., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Google Ads returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kept for compatibility; damaged update responses now retry., optional: true, retired: true, retiredReason: A damaged response cannot prove the update failed; the safe update retries.}
         - {id: defect, goName: Defect, description: "Campaign identity, status, or credentials are invalid.", optional: true}
       mocks:
         - {name: updatedDefault, branch: updated, default: true, description: A campaign was paused., output: {resourceName: customers/1234567890/campaigns/7}}
@@ -167,7 +167,7 @@ spec:
       branches:
         - {id: removed, goName: Removed, description: Google Ads removed the campaign.}
         - {id: providerRejected, goName: ProviderRejected, description: Google Ads rejected the removal., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Google Ads returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kept for compatibility; damaged removal responses now retry., optional: true, retired: true, retiredReason: A damaged response cannot prove removal failed; the safe removal retries.}
         - {id: defect, goName: Defect, description: Campaign identity or credentials are invalid., optional: true}
       mocks:
         - {name: removedDefault, branch: removed, default: true, description: A campaign was removed., output: {resourceName: customers/1234567890/campaigns/7}}

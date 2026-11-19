@@ -506,7 +506,7 @@ var UpdateCampaignStatusDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateCampaignStatusBranchUpdated, Description: "Google Ads set the campaign status."},
 		{ID: UpdateCampaignStatusBranchProviderRejected, Description: "Google Ads rejected the update.", Optional: true},
-		{ID: UpdateCampaignStatusBranchInvalidResponse, Description: "Google Ads returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateCampaignStatusBranchInvalidResponse, Description: "Kept for compatibility; damaged update responses now retry.", Optional: true},
 		{ID: UpdateCampaignStatusBranchDefect, Description: "Campaign identity, status, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -580,7 +580,7 @@ var RemoveCampaignDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: RemoveCampaignBranchRemoved, Description: "Google Ads removed the campaign."},
 		{ID: RemoveCampaignBranchProviderRejected, Description: "Google Ads rejected the removal.", Optional: true},
-		{ID: RemoveCampaignBranchInvalidResponse, Description: "Google Ads returned malformed or oversized JSON.", Optional: true},
+		{ID: RemoveCampaignBranchInvalidResponse, Description: "Kept for compatibility; damaged removal responses now retry.", Optional: true},
 		{ID: RemoveCampaignBranchDefect, Description: "Campaign identity or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

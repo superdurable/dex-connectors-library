@@ -726,7 +726,7 @@ func DeleteReleaseProviderRejected(value gitlab.DeleteReleaseOutput, failure *sd
 	return connectormock.Branch(gitlab.DeleteReleaseBranchProviderRejected, value, failure)
 }
 
-// DeleteReleaseInvalidResponse selects the invalidResponse branch: GitLab returned malformed or oversized JSON.
+// DeleteReleaseInvalidResponse selects the invalidResponse branch: Kept for compatibility; malformed deletion responses now retry.
 func DeleteReleaseInvalidResponse(value gitlab.DeleteReleaseOutput, failure *sdkgo.Failure) connectormock.Case[gitlab.DeleteReleaseOutput] {
 	return connectormock.Branch(gitlab.DeleteReleaseBranchInvalidResponse, value, failure)
 }

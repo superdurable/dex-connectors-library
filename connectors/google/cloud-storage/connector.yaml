@@ -146,7 +146,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: The requested bucket exists.}
-        - {id: nameTaken, goName: NameTaken, description: Another bucket owns the requested name., optional: true}
+        - {id: nameTaken, goName: NameTaken, description: Kept for compatibility; a conflict without request-specific proof repeats or becomes uncertain., optional: true, retired: true, retiredReason: An HTTP 409 alone does not prove another bucket owns the name; creation now retries or selects uncertain.}
         - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the creation., optional: true}
         - {id: uncertain, goName: Uncertain, description: Google may have created the bucket but its ownership could not be confirmed., optional: true}
         - {id: defect, goName: Defect, description: Local bucket input or connection credentials are invalid., optional: true}

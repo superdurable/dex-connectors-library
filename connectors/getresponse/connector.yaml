@@ -129,7 +129,7 @@ spec:
         - {id: updated, goName: Updated, description: GetResponse updated the contact.}
         - {id: notFound, goName: NotFound, description: No contact with this ID is visible., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: GetResponse definitively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: GetResponse returned malformed or oversized JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kept for compatibility; damaged update responses now retry., optional: true, retired: true, retiredReason: A damaged response cannot prove the update failed; the safe update retries.}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: updatedDefault

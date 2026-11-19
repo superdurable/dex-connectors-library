@@ -210,7 +210,7 @@ func CreateDocumentCreated(value firestore.FirestoreDocument, failure *sdkgo.Fai
 	return connectormock.Branch(firestore.CreateDocumentBranchCreated, value, failure)
 }
 
-// CreateDocumentAlreadyExists selects the alreadyExists branch: The document ID is already in use.
+// CreateDocumentAlreadyExists selects the alreadyExists branch: Kept for compatibility; an unconfirmed conflict repeats or becomes uncertain.
 func CreateDocumentAlreadyExists(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
 	return connectormock.Branch(firestore.CreateDocumentBranchAlreadyExists, value, failure)
 }
@@ -256,7 +256,7 @@ func PutDocumentProviderRejected(value firestore.FirestoreDocument, failure *sdk
 	return connectormock.Branch(firestore.PutDocumentBranchProviderRejected, value, failure)
 }
 
-// PutDocumentInvalidResponse selects the invalidResponse branch: Firestore returned invalid JSON.
+// PutDocumentInvalidResponse selects the invalidResponse branch: Kept for compatibility; damaged write responses now retry.
 func PutDocumentInvalidResponse(value firestore.FirestoreDocument, failure *sdkgo.Failure) connectormock.Case[firestore.FirestoreDocument] {
 	return connectormock.Branch(firestore.PutDocumentBranchInvalidResponse, value, failure)
 }

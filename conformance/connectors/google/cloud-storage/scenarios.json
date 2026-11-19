@@ -2205,22 +2205,38 @@
             ]
           },
           "status": 409
+        },
+        {
+          "body": "{\"name\":\"report-bucket\",\"projectNumber\":\"123456789\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/storage/v1/b/report-bucket",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "nameTaken",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
-          "state": "canResend"
+          "sendCount": 1,
+          "state": "claimed"
         },
-        "output": {
-          "location": "",
-          "name": ""
-        },
-        "requestCount": 1,
-        "retry": false,
+        "requestCount": 2,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2237,7 +2253,7 @@
       "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":400,\"message\":\"Invalid bucket\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2295,6 +2311,128 @@
         "projectNumber": "123456789"
       },
       "name": "createBucket-providerRejected",
+      "operation": "createBucket"
+    },
+    {
+      "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":400,\"message\":\"Invalid bucket\"},\"name\":\"report-bucket\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/storage/v1/b",
+          "query": {
+            "project": [
+              "123456789"
+            ]
+          },
+          "requestBody": {
+            "labels": {
+              "dex_request_id": "8844f5093880f783ca586678281b6335"
+            },
+            "location": "US",
+            "name": "report-bucket"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+      "input": {
+        "location": "US",
+        "name": "report-bucket",
+        "projectNumber": "123456789"
+      },
+      "name": "createBucket-contradictoryRefusal",
+      "operation": "createBucket"
+    },
+    {
+      "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/storage/v1/b",
+          "query": {
+            "project": [
+              "123456789"
+            ]
+          },
+          "requestBody": {
+            "labels": {
+              "dex_request_id": "8844f5093880f783ca586678281b6335"
+            },
+            "location": "US",
+            "name": "report-bucket"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+      "input": {
+        "location": "US",
+        "name": "report-bucket",
+        "projectNumber": "123456789"
+      },
+      "name": "createBucket-emptyRefusal",
       "operation": "createBucket"
     },
     {
@@ -2491,6 +2629,202 @@
         }
       ],
       "name": "createBucket-uncertain",
+      "operation": "createBucket"
+    },
+    {
+      "attempts": 3,
+      "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/storage/v1/b",
+          "query": {
+            "project": [
+              "123456789"
+            ]
+          },
+          "requestBody": {
+            "labels": {
+              "dex_request_id": "8844f5093880f783ca586678281b6335"
+            },
+            "location": "US",
+            "name": "report-bucket"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/storage/v1/b/report-bucket",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/storage/v1/b",
+          "query": {
+            "project": [
+              "123456789"
+            ]
+          },
+          "requestBody": {
+            "labels": {
+              "dex_request_id": "8844f5093880f783ca586678281b6335"
+            },
+            "location": "US",
+            "name": "report-bucket"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/storage/v1/b/report-bucket",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"error\":{\"code\":400,\"message\":\"Invalid bucket\"},\"name\":\"report-bucket\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/storage/v1/b",
+          "query": {
+            "project": [
+              "123456789"
+            ]
+          },
+          "requestBody": {
+            "labels": {
+              "dex_request_id": "8844f5093880f783ca586678281b6335"
+            },
+            "location": "US",
+            "name": "report-bucket"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "location": "",
+          "name": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+      "input": {
+        "location": "US",
+        "name": "report-bucket",
+        "projectNumber": "123456789"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b9e4c42a-d96f-5114-9ba8-e2dabf68611b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createBucket-resendUnprovedRefusal",
       "operation": "createBucket"
     },
     {

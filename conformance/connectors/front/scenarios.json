@@ -5664,7 +5664,7 @@
       "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"_error\":{\"status\":403,\"title\":\"Forbidden\",\"message\":\"Cannot send\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5693,18 +5693,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
+        "branch": "",
         "failureKind": "AUTHORIZATION",
         "heartbeat": {
           "attempt": 1,
           "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
-          "state": "canResend"
-        },
-        "output": {
-          "messageUid": ""
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5719,6 +5717,124 @@
         ]
       },
       "name": "sendNewMessage-providerRejected",
+      "operation": "sendNewMessage"
+    },
+    {
+      "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+      "exchanges": [
+        {
+          "body": "{\"_error\":{\"status\":403,\"title\":\"Forbidden\",\"message\":\"Cannot send\"},\"message_uid\":\"msg_123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/alt:address:support@example.com/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "subject": "Order",
+            "text": "Hello Jane",
+            "to": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+      "input": {
+        "authorId": "tea_123",
+        "channelAddress": "support@example.com",
+        "subject": "Order",
+        "text": "Hello Jane",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "name": "sendNewMessage-contradictoryRefusal",
+      "operation": "sendNewMessage"
+    },
+    {
+      "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/alt:address:support@example.com/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "subject": "Order",
+            "text": "Hello Jane",
+            "to": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+      "input": {
+        "authorId": "tea_123",
+        "channelAddress": "support@example.com",
+        "subject": "Order",
+        "text": "Hello Jane",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "name": "sendNewMessage-emptyRefusal",
       "operation": "sendNewMessage"
     },
     {
@@ -6232,6 +6348,149 @@
         }
       ],
       "name": "sendNewMessage-sendCap",
+      "operation": "sendNewMessage"
+    },
+    {
+      "attempts": 3,
+      "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/alt:address:support@example.com/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "subject": "Order",
+            "text": "Hello Jane",
+            "to": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/alt:address:support@example.com/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "subject": "Order",
+            "text": "Hello Jane",
+            "to": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        },
+        {
+          "body": "{\"_error\":{\"status\":403,\"title\":\"Forbidden\",\"message\":\"Cannot send\"},\"message_uid\":\"msg_123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/alt:address:support@example.com/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "subject": "Order",
+            "text": "Hello Jane",
+            "to": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "messageUid": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+      "input": {
+        "authorId": "tea_123",
+        "channelAddress": "support@example.com",
+        "subject": "Order",
+        "text": "Hello Jane",
+        "to": [
+          "jane@example.com"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AUTHORIZATION",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "bccc64c9-7eb6-5ba2-a2fd-5494f4e25cbd",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendNewMessage-resendUnprovedRefusal",
       "operation": "sendNewMessage"
     }
   ],

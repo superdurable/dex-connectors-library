@@ -438,7 +438,7 @@ var CreateDocumentDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDocument"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateDocumentBranchCreated, Description: "Firestore created the document."},
-		{ID: CreateDocumentBranchAlreadyExists, Description: "The document ID is already in use.", Optional: true},
+		{ID: CreateDocumentBranchAlreadyExists, Description: "Kept for compatibility; an unconfirmed conflict repeats or becomes uncertain.", Optional: true},
 		{ID: CreateDocumentBranchProviderRejected, Description: "Firestore rejected the create.", Optional: true},
 		{ID: CreateDocumentBranchUncertain, Description: "A prior create could not be confirmed after the send cap.", Optional: true},
 		{ID: CreateDocumentBranchDefect, Description: "The document input or connection is invalid.", Optional: true},
@@ -520,7 +520,7 @@ var PutDocumentDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: PutDocumentBranchWritten, Description: "Firestore replaced or created the document."},
 		{ID: PutDocumentBranchProviderRejected, Description: "Firestore rejected the write.", Optional: true},
-		{ID: PutDocumentBranchInvalidResponse, Description: "Firestore returned invalid JSON.", Optional: true},
+		{ID: PutDocumentBranchInvalidResponse, Description: "Kept for compatibility; damaged write responses now retry.", Optional: true},
 		{ID: PutDocumentBranchDefect, Description: "The document input or connection is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

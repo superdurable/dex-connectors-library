@@ -116,7 +116,7 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	if dispatch.status == http.StatusAccepted || dispatch.status == http.StatusCreated {
 		return sdkgo.NewMutationBranch(CreateContactBranchAccepted, output, nil, createContactReceipt(call))
 	}
-	if !isDefiniteGetResponseRefusal(dispatch.status) {
+	if !isDefiniteGetResponseRefusal(dispatch.status, dispatch.body) {
 		if decision.MaximumPriorSends+1 < call.MaxSends() {
 			return sdkgo.NewMutationRetry[CreateContactOutput](queryFailure("createContact", sdkgo.FailureAvailability, "contact response does not prove refusal"), dispatch.retryAfter)
 		}
@@ -131,12 +131,18 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	return createContactBranch(CreateContactBranchProviderRejected, CreateContactOutput{}, sdkgo.FailureProviderRejection, "GetResponse rejected HTTP "+strconv.Itoa(dispatch.status))
 }
 
-func isDefiniteGetResponseRefusal(status int) bool {
+func isDefiniteGetResponseRefusal(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		var rejection struct {
+			Code      json.RawMessage `json:"code"`
+			Message   string          `json:"message"`
+			ContactID json.RawMessage `json:"contactId"`
+			Success   bool            `json:"success"`
+		}
+		return json.Unmarshal(body, &rejection) == nil && len(rejection.Code) > 0 && string(rejection.Code) != "null" && string(rejection.Code) != `""` && rejection.Message != "" && len(rejection.ContactID) == 0 && !rejection.Success
 	default:
 		return false
 	}
@@ -181,11 +187,11 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 		return contactWriteBranch(UpdateContactBranchProviderRejected, ContactMetadata{}, "updateContact", sdkgo.FailureProviderRejection, "GetResponse rejected HTTP "+strconv.Itoa(status))
 	}
 	if err != nil {
-		return contactWriteBranch(UpdateContactBranchInvalidResponse, ContactMetadata{}, "updateContact", sdkgo.FailureProtocol, "GetResponse returned an invalid response")
+		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureProtocol, "GetResponse update response could not be read"), 0)
 	}
 	contact, err := decodeContact(response)
 	if err != nil {
-		return contactWriteBranch(UpdateContactBranchInvalidResponse, ContactMetadata{}, "updateContact", sdkgo.FailureProtocol, "GetResponse returned invalid contact JSON")
+		return sdkgo.NewMutationRetry[ContactMetadata](queryFailure("updateContact", sdkgo.FailureProtocol, "GetResponse returned invalid contact JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateContactBranchUpdated, contact, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "getresponse", ProviderObjectID: contact.ContactID})
 }
@@ -218,13 +224,14 @@ type createContactDispatch struct {
 	client     *Client
 	token      string
 	payload    []byte
+	body       []byte
 	status     int
 	retryAfter time.Duration
 }
 
 func (dispatch *createContactDispatch) send(ctx context.Context) error {
 	var err error
-	_, dispatch.status, dispatch.retryAfter, err = dispatch.client.writeWithToken(ctx, dispatch.token, http.MethodPost, "/contacts", dispatch.payload)
+	dispatch.body, dispatch.status, dispatch.retryAfter, err = dispatch.client.writeWithToken(ctx, dispatch.token, http.MethodPost, "/contacts", dispatch.payload)
 	return err
 }
 

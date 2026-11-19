@@ -161,7 +161,7 @@ func (request *limitedWrite[T]) invoke(call sdkgo.Call) sdkgo.MutationAttempt[T]
 		_ = fence.RecordProviderID(id)
 		return sdkgo.NewMutationBranch(request.created, value, nil, request.receipt(call, id))
 	}
-	if !isDefiniteRefusalStatus(request.status) {
+	if !isDefiniteRefusalStatus(request.status) || !hasGitLabRefusalBody(request.body) {
 		return request.retryUnknown(call, decision.MaximumPriorSends, "write response does not prove refusal")
 	}
 	if decision.MaximumPriorSends > 0 {
@@ -171,6 +171,17 @@ func (request *limitedWrite[T]) invoke(call sdkgo.Call) sdkgo.MutationAttempt[T]
 		return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "gitlab", Operation: request.operation, Message: "refusal checkpoint is unavailable"}, 0)
 	}
 	return limitedBranch(request.rejected, zero, request.operation, sdkgo.FailureProviderRejection, "GitLab rejected HTTP "+strconv.Itoa(request.status))
+}
+
+func hasGitLabRefusalBody(body []byte) bool {
+	var rejection struct {
+		Message json.RawMessage `json:"message"`
+		ID      json.RawMessage `json:"id"`
+		IID     json.RawMessage `json:"iid"`
+		TagName json.RawMessage `json:"tag_name"`
+		Success bool            `json:"success"`
+	}
+	return json.Unmarshal(body, &rejection) == nil && len(rejection.Message) > 2 && string(rejection.Message) != "null" && string(rejection.Message) != `""` && string(rejection.Message) != "{}" && string(rejection.Message) != "[]" && len(rejection.ID) == 0 && len(rejection.IID) == 0 && len(rejection.TagName) == 0 && !rejection.Success
 }
 
 func (request *limitedWrite[T]) send(ctx context.Context) error {

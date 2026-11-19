@@ -262,20 +262,14 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		return bucketMutationRetry("createBucket", sdkgo.FailureRateLimit, "Google deferred bucket creation", response.retryAfter)
 	}
 	if response.status == http.StatusConflict && response.err == nil {
-		if decision.MaximumPriorSends == 0 {
-			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
-				return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket refusal checkpoint is unavailable", 0)
-			}
-			return bucketMutationBranch("createBucket", "nameTaken", Bucket{}, sdkgo.FailureProviderRejection, "bucket name is already in use")
-		}
-		bucket, isConfirmed, isInconclusive := operation.readBackCreatedBucket(call, input)
+		bucket, isConfirmed, _ := operation.readBackCreatedBucket(call, input)
 		if isConfirmed {
 			return sdkgo.NewMutationBranch(CreateBucketBranchCreated, bucket, nil, sdkgo.Receipt{})
 		}
-		if isInconclusive {
-			return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket ownership could not be checked", 0)
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return bucketCreateUncertain("bucket creation cannot be confirmed after conflict")
 		}
-		return bucketCreateUncertain("an earlier bucket creation may have succeeded")
+		return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket creation cannot be confirmed after conflict", 0)
 	}
 	if response.err != nil || response.status >= 500 || response.status == http.StatusRequestTimeout {
 		if decision.MaximumPriorSends+1 >= call.MaxSends() {
@@ -284,7 +278,7 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		return bucketMutationRetry("createBucket", sdkgo.FailureAvailability, "bucket creation outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		if !isDefiniteRefusalStatus(response.status) {
+		if !isDefiniteStorageRefusal(response.status, response.body) {
 			if decision.MaximumPriorSends+1 >= call.MaxSends() {
 				return bucketCreateUncertain("bucket creation outcome is unknown after the send cap")
 			}
@@ -303,6 +297,20 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		return bucketMutationRetry("createBucket", sdkgo.FailureProtocol, "Google returned invalid bucket creation metadata", 0)
 	}
 	return sdkgo.NewMutationBranch(CreateBucketBranchCreated, bucket, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteStorageRefusal(status int, body []byte) bool {
+	if !isDefiniteRefusalStatus(status) {
+		return false
+	}
+	var rejection struct {
+		Error struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+		Name string `json:"name"`
+	}
+	return json.Unmarshal(body, &rejection) == nil && rejection.Error.Code == status && rejection.Error.Message != "" && rejection.Name == ""
 }
 
 func (operation CreateBucketOperation) readBackCreatedBucket(call sdkgo.Call, input CreateBucketInput) (Bucket, bool, bool) {

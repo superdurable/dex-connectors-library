@@ -454,7 +454,7 @@ var CreateBucketDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createBucket"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateBucketBranchCreated, Description: "The requested bucket exists."},
-		{ID: CreateBucketBranchNameTaken, Description: "Another bucket owns the requested name.", Optional: true},
+		{ID: CreateBucketBranchNameTaken, Description: "Kept for compatibility; a conflict without request-specific proof repeats or becomes uncertain.", Optional: true},
 		{ID: CreateBucketBranchProviderRejected, Description: "Google definitively rejected the creation.", Optional: true},
 		{ID: CreateBucketBranchUncertain, Description: "Google may have created the bucket but its ownership could not be confirmed.", Optional: true},
 		{ID: CreateBucketBranchDefect, Description: "Local bucket input or connection credentials are invalid.", Optional: true},

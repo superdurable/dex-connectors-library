@@ -107,7 +107,7 @@ func (operation CreateTicketClassOperation) Invoke(call sdkgo.Call, input Create
 		return ticketCreationUncertain(call, sdkgo.FailureAvailability, "ticket class creation outcome unknown after send cap", "")
 	}
 	if status < 200 || status >= 300 {
-		if !isDefiniteEventbriteRefusal(status) {
+		if !isDefiniteEventbriteRefusal(status, responseBody) {
 			if canResendUnknown {
 				return ticketCreationRetry(sdkgo.FailureAvailability, "ticket class response does not prove refusal", delay)
 			}

@@ -136,7 +136,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Firestore created the document.}
-        - {id: alreadyExists, goName: AlreadyExists, description: The document ID is already in use., optional: true}
+        - {id: alreadyExists, goName: AlreadyExists, description: Kept for compatibility; an unconfirmed conflict repeats or becomes uncertain., optional: true, retired: true, retiredReason: An HTTP 409 alone does not prove the create was refused; creation now retries or selects uncertain.}
         - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the create., optional: true}
         - {id: uncertain, goName: Uncertain, description: A prior create could not be confirmed after the send cap., optional: true}
         - {id: defect, goName: Defect, description: The document input or connection is invalid., optional: true}
@@ -154,7 +154,7 @@ spec:
       branches:
         - {id: written, goName: Written, description: Firestore replaced or created the document.}
         - {id: providerRejected, goName: ProviderRejected, description: Firestore rejected the write., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Firestore returned invalid JSON., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kept for compatibility; damaged write responses now retry., optional: true, retired: true, retiredReason: A damaged response cannot prove the write failed; the safe replacement retries.}
         - {id: defect, goName: Defect, description: The document input or connection is invalid., optional: true}
       mocks:
         - {name: writtenDefault, branch: written, default: true, description: Example document was written., output: {name: 'projects/sample-project/databases/(default)/documents/events/sample-event', fieldsJson: '{"title":{"stringValue":"Hello"}}'}}

@@ -1655,7 +1655,7 @@
       "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid event request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1718,6 +1718,136 @@
         "timezone": "America/Los_Angeles"
       },
       "name": "createEvent-providerRejected",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid request\",\"id\":\"123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-contradictoryRefusal",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "name": "createEvent-emptyRefusal",
       "operation": "createEvent"
     },
     {
@@ -2212,6 +2342,171 @@
       "operation": "createEvent"
     },
     {
+      "attempts": 3,
+      "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid event\",\"id\":\"123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/12345/events/",
+          "requestBody": {
+            "event": {
+              "currency": "USD",
+              "end": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T19:00:00Z"
+              },
+              "name": {
+                "html": "Example event"
+              },
+              "start": {
+                "timezone": "America/Los_Angeles",
+                "utc": "2026-12-01T18:00:00Z"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+      "input": {
+        "currency": "USD",
+        "endUtc": "2026-12-01T19:00:00Z",
+        "name": "Example event",
+        "organizationId": "12345",
+        "startUtc": "2026-12-01T18:00:00Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEvent-resendUnprovedRefusal",
+      "operation": "createEvent"
+    },
+    {
       "callId": "0c7c8ea1-c7e3-5faa-90fa-6443f82b669c",
       "exchanges": [],
       "expected": {
@@ -2290,7 +2585,7 @@
       "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"NOT_FOUND\",\"error_description\":\"Source event not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2335,7 +2630,7 @@
       "callId": "7ebed02b-031e-535e-9a92-fb13bd9eea6e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid event request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7453,7 +7748,7 @@
       "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid ticket request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7505,6 +7800,112 @@
         "quantityTotal": 100
       },
       "name": "createTicketClass-providerRejected",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"BAD_REQUEST\",\"error_description\":\"Invalid request\",\"id\":\"123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-contradictoryRefusal",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-emptyRefusal",
       "operation": "createTicketClass"
     },
     {

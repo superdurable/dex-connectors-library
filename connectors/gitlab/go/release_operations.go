@@ -153,6 +153,22 @@ func (operation DeleteReleaseOperation) Invoke(call sdkgo.Call, input GetRelease
 	if err != nil {
 		return sdkgo.NewMutationBranch(DeleteReleaseBranchDefect, DeleteReleaseOutput{}, failure(sdkgo.FailureValidation, "deleteRelease", err.Error()), sdkgo.Receipt{})
 	}
+	if call.Context.Attempt() > 1 {
+		readBack, localFailure, readErr := operation.client.send(call, "deleteRelease", requestSpec{method: http.MethodGet, path: path})
+		if localFailure != nil {
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*localFailure, 0)
+		}
+		if readErr != nil {
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureTransport, "deleteRelease", "release read-back failed"), 0)
+		}
+		_ = readBack.Body.Close()
+		if readBack.StatusCode == http.StatusNotFound {
+			return sdkgo.NewMutationBranch(DeleteReleaseBranchDeleted, DeleteReleaseOutput{ProjectID: input.ProjectID, TagName: input.TagName}, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "gitlab", ProviderObjectID: input.TagName})
+		}
+		if readBack.StatusCode != http.StatusOK {
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureAvailability, "deleteRelease", "release read-back is inconclusive"), 0)
+		}
+	}
 	response, localFailure, err := operation.client.send(call, "deleteRelease", requestSpec{method: http.MethodDelete, path: path})
 	if localFailure != nil {
 		return sdkgo.NewMutationBranch(DeleteReleaseBranchDefect, DeleteReleaseOutput{}, localFailure, sdkgo.Receipt{})
@@ -166,6 +182,9 @@ func (operation DeleteReleaseOperation) Invoke(call sdkgo.Call, input GetRelease
 		return sdkgo.NewMutationRetry[DeleteReleaseOutput](retry, after)
 	}
 	if response.StatusCode == http.StatusNotFound {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationBranch(DeleteReleaseBranchDeleted, DeleteReleaseOutput{ProjectID: input.ProjectID, TagName: input.TagName}, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "gitlab", ProviderObjectID: input.TagName})
+		}
 		return sdkgo.NewMutationBranch(DeleteReleaseBranchNotFound, DeleteReleaseOutput{}, failure(sdkgo.FailureNotFound, "deleteRelease", "release not found"), sdkgo.Receipt{})
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent {
@@ -174,11 +193,11 @@ func (operation DeleteReleaseOperation) Invoke(call sdkgo.Call, input GetRelease
 	if response.StatusCode == http.StatusOK {
 		body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 		if readErr != nil {
-			return sdkgo.NewMutationBranch(sdkgo.BranchID("invalidResponse"), DeleteReleaseOutput{}, failure(sdkgo.FailureProtocol, "deleteRelease", "release response could not be read"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureProtocol, "deleteRelease", "release response could not be read"), 0)
 		}
 		deleted, decodeErr := decodeRelease(body)
 		if decodeErr != nil || deleted.TagName != input.TagName {
-			return sdkgo.NewMutationBranch(sdkgo.BranchID("invalidResponse"), DeleteReleaseOutput{}, failure(sdkgo.FailureProtocol, "deleteRelease", "GitLab returned invalid release JSON"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[DeleteReleaseOutput](*failure(sdkgo.FailureProtocol, "deleteRelease", "GitLab returned invalid release JSON"), 0)
 		}
 	}
 	return sdkgo.NewMutationBranch(DeleteReleaseBranchDeleted, DeleteReleaseOutput{ProjectID: input.ProjectID, TagName: input.TagName}, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "gitlab", ProviderObjectID: input.TagName})

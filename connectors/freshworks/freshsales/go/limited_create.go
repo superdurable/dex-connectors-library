@@ -5,6 +5,7 @@ package freshsales
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -74,7 +75,7 @@ func invokeLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path
 		return createUncertain[T](call, operation, sdkgo.FailureAvailability, "create outcome unknown after send cap", "")
 	}
 	if status < 200 || status >= 300 {
-		if !isDefiniteFreshsalesRefusal(status) {
+		if !isDefiniteFreshsalesRefusal(status, body) {
 			if canResendUnknown {
 				return createRetry[T](operation, sdkgo.FailureAvailability, "create response does not prove refusal", delay)
 			}
@@ -99,12 +100,25 @@ func invokeLimitedCreate[T any](client *Client, call sdkgo.Call, operation, path
 	return sdkgo.NewMutationBranch(branches.success, created, nil, createReceipt(call, providerID(created)))
 }
 
-func isDefiniteFreshsalesRefusal(status int) bool {
+func isDefiniteFreshsalesRefusal(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
 		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		var rejection struct {
+			Errors []struct {
+				Message string `json:"message"`
+			} `json:"errors"`
+			ID            json.RawMessage `json:"id"`
+			Success       bool            `json:"success"`
+			Contact       json.RawMessage `json:"contact"`
+			Account       json.RawMessage `json:"sales_account"`
+			Deal          json.RawMessage `json:"deal"`
+			Note          json.RawMessage `json:"note"`
+			Appointment   json.RawMessage `json:"appointment"`
+			SalesActivity json.RawMessage `json:"sales_activity"`
+		}
+		return json.Unmarshal(body, &rejection) == nil && len(rejection.Errors) > 0 && rejection.Errors[0].Message != "" && len(rejection.ID) == 0 && !rejection.Success && len(rejection.Contact) == 0 && len(rejection.Account) == 0 && len(rejection.Deal) == 0 && len(rejection.Note) == 0 && len(rejection.Appointment) == 0 && len(rejection.SalesActivity) == 0
 	default:
 		return false
 	}

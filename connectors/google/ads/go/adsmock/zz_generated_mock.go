@@ -225,7 +225,7 @@ func UpdateCampaignStatusProviderRejected(value ads.CampaignMutationResult, fail
 	return connectormock.Branch(ads.UpdateCampaignStatusBranchProviderRejected, value, failure)
 }
 
-// UpdateCampaignStatusInvalidResponse selects the invalidResponse branch: Google Ads returned malformed or oversized JSON.
+// UpdateCampaignStatusInvalidResponse selects the invalidResponse branch: Kept for compatibility; damaged update responses now retry.
 func UpdateCampaignStatusInvalidResponse(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
 	return connectormock.Branch(ads.UpdateCampaignStatusBranchInvalidResponse, value, failure)
 }
@@ -261,7 +261,7 @@ func RemoveCampaignProviderRejected(value ads.CampaignMutationResult, failure *s
 	return connectormock.Branch(ads.RemoveCampaignBranchProviderRejected, value, failure)
 }
 
-// RemoveCampaignInvalidResponse selects the invalidResponse branch: Google Ads returned malformed or oversized JSON.
+// RemoveCampaignInvalidResponse selects the invalidResponse branch: Kept for compatibility; damaged removal responses now retry.
 func RemoveCampaignInvalidResponse(value ads.CampaignMutationResult, failure *sdkgo.Failure) connectormock.Case[ads.CampaignMutationResult] {
 	return connectormock.Branch(ads.RemoveCampaignBranchInvalidResponse, value, failure)
 }

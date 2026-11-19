@@ -644,7 +644,7 @@
       "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"code\":400,\"message\":\"Invalid contact\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -694,6 +694,112 @@
         "name": "Ada"
       },
       "name": "createContact-providerRejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "{\"code\":400,\"message\":\"Invalid contact\",\"contactId\":\"abc\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "name": "createContact-contradictoryRefusal",
+      "operation": "createContact"
+    },
+    {
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "name": "createContact-emptyRefusal",
       "operation": "createContact"
     },
     {
@@ -1065,6 +1171,140 @@
       "operation": "createContact"
     },
     {
+      "attempts": 3,
+      "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"code\":400,\"message\":\"Invalid contact\",\"contactId\":\"abc\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts",
+          "requestBody": {
+            "campaign": {
+              "campaignId": "abc123"
+            },
+            "email": "ada@example.com",
+            "name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "campaignId": "abc123",
+          "email": "ada@example.com"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+      "input": {
+        "campaignId": "abc123",
+        "email": "ada@example.com",
+        "name": "Ada"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "e7bdcb6c-cb08-5311-91de-419b1da9bb39",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContact-resendUnprovedRefusal",
+      "operation": "createContact"
+    },
+    {
       "callId": "773b3dba-145b-5099-8538-6a5fa13150a1",
       "exchanges": [
         {
@@ -1234,15 +1474,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": "",
-          "email": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

@@ -23,11 +23,15 @@ The `gitlab` Go module exposes typed Dex Steps for GitLab. Its [runnable lookup 
 | NewGetReleaseStep | GET /api/v4/projects/{id}/releases/{tag} | project, tag | `Release` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewListReleasesStep | GET /api/v4/projects/{id}/releases | project, page, page size | `ReleasesPage` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewUpdateReleaseStep | PUT /api/v4/projects/{id}/releases/{tag} | project, tag, selected absolute fields | `Release` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| NewDeleteReleaseStep | DELETE /api/v4/projects/{id}/releases/{tag} | project, tag | `DeleteReleaseOutput` | `deleted` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewDeleteReleaseStep | DELETE /api/v4/projects/{id}/releases/{tag} | project, tag | `DeleteReleaseOutput` | `deleted` | `notFound`, `providerRejected`, `defect` (`invalidResponse` retained but retired) |
 | NewListRepositoryTreeStep | GET /api/v4/projects/{id}/repository/tree | project, path, ref, page | `RepositoryTreePage` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewListUserProjectsStep | GET /api/v4/users/{user}/projects | user, page, page size | `UserProjectsPage` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
 `updateIssueLabels` sends the `labels` form field as a comma-separated absolute replacement. An empty list sends an empty field and clears all labels. Repeating the same set is safe, so the manifest declares `repeatOnUnknown: safe`: HTTP 404 selects `notFound`, only HTTP 400, 401, 403, 411, 413, 414, 415, or 422 selects `providerRejected`, and any other status or a malformed or oversized answer retries. Label names containing commas are rejected locally. Malformed stored credential material selects `defect`. The list operation returns GitLab’s first default page of 20 issues.
+
+`deleteRelease` retries after an unreadable, malformed, or contradictory success response. On a retry it reads the release back; confirmed absence selects `deleted`.
+
+Issue, note, and release creates require a readable GitLab error message before selecting `providerRejected`; empty or contradictory refusal bodies remain unknown within the send cap.
 
 The Python package is [`dex-connector-gitlab`](python/README.md), imported as
 `dex_connectors.gitlab`.
