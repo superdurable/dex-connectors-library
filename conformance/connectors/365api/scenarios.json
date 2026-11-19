@@ -1,0 +1,443 @@
+{
+  "connector": "365api",
+  "scenarios": [
+    {
+      "callId": "fd972dd3-d66f-5402-9681-2e4f4a759951",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"example-model\",\"object\":\"model\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [
+            "example-model"
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-found",
+      "operation": "listModels"
+    },
+    {
+      "callId": "1ea36912-df6c-5d35-9b24-178ccb7c02df",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-empty",
+      "operation": "listModels"
+    },
+    {
+      "callId": "be5b9b21-1d56-5616-b677-41d03644b9a4",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-providerRejected",
+      "operation": "listModels"
+    },
+    {
+      "callId": "65bd2422-702d-52e9-adbf-2271a37f9e84",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-invalidResponse",
+      "operation": "listModels"
+    },
+    {
+      "callId": "55862db5-8016-552c-bc96-a52bb2e9018e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-defect",
+      "operation": "listModels"
+    },
+    {
+      "callId": "e172b9df-389b-5edc-b77b-987f7637e764",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-rateLimit429",
+      "operation": "listModels"
+    },
+    {
+      "callId": "e2326fe9-592d-533f-a955-313b22268610",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-availability503",
+      "operation": "listModels"
+    },
+    {
+      "callId": "ba74c6fb-07a8-55b0-8576-cd882e015df8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-transportFailure",
+      "operation": "listModels"
+    },
+    {
+      "callId": "ffb15f15-f862-5c69-9f38-4b4b0dc2b17d",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"example-model\",\"object\":\"model\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-oversized",
+      "operation": "listModels"
+    },
+    {
+      "callId": "2dd65ef1-dd99-5002-9e16-1f9338793761",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-forbidden",
+      "operation": "listModels"
+    },
+    {
+      "callId": "a7bf5077-db07-5802-8070-c1520d5d5b72",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-requestTimeout408",
+      "operation": "listModels"
+    },
+    {
+      "callId": "e6ef842f-0301-5d62-b32f-e8878ad90993",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"\",\"object\":\"model\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-badModelID",
+      "operation": "listModels"
+    },
+    {
+      "callId": "16754483-1358-5482-bac8-351ac1d9b50d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Location": "https://other.example/steal"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/models",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "modelIDs": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listModels-redirect",
+      "operation": "listModels"
+    }
+  ],
+  "schemaVersion": 1
+}
