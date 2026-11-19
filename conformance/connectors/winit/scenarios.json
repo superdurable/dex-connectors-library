@@ -1,0 +1,449 @@
+{
+  "connector": "winit",
+  "scenarios": [
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":[{\"warehouseID\":1030042,\"warehouseCode\":\"AUME\",\"warehouseName\":\"AU Warehouse\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "warehouses": [
+            {
+              "code": "AUME",
+              "id": 1030042,
+              "name": "AU Warehouse"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-listed",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-empty",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "body": "{\"code\":1001,\"msg\":\"invalid token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-providerRejected",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "body": "{\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-invalidResponse",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-defect",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-retry-429",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-retry-500",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-retry-503",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-retry-transport",
+      "operation": "listWarehouses"
+    },
+    {
+      "callId": "67366cce-e161-5564-88f9-a9adbfdbfcdb",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":[{\"warehouseID\":1030042,\"warehouseCode\":\"AUME\",\"warehouseName\":\"AU Warehouse\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/service",
+          "requestBody": {
+            "action": "queryWarehouse",
+            "app_key": "REDACTED_APP_KEY",
+            "client_id": "REDACTED_CLIENT_ID",
+            "client_sign": "81FA0A5092DEAB11C7E17E6B15841267",
+            "format": "json",
+            "platform": "OWNERERP",
+            "sign": "611A6D08C755376C1B80E8C8F20B54DC",
+            "sign_method": "md5",
+            "timestamp": "2026-11-13 12:00:00",
+            "version": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "warehouses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-13T04:00:00Z",
+      "input": {},
+      "name": "listWarehouses-oversized",
+      "operation": "listWarehouses"
+    }
+  ],
+  "schemaVersion": 1
+}

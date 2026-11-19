@@ -51,7 +51,7 @@ func (operation ListWarehousesOperation) Invoke(call sdkgo.Call, _ ListWarehouse
 		return warehouseBranch(ListWarehousesBranchDefect, sdkgo.FailureAuthentication, "Yanwen credentials are unavailable or invalid")
 	}
 	body := []byte("{}")
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().UnixMilli(), 10)
 	query := url.Values{
 		"user_id":   {credentials.UserID},
 		"format":    {"json"},

@@ -69,7 +69,7 @@ func (operation ListDomainsOperation) Invoke(call sdkgo.Call, input ListDomainsI
 	if page < 1 || page > 1000000 || limit < 1 || limit > 100 {
 		return domainCatalogBranch(ListDomainsBranchDefect, sdkgo.FailureValidation, "page or limit is outside the supported range")
 	}
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().UnixMilli(), 10)
 	parameters := url.Values{}
 	parameters.Set("act", "getdomains")
 	parameters.Set("username", credentials.Username)

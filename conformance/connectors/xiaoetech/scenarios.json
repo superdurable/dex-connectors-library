@@ -1,0 +1,535 @@
+{
+  "connector": "xiaoetech",
+  "scenarios": [
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":[{\"id\":16510,\"title\":\"Foods\",\"parent_id\":0,\"has_children\":1},{\"id\":18237,\"title\":\"Beauty\",\"parent_id\":0,\"has_children\":0}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/xe.goods.category.list/2.0.0",
+          "requestBody": {
+            "access_token": "REDACTED_ACCESS_TOKEN",
+            "parent_id": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "categories": [
+            {
+              "hasChildren": true,
+              "id": 16510,
+              "title": "Foods"
+            },
+            {
+              "hasChildren": false,
+              "id": 18237,
+              "title": "Beauty"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-listed",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/xe.goods.category.list/2.0.0",
+          "requestBody": {
+            "access_token": "REDACTED_ACCESS_TOKEN",
+            "parent_id": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-empty",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":2017,\"msg\":\"permission denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/xe.goods.category.list/2.0.0",
+          "requestBody": {
+            "access_token": "REDACTED_ACCESS_TOKEN",
+            "parent_id": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-providerRejected",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/xe.goods.category.list/2.0.0",
+          "requestBody": {
+            "access_token": "REDACTED_ACCESS_TOKEN",
+            "parent_id": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-invalidResponse",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-defect",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-retry-429",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-retry-500",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/xe.goods.category.list/2.0.0",
+          "requestBody": {
+            "access_token": "REDACTED_ACCESS_TOKEN",
+            "parent_id": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-retry-503",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-retry-transport",
+      "operation": "listRootGoodsCategories"
+    },
+    {
+      "callId": "5ee810f1-4c3e-5506-b241-e54e8fb21687",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"REDACTED_ACCESS_TOKEN\",\"expires_in\":7200}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/token",
+          "query": {
+            "app_id": [
+              "app-test"
+            ],
+            "client_id": [
+              "xop-test"
+            ],
+            "grant_type": [
+              "client_credential"
+            ],
+            "secret_key": [
+              "REDACTED_SECRET_KEY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRootGoodsCategories-oversized",
+      "operation": "listRootGoodsCategories"
+    }
+  ],
+  "schemaVersion": 1
+}
