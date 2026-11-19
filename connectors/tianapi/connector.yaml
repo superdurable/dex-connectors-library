@@ -8,6 +8,12 @@ metadata:
   categories: [data-search]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-tianapi"
+      operations: [getHolidayStatus]
+      triggers: []
   provider: tianapi
   codegen:
     go:
