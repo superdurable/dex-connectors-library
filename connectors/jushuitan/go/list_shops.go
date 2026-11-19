@@ -76,7 +76,7 @@ func (operation ListShopsOperation) Invoke(call sdkgo.Call, input ListShopsInput
 		"app_key":      {credentials.AppKey.Reveal()},
 		"biz":          {string(business)},
 		"charset":      {"utf-8"},
-		"timestamp":    {strconv.FormatInt(time.Now().Unix(), 10)},
+		"timestamp":    {strconv.FormatInt(operation.client.now().Unix(), 10)},
 		"version":      {"2"},
 	}
 	fields.Set("sign", signShopRequest(fields, credentials.AppSecret.Reveal()))
