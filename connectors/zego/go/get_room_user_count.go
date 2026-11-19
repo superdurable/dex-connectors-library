@@ -5,7 +5,6 @@ package zego
 
 import (
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -48,11 +47,11 @@ func (operation GetRoomUserCountOperation) Invoke(call sdkgo.Call, input GetRoom
 		return roomBranch(GetRoomUserCountBranchDefect, sdkgo.FailureAuthentication, "ZEGO project credentials are unavailable or invalid")
 	}
 	nonceBytes := make([]byte, 8)
-	if _, err = rand.Read(nonceBytes); err != nil {
+	if _, err = operation.client.readNonce(nonceBytes); err != nil {
 		return roomRetry(sdkgo.FailureAvailability, "ZEGO nonce generation failed", 0)
 	}
 	nonce := hex.EncodeToString(nonceBytes)
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().Unix(), 10)
 	signature := roomSignature(credentials.AppID, nonce, credentials.ServerSecret.Reveal(), timestamp)
 	query := url.Values{"Action": {"QueryRoomUserList"}, "AppId": {credentials.AppID}, "SignatureNonce": {nonce}, "Timestamp": {timestamp}, "SignatureVersion": {"2.0"}, "Signature": {signature}, "RoomId": {input.RoomID}, "Limit": {"1"}}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, roomUserEndpoint+"?"+query.Encode(), nil)
@@ -65,7 +64,7 @@ func (operation GetRoomUserCountOperation) Invoke(call sdkgo.Call, input GetRoom
 		return roomRetry(sdkgo.FailureAvailability, "ZEGO room-count request failed", 0)
 	}
 	defer func() { _ = response.Body.Close() }()
-	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), operation.client.now())
 	if response.StatusCode == http.StatusTooManyRequests {
 		return roomRetry(sdkgo.FailureRateLimit, "ZEGO rate limited the request", retryAfter)
 	}
