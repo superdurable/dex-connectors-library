@@ -7,3 +7,7 @@ After real-name verification, sign in to [Pgyer](https://www.pgyer.com) and open
 Pgyer documents error code 1098 for an hourly API limit. Dex retries transient failures; the precise allowance depends on the account. The [runnable Dex Flow](go/examples/app-list/README.md) demonstrates connection setup and mock verification. Live Pgyer authorization and response have not been exercised.
 
 The logo is sourced from [Pgyer's official website](https://assets3.pgyer.com/static-30000088/assets/img/logo_green_en.svg).
+
+## Python
+
+The first Python package implements the read-only operation and all Go-recorded provider branches. See [Python package](python/README.md) and its [runnable Flow](python/examples/uploaded_apps/README.md). Live provider authorization and responses are unverified.
