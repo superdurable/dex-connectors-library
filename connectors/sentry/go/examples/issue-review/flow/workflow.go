@@ -15,8 +15,9 @@ const (
 	// FlowType is the stable Dex Flow identity.
 	FlowType = "SentryIssueReview"
 	// ConnectionName is the static Dex Web connection for this example.
-	ConnectionName    = "sentry"
-	operationStepType = "ListIssues"
+	ConnectionName            = "sentry"
+	operationStepType         = "ListIssues"
+	listOrganizationsStepType = "ListOrganizations"
 )
 
 var outcomeAttribute = dex.DefineAttribute[sentry.IssuePage]("sentry-issue-review-outcome")
@@ -40,6 +41,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: operationStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "sentry", GroupLabel: "Sentry", Explanation: "Call the Sentry ListIssues endpoint."},
 			MapToOperationInput: func(request Request) sentry.ListIssuesInput { return sentry.ListIssuesInput(request) },
+			Listed:              sdkgo.GoTo(recordIssuePage{}),
+		})),
+		dex.DefineStep(recordIssuePage{}),
+		dex.DefineStep(sentry.NewListOrganizationsStep(sentry.ListOrganizationsStepConfig[dex.None]{
+			StepType: listOrganizationsStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "sentry", GroupLabel: "Sentry", Explanation: "List organizations available to the review token."},
+			MapToOperationInput: func(dex.None) sentry.ListOrganizationsInput { return sentry.ListOrganizationsInput{} },
 			Listed:              sdkgo.GoTo(completeRequest{}),
 		})),
 		dex.DefineStep(completeRequest{}),
@@ -99,18 +107,33 @@ func (prepareRequest) Execute(_ dex.Context, request Request) (*dex.StepDecision
 	return dex.GoTo(sdkgo.StepRef[Request](operationStepType), request), nil
 }
 
-// dex:group group-id:sentry-complete group-label:"Complete request"
-// dex:explanation text:"Complete the Flow with the provider result."
-type completeRequest struct {
+// dex:group group-id:sentry-record group-label:"Record issue page"
+// dex:explanation text:"Persist the issue page before listing token organizations."
+type recordIssuePage struct {
 	dex.StepDefaultsNoWaitFor[sentry.ListIssuesResult]
 }
 
-func (completeRequest) GetStepType() string { return "CompleteRequest" }
-func (completeRequest) Execute(ctx dex.Context, result sentry.ListIssuesResult) (*dex.StepDecision, error) {
+func (recordIssuePage) GetStepType() string { return "RecordIssuePage" }
+func (recordIssuePage) Execute(ctx dex.Context, result sentry.ListIssuesResult) (*dex.StepDecision, error) {
 	if err := outcomeAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(result.Value), nil
+	return dex.GoTo(sdkgo.StepRef[dex.None](listOrganizationsStepType), dex.None(nil)), nil
+}
+
+// dex:group group-id:sentry-complete group-label:"Complete request"
+// dex:explanation text:"Complete the Flow after checking token organizations."
+type completeRequest struct {
+	dex.StepDefaultsNoWaitFor[sentry.ListOrganizationsResult]
+}
+
+func (completeRequest) GetStepType() string { return "CompleteRequest" }
+func (completeRequest) Execute(ctx dex.Context, _ sentry.ListOrganizationsResult) (*dex.StepDecision, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

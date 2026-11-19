@@ -18,6 +18,7 @@ const (
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "box"
 	operationStepType = "CallDownloadFile"
+	getFileStepType   = "CallGetFile"
 )
 
 var downloadedFileAttribute = dex.DefineAttribute[box.DownloadedFile]("box-downloaded-file")
@@ -40,6 +41,14 @@ func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startRequest{}),
+		dex.DefineStep(box.NewGetFileStep(box.GetFileStepConfig[box.DownloadFileInput]{
+			StepType: getFileStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Box", Explanation: "Check file metadata before downloading content."},
+			Connection:          flow.connection,
+			MapToOperationInput: func(input box.DownloadFileInput) box.GetFileInput { return box.GetFileInput{FileID: input.FileID} },
+			Found:               sdkgo.GoTo(routeToDownload{}),
+		})),
+		dex.DefineStep(routeToDownload{}),
 		dex.DefineStep(box.NewDownloadFileStep(box.DownloadFileStepConfig[box.DownloadFileInput]{
 			StepType: operationStepType, ConnectionName: ConnectionName,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Box", Explanation: "Call the provider's downloadFile operation."},
@@ -99,7 +108,18 @@ func (startRequest) WaitFor(dex.Context, box.DownloadFileInput) (*dex.Wait, erro
 	return dex.SkipWaitImmediately(), nil
 }
 func (startRequest) Execute(_ dex.Context, input box.DownloadFileInput) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[box.DownloadFileInput](operationStepType), input), nil
+	return dex.GoTo(sdkgo.StepRef[box.DownloadFileInput](getFileStepType), input), nil
+}
+
+// dex:group group-id:metadata group-label:"File metadata"
+// dex:explanation text:"Use the verified file ID for the content download."
+type routeToDownload struct {
+	dex.StepDefaultsNoWaitFor[box.GetFileResult]
+}
+
+func (routeToDownload) GetStepType() string { return "RouteToDownload" }
+func (routeToDownload) Execute(_ dex.Context, result box.GetFileResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[box.DownloadFileInput](operationStepType), box.DownloadFileInput{FileID: result.Value.ID}), nil
 }
 
 // dex:group group-id:result group-label:"Result"
