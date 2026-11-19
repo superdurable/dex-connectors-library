@@ -1,0 +1,74 @@
+{
+  "connectorId": "qihoo360",
+  "releaseTag": "connectors/qihoo360/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-qihoo360",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGenerateTextStep",
+      "kind": "query",
+      "operationId": "generateText",
+      "inputType": "GenerateTextInput",
+      "description": "Generate one nonstreaming, text-only response from a 360 智脑 model.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "generated",
+          "field": "generated",
+          "optional": false
+        },
+        {
+          "id": "truncated",
+          "field": "truncated",
+          "optional": true
+        },
+        {
+          "id": "blocked",
+          "field": "blocked",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GenerateTextInput requests one text answer. MaxOutputTokens defaults to 1024 when zero.",
+        "properties": {
+          "maxOutputTokens": {
+            "description": "MaxOutputTokens limits generated tokens to 1 through 4096; zero uses 1024.",
+            "type": "integer"
+          },
+          "prompt": {
+            "description": "Prompt is a nonempty user message of at most 64 KiB.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
