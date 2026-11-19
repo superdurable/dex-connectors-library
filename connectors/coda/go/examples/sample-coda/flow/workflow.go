@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package flow demonstrates Coda's listRows operation in a Dex Flow.
+// Package flow demonstrates Coda's getTable and listRows operations in a Dex Flow.
 package flow
 
 import (
@@ -15,11 +15,13 @@ const (
 	// FlowType is the stable Dex Flow type.
 	FlowType = "CodaSample"
 	// ConnectionName is the static Dex Web connection name.
-	ConnectionName = "coda"
-	callStepType   = "CallCoda"
+	ConnectionName   = "coda"
+	callStepType     = "CallCoda"
+	getTableStepType = "GetCodaTable"
 )
 
 var sampleResultAttribute = dex.DefineAttribute[coda.ListRowsOutput]("coda-sample-result")
+var sampleRequestAttribute = dex.DefineAttribute[coda.ListRowsInput]("coda-sample-request")
 
 // Flow calls Coda once and completes with the provider result.
 type Flow struct {
@@ -32,7 +34,7 @@ func NewFlow(connection coda.Connection) *Flow { return &Flow{connection: connec
 
 // GetPersistenceSchema registers the completed provider result.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{sampleResultAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{sampleResultAttribute, sampleRequestAttribute}}
 }
 
 // GetFlowType returns the sample Flow identity.
@@ -76,11 +78,20 @@ func inspectResult(ctx dex.Context) (coda.ListRowsOutput, error) {
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(startRequest{}),
+		dex.DefineStep(coda.NewGetTableStep(coda.GetTableStepConfig[coda.ListRowsInput]{
+			StepType: getTableStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations: sdkgo.StepAnnotations{GroupID: "coda", GroupLabel: "Coda", Explanation: "Read the table metadata before listing its rows."},
+			MapToOperationInput: func(request coda.ListRowsInput) coda.GetTableInput {
+				return coda.GetTableInput{DocID: request.DocID, TableID: request.TableID}
+			},
+			Found: sdkgo.GoTo(listRowsRequest{}),
+		})),
 		dex.DefineStep(coda.NewListRowsStep(coda.ListRowsStepConfig[coda.ListRowsInput]{
 			StepType: callStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "coda", GroupLabel: "Coda", Explanation: "List one page of rows in a Coda table."},
 			MapToOperationInput: MapToOperationInput, Listed: sdkgo.GoTo(completeRequest{}),
 		})),
+		dex.DefineStep(listRowsRequest{}),
 		dex.DefineStep(completeRequest{}),
 	}
 }
@@ -96,7 +107,25 @@ func (startRequest) GetStepType() string { return "StartCodaRequest" }
 func (startRequest) WaitFor(dex.Context, coda.ListRowsInput) (*dex.Wait, error) {
 	return dex.SkipWaitImmediately(), nil
 }
-func (startRequest) Execute(_ dex.Context, request coda.ListRowsInput) (*dex.StepDecision, error) {
+func (startRequest) Execute(ctx dex.Context, request coda.ListRowsInput) (*dex.StepDecision, error) {
+	if err := sampleRequestAttribute.Set(ctx, request); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[coda.ListRowsInput](getTableStepType), request), nil
+}
+
+// dex:group group-id:coda-list-rows group-label:"Coda sample"
+// dex:explanation text:"Use the validated table to list its rows."
+type listRowsRequest struct {
+	dex.StepDefaultsNoWaitFor[coda.GetTableResult]
+}
+
+func (listRowsRequest) GetStepType() string { return "ListCodaRows" }
+func (listRowsRequest) Execute(ctx dex.Context, _ coda.GetTableResult) (*dex.StepDecision, error) {
+	request, err := sampleRequestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return dex.GoTo(sdkgo.StepRef[coda.ListRowsInput](callStepType), request), nil
 }
 

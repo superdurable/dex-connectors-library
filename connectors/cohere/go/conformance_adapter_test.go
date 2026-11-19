@@ -24,5 +24,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"embed":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.Embed(), reference),
 		"rerank": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.Rerank(), reference),
+		"chat":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.Chat(), reference),
 	}}
 }

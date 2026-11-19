@@ -12,7 +12,7 @@ export interface Config {
   baseUrl: string;
   /** Maximum duration of one metadata query as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow catalogs. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete table-list JSON response in bytes as a positive integer. Blank uses the displayed default; increase for large catalogs. */
+  /** Maximum complete metadata JSON response in bytes as a positive integer. Blank uses the displayed default; increase for large catalogs. */
   maxResponseBytes?: number;
 }
 
@@ -27,7 +27,7 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret password for that ClickHouse database user from Cloud > Services > service > Connect > HTTPS, or from your self-hosted administrator. Enter the complete password; blank prevents calls. Dex stores it only as a credential and sends it in X-ClickHouse-Key. Rotate it in the database user settings. */
   password: SecretString;
-  /** Non-secret ClickHouse database username from Cloud > Services > service > Connect > HTTPS, or from your self-hosted administrator. Enter the exact user with SELECT access to system.tables; blank prevents calls. Dex sends it in X-ClickHouse-User. */
+  /** Non-secret ClickHouse database username from Cloud > Services > service > Connect > HTTPS, or from your self-hosted administrator. Enter the exact user with SELECT access to system.databases, system.tables, and system.columns; blank prevents calls. Dex sends it in X-ClickHouse-User. */
   username: string;
 }
 

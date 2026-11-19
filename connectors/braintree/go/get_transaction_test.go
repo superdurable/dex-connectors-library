@@ -21,6 +21,7 @@ var testConnection = sdkgo.ConnectionRef{Provider: "braintree", Name: "braintree
 
 type queryContext struct{ dex.Context }
 
+func (queryContext) Attempt() int32              { return 1 }
 func (queryContext) FlowID() string              { return "braintree-provider-test" }
 func (queryContext) StepExecutionID() string     { return "get-transaction" }
 func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }

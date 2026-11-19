@@ -24,6 +24,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[coda.GetRowOutput](`{"data":{"id":"i-Meridian","name":"Meridian","values":{"c-Name":"Meridian"}}}`)
 			return err
 		}},
+		{name: "listDocs/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[coda.DocsPage](`{"items":[{"id":"AbCDeFGH","name":"Meridian"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getDoc/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[coda.Doc](`{"id":"AbCDeFGH","name":"Meridian"}`)
+			return err
+		}},
+		{name: "listTables/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[coda.TablesPage](`{"items":[{"id":"grid-pqRst-U","name":"Accounts"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getTable/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[coda.Table](`{"id":"grid-pqRst-U","name":"Accounts"}`)
+			return err
+		}},
+		{name: "listColumns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[coda.ColumnsPage](`{"items":[{"id":"c-Name","name":"Name"}],"nextPageToken":""}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +59,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetRow().Definition().Operation.OperationID != "getRow" {
 		t.Errorf("getRow mock has another definition")
+	}
+	if mock.ListDocs().Definition().Operation.OperationID != "listDocs" {
+		t.Errorf("listDocs mock has another definition")
+	}
+	if mock.GetDoc().Definition().Operation.OperationID != "getDoc" {
+		t.Errorf("getDoc mock has another definition")
+	}
+	if mock.ListTables().Definition().Operation.OperationID != "listTables" {
+		t.Errorf("listTables mock has another definition")
+	}
+	if mock.GetTable().Definition().Operation.OperationID != "getTable" {
+		t.Errorf("getTable mock has another definition")
+	}
+	if mock.ListColumns().Definition().Operation.OperationID != "listColumns" {
+		t.Errorf("listColumns mock has another definition")
 	}
 }

@@ -63,4 +63,7 @@ func TestMockDefaultCompletesWithRealDex(t *testing.T) {
 	calls := mock.ListRows().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, input, calls[0].Input)
+	tableCalls := mock.GetTable().Calls()
+	require.Len(t, tableCalls, 1)
+	require.Equal(t, coda.GetTableInput{DocID: input.DocID, TableID: input.TableID}, tableCalls[0].Input)
 }

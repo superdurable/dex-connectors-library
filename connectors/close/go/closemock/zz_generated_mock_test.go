@@ -16,8 +16,184 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "sendEmailDraft/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"outbox","subject":"Follow-up"}`)
+			return err
+		}},
+		{name: "sendSMSDraft/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"outbox","text":"Hello"}`)
+			return err
+		}},
+		{name: "listMeetings/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.MeetingPage](`{"meetings":[{"id":"acti_meeting_meridian1","leadId":"lead_meridian1","title":"Review","status":"completed"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getMeeting/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.MeetingActivity](`{"id":"acti_meeting_meridian1","leadId":"lead_meridian1","title":"Review","status":"completed"}`)
+			return err
+		}},
+		{name: "updateMeeting/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.MeetingActivity](`{"id":"acti_meeting_meridian1","leadId":"lead_meridian1","title":"Review","status":"completed","userNoteHTML":"\u003cp\u003eFollow-up\u003c/p\u003e"}`)
+			return err
+		}},
+		{name: "deleteMeeting/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedMeeting](`{"meetingId":"acti_meeting_meridian1"}`)
+			return err
+		}},
+		{name: "listSMS/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSPage](`{"messages":[{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getSMS/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}`)
+			return err
+		}},
+		{name: "createSMS/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}`)
+			return err
+		}},
+		{name: "updateSMSDraft/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Updated"}`)
+			return err
+		}},
+		{name: "deleteSMS/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedSMS](`{"smsId":"acti_sms_meridian1"}`)
+			return err
+		}},
+		{name: "listEmails/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailPage](`{"emails":[{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getEmail/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}`)
+			return err
+		}},
+		{name: "createEmail/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}`)
+			return err
+		}},
+		{name: "updateEmailDraft/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Updated"}`)
+			return err
+		}},
+		{name: "deleteEmail/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedEmail](`{"emailId":"acti_email_meridian1"}`)
+			return err
+		}},
+		{name: "listCalls/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.CallPage](`{"calls":[{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getCall/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}`)
+			return err
+		}},
+		{name: "logCall/loggedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}`)
+			return err
+		}},
+		{name: "updateCall/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.CallActivity](`{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120,"note":"Follow-up agreed"}`)
+			return err
+		}},
+		{name: "deleteCall/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedCall](`{"callId":"acti_call_meridian1"}`)
+			return err
+		}},
+		{name: "listNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.NotePage](`{"notes":[{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":false}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Note](`{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":false}`)
+			return err
+		}},
+		{name: "createNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Note](`{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":false}`)
+			return err
+		}},
+		{name: "updateNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Note](`{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":true}`)
+			return err
+		}},
+		{name: "deleteNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedNote](`{"noteId":"acti_meridian1"}`)
+			return err
+		}},
+		{name: "listTasks/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.TaskPage](`{"tasks":[{"id":"task_meridian1","leadId":"lead_meridian1","text":"Review proposal","isComplete":false}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getTask/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Task](`{"id":"task_meridian1","leadId":"lead_meridian1","text":"Review proposal","isComplete":false}`)
+			return err
+		}},
+		{name: "createTask/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Task](`{"id":"task_meridian1","leadId":"lead_meridian1","text":"Review proposal","isComplete":false}`)
+			return err
+		}},
+		{name: "updateTask/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Task](`{"id":"task_meridian1","leadId":"lead_meridian1","text":"Review proposal","isComplete":true}`)
+			return err
+		}},
+		{name: "deleteTask/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedTask](`{"taskId":"task_meridian1"}`)
+			return err
+		}},
+		{name: "listOpportunities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.OpportunityPage](`{"opportunities":[{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getOpportunity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":50000,"statusId":"stat_active1"}`)
+			return err
+		}},
+		{name: "updateOpportunity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Opportunity](`{"id":"oppo_meridian1","leadId":"lead_meridian1","valueCents":60000,"statusId":"stat_active1"}`)
+			return err
+		}},
+		{name: "deleteOpportunity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedOpportunity](`{"opportunityId":"oppo_meridian1"}`)
+			return err
+		}},
+		{name: "createLead/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Lead](`{"id":"lead_meridian1","name":"Meridian Labs"}`)
+			return err
+		}},
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+			return err
+		}},
 		{name: "listLeads/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.LeadPage](`{"leads":[{"id":"lead_meridian1","name":"Meridian Labs"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "updateLead/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Lead](`{"id":"lead_meridian1","name":"Meridian Research"}`)
+			return err
+		}},
+		{name: "deleteLead/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedLead](`{"leadId":"lead_meridian1"}`)
+			return err
+		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.ContactPage](`{"contacts":[{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getContact/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedContact](`{"contactId":"cont_meridian1"}`)
 			return err
 		}},
 		{name: "getLead/defaultAnswer/1", decode: func() error {
@@ -34,8 +210,140 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.SendEmailDraft().Definition().Operation.OperationID != "sendEmailDraft" {
+		t.Errorf("sendEmailDraft mock has another definition")
+	}
+	if mock.SendSMSDraft().Definition().Operation.OperationID != "sendSMSDraft" {
+		t.Errorf("sendSMSDraft mock has another definition")
+	}
+	if mock.ListMeetings().Definition().Operation.OperationID != "listMeetings" {
+		t.Errorf("listMeetings mock has another definition")
+	}
+	if mock.GetMeeting().Definition().Operation.OperationID != "getMeeting" {
+		t.Errorf("getMeeting mock has another definition")
+	}
+	if mock.UpdateMeeting().Definition().Operation.OperationID != "updateMeeting" {
+		t.Errorf("updateMeeting mock has another definition")
+	}
+	if mock.DeleteMeeting().Definition().Operation.OperationID != "deleteMeeting" {
+		t.Errorf("deleteMeeting mock has another definition")
+	}
+	if mock.ListSMS().Definition().Operation.OperationID != "listSMS" {
+		t.Errorf("listSMS mock has another definition")
+	}
+	if mock.GetSMS().Definition().Operation.OperationID != "getSMS" {
+		t.Errorf("getSMS mock has another definition")
+	}
+	if mock.CreateSMS().Definition().Operation.OperationID != "createSMS" {
+		t.Errorf("createSMS mock has another definition")
+	}
+	if mock.UpdateSMSDraft().Definition().Operation.OperationID != "updateSMSDraft" {
+		t.Errorf("updateSMSDraft mock has another definition")
+	}
+	if mock.DeleteSMS().Definition().Operation.OperationID != "deleteSMS" {
+		t.Errorf("deleteSMS mock has another definition")
+	}
+	if mock.ListEmails().Definition().Operation.OperationID != "listEmails" {
+		t.Errorf("listEmails mock has another definition")
+	}
+	if mock.GetEmail().Definition().Operation.OperationID != "getEmail" {
+		t.Errorf("getEmail mock has another definition")
+	}
+	if mock.CreateEmail().Definition().Operation.OperationID != "createEmail" {
+		t.Errorf("createEmail mock has another definition")
+	}
+	if mock.UpdateEmailDraft().Definition().Operation.OperationID != "updateEmailDraft" {
+		t.Errorf("updateEmailDraft mock has another definition")
+	}
+	if mock.DeleteEmail().Definition().Operation.OperationID != "deleteEmail" {
+		t.Errorf("deleteEmail mock has another definition")
+	}
+	if mock.ListCalls().Definition().Operation.OperationID != "listCalls" {
+		t.Errorf("listCalls mock has another definition")
+	}
+	if mock.GetCall().Definition().Operation.OperationID != "getCall" {
+		t.Errorf("getCall mock has another definition")
+	}
+	if mock.LogCall().Definition().Operation.OperationID != "logCall" {
+		t.Errorf("logCall mock has another definition")
+	}
+	if mock.UpdateCall().Definition().Operation.OperationID != "updateCall" {
+		t.Errorf("updateCall mock has another definition")
+	}
+	if mock.DeleteCall().Definition().Operation.OperationID != "deleteCall" {
+		t.Errorf("deleteCall mock has another definition")
+	}
+	if mock.ListNotes().Definition().Operation.OperationID != "listNotes" {
+		t.Errorf("listNotes mock has another definition")
+	}
+	if mock.GetNote().Definition().Operation.OperationID != "getNote" {
+		t.Errorf("getNote mock has another definition")
+	}
+	if mock.CreateNote().Definition().Operation.OperationID != "createNote" {
+		t.Errorf("createNote mock has another definition")
+	}
+	if mock.UpdateNote().Definition().Operation.OperationID != "updateNote" {
+		t.Errorf("updateNote mock has another definition")
+	}
+	if mock.DeleteNote().Definition().Operation.OperationID != "deleteNote" {
+		t.Errorf("deleteNote mock has another definition")
+	}
+	if mock.ListTasks().Definition().Operation.OperationID != "listTasks" {
+		t.Errorf("listTasks mock has another definition")
+	}
+	if mock.GetTask().Definition().Operation.OperationID != "getTask" {
+		t.Errorf("getTask mock has another definition")
+	}
+	if mock.CreateTask().Definition().Operation.OperationID != "createTask" {
+		t.Errorf("createTask mock has another definition")
+	}
+	if mock.UpdateTask().Definition().Operation.OperationID != "updateTask" {
+		t.Errorf("updateTask mock has another definition")
+	}
+	if mock.DeleteTask().Definition().Operation.OperationID != "deleteTask" {
+		t.Errorf("deleteTask mock has another definition")
+	}
+	if mock.ListOpportunities().Definition().Operation.OperationID != "listOpportunities" {
+		t.Errorf("listOpportunities mock has another definition")
+	}
+	if mock.GetOpportunity().Definition().Operation.OperationID != "getOpportunity" {
+		t.Errorf("getOpportunity mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.UpdateOpportunity().Definition().Operation.OperationID != "updateOpportunity" {
+		t.Errorf("updateOpportunity mock has another definition")
+	}
+	if mock.DeleteOpportunity().Definition().Operation.OperationID != "deleteOpportunity" {
+		t.Errorf("deleteOpportunity mock has another definition")
+	}
+	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
+		t.Errorf("createLead mock has another definition")
+	}
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
 	if mock.ListLeads().Definition().Operation.OperationID != "listLeads" {
 		t.Errorf("listLeads mock has another definition")
+	}
+	if mock.UpdateLead().Definition().Operation.OperationID != "updateLead" {
+		t.Errorf("updateLead mock has another definition")
+	}
+	if mock.DeleteLead().Definition().Operation.OperationID != "deleteLead" {
+		t.Errorf("deleteLead mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
+		t.Errorf("getContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
 		t.Errorf("getLead mock has another definition")
