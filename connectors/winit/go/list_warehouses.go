@@ -49,7 +49,7 @@ func (operation ListWarehousesOperation) Invoke(call sdkgo.Call, _ ListWarehouse
 	if err != nil || credentials.Validate() != nil || !validCredential(credentials.AppKey.Reveal()) || !validCredential(credentials.Token.Reveal()) || !validCredential(credentials.ClientID.Reveal()) || !validCredential(credentials.ClientSecret.Reveal()) {
 		return warehouseBranch(ListWarehousesBranchDefect, sdkgo.FailureAuthentication, "Winit seller or application credentials are unavailable or invalid")
 	}
-	timestamp := time.Now().In(time.FixedZone("UTC+8", 8*3600)).Format("2006-01-02 15:04:05")
+	timestamp := operation.client.now().In(time.FixedZone("UTC+8", 8*3600)).Format("2006-01-02 15:04:05")
 	parameters := map[string]string{"action": "queryWarehouse", "app_key": credentials.AppKey.Reveal(), "format": "json", "platform": operation.client.platform, "sign_method": "md5", "timestamp": timestamp, "version": "1.0"}
 	requestBody := struct {
 		Action     string `json:"action"`
