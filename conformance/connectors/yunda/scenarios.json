@@ -1,0 +1,415 @@
+{
+  "connector": "yunda",
+  "scenarios": [
+    {
+      "callId": "41a755b2-ffb7-5d39-9921-8b9747b89e0f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"0000\",\"result\":true,\"message\":\"ok\",\"data\":{\"status\":\"1\",\"msg\":\"ok\",\"free_num\":\"1\",\"remain_num\":\"2\",\"total_num\":\"0\",\"used_num\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi-api/v1/accountOrder/searchCount",
+          "requestBody": {
+            "appid": "999999",
+            "partner_id": "REDACTED_PARTNER_ID",
+            "secret": "REDACTED_BAIMA_SECRET",
+            "type": "common"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "999999"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Req-Time": [
+              "1731510000000"
+            ],
+            "Sign": [
+              "01ead066b6dcd70a6e618cb35e2a2460"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "freeCount": 1,
+          "paidCount": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-found",
+      "operation": "getWaybillBalance"
+    },
+    {
+      "callId": "51445349-6d1b-5986-91c9-6fbb887239a4",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"4001\",\"result\":false,\"message\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi-api/v1/accountOrder/searchCount",
+          "requestBody": {
+            "appid": "999999",
+            "partner_id": "REDACTED_PARTNER_ID",
+            "secret": "REDACTED_BAIMA_SECRET",
+            "type": "common"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "999999"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Req-Time": [
+              "1731510000000"
+            ],
+            "Sign": [
+              "01ead066b6dcd70a6e618cb35e2a2460"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "freeCount": 0,
+          "paidCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-providerRejected",
+      "operation": "getWaybillBalance"
+    },
+    {
+      "callId": "0b0e6da9-af20-5fbf-bb2d-e87de31c03b3",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"0000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi-api/v1/accountOrder/searchCount",
+          "requestBody": {
+            "appid": "999999",
+            "partner_id": "REDACTED_PARTNER_ID",
+            "secret": "REDACTED_BAIMA_SECRET",
+            "type": "common"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "999999"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Req-Time": [
+              "1731510000000"
+            ],
+            "Sign": [
+              "01ead066b6dcd70a6e618cb35e2a2460"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "freeCount": 0,
+          "paidCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-invalidResponse",
+      "operation": "getWaybillBalance"
+    },
+    {
+      "callId": "40e3c417-3367-5819-bbcd-cc4267e5c881",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi-api/v1/accountOrder/searchCount",
+          "requestBody": {
+            "appid": "999999",
+            "partner_id": "REDACTED_PARTNER_ID",
+            "secret": "REDACTED_BAIMA_SECRET",
+            "type": "common"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "999999"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Req-Time": [
+              "1731510000000"
+            ],
+            "Sign": [
+              "01ead066b6dcd70a6e618cb35e2a2460"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-retry429",
+      "operation": "getWaybillBalance"
+    },
+    {
+      "callId": "06ae42ae-b2f2-53d4-a96c-1a1ac986d15e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi-api/v1/accountOrder/searchCount",
+          "requestBody": {
+            "appid": "999999",
+            "partner_id": "REDACTED_PARTNER_ID",
+            "secret": "REDACTED_BAIMA_SECRET",
+            "type": "common"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "999999"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Req-Time": [
+              "1731510000000"
+            ],
+            "Sign": [
+              "01ead066b6dcd70a6e618cb35e2a2460"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-retry503",
+      "operation": "getWaybillBalance"
+    },
+    {
+      "callId": "a16cabcd-b04c-5c05-9268-c0f639e0213b",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"7777\",\"result\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi-api/v1/accountOrder/searchCount",
+          "requestBody": {
+            "appid": "999999",
+            "partner_id": "REDACTED_PARTNER_ID",
+            "secret": "REDACTED_BAIMA_SECRET",
+            "type": "common"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "999999"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Req-Time": [
+              "1731510000000"
+            ],
+            "Sign": [
+              "01ead066b6dcd70a6e618cb35e2a2460"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-providerTemporary",
+      "operation": "getWaybillBalance"
+    },
+    {
+      "callId": "57c55fff-e979-500d-97f6-cccd19ad3daf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi-api/v1/accountOrder/searchCount",
+          "requestBody": {
+            "appid": "999999",
+            "partner_id": "REDACTED_PARTNER_ID",
+            "secret": "REDACTED_BAIMA_SECRET",
+            "type": "common"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "999999"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Req-Time": [
+              "1731510000000"
+            ],
+            "Sign": [
+              "01ead066b6dcd70a6e618cb35e2a2460"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-transport",
+      "operation": "getWaybillBalance"
+    },
+    {
+      "callId": "42f61bfa-f860-5312-a840-dbc3fbf907ad",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi-api/v1/accountOrder/searchCount",
+          "requestBody": {
+            "appid": "999999",
+            "partner_id": "REDACTED_PARTNER_ID",
+            "secret": "REDACTED_BAIMA_SECRET",
+            "type": "common"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "999999"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Req-Time": [
+              "1731510000000"
+            ],
+            "Sign": [
+              "01ead066b6dcd70a6e618cb35e2a2460"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "freeCount": 0,
+          "paidCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-oversized",
+      "operation": "getWaybillBalance"
+    },
+    {
+      "callId": "3c906fa3-cbc4-5740-b632-d1fd17b7e860",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "freeCount": 0,
+          "paidCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWaybillBalance-defect",
+      "operation": "getWaybillBalance"
+    }
+  ],
+  "schemaVersion": 1
+}
