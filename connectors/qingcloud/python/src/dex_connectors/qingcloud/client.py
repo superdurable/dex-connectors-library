@@ -178,6 +178,8 @@ class DescribeZonesOperation:
                     f"QingCloud rejected the query with code {code}",
                 )
             items = data.get("zone_set")
+            if items is None:
+                items = []
             total = data.get("total_count")
             if (
                 data.get("action") != "DescribeZonesResponse"
