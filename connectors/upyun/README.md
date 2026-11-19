@@ -9,3 +9,5 @@ Sign in at the [UPYUN console](https://console.upyun.com). Under **Cloud Product
 HTTP 429, server errors and transport failures retry. A definite HTTP rejection selects optional `providerRejected`; malformed, negative, or oversized usage text selects optional `invalidResponse`. The example leaves optional branches unwired, so those outcomes fail the Flow.
 
 The runnable example is in [`go/examples/usage-read`](go/examples/usage-read). Provider tests use a local HTTP server and a fixed signing vector. Real UPYUN operator authorization and live service usage remain unverified without a user-controlled account.
+
+The [TypeScript package](typescript/README.md) implements `getServiceUsage`, replays Go-recorded provider scenarios, and includes a real Dex Worker/Client example. Live UPYUN authorization remains unverified without user-controlled operator credentials.
