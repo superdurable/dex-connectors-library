@@ -348,6 +348,7 @@ const CreateMessageBranchCreated sdkgo.BranchID = "created"
 const CreateMessageBranchNotFound sdkgo.BranchID = "notFound"
 const CreateMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const CreateMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CreateMessageDefinition = sdkgo.MutationDefinition{
@@ -356,14 +357,17 @@ var CreateMessageDefinition = sdkgo.MutationDefinition{
 		{ID: CreateMessageBranchCreated, Description: "Discord created the message, or returned the message an earlier attempt created with the same nonce."},
 		{ID: CreateMessageBranchNotFound, Description: "Discord knows no channel with the ID.", Optional: true},
 		{ID: CreateMessageBranchProviderRejected, Description: "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", Optional: true},
-		{ID: CreateMessageBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized answer now retries, because a resend inside the nonce window returns the same message.", Optional: true},
+		{ID: CreateMessageBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized answer is an unknown outcome that resends with the same nonce or selects uncertain at the send cap.", Optional: true},
+		{ID: CreateMessageBranchUncertain, Description: "Discord may have created the message, and the send cap was reached before it could be confirmed; check the channel before sending again.", Optional: true},
 		{ID: CreateMessageBranchDefect, Description: "Local input, connection configuration, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateMessageResult = sdkgo.MutationResult[Message]
@@ -381,9 +385,12 @@ type CreateMessageStepConfig[IN any] struct {
 	NotFound                          sdkgo.Target[CreateMessageResult]             `connector:"branch=notFound,optional"`
 	ProviderRejected                  sdkgo.Target[CreateMessageResult]             `connector:"branch=providerRejected,optional"`
 	InvalidResponse                   sdkgo.Target[CreateMessageResult]             `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[CreateMessageResult]             `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[CreateMessageResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Message]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateMessageStep[IN any](config CreateMessageStepConfig[IN]) sdkgo.MutationStep[IN, CreateMessageInput, Message] {
@@ -398,7 +405,7 @@ func NewCreateMessageStep[IN any](config CreateMessageStepConfig[IN]) sdkgo.Muta
 		Operation: config.Connection.operations.CreateMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateMessageResult] {
-			branches := make([]sdkgo.BranchTarget[CreateMessageResult], 0, 5)
+			branches := make([]sdkgo.BranchTarget[CreateMessageResult], 0, 6)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateMessageBranchCreated))
 			}
@@ -411,6 +418,9 @@ func NewCreateMessageStep[IN any](config CreateMessageStepConfig[IN]) sdkgo.Muta
 			if config.InvalidResponse.HasStep() {
 				branches = append(branches, config.InvalidResponse.BranchTarget(CreateMessageBranchInvalidResponse))
 			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateMessageBranchUncertain))
+			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateMessageBranchDefect))
 			}
@@ -418,6 +428,7 @@ func NewCreateMessageStep[IN any](config CreateMessageStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -439,6 +450,7 @@ var AddReactionDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type AddReactionResult = sdkgo.MutationResult[AddedReaction]
@@ -458,6 +470,8 @@ type AddReactionStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddReactionResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddedReaction]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddReactionStep[IN any](config AddReactionStepConfig[IN]) sdkgo.MutationStep[IN, AddReactionInput, AddedReaction] {

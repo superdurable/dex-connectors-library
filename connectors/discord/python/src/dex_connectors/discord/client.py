@@ -3,7 +3,7 @@
 """Bounded authenticated Discord HTTP client with call-time credentials."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -21,6 +21,7 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
+    ProviderTransportError,
     is_header_safe_credential,
     new_provider_http_client,
     read_bounded_body,
@@ -50,6 +51,18 @@ class ProviderResponse:
     headers: httpx.Headers
     body: bytes
     is_body_too_large: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class FencedExchange:
+    """One fenced Discord send, retaining only status, body, and transport evidence."""
+
+    status_code: int = 0
+    headers: httpx.Headers = field(default_factory=httpx.Headers)
+    body: bytes = b""
+    read_error: str = ""
+    """Empty for a complete body; ``request``, ``tooLarge``, or ``read`` otherwise."""
+    is_request_sent: bool = True
 
 
 class Client:
@@ -179,6 +192,28 @@ class Client:
             return ProviderResponse(
                 response.status_code, response.headers, b"", 200 <= response.status_code < 300
             )
+
+    async def send_fenced(self, request: httpx.Request, observed_statuses: list[int]) -> "FencedExchange":
+        """Send one built request once, keeping read failures apart from proof of no send.
+
+        ``observed_statuses`` receives the status once headers arrive, before the body is read.
+        """
+        try:
+            response, _ = await send_traced(self.http_client, request)
+        except ProviderTransportError as error:
+            return FencedExchange(is_request_sent=not error.provably_not_sent, read_error="request")
+        observed_statuses.append(response.status_code)
+        try:
+            limit = self.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
+            try:
+                body, read_error = await read_bounded_body(response, limit), ""
+            except BodyTooLargeError:
+                body, read_error = b"", "tooLarge"
+            except ProviderTransportError:
+                body, read_error = b"", "read"
+            return FencedExchange(response.status_code, response.headers, body, read_error)
+        finally:
+            await response.aclose()
 
     def receipt(self, call: Call, object_id: str) -> Receipt:
         """Record stable call identity without retaining the secret token."""

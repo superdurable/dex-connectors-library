@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-discord",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Discord channel and message operations for Dex Flows",
   "repository": {
@@ -45,7 +45,7 @@
     "example:announcement:start": "npm run build && tsx examples/channel-announcement/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

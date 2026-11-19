@@ -16,6 +16,18 @@ const channelId = '100000000000000001';
 const messageId = '300000000000000001';
 const credential = { resolve: async () => ({ botToken: new SecretString('MTAxTESTbot.token-part.0123456789abcdef') }) };
 
+/** A first createMessage attempt whose single-dispatch fence starts without a checkpoint. */
+function createMessageCall(): Call {
+  let heartbeat: unknown;
+  const context = {
+    attempt: 1, runId: 'run', flowId: 'channel-announcement-flow', flowStartedAt: new Date('1970-01-01T00:00:01Z'),
+    deadline: new Date(Date.now() + 30_000), cancellationSignal: new AbortController().signal,
+    hasLastHeartbeatValue: () => heartbeat !== undefined, getLastHeartbeatValue: () => heartbeat,
+    recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+  };
+  return { ...call, operation: { connectorId: 'discord', operationId: 'createMessage' }, context } as unknown as Call;
+}
+
 it('treats revoked credentials as a terminal rejection without HTTP', async () => {
   let requestCount = 0;
   const client = new DiscordClient({}, { resolve: async () => { throw new ReauthorizationRequiredError(); } }, {
@@ -41,7 +53,7 @@ it.each([
   const client = new DiscordClient({}, { resolve: async () => { throw error; } }, {
     send: async () => { requestCount++; throw new Error('unexpected request'); },
   });
-  const result = await client.createMessage().invoke(call, { channelId, content: 'hello' });
+  const result = await client.createMessage().invoke(createMessageCall(), { channelId, content: 'hello' });
   if (branch) expect(result).toMatchObject({ kind: 'branch', branch });
   else expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
   expect(requestCount).toBe(0);
@@ -49,7 +61,7 @@ it.each([
 
 it.each([[302, 'retry'], [425, 'retry'], [501, 'retry'], [200, 'retry'], [422, 'providerRejected']])('classifies a createMessage HTTP %i answer as %s', async (status, expected) => {
   const client = new DiscordClient({}, credential, { send: async () => ({ status, headers: {}, body: Buffer.from('{"code":0}') }) });
-  const result = await client.createMessage().invoke(call, { channelId, content: 'hello' });
+  const result = await client.createMessage().invoke(createMessageCall(), { channelId, content: 'hello' });
   expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);
 });
 
@@ -86,12 +98,12 @@ it('matches Go TrimSpace for message content and reaction emoji', async () => {
     return { status: 204, headers: {}, body: Buffer.alloc(0) };
   } });
 
-  const blank = await client.createMessage().invoke(call, { channelId, content: '\u0085' });
+  const blank = await client.createMessage().invoke(createMessageCall(), { channelId, content: '\u0085' });
   expect(blank.kind).toBe('branch');
   if (blank.kind === 'branch') expect(blank.branch).toBe('defect');
   expect(requestCount).toBe(0);
 
-  const message = await client.createMessage().invoke(call, { channelId, content: '\uFEFF' });
+  const message = await client.createMessage().invoke(createMessageCall(), { channelId, content: '\uFEFF' });
   expect(message.kind).toBe('branch');
   if (message.kind === 'branch') expect(message.branch).toBe('created');
   expect(requestCount).toBe(1);

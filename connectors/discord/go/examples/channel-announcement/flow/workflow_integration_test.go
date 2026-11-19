@@ -73,7 +73,7 @@ func TestChannelAnnouncementExampleRunsEveryDiscordOperationWithRealDex(t *testi
 	t.Run("a post whose response was lost is retried with the same nonce and creates one message", func(t *testing.T) {
 		result := harness.runFlow(t, ctx, flow, "discord-announcement-flaky-"+testRunID, AnnouncementRequest{ChannelID: flakyChannelID, Text: "Flaky " + testRunID})
 		require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-		require.Equal(t, 2, provider.postAttempts(flakyChannelID), "the first post was applied but answered 503")
+		require.Equal(t, 2, provider.postAttempts(flakyChannelID), "the first post was applied but answered 502")
 		require.Len(t, provider.messagesIn(flakyChannelID), 1, "the enforced nonce returned the first message")
 	})
 
@@ -180,7 +180,8 @@ func (provider *discordProvider) createMessage(response http.ResponseWriter, req
 	message := fakeMessage{ID: strconv.FormatInt(provider.nextMessageID, 10), Content: body.Content, Nonce: body.Nonce}
 	provider.messages[channelID] = append(provider.messages[channelID], message)
 	if channelID == flakyChannelID && provider.posts[channelID] == 1 {
-		writeProviderResponse(response, http.StatusServiceUnavailable, `{"message":"upstream","code":0}`)
+		// A 502 after the write is an unknown outcome, so the connector resends with the same nonce.
+		writeProviderResponse(response, http.StatusBadGateway, `{"message":"upstream","code":0}`)
 		return
 	}
 	writeProviderResponse(response, http.StatusOK, messageResponse(channelID, message))

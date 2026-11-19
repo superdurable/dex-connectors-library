@@ -139,9 +139,11 @@ def new_create_message_step(
     not_found: dex.StepTarget[MutationResult[Message]] | None = None,
     provider_rejected: dex.StepTarget[MutationResult[Message]] | None = None,
     invalid_response: dex.StepTarget[MutationResult[Message]] | None = None,
+    uncertain: dex.StepTarget[MutationResult[Message]] | None = None,
     defect: dex.StepTarget[MutationResult[Message]] | None = None,
     result_attribute: dex.Attribute[MutationResult[Message]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateMessageInput, Message]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Discord Step connection name must match its connection reference")
@@ -162,6 +164,8 @@ def new_create_message_step(
         branches["providerRejected"] = provider_rejected
     if invalid_response is not None:
         branches["invalidResponse"] = invalid_response
+    if uncertain is not None:
+        branches["uncertain"] = uncertain
     if defect is not None:
         branches["defect"] = defect
     return MutationStep(
@@ -175,6 +179,7 @@ def new_create_message_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -194,6 +199,8 @@ def new_add_reaction_step(
     defect: dex.StepTarget[MutationResult[AddedReaction]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AddedReaction]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, AddReactionInput, AddedReaction]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Discord Step connection name must match its connection reference")

@@ -1,6 +1,6 @@
 # Discord Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.3.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/discord`.
 
@@ -13,7 +13,7 @@ an announcement, react to it, and confirm it with a read-back.
 Its Go module is `github.com/superdurable/dex-connectors-library/connectors/discord/go`.
 The connector ID is `discord`.
 
-The TypeScript package is `@superdurable/connector-discord` at v0.1.1. It supports all four operations and no Triggers. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
+The TypeScript package is `@superdurable/connector-discord` at v0.2.0. It supports all four operations and no Triggers. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
 
 ## Operations
 
@@ -21,7 +21,7 @@ The TypeScript package is `@superdurable/connector-discord` at v0.1.1. It suppor
 | --- | --- | --- | --- | --- |
 | `NewGetChannelStep` | Query | `GetChannelInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewListChannelMessagesStep` | Query | `ListChannelMessagesInput` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `NewCreateMessageStep` | Mutation | `CreateMessageInput` | `created` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `NewCreateMessageStep` | Mutation | `CreateMessageInput` | `created` | `notFound`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
 | `NewAddReactionStep` | Mutation | `AddReactionInput` | `added` | `notFound`, `providerRejected`, `defect` |
 
 - `getChannel` reads `GET /channels/{channel.id}` and returns the channel's ID,
@@ -69,16 +69,24 @@ supplies a transport.
 
 ## Execution contract
 
-Every operation uses async durability and a 30-second Execute timeout. `createMessage` keeps five attempts within two minutes; the other operations use the one-hour default retry budget. Each attempt makes one HTTP request. Redirects are not followed.
+Every operation uses a 30-second Execute timeout. `createMessage` uses sync durability so its single-dispatch fence survives retries and Worker loss, and keeps five attempts within two minutes; the other operations use async durability and the one-hour default retry budget. Each attempt makes one HTTP request. Redirects are not followed.
 
 `createMessage` sends a 25-character `nonce` derived with SHA-256 from the
 Step's idempotency key, with `enforce_nonce: true`. Retries and Worker restarts
-of one Step execution send the same nonce, and Discord returns the message the
-earlier attempt created instead of posting another. A transport failure, a 5xx,
-or a 429 after dispatch is therefore retried rather than reported as uncertain.
-Discord enforces a nonce for only a few minutes, so the retry window stays at
-two minutes; a `StepOptionsOverride` that lengthens it can post a duplicate. The
-operation declares no `uncertain` branch. A new Step execution is a new message.
+of one Step execution send the same nonce, and inside its nonce window Discord
+returns the message the earlier attempt created instead of posting another.
+Discord offers no other read-back, so that resend is the read-back. The
+operation is `repeatOnUnknown: limited` with `maxSends: 3`: an unknown outcome
+after dispatch, such as a lost connection, a 5xx other than 503, a 408, an
+unlisted status, or a 2xx whose body is broken, malformed, or oversized,
+resends while possible sends stay below the cap and selects `uncertain` at the
+cap. A 429, a 503, or a request that never left the process retries and never
+selects `uncertain` on its own. A definite refusal of the first send selects `notFound` or
+`providerRejected` and is never resent; the same refusal after an earlier
+possible send selects `uncertain`. An application sets the cap, from 1 to 10,
+with the factory's `MaxSends`. Discord enforces a nonce for only a few minutes, so the
+retry window stays at two minutes; a `StepOptionsOverride` that lengthens it
+can post a duplicate. A new Step execution is a new message.
 
 `addReaction` sends no key: Discord keeps one reaction per user and emoji, so
 repeating the PUT converges.
@@ -91,16 +99,18 @@ repeating the PUT converges.
 | 403, such as 50001 Missing Access or 50013 Missing Permissions | `providerRejected` | `AUTHORIZATION` |
 | 400 or 413, such as 50035 Invalid Form Body or 30010 maximum reactions | `providerRejected` | `VALIDATION` |
 | 429 | Retry after the body's `retry_after`, else `Retry-After` | `RATE_LIMIT` |
-| 408, any 5xx | Retry, honoring `Retry-After` | `AVAILABILITY` |
-| transport failure, interrupted body | Retry | `TRANSPORT` |
+| 408, any 5xx | Retry, honoring `Retry-After`; for `createMessage`, `uncertain` at the send cap except 503 | `AVAILABILITY` |
+| transport failure, interrupted body | Retry; for `createMessage` after dispatch, `uncertain` at the send cap | `TRANSPORT` |
 | other 404, 411, 414, 415, or 422 | `providerRejected` | `PROVIDER_REJECTION` |
-| 3xx or any other status | Retry | `AVAILABILITY` |
-| malformed JSON, a different channel, more messages than the limit, an oversized body | `invalidResponse` for a Query; Retry for `createMessage` and `addReaction` | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
+| 3xx or any other status | Retry; for `createMessage`, `uncertain` at the send cap | `AVAILABILITY` |
+| malformed JSON, a different channel, more messages than the limit, an oversized body | `invalidResponse` for a Query; Retry for `addReaction`; for `createMessage`, Retry below the send cap and `uncertain` at it | `PROTOCOL`, `RESPONSE_TOO_LARGE`, or `TRANSPORT` |
 
-Both writes are declared `repeatOnUnknown: safe`: `createMessage` resends the same enforced nonce inside
-its two-minute retry budget, and `addReaction` repeats an idempotent PUT. An application that widens the
-`createMessage` retry budget beyond Discord's few-minute nonce window can post a duplicate. Malformed
-stored credential material selects `defect`.
+For `createMessage`, a refusal status counts as definite only when its body is
+readable and does not describe a message; an oversized or contradictory error
+body is an unknown outcome. `invalidResponse` stays declared for compatibility
+and is no longer selected by either write. `addReaction` is declared
+`repeatOnUnknown: safe` and repeats an idempotent PUT. Malformed stored
+credential material selects `defect`.
 
 A Failure names only a documented numeric Discord error code, never Discord's
 message text. An unwired optional branch fails the Flow. The connector has no
@@ -160,8 +170,9 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 
 The provider tests run every operation against an `httptest` fake Discord API.
 They cover the `Bot` authorization and `DiscordBot` User-Agent headers, the
-stable enforced nonce across retries of one Step execution and a new nonce for
-a new execution, disabled mentions, reply references, emoji path escaping,
+stable enforced nonce across resends of one Step execution and a new nonce for
+a new execution, `uncertain` at the send cap, refusals that are never resent,
+disabled mentions, reply references, emoji path escaping,
 page bounds and cursors, every error class, fractional rate-limit delays,
 malformed and oversized responses, input and credential validation, and
 secret-safe Failures. The example's real Dex suite covers the complete
@@ -172,4 +183,4 @@ No test runs against the real Discord API yet.
 
 ## Python package
 
-The `python/` package implements all four operations with generated typed models and Step factories. Its runnable [channel announcement example](python/examples/channel_announcement/README.md) uses a static `discord-announcements` connection and a Dex Worker. Run `uv sync && uv run pytest` from `python/`. Go-recorded conformance scenarios cover provider requests, branches, retry, and the stable message nonce. Live Discord authorization and API behavior remain unverified for the Python port.
+The `python/` package implements all four operations with generated typed models and Step factories. Its runnable [channel announcement example](python/examples/channel_announcement/README.md) uses a static `discord-announcements` connection and a Dex Worker. Run `uv sync && uv run pytest` from `python/`. Go-recorded conformance scenarios cover provider requests, branches, retry, bounded resend up to `uncertain`, and the stable message nonce. Live Discord authorization and API behavior remain unverified for the Python port.
