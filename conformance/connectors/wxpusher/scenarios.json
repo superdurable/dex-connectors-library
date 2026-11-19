@@ -1,0 +1,271 @@
+{
+  "connector": "wxpusher",
+  "scenarios": [
+    {
+      "callId": "aae0d20d-d1a8-58ba-ae86-a16feb01da6f",
+      "exchanges": [
+        {
+          "body": "{\"code\":1000,\"success\":true,\"data\":{\"total\":40,\"page\":1,\"pageSize\":1,\"records\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/fun/wxuser/v2",
+          "query": {
+            "appToken": [
+              "AT_dummy"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "counted",
+        "failureKind": "",
+        "output": {
+          "total": 40
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSubscriberCount-success",
+      "operation": "getSubscriberCount"
+    },
+    {
+      "callId": "275ae209-6ffe-5863-bb58-38be2d61caaf",
+      "exchanges": [
+        {
+          "body": "{\"code\":1001,\"msg\":\"bad token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/fun/wxuser/v2",
+          "query": {
+            "appToken": [
+              "AT_dummy"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSubscriberCount-providerRejected",
+      "operation": "getSubscriberCount"
+    },
+    {
+      "callId": "6f4f8c31-2681-5ba1-a99c-98179b63a351",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/fun/wxuser/v2",
+          "query": {
+            "appToken": [
+              "AT_dummy"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSubscriberCount-invalidResponse",
+      "operation": "getSubscriberCount"
+    },
+    {
+      "callId": "cd3b4cbc-9a0a-5943-8434-5ae95ccb10f4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/fun/wxuser/v2",
+          "query": {
+            "appToken": [
+              "AT_dummy"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSubscriberCount-retry429",
+      "operation": "getSubscriberCount"
+    },
+    {
+      "callId": "5361428a-2e1d-5bb6-9116-d3243739d06e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/fun/wxuser/v2",
+          "query": {
+            "appToken": [
+              "AT_dummy"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSubscriberCount-retry503",
+      "operation": "getSubscriberCount"
+    },
+    {
+      "callId": "5c82b5cb-57ff-513e-bd45-3895388878b0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/fun/wxuser/v2",
+          "query": {
+            "appToken": [
+              "AT_dummy"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSubscriberCount-transportFailure",
+      "operation": "getSubscriberCount"
+    },
+    {
+      "callId": "7ecc9955-02b6-58c7-acd3-8202e3df0ba4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getSubscriberCount-defect",
+      "operation": "getSubscriberCount"
+    }
+  ],
+  "schemaVersion": 1
+}

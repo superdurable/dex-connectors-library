@@ -1,0 +1,340 @@
+{
+  "connector": "vivo",
+  "scenarios": [
+    {
+      "callId": "1ff9c300-1e01-5779-bcd8-962692f91ab5",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"packageName\":\"com.example.app\",\"versionName\":\"3.2.1\",\"versionCode\":\"100\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/developer/app/publish/v1/get-online-version",
+          "requestBody": {
+            "account": "test-account",
+            "bizParam": {
+              "packageName": "com.example.app"
+            },
+            "sign": "2e2fb41bf50cef85f5a7b6192ad9c4bcbe1cb5bc9dc9ddedaa851637d01a6da8",
+            "timestamp": 1731510000000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "packageName": "com.example.app",
+          "versionCode": 100,
+          "versionName": "3.2.1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "getOnlineVersion-success",
+      "operation": "getOnlineVersion"
+    },
+    {
+      "callId": "1fba67df-3e52-56f2-aa42-cab5bb45b103",
+      "exchanges": [
+        {
+          "body": "{\"code\":11001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/developer/app/publish/v1/get-online-version",
+          "requestBody": {
+            "account": "test-account",
+            "bizParam": {
+              "packageName": "com.example.app"
+            },
+            "sign": "2e2fb41bf50cef85f5a7b6192ad9c4bcbe1cb5bc9dc9ddedaa851637d01a6da8",
+            "timestamp": 1731510000000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "noData",
+        "failureKind": "",
+        "output": {
+          "packageName": "com.example.app",
+          "versionCode": 0,
+          "versionName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "getOnlineVersion-noData",
+      "operation": "getOnlineVersion"
+    },
+    {
+      "callId": "5966af21-8bf6-5a3e-be86-1b14446664c3",
+      "exchanges": [
+        {
+          "body": "{\"code\":10001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/developer/app/publish/v1/get-online-version",
+          "requestBody": {
+            "account": "test-account",
+            "bizParam": {
+              "packageName": "com.example.app"
+            },
+            "sign": "2e2fb41bf50cef85f5a7b6192ad9c4bcbe1cb5bc9dc9ddedaa851637d01a6da8",
+            "timestamp": 1731510000000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "packageName": "",
+          "versionCode": 0,
+          "versionName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "getOnlineVersion-providerRejected",
+      "operation": "getOnlineVersion"
+    },
+    {
+      "callId": "c5dea9c2-c887-5336-98cb-405871fbd850",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/developer/app/publish/v1/get-online-version",
+          "requestBody": {
+            "account": "test-account",
+            "bizParam": {
+              "packageName": "com.example.app"
+            },
+            "sign": "2e2fb41bf50cef85f5a7b6192ad9c4bcbe1cb5bc9dc9ddedaa851637d01a6da8",
+            "timestamp": 1731510000000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "packageName": "",
+          "versionCode": 0,
+          "versionName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "getOnlineVersion-invalidResponse",
+      "operation": "getOnlineVersion"
+    },
+    {
+      "callId": "e9e4dde2-0156-5881-acc4-edace059f929",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/developer/app/publish/v1/get-online-version",
+          "requestBody": {
+            "account": "test-account",
+            "bizParam": {
+              "packageName": "com.example.app"
+            },
+            "sign": "2e2fb41bf50cef85f5a7b6192ad9c4bcbe1cb5bc9dc9ddedaa851637d01a6da8",
+            "timestamp": 1731510000000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "getOnlineVersion-retry429",
+      "operation": "getOnlineVersion"
+    },
+    {
+      "callId": "efd7c6a3-2ac6-58cd-95bd-21c102ccd0fe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/developer/app/publish/v1/get-online-version",
+          "requestBody": {
+            "account": "test-account",
+            "bizParam": {
+              "packageName": "com.example.app"
+            },
+            "sign": "2e2fb41bf50cef85f5a7b6192ad9c4bcbe1cb5bc9dc9ddedaa851637d01a6da8",
+            "timestamp": 1731510000000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "getOnlineVersion-retry503",
+      "operation": "getOnlineVersion"
+    },
+    {
+      "callId": "20072f5d-fa75-5898-8ae4-ead83e1528e4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/developer/app/publish/v1/get-online-version",
+          "requestBody": {
+            "account": "test-account",
+            "bizParam": {
+              "packageName": "com.example.app"
+            },
+            "sign": "2e2fb41bf50cef85f5a7b6192ad9c4bcbe1cb5bc9dc9ddedaa851637d01a6da8",
+            "timestamp": 1731510000000
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "getOnlineVersion-transportFailure",
+      "operation": "getOnlineVersion"
+    },
+    {
+      "callId": "62887ea5-b153-5c0c-9335-8a67771764f8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "packageName": "",
+          "versionCode": 0,
+          "versionName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "bad package"
+      },
+      "name": "getOnlineVersion-defect",
+      "operation": "getOnlineVersion"
+    }
+  ],
+  "schemaVersion": 1
+}

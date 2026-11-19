@@ -1,0 +1,393 @@
+{
+  "connector": "variflight",
+  "scenarios": [
+    {
+      "callId": "da5bf6fb-7a32-5ef7-90dc-95941347cb02",
+      "exchanges": [
+        {
+          "body": "[{\"FlightNo\":\"GX8915\",\"FlightState\":\"schedule\",\"FlightStateNum\":0,\"FlightDeptimePlanDate\":\"2026-11-13 08:20:00\",\"FlightDeptimeDate\":\"\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/flight",
+          "query": {
+            "appid": [
+              "test-app"
+            ],
+            "date": [
+              "2026-11-13"
+            ],
+            "fnum": [
+              "GX8915"
+            ],
+            "lang": [
+              "EN"
+            ],
+            "token": [
+              "64a2586610dc0f478324b575cb9820a5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "flights": [
+            {
+              "actualDeparture": "",
+              "flightNumber": "GX8915",
+              "scheduledDeparture": "2026-11-13 08:20:00",
+              "state": "schedule",
+              "stateCode": 0
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "GX8915"
+      },
+      "name": "getFlightStatus-success",
+      "operation": "getFlightStatus"
+    },
+    {
+      "callId": "45e4c17b-32ca-57e6-8251-07d240b01843",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":10,\"error\":\"no matching flight\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/flight",
+          "query": {
+            "appid": [
+              "test-app"
+            ],
+            "date": [
+              "2026-11-13"
+            ],
+            "fnum": [
+              "GX8915"
+            ],
+            "lang": [
+              "EN"
+            ],
+            "token": [
+              "64a2586610dc0f478324b575cb9820a5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "noData",
+        "failureKind": "",
+        "output": {
+          "flights": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "GX8915"
+      },
+      "name": "getFlightStatus-noData",
+      "operation": "getFlightStatus"
+    },
+    {
+      "callId": "6601c6b8-93f1-54c7-8a64-27ce7e406f3a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/flight",
+          "query": {
+            "appid": [
+              "test-app"
+            ],
+            "date": [
+              "2026-11-13"
+            ],
+            "fnum": [
+              "GX8915"
+            ],
+            "lang": [
+              "EN"
+            ],
+            "token": [
+              "64a2586610dc0f478324b575cb9820a5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "flights": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "GX8915"
+      },
+      "name": "getFlightStatus-providerRejected",
+      "operation": "getFlightStatus"
+    },
+    {
+      "callId": "52a859b5-05b1-5372-baf9-11c24f38e673",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/flight",
+          "query": {
+            "appid": [
+              "test-app"
+            ],
+            "date": [
+              "2026-11-13"
+            ],
+            "fnum": [
+              "GX8915"
+            ],
+            "lang": [
+              "EN"
+            ],
+            "token": [
+              "64a2586610dc0f478324b575cb9820a5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "flights": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "GX8915"
+      },
+      "name": "getFlightStatus-invalidResponse",
+      "operation": "getFlightStatus"
+    },
+    {
+      "callId": "bcdc9305-24f8-545c-a335-d134f2a41dff",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/flight",
+          "query": {
+            "appid": [
+              "test-app"
+            ],
+            "date": [
+              "2026-11-13"
+            ],
+            "fnum": [
+              "GX8915"
+            ],
+            "lang": [
+              "EN"
+            ],
+            "token": [
+              "64a2586610dc0f478324b575cb9820a5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "GX8915"
+      },
+      "name": "getFlightStatus-retry429",
+      "operation": "getFlightStatus"
+    },
+    {
+      "callId": "c0c04ad2-d192-53e4-96d1-f747ed81334b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/flight",
+          "query": {
+            "appid": [
+              "test-app"
+            ],
+            "date": [
+              "2026-11-13"
+            ],
+            "fnum": [
+              "GX8915"
+            ],
+            "lang": [
+              "EN"
+            ],
+            "token": [
+              "64a2586610dc0f478324b575cb9820a5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "GX8915"
+      },
+      "name": "getFlightStatus-retry503",
+      "operation": "getFlightStatus"
+    },
+    {
+      "callId": "d08a256c-b6e2-52b9-a9c1-c9dacce65414",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/flight",
+          "query": {
+            "appid": [
+              "test-app"
+            ],
+            "date": [
+              "2026-11-13"
+            ],
+            "fnum": [
+              "GX8915"
+            ],
+            "lang": [
+              "EN"
+            ],
+            "token": [
+              "64a2586610dc0f478324b575cb9820a5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "GX8915"
+      },
+      "name": "getFlightStatus-transportFailure",
+      "operation": "getFlightStatus"
+    },
+    {
+      "callId": "00e52e4c-a324-50e4-95f8-0ce02b77ce7f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "flights": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "departureDate": "2026-11-13",
+        "flightNumber": "bad"
+      },
+      "name": "getFlightStatus-defect",
+      "operation": "getFlightStatus"
+    }
+  ],
+  "schemaVersion": 1
+}
