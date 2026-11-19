@@ -9,3 +9,5 @@ At the [Youzan Cloud console](https://diy.youzanyun.com/application/list), creat
 HTTP 429, HTTP 5xx, the documented system exception code `161400100`, and transport failures retry with a five-attempt, five-minute budget because the API is metered. Definite provider rejections select optional `providerRejected`; malformed or oversized responses select optional `invalidResponse`. The example leaves optional branches unwired, so those outcomes fail the Flow. The token is sent only to the documented HTTPS endpoint and never included in results, receipts, or failure messages.
 
 The runnable example is in [`go/examples/shop-read`](go/examples/shop-read). Provider tests use a local HTTP server. Live Youzan authorization and the production shop response remain unverified without a user-controlled application.
+
+The [TypeScript shop-basic example](typescript/examples/shop-basic/README.md) provides a runnable Dex Flow and replays the Go conformance scenarios.
