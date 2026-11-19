@@ -1,6 +1,6 @@
 {
   "connectorId": "braintree",
-  "releaseTag": "connectors/braintree/go/v0.1.0",
+  "releaseTag": "connectors/braintree/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-braintree",

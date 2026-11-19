@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "chat/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cohere.ChatOutput](`{"id":"chat-mock-1","text":"The release note is the best match.","finishReason":"COMPLETE"}`)
+			return err
+		}},
 		{name: "embed/defaultEmbedding/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[cohere.EmbedOutput](`{"id":"embed-mock-1","embeddings":[[0.1,0.2,0.3]]}`)
 			return err
@@ -34,6 +38,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.Chat().Definition().Operation.OperationID != "chat" {
+		t.Errorf("chat mock has another definition")
+	}
 	if mock.Embed().Definition().Operation.OperationID != "embed" {
 		t.Errorf("embed mock has another definition")
 	}

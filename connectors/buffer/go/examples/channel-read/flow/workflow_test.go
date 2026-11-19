@@ -15,6 +15,7 @@ import (
 func TestChannelReadFlowIdentityAndMapping(t *testing.T) {
 	input := buffer.GetChannelInput{}
 	require.Equal(t, input, MapToOperationInput(input))
+	require.Equal(t, buffer.ListOrganizationsInput{}, mapOrganizationsInput(buffer.ListOrganizationsInput{}))
 	require.Equal(t, FlowType, dex.GetFinalFlowType(NewFlow(buffer.Connection{})))
 	require.Equal(t, "StartGetChannel", dex.GetFinalStepType[buffer.GetChannelInput](startRequest{}))
 	wait, err := startRequest{}.WaitFor(nil, input)

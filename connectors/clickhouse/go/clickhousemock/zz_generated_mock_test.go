@@ -16,8 +16,16 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listDatabases/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[clickhouse.DatabasesPage](`{"names":["analytics","default"],"hasMore":false}`)
+			return err
+		}},
 		{name: "listTables/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[clickhouse.TablesPage](`{"database":"analytics","names":["events","users"],"hasMore":false}`)
+			return err
+		}},
+		{name: "listColumns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[clickhouse.ColumnsPage](`{"database":"analytics","table":"events","columns":[{"name":"id","type":"UInt64"},{"name":"event","type":"String"}],"hasMore":false}`)
 			return err
 		}},
 	}
@@ -30,7 +38,13 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListDatabases().Definition().Operation.OperationID != "listDatabases" {
+		t.Errorf("listDatabases mock has another definition")
+	}
 	if mock.ListTables().Definition().Operation.OperationID != "listTables" {
 		t.Errorf("listTables mock has another definition")
+	}
+	if mock.ListColumns().Definition().Operation.OperationID != "listColumns" {
+		t.Errorf("listColumns mock has another definition")
 	}
 }

@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted clickhouse connection. Script each operation through its accessor.
 type Mock struct {
-	connection clickhouse.Connection
-	listTables *connectormock.Query[clickhouse.ListTablesInput, clickhouse.TablesPage]
+	connection    clickhouse.Connection
+	listDatabases *connectormock.Query[clickhouse.ListDatabasesInput, clickhouse.DatabasesPage]
+	listTables    *connectormock.Query[clickhouse.ListTablesInput, clickhouse.TablesPage]
+	listColumns   *connectormock.Query[clickhouse.ListColumnsInput, clickhouse.ColumnsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listTables: connectormock.NewQuery[clickhouse.ListTablesInput, clickhouse.TablesPage](t, clickhouse.ListTablesDefinition),
+		listDatabases: connectormock.NewQuery[clickhouse.ListDatabasesInput, clickhouse.DatabasesPage](t, clickhouse.ListDatabasesDefinition),
+		listTables:    connectormock.NewQuery[clickhouse.ListTablesInput, clickhouse.TablesPage](t, clickhouse.ListTablesDefinition),
+		listColumns:   connectormock.NewQuery[clickhouse.ListColumnsInput, clickhouse.ColumnsPage](t, clickhouse.ListColumnsDefinition),
 	}
+	mock.listDatabases.Default(ListDatabasesDefault())
 	mock.listTables.Default(ListTablesDefault())
+	mock.listColumns.Default(ListColumnsDefault())
 	connection, err := clickhouse.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "clickhouse", Name: connectionName})
 	if err != nil {
 		t.Fatalf("clickhouse mock connection: %v", err)
@@ -40,15 +46,67 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() clickhouse.Connection { return mock.connection }
 
+// ListDatabases returns the listDatabases script.
+func (mock *Mock) ListDatabases() *connectormock.Query[clickhouse.ListDatabasesInput, clickhouse.DatabasesPage] {
+	return mock.listDatabases
+}
+
 // ListTables returns the listTables script.
 func (mock *Mock) ListTables() *connectormock.Query[clickhouse.ListTablesInput, clickhouse.TablesPage] {
 	return mock.listTables
 }
 
+// ListColumns returns the listColumns script.
+func (mock *Mock) ListColumns() *connectormock.Query[clickhouse.ListColumnsInput, clickhouse.ColumnsPage] {
+	return mock.listColumns
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListDatabases() sdkgo.Query[clickhouse.ListDatabasesInput, clickhouse.DatabasesPage] {
+	return operations.mock.listDatabases
+}
 func (operations mockOperations) ListTables() sdkgo.Query[clickhouse.ListTablesInput, clickhouse.TablesPage] {
 	return operations.mock.listTables
+}
+func (operations mockOperations) ListColumns() sdkgo.Query[clickhouse.ListColumnsInput, clickhouse.ColumnsPage] {
+	return operations.mock.listColumns
+}
+
+// ListDatabasesListed selects the listed branch: ClickHouse returned the database names.
+func ListDatabasesListed(value clickhouse.DatabasesPage, failure *sdkgo.Failure) connectormock.Case[clickhouse.DatabasesPage] {
+	return connectormock.Branch(clickhouse.ListDatabasesBranchListed, value, failure)
+}
+
+// ListDatabasesProviderRejected selects the providerRejected branch: ClickHouse conclusively rejected the metadata query.
+func ListDatabasesProviderRejected(value clickhouse.DatabasesPage, failure *sdkgo.Failure) connectormock.Case[clickhouse.DatabasesPage] {
+	return connectormock.Branch(clickhouse.ListDatabasesBranchProviderRejected, value, failure)
+}
+
+// ListDatabasesInvalidResponse selects the invalidResponse branch: ClickHouse returned malformed or oversized JSON.
+func ListDatabasesInvalidResponse(value clickhouse.DatabasesPage, failure *sdkgo.Failure) connectormock.Case[clickhouse.DatabasesPage] {
+	return connectormock.Branch(clickhouse.ListDatabasesBranchInvalidResponse, value, failure)
+}
+
+// ListDatabasesDefect selects the defect branch: Local connection credentials are invalid.
+func ListDatabasesDefect(value clickhouse.DatabasesPage, failure *sdkgo.Failure) connectormock.Case[clickhouse.DatabasesPage] {
+	return connectormock.Branch(clickhouse.ListDatabasesBranchDefect, value, failure)
+}
+
+// ListDatabasesRetry asks Dex to retry the listDatabases Step, after the delay when it is positive.
+func ListDatabasesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[clickhouse.DatabasesPage] {
+	return connectormock.Retry[clickhouse.DatabasesPage](failure, after)
+}
+
+// ListDatabasesListedDefault is the manifest mock listedDefault: Two sample databases are returned.
+func ListDatabasesListedDefault() connectormock.Case[clickhouse.DatabasesPage] {
+	value := connectormock.MustDecodeOutput[clickhouse.DatabasesPage](`{"names":["analytics","default"],"hasMore":false}`)
+	return connectormock.Branch(clickhouse.ListDatabasesBranchListed, value, nil)
+}
+
+// ListDatabasesDefault is the manifest default, listedDefault, which New installs.
+func ListDatabasesDefault() connectormock.Case[clickhouse.DatabasesPage] {
+	return ListDatabasesListedDefault()
 }
 
 // ListTablesListed selects the listed branch: ClickHouse returned the table names.
@@ -84,3 +142,39 @@ func ListTablesListedDefault() connectormock.Case[clickhouse.TablesPage] {
 
 // ListTablesDefault is the manifest default, listedDefault, which New installs.
 func ListTablesDefault() connectormock.Case[clickhouse.TablesPage] { return ListTablesListedDefault() }
+
+// ListColumnsListed selects the listed branch: ClickHouse returned the table columns.
+func ListColumnsListed(value clickhouse.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[clickhouse.ColumnsPage] {
+	return connectormock.Branch(clickhouse.ListColumnsBranchListed, value, failure)
+}
+
+// ListColumnsProviderRejected selects the providerRejected branch: ClickHouse conclusively rejected the metadata query.
+func ListColumnsProviderRejected(value clickhouse.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[clickhouse.ColumnsPage] {
+	return connectormock.Branch(clickhouse.ListColumnsBranchProviderRejected, value, failure)
+}
+
+// ListColumnsInvalidResponse selects the invalidResponse branch: ClickHouse returned malformed or oversized JSON.
+func ListColumnsInvalidResponse(value clickhouse.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[clickhouse.ColumnsPage] {
+	return connectormock.Branch(clickhouse.ListColumnsBranchInvalidResponse, value, failure)
+}
+
+// ListColumnsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListColumnsDefect(value clickhouse.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[clickhouse.ColumnsPage] {
+	return connectormock.Branch(clickhouse.ListColumnsBranchDefect, value, failure)
+}
+
+// ListColumnsRetry asks Dex to retry the listColumns Step, after the delay when it is positive.
+func ListColumnsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[clickhouse.ColumnsPage] {
+	return connectormock.Retry[clickhouse.ColumnsPage](failure, after)
+}
+
+// ListColumnsListedDefault is the manifest mock listedDefault: The events table has two sample columns.
+func ListColumnsListedDefault() connectormock.Case[clickhouse.ColumnsPage] {
+	value := connectormock.MustDecodeOutput[clickhouse.ColumnsPage](`{"database":"analytics","table":"events","columns":[{"name":"id","type":"UInt64"},{"name":"event","type":"String"}],"hasMore":false}`)
+	return connectormock.Branch(clickhouse.ListColumnsBranchListed, value, nil)
+}
+
+// ListColumnsDefault is the manifest default, listedDefault, which New installs.
+func ListColumnsDefault() connectormock.Case[clickhouse.ColumnsPage] {
+	return ListColumnsListedDefault()
+}

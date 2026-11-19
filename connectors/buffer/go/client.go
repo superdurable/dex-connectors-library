@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package buffer reads Buffer channels in Dex Flows.
+// Package buffer queries Buffer organizations, channels, and posts and manages text posts in Dex Flows.
 package buffer
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -70,6 +71,16 @@ type providerResponse struct {
 const getChannelGraphQL = "query GetChannel($id: ChannelId!) { channel(input: {id: $id}) { id name service } }"
 
 func (client *Client) get(call sdkgo.Call, input GetChannelInput) providerResponse {
+	return client.executeGraphQL(call, getChannelGraphQL, struct {
+		ID string `json:"id"`
+	}{ID: input.ChannelID})
+}
+
+func (client *Client) executeGraphQL(call sdkgo.Call, query string, variables any) providerResponse {
+	return client.executeGraphQLWithContext(call.Context, call, query, variables)
+}
+
+func (client *Client) executeGraphQLWithContext(requestContext context.Context, call sdkgo.Call, query string, variables any) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -80,16 +91,12 @@ func (client *Client) get(call sdkgo.Call, input GetChannelInput) providerRespon
 	}
 	body, err := json.Marshal(struct {
 		Query     string `json:"query"`
-		Variables struct {
-			ID string `json:"id"`
-		} `json:"variables"`
-	}{Query: getChannelGraphQL, Variables: struct {
-		ID string `json:"id"`
-	}{ID: input.ChannelID}})
+		Variables any    `json:"variables"`
+	}{Query: query, Variables: variables})
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/", bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+"/", bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

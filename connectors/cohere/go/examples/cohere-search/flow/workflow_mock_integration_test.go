@@ -62,4 +62,6 @@ func TestMockAnswersWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Len(t, mock.Embed().Calls(), 1)
 	require.Len(t, mock.Rerank().Calls(), 1)
+	require.Len(t, mock.Chat().Calls(), 1)
+	require.Equal(t, "The release note is the best match.", outcome.Summary)
 }

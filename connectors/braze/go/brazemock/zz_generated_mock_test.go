@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "triggerCampaignSend/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.TargetedSendResult](`{"dispatchId":"sample-dispatch-1"}`)
+			return err
+		}},
+		{name: "triggerCanvasSend/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.TargetedSendResult](`{"dispatchId":"sample-dispatch-2"}`)
+			return err
+		}},
+		{name: "updateUserProfile/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.UserWriteResult](`{"externalId":"sample-user-1"}`)
+			return err
+		}},
+		{name: "deleteUserProfile/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.UserDeleteResult](`{"externalId":"sample-user-1","deleted":1}`)
+			return err
+		}},
+		{name: "listCampaigns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.CampaignsList](`{"campaigns":[{"id":"sample-campaign-1","name":"Sample campaign"}]}`)
+			return err
+		}},
+		{name: "listCanvases/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.CanvasesList](`{"canvases":[{"id":"sample-canvas-1","name":"Sample Canvas"}]}`)
+			return err
+		}},
+		{name: "listSegments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braze.SegmentsList](`{"segments":[{"id":"sample-segment-1","name":"Sample segment","analyticsTrackingEnabled":true}]}`)
+			return err
+		}},
 		{name: "getUserProfile/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braze.UserProfile](`{"externalId":"sample-user-1","brazeId":"sample-braze-1","firstName":"Avery","lastName":"Reader","email":"reader@example.com"}`)
 			return err
@@ -30,6 +58,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.TriggerCampaignSend().Definition().Operation.OperationID != "triggerCampaignSend" {
+		t.Errorf("triggerCampaignSend mock has another definition")
+	}
+	if mock.TriggerCanvasSend().Definition().Operation.OperationID != "triggerCanvasSend" {
+		t.Errorf("triggerCanvasSend mock has another definition")
+	}
+	if mock.UpdateUserProfile().Definition().Operation.OperationID != "updateUserProfile" {
+		t.Errorf("updateUserProfile mock has another definition")
+	}
+	if mock.DeleteUserProfile().Definition().Operation.OperationID != "deleteUserProfile" {
+		t.Errorf("deleteUserProfile mock has another definition")
+	}
+	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
+		t.Errorf("listCampaigns mock has another definition")
+	}
+	if mock.ListCanvases().Definition().Operation.OperationID != "listCanvases" {
+		t.Errorf("listCanvases mock has another definition")
+	}
+	if mock.ListSegments().Definition().Operation.OperationID != "listSegments" {
+		t.Errorf("listSegments mock has another definition")
+	}
 	if mock.GetUserProfile().Definition().Operation.OperationID != "getUserProfile" {
 		t.Errorf("getUserProfile mock has another definition")
 	}
