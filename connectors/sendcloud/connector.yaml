@@ -8,6 +8,12 @@ metadata:
   categories: [communication]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-sendcloud"
+      operations: [getAccountBalance]
+      triggers: []
   provider: sendcloud
   codegen:
     go:
