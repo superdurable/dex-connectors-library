@@ -9,3 +9,7 @@ Sign in at the [SUBMAIL SMS application page](https://www.mysubmail.com/chs/sms/
 The Query returns the provider's decimal strings as `generalCredits` and `transactionalCredits`. It retries transport failures, HTTP 429, and temporary 5xx responses; definite provider errors select optional `providerRejected`, and malformed or oversized responses select optional `invalidResponse`. The example leaves optional branches unwired, so those outcomes fail the Flow.
 
 Run the [SMS Balance example](go/examples/sms-balance) with its static `submail` connection. Provider tests use a local HTTP server. Live SUBMAIL account authorization and balance values remain unverified without a user-controlled SMS application.
+
+## TypeScript
+
+`@superdurable/connector-submail` provides the `getSMSBalance` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.

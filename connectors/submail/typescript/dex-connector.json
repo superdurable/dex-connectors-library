@@ -1,0 +1,52 @@
+{
+  "connectorId": "submail",
+  "releaseTag": "connectors/submail/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-submail",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetSMSBalanceStep",
+      "kind": "query",
+      "operationId": "getSMSBalance",
+      "inputType": "GetSMSBalanceInput",
+      "description": "Read general and transactional SMS credit balances.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSMSBalanceInput has no parameters; the connection identifies the SMS app.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
