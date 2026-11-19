@@ -9,3 +9,7 @@ Sign in at the [Jiguang console](https://www.jiguang.cn), open **Service Center 
 The [REST API overview](https://docs.jiguang.cn/jpush/server/push/server_overview) defines Basic Authentication and HTTP 429 rate limits. HTTP 429, HTTP 5xx and transport failures retry; definite 4xx responses select optional `providerRejected`; malformed or oversized JSON selects optional `invalidResponse`. The example leaves optional branches unwired, so these outcomes fail the Flow. A provider `tags: null` becomes an empty list.
 
 The runnable example is in [`go/examples/tag-read`](go/examples/tag-read). Provider tests use a local HTTP server and the documentation's Basic auth example. Real JPush authorization and live tag discovery remain unverified without a user-controlled app.
+
+## TypeScript
+
+The [`typescript/`](typescript/) package implements `listApplicationTags` with the same Go conformance scenarios. Its [runnable Flow](typescript/examples/basic) uses the static `jiguang` connection and persists the provider result in Dex. Live provider authorization remains unverified.
