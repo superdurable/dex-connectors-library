@@ -1,0 +1,52 @@
+{
+  "connectorId": "fxiaoke",
+  "releaseTag": "connectors/fxiaoke/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-fxiaoke",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_object_metadata_step",
+      "kind": "query",
+      "operationId": "listObjectMetadata",
+      "inputType": "ListObjectMetadataInput",
+      "description": "List CRM object API names, display names, and active flags.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListObjectMetadataInput has no provider-specific query parameters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
