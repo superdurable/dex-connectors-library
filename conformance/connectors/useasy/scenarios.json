@@ -1,0 +1,419 @@
+{
+  "connector": "useasy",
+  "scenarios": [
+    {
+      "callId": "27f271f7-7450-5af9-8ef0-ad7d11241ced",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":\"200\",\"data\":{\"list\":[{\"_id\":\"663578842498871236\",\"agentNumber\":\"8010\",\"status\":1}],\"page\":{\"pageSize\":10,\"pageNumber\":2,\"totalPage\":3,\"total\":21}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/platform/v1/agent/list",
+          "requestBody": {
+            "page": 2,
+            "pageSize": 10
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "1011"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Nonce": [
+              "123456"
+            ],
+            "Signature": [
+              "uDV9uZ0ABv+OUy1KdILoXEQyQBgdQqLfHGkbxplscgQ="
+            ],
+            "Timestamp": [
+              "1731510000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "agents": [
+            {
+              "enabled": true,
+              "id": "663578842498871236",
+              "number": "8010"
+            }
+          ],
+          "page": 2,
+          "total": 21,
+          "totalPages": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listAgents-listed",
+      "operation": "listAgents"
+    },
+    {
+      "callId": "a0d77d53-7e67-5c29-ae25-0d93d007b30a",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":\"403\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/platform/v1/agent/list",
+          "requestBody": {
+            "page": 2,
+            "pageSize": 10
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "1011"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Nonce": [
+              "123456"
+            ],
+            "Signature": [
+              "uDV9uZ0ABv+OUy1KdILoXEQyQBgdQqLfHGkbxplscgQ="
+            ],
+            "Timestamp": [
+              "1731510000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "agents": [],
+          "page": 0,
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listAgents-providerRejected",
+      "operation": "listAgents"
+    },
+    {
+      "callId": "0949eefe-60eb-56fd-bfc3-f885c81597fa",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/platform/v1/agent/list",
+          "requestBody": {
+            "page": 2,
+            "pageSize": 10
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "1011"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Nonce": [
+              "123456"
+            ],
+            "Signature": [
+              "uDV9uZ0ABv+OUy1KdILoXEQyQBgdQqLfHGkbxplscgQ="
+            ],
+            "Timestamp": [
+              "1731510000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "agents": [],
+          "page": 0,
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listAgents-invalidResponse",
+      "operation": "listAgents"
+    },
+    {
+      "callId": "5660e4d5-c8a0-5ec8-ac73-59e029a40fcc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "agents": [],
+          "page": 0,
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listAgents-defect",
+      "operation": "listAgents"
+    },
+    {
+      "callId": "526412ac-5b38-50fa-9df6-1f7c748d8bdc",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/platform/v1/agent/list",
+          "requestBody": {
+            "page": 2,
+            "pageSize": 10
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "1011"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Nonce": [
+              "123456"
+            ],
+            "Signature": [
+              "uDV9uZ0ABv+OUy1KdILoXEQyQBgdQqLfHGkbxplscgQ="
+            ],
+            "Timestamp": [
+              "1731510000"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listAgents-http429",
+      "operation": "listAgents"
+    },
+    {
+      "callId": "a93595c7-d1ca-577a-942d-124c6d24a405",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/platform/v1/agent/list",
+          "requestBody": {
+            "page": 2,
+            "pageSize": 10
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "1011"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Nonce": [
+              "123456"
+            ],
+            "Signature": [
+              "uDV9uZ0ABv+OUy1KdILoXEQyQBgdQqLfHGkbxplscgQ="
+            ],
+            "Timestamp": [
+              "1731510000"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listAgents-http503",
+      "operation": "listAgents"
+    },
+    {
+      "callId": "1f062b9a-d58b-5889-acf9-573d6b0079d1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/platform/v1/agent/list",
+          "requestBody": {
+            "page": 2,
+            "pageSize": 10
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "1011"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Nonce": [
+              "123456"
+            ],
+            "Signature": [
+              "uDV9uZ0ABv+OUy1KdILoXEQyQBgdQqLfHGkbxplscgQ="
+            ],
+            "Timestamp": [
+              "1731510000"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listAgents-transport",
+      "operation": "listAgents"
+    },
+    {
+      "callId": "e222b9a8-07da-54ae-9cc4-ab803317f09d",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/platform/v1/agent/list",
+          "requestBody": {
+            "page": 2,
+            "pageSize": 10
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appid": [
+              "1011"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "Nonce": [
+              "123456"
+            ],
+            "Signature": [
+              "uDV9uZ0ABv+OUy1KdILoXEQyQBgdQqLfHGkbxplscgQ="
+            ],
+            "Timestamp": [
+              "1731510000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "agents": [],
+          "page": 0,
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listAgents-oversized",
+      "operation": "listAgents"
+    }
+  ],
+  "schemaVersion": 1
+}

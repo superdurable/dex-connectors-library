@@ -55,11 +55,11 @@ func (operation ListDepartmentsOperation) Invoke(call sdkgo.Call, _ ListDepartme
 	if err != nil || credentials.Validate() != nil || !isValidOpenID(credentials.OpenID) || !isValidAppKey(credentials.AppKey.Reveal()) {
 		return departmentCatalogBranch(ListDepartmentsBranchDefect, sdkgo.FailureAuthentication, "Qince OpenAPI credentials are unavailable or invalid")
 	}
-	messageID, err := newMessageID()
+	messageID, err := operation.client.messageID()
 	if err != nil {
 		return departmentCatalogBranch(ListDepartmentsBranchDefect, sdkgo.FailureAvailability, "cannot create Qince message ID")
 	}
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().UnixMilli(), 10)
 	digest := signDepartmentQuery(departmentQueryBody, credentials.AppKey.Reveal(), timestamp)
 	endpoint := operation.client.baseURL + departmentQueryPath + credentials.OpenID + "/" + timestamp + "/" + digest + "/" + messageID
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, endpoint, bytes.NewBufferString(departmentQueryBody))

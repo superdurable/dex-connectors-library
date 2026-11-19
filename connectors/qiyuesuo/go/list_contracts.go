@@ -68,11 +68,11 @@ func (operation ListContractsOperation) Invoke(call sdkgo.Call, input ListContra
 	if input.Offset < 0 || input.Offset > 1000000 || limit < 1 || limit > 100 {
 		return contractStatusBranch(ListContractsBranchDefect, sdkgo.FailureValidation, "offset or limit is outside the supported range")
 	}
-	nonce, err := newRequestNonce()
+	nonce, err := operation.client.requestNonce()
 	if err != nil {
 		return contractStatusRetry(sdkgo.FailureAvailability, "request nonce could not be generated", 0)
 	}
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().UnixMilli(), 10)
 	values := url.Values{}
 	values.Set("selectOffset", strconv.Itoa(input.Offset))
 	values.Set("selectLimit", strconv.Itoa(limit))

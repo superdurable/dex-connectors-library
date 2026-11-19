@@ -1,0 +1,444 @@
+{
+  "connector": "wangdian",
+  "scenarios": [
+    {
+      "callId": "37f1c2a8-f8e3-549d-a58a-57fd16c11776",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"shoplist\":[{\"shop_id\":\"332\",\"shop_no\":\"SHOP-332\",\"shop_name\":\"Example Shop\",\"platform_id\":127,\"auth_state\":1}],\"total_count\":21}",
+          "form": {
+            "appkey": [
+              "test2-xx"
+            ],
+            "page_no": [
+              "2"
+            ],
+            "page_size": [
+              "10"
+            ],
+            "sid": [
+              "test2"
+            ],
+            "sign": [
+              "b2cfde5cf2856febb0cab308628e9186"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/shop.php",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPage": 0,
+          "shops": [
+            {
+              "authorizationState": 1,
+              "id": "332",
+              "name": "Example Shop",
+              "number": "SHOP-332",
+              "platformID": 127
+            }
+          ],
+          "total": 21
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listShops-listed",
+      "operation": "listShops"
+    },
+    {
+      "callId": "3e2750a7-f41d-58e8-a7df-41cd4a5b36ca",
+      "exchanges": [
+        {
+          "body": "{\"code\":1050}",
+          "form": {
+            "appkey": [
+              "test2-xx"
+            ],
+            "page_no": [
+              "2"
+            ],
+            "page_size": [
+              "10"
+            ],
+            "sid": [
+              "test2"
+            ],
+            "sign": [
+              "b2cfde5cf2856febb0cab308628e9186"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/shop.php",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPage": 0,
+          "shops": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listShops-providerRejected",
+      "operation": "listShops"
+    },
+    {
+      "callId": "6e3ec6fc-a2fb-5b7e-b24c-1db5bc24251c",
+      "exchanges": [
+        {
+          "body": "{",
+          "form": {
+            "appkey": [
+              "test2-xx"
+            ],
+            "page_no": [
+              "2"
+            ],
+            "page_size": [
+              "10"
+            ],
+            "sid": [
+              "test2"
+            ],
+            "sign": [
+              "b2cfde5cf2856febb0cab308628e9186"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/shop.php",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPage": 0,
+          "shops": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listShops-invalidResponse",
+      "operation": "listShops"
+    },
+    {
+      "callId": "34d0b276-03c2-5336-9fb9-a3777c2f71ba",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPage": 0,
+          "shops": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listShops-defect",
+      "operation": "listShops"
+    },
+    {
+      "callId": "81848f60-efb6-5d0b-a8c1-a22a3acd7326",
+      "exchanges": [
+        {
+          "body": "private",
+          "form": {
+            "appkey": [
+              "test2-xx"
+            ],
+            "page_no": [
+              "2"
+            ],
+            "page_size": [
+              "10"
+            ],
+            "sid": [
+              "test2"
+            ],
+            "sign": [
+              "b2cfde5cf2856febb0cab308628e9186"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/shop.php",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listShops-http429",
+      "operation": "listShops"
+    },
+    {
+      "callId": "67a09ed5-c595-53d9-8c33-1f913581a10e",
+      "exchanges": [
+        {
+          "body": "private",
+          "form": {
+            "appkey": [
+              "test2-xx"
+            ],
+            "page_no": [
+              "2"
+            ],
+            "page_size": [
+              "10"
+            ],
+            "sid": [
+              "test2"
+            ],
+            "sign": [
+              "b2cfde5cf2856febb0cab308628e9186"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/shop.php",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listShops-http503",
+      "operation": "listShops"
+    },
+    {
+      "callId": "bc265f6c-aa77-504e-bddc-bcb44407f7e4",
+      "exchanges": [
+        {
+          "form": {
+            "appkey": [
+              "test2-xx"
+            ],
+            "page_no": [
+              "2"
+            ],
+            "page_size": [
+              "10"
+            ],
+            "sid": [
+              "test2"
+            ],
+            "sign": [
+              "b2cfde5cf2856febb0cab308628e9186"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/shop.php",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listShops-transport",
+      "operation": "listShops"
+    },
+    {
+      "callId": "26cfbed5-5391-545f-bcc1-6791481e7e45",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "form": {
+            "appkey": [
+              "test2-xx"
+            ],
+            "page_no": [
+              "2"
+            ],
+            "page_size": [
+              "10"
+            ],
+            "sid": [
+              "test2"
+            ],
+            "sign": [
+              "b2cfde5cf2856febb0cab308628e9186"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/openapi/shop.php",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "nextPage": 0,
+          "shops": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listShops-oversized",
+      "operation": "listShops"
+    }
+  ],
+  "schemaVersion": 1
+}

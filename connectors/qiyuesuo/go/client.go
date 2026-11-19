@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -30,6 +31,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	requestNonce     func() (string, error)
+	now              func() time.Time
 }
 
 // New validates configuration without contacting Qiyuesuo. Rotated credentials take effect on the next call.
@@ -52,7 +55,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Host != "openapi.qiyuesuo.com" && parsed.Host != "openapi.qiyuesuo.cn") {
 		return nil, errors.New("Qiyuesuo base URL must be the documented production or sandbox HTTPS origin")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, requestNonce: newRequestNonce, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("client option is required")

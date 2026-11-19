@@ -10,6 +10,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // Option supplies a non-serializable HTTP client dependency to New.
@@ -29,6 +30,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // New validates configuration without contacting Wangdian. Rotated credentials take effect on the next call.
@@ -51,7 +53,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsed.Host != "openapi.huice.com" || (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return nil, errors.New("Wangdian base URL must be the documented HTTPS production origin")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("client option is required")
