@@ -295,16 +295,14 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 		retry, after := retryFailure(response, operation)
 		return sdkgo.NewMutationRetry[T](retry, after)
 	}
-	if response.StatusCode == http.StatusNotFound && notFound != "" {
-		rejectedFailure := statusFailure(response, operation)
-		return sdkgo.NewMutationBranch(notFound, zero, &rejectedFailure, sdkgo.Receipt{})
-	}
-	if response.StatusCode != http.StatusOK && !isDefiniteRefusalStatus(response.StatusCode) {
-		// Replacing the complete label set is safe to repeat, so an unknown answer retries.
-		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureAvailability, operation, fmt.Sprintf("GitLab answered HTTP %d, so the outcome is unknown", response.StatusCode)), 0)
-	}
 	if response.StatusCode != http.StatusOK {
+		if !client.hasDefiniteMutationRefusal(response) {
+			return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureAvailability, operation, fmt.Sprintf("GitLab answered HTTP %d, so the outcome is unknown", response.StatusCode)), 0)
+		}
 		rejectedFailure := statusFailure(response, operation)
+		if response.StatusCode == http.StatusNotFound && notFound != "" {
+			return sdkgo.NewMutationBranch(notFound, zero, &rejectedFailure, sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationBranch(rejected, zero, &rejectedFailure, sdkgo.Receipt{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
@@ -319,6 +317,14 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureProtocol, operation, "response was malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(happy, value, nil, sdkgo.Receipt{})
+}
+
+func (client *Client) hasDefiniteMutationRefusal(response *http.Response) bool {
+	if !isDefiniteRefusalStatus(response.StatusCode) {
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return err == nil && isDefiniteGitLabRefusal(response.StatusCode, body)
 }
 
 // isDefiniteRefusalStatus reports a status that proves GitLab refused the write.

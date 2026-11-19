@@ -97,7 +97,9 @@ def new_call(context: HeartbeatContext, operation: str, max_sends: int = 3) -> C
 
 
 def new_client(provider: httpx.AsyncClient, credentials: Any = None) -> Client:
-    return Client(Config(), credentials or StaticCredentials(), provider, api_base_url="http://127.0.0.1:22130")
+    return Client(
+        Config(), credentials or StaticCredentials(), provider, api_base_url="http://127.0.0.1:22130"
+    )
 
 
 def recording(answers: Handler) -> tuple[httpx.AsyncClient, list[httpx.Request]]:
@@ -125,8 +127,10 @@ async def test_accepted_reply_without_a_usable_id_is_never_resent(response: http
     """A 2xx accepted the reply, and Front offers nothing to read it back by."""
     provider, requests = recording(lambda request: response)
     async with provider:
-        attempt = await new_client(provider).reply_to_conversation().invoke(
-            new_call(HeartbeatContext(), "replyToConversation"), REPLY
+        attempt = (
+            await new_client(provider)
+            .reply_to_conversation()
+            .invoke(new_call(HeartbeatContext(), "replyToConversation"), REPLY)
         )
     assert attempt.kind == "uncertain"
     assert len(requests) == 1
@@ -163,14 +167,18 @@ async def test_credential_failure_after_a_possible_send_never_selects_defect(
     provider, requests = recording(lambda request: httpx.Response(502, json={}))
     context = HeartbeatContext()
     async with provider:
-        first = await new_client(provider).reply_to_conversation().invoke(
-            new_call(context, "replyToConversation"), REPLY
+        first = (
+            await new_client(provider)
+            .reply_to_conversation()
+            .invoke(new_call(context, "replyToConversation"), REPLY)
         )
         assert first.kind == "retry"
         recorded = len(context.markers)
         context.attempt = 2
-        second = await new_client(provider, FailingCredentials(error)).reply_to_conversation().invoke(
-            new_call(context, "replyToConversation"), REPLY
+        second = (
+            await new_client(provider, FailingCredentials(error))
+            .reply_to_conversation()
+            .invoke(new_call(context, "replyToConversation"), REPLY)
         )
     assert second.kind == kind
     assert len(context.markers) == recorded
@@ -190,8 +198,10 @@ async def test_write_window_timeout_after_dispatch_is_an_unknown_outcome(
     monkeypatch.setattr(Client, "exchange", hang)
     provider, _ = recording(lambda request: httpx.Response(500))
     async with provider:
-        attempt = await new_client(provider).reply_to_conversation().invoke(
-            new_call(HeartbeatContext(deadline_seconds=1), "replyToConversation", max_sends), REPLY
+        attempt = (
+            await new_client(provider)
+            .reply_to_conversation()
+            .invoke(new_call(HeartbeatContext(deadline_seconds=1), "replyToConversation", max_sends), REPLY)
         )
     assert attempt.kind == kind
 
@@ -223,8 +233,10 @@ async def test_2xx_headers_then_the_write_deadline_cuts_the_body_is_never_resent
     monkeypatch.setattr(Fence, "dispatch", cut_at_the_write_deadline)
     provider, requests = recording(lambda request: httpx.Response(202, stream=StalledBody()))
     async with provider:
-        attempt = await new_client(provider).reply_to_conversation().invoke(
-            new_call(HeartbeatContext(), "replyToConversation", max_sends), REPLY
+        attempt = (
+            await new_client(provider)
+            .reply_to_conversation()
+            .invoke(new_call(HeartbeatContext(), "replyToConversation", max_sends), REPLY)
         )
     assert attempt.kind == "uncertain"
     assert len(requests) == 1
@@ -241,8 +253,10 @@ async def test_slow_reply_ends_before_the_write_window_and_keeps_the_claim() -> 
     provider, _ = recording(slow)
     context = HeartbeatContext(deadline_seconds=1.5)
     async with provider:
-        attempt = await new_client(provider).reply_to_conversation().invoke(
-            new_call(context, "replyToConversation"), REPLY
+        attempt = (
+            await new_client(provider)
+            .reply_to_conversation()
+            .invoke(new_call(context, "replyToConversation"), REPLY)
         )
     assert attempt.kind == "retry"
     assert "claimed" in repr(context.markers[-1]).lower()
@@ -253,8 +267,10 @@ async def test_unreadable_refusal_body_is_an_unknown_reply_outcome() -> None:
     """An oversized 400 body cannot prove that Front refused the reply."""
     provider, _ = recording(lambda request: httpx.Response(400, content=b"x" * (128 << 10)))
     async with provider:
-        attempt = await new_client(provider).reply_to_conversation().invoke(
-            new_call(HeartbeatContext(), "replyToConversation"), REPLY
+        attempt = (
+            await new_client(provider)
+            .reply_to_conversation()
+            .invoke(new_call(HeartbeatContext(), "replyToConversation"), REPLY)
         )
     assert attempt.kind == "retry"
 
@@ -266,8 +282,10 @@ async def test_merged_redirect_after_a_reply_is_an_unknown_outcome(max_sends: in
     location = {"Location": "https://api2.frontapp.com/conversations/cnv_200"}
     provider, _ = recording(lambda request: httpx.Response(301, headers=location, json={}))
     async with provider:
-        attempt = await new_client(provider).reply_to_conversation().invoke(
-            new_call(HeartbeatContext(), "replyToConversation", max_sends), REPLY
+        attempt = (
+            await new_client(provider)
+            .reply_to_conversation()
+            .invoke(new_call(HeartbeatContext(), "replyToConversation", max_sends), REPLY)
         )
     assert attempt.kind == kind
     assert attempt.failure is not None and "cnv_200" in attempt.failure.message
@@ -284,8 +302,10 @@ async def test_update_retries_a_refusal_whose_body_cannot_be_read() -> None:
 
     provider, _ = recording(answer)
     async with provider:
-        attempt = await new_client(provider).update_conversation().invoke(
-            new_call(HeartbeatContext(), "updateConversation", 1), TAGGING
+        attempt = (
+            await new_client(provider)
+            .update_conversation()
+            .invoke(new_call(HeartbeatContext(), "updateConversation", 1), TAGGING)
         )
     assert attempt.kind == "retry"
 
@@ -324,8 +344,10 @@ async def test_update_classifies_credential_failures(
     context = HeartbeatContext()
     context.attempt = attempt_number
     async with provider:
-        attempt = await new_client(provider, FailingCredentials(error)).update_conversation().invoke(
-            new_call(context, "updateConversation", 1), TAGGING
+        attempt = (
+            await new_client(provider, FailingCredentials(error))
+            .update_conversation()
+            .invoke(new_call(context, "updateConversation", 1), TAGGING)
         )
     assert attempt.kind == kind
     if kind == "branch":
@@ -354,8 +376,10 @@ async def test_update_first_read_selects_a_branch_only_for_a_definite_answer(
     provider, requests = recording(lambda request: httpx.Response(status, content=body))
     context = HeartbeatContext()
     async with provider:
-        attempt = await new_client(provider).update_conversation().invoke(
-            new_call(context, "updateConversation", 1), TAGGING
+        attempt = (
+            await new_client(provider)
+            .update_conversation()
+            .invoke(new_call(context, "updateConversation", 1), TAGGING)
         )
     assert [request.method for request in requests] == ["GET"]
     if not branch:

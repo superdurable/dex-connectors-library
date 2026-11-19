@@ -68,7 +68,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{conversationtriage.NewFlow(connection, search, routing)})
+	registry, err := dex.NewRegistry([]dex.Flow{conversationtriage.NewFlow(connection, search, routing), conversationtriage.NewContactDirectoryFlow(connection), conversationtriage.NewMessageHistoryFlow(connection), conversationtriage.NewNewMessageFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Front conversation triage Flow: %w", err)
 	}

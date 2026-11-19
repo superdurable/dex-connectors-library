@@ -1,6 +1,6 @@
 {
   "connectorId": "google-analytics-4",
-  "releaseTag": "connectors/google/analytics/go/v0.2.0",
+  "releaseTag": "connectors/google/analytics/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-analytics",

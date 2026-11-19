@@ -10,12 +10,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -35,6 +37,50 @@ func testClient(t *testing.T, endpoint string) *Client {
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {AccessToken: sdkgo.NewSecretString("test-accesstoken")}})
 	require.NoError(t, err)
 	return client
+}
+
+func TestDeleteReleaseReadsBackAfterDamagedSuccess(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		body string
+	}{
+		{name: "malformed JSON", body: "{"},
+		{name: "wrong tag", body: `{"tag_name":"other-tag"}`},
+		{name: "interrupted body", body: "{"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var deleteCount atomic.Int32
+			var readCount atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					readCount.Add(1)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				require.Equal(t, http.MethodDelete, r.Method)
+				deleteCount.Add(1)
+				if testCase.name == "interrupted body" {
+					w.Header().Set("Content-Length", "100")
+				}
+				w.WriteHeader(http.StatusOK)
+				_, err := fmt.Fprint(w, testCase.body)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			client := testClient(t, server.URL)
+			attemptContext := singledispatchtest.NewContext("gitlab-delete-"+testCase.name, "delete-release")
+			input := GetReleaseInput{ProjectID: "meridian/web", TagName: "v1.2.0"}
+			_, err := sdkgo.RunMutation(attemptContext, client.DeleteRelease(), testConnection, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			attemptContext.AdvanceAttempt()
+			result, err := sdkgo.RunMutation(attemptContext, client.DeleteRelease(), testConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, DeleteReleaseBranchDeleted, result.Branch)
+			require.EqualValues(t, 1, deleteCount.Load())
+			require.EqualValues(t, 1, readCount.Load())
+		})
+	}
 }
 
 func TestGetProjectProviderResponse(t *testing.T) {
@@ -132,7 +178,7 @@ func TestUpdateIssueLabelsRetriesUnknownAnswers(t *testing.T) {
 		"redirect":     {status: http.StatusFound},
 		"unlisted":     {status: http.StatusTooEarly, body: `{}`},
 		"malformed":    {status: http.StatusOK, body: `{"id":1,"iid":0}`},
-		"definite 422": {status: http.StatusUnprocessableEntity, body: `{}`, isRejected: true},
+		"definite 422": {status: http.StatusUnprocessableEntity, body: `{"message":"Invalid labels"}`, isRejected: true},
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 			writer.WriteHeader(testCase.status)

@@ -42,6 +42,7 @@ type Connection struct {
 type Operations interface {
 	GetFile() sdkgo.Query[GetFileInput, File]
 	GetFileComments() sdkgo.Query[GetFileCommentsInput, FileComments]
+	GetFileNodes() sdkgo.Query[GetFileNodesInput, FileNodes]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +52,9 @@ func (operations clientOperations) GetFile() sdkgo.Query[GetFileInput, File] {
 }
 func (operations clientOperations) GetFileComments() sdkgo.Query[GetFileCommentsInput, FileComments] {
 	return operations.client.GetFileComments()
+}
+func (operations clientOperations) GetFileNodes() sdkgo.Query[GetFileNodesInput, FileNodes] {
+	return operations.client.GetFileNodes()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -336,6 +340,83 @@ func NewGetFileCommentsStep[IN any](config GetFileCommentsStepConfig[IN]) sdkgo.
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetFileCommentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetFileNodesBranchFound sdkgo.BranchID = "found"
+const GetFileNodesBranchNotFound sdkgo.BranchID = "notFound"
+const GetFileNodesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetFileNodesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetFileNodesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetFileNodesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getFileNodes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetFileNodesBranchFound, Description: "Figma returned the selected nodes."},
+		{ID: GetFileNodesBranchNotFound, Description: "Figma did not find the file.", Optional: true},
+		{ID: GetFileNodesBranchProviderRejected, Description: "Figma conclusively rejected the read.", Optional: true},
+		{ID: GetFileNodesBranchInvalidResponse, Description: "Figma returned malformed or oversized JSON.", Optional: true},
+		{ID: GetFileNodesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetFileNodesResult = sdkgo.QueryResult[FileNodes]
+
+type GetFileNodesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=figma"`
+	operationID                    struct{}                                     `connector:"operationId=getFileNodes"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetFileNodesInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetFileNodesResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetFileNodesResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetFileNodesResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetFileNodesResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetFileNodesResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FileNodes]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetFileNodesStep[IN any](config GetFileNodesStepConfig[IN]) sdkgo.QueryStep[IN, GetFileNodesInput, FileNodes] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("figma connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetFileNodesInput, FileNodes]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetFileNodes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetFileNodesResult] {
+			branches := make([]sdkgo.BranchTarget[GetFileNodesResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetFileNodesBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetFileNodesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetFileNodesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetFileNodesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetFileNodesBranchDefect))
 			}
 			return branches
 		}(),

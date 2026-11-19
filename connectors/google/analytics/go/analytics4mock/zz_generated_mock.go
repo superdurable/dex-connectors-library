@@ -17,10 +17,13 @@ import (
 
 // Mock is a scripted google-analytics-4 connection. Script each operation through its accessor.
 type Mock struct {
-	connection    analytics4.Connection
-	runReport     *connectormock.Query[analytics4.RunReportInput, analytics4.ReportPage]
-	getProperty   *connectormock.Query[analytics4.GetPropertyInput, analytics4.Property]
-	listAudiences *connectormock.Query[analytics4.ListAudiencesInput, analytics4.AudiencesPage]
+	connection        analytics4.Connection
+	runRealtimeReport *connectormock.Query[analytics4.RunRealtimeReportInput, analytics4.ReportPage]
+	listProperties    *connectormock.Query[analytics4.ListPropertiesInput, analytics4.PropertiesPage]
+	listDataStreams   *connectormock.Query[analytics4.ListDataStreamsInput, analytics4.DataStreamsPage]
+	runReport         *connectormock.Query[analytics4.RunReportInput, analytics4.ReportPage]
+	getProperty       *connectormock.Query[analytics4.GetPropertyInput, analytics4.Property]
+	listAudiences     *connectormock.Query[analytics4.ListAudiencesInput, analytics4.AudiencesPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,10 +31,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		runReport:     connectormock.NewQuery[analytics4.RunReportInput, analytics4.ReportPage](t, analytics4.RunReportDefinition),
-		getProperty:   connectormock.NewQuery[analytics4.GetPropertyInput, analytics4.Property](t, analytics4.GetPropertyDefinition),
-		listAudiences: connectormock.NewQuery[analytics4.ListAudiencesInput, analytics4.AudiencesPage](t, analytics4.ListAudiencesDefinition),
+		runRealtimeReport: connectormock.NewQuery[analytics4.RunRealtimeReportInput, analytics4.ReportPage](t, analytics4.RunRealtimeReportDefinition),
+		listProperties:    connectormock.NewQuery[analytics4.ListPropertiesInput, analytics4.PropertiesPage](t, analytics4.ListPropertiesDefinition),
+		listDataStreams:   connectormock.NewQuery[analytics4.ListDataStreamsInput, analytics4.DataStreamsPage](t, analytics4.ListDataStreamsDefinition),
+		runReport:         connectormock.NewQuery[analytics4.RunReportInput, analytics4.ReportPage](t, analytics4.RunReportDefinition),
+		getProperty:       connectormock.NewQuery[analytics4.GetPropertyInput, analytics4.Property](t, analytics4.GetPropertyDefinition),
+		listAudiences:     connectormock.NewQuery[analytics4.ListAudiencesInput, analytics4.AudiencesPage](t, analytics4.ListAudiencesDefinition),
 	}
+	mock.runRealtimeReport.Default(RunRealtimeReportDefault())
+	mock.listProperties.Default(ListPropertiesDefault())
+	mock.listDataStreams.Default(ListDataStreamsDefault())
 	mock.runReport.Default(RunReportDefault())
 	mock.getProperty.Default(GetPropertyDefault())
 	mock.listAudiences.Default(ListAudiencesDefault())
@@ -45,6 +54,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() analytics4.Connection { return mock.connection }
+
+// RunRealtimeReport returns the runRealtimeReport script.
+func (mock *Mock) RunRealtimeReport() *connectormock.Query[analytics4.RunRealtimeReportInput, analytics4.ReportPage] {
+	return mock.runRealtimeReport
+}
+
+// ListProperties returns the listProperties script.
+func (mock *Mock) ListProperties() *connectormock.Query[analytics4.ListPropertiesInput, analytics4.PropertiesPage] {
+	return mock.listProperties
+}
+
+// ListDataStreams returns the listDataStreams script.
+func (mock *Mock) ListDataStreams() *connectormock.Query[analytics4.ListDataStreamsInput, analytics4.DataStreamsPage] {
+	return mock.listDataStreams
+}
 
 // RunReport returns the runReport script.
 func (mock *Mock) RunReport() *connectormock.Query[analytics4.RunReportInput, analytics4.ReportPage] {
@@ -63,6 +87,15 @@ func (mock *Mock) ListAudiences() *connectormock.Query[analytics4.ListAudiencesI
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) RunRealtimeReport() sdkgo.Query[analytics4.RunRealtimeReportInput, analytics4.ReportPage] {
+	return operations.mock.runRealtimeReport
+}
+func (operations mockOperations) ListProperties() sdkgo.Query[analytics4.ListPropertiesInput, analytics4.PropertiesPage] {
+	return operations.mock.listProperties
+}
+func (operations mockOperations) ListDataStreams() sdkgo.Query[analytics4.ListDataStreamsInput, analytics4.DataStreamsPage] {
+	return operations.mock.listDataStreams
+}
 func (operations mockOperations) RunReport() sdkgo.Query[analytics4.RunReportInput, analytics4.ReportPage] {
 	return operations.mock.runReport
 }
@@ -71,6 +104,114 @@ func (operations mockOperations) GetProperty() sdkgo.Query[analytics4.GetPropert
 }
 func (operations mockOperations) ListAudiences() sdkgo.Query[analytics4.ListAudiencesInput, analytics4.AudiencesPage] {
 	return operations.mock.listAudiences
+}
+
+// RunRealtimeReportReported selects the reported branch: Google returned realtime report rows.
+func RunRealtimeReportReported(value analytics4.ReportPage, failure *sdkgo.Failure) connectormock.Case[analytics4.ReportPage] {
+	return connectormock.Branch(analytics4.RunRealtimeReportBranchReported, value, failure)
+}
+
+// RunRealtimeReportProviderRejected selects the providerRejected branch: Google rejected the realtime request.
+func RunRealtimeReportProviderRejected(value analytics4.ReportPage, failure *sdkgo.Failure) connectormock.Case[analytics4.ReportPage] {
+	return connectormock.Branch(analytics4.RunRealtimeReportBranchProviderRejected, value, failure)
+}
+
+// RunRealtimeReportInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized report JSON.
+func RunRealtimeReportInvalidResponse(value analytics4.ReportPage, failure *sdkgo.Failure) connectormock.Case[analytics4.ReportPage] {
+	return connectormock.Branch(analytics4.RunRealtimeReportBranchInvalidResponse, value, failure)
+}
+
+// RunRealtimeReportDefect selects the defect branch: Local report input or credentials are invalid.
+func RunRealtimeReportDefect(value analytics4.ReportPage, failure *sdkgo.Failure) connectormock.Case[analytics4.ReportPage] {
+	return connectormock.Branch(analytics4.RunRealtimeReportBranchDefect, value, failure)
+}
+
+// RunRealtimeReportRetry asks Dex to retry the runRealtimeReport Step, after the delay when it is positive.
+func RunRealtimeReportRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[analytics4.ReportPage] {
+	return connectormock.Retry[analytics4.ReportPage](failure, after)
+}
+
+// RunRealtimeReportReportedDefault is the manifest mock reportedDefault: One realtime country row was returned.
+func RunRealtimeReportReportedDefault() connectormock.Case[analytics4.ReportPage] {
+	value := connectormock.MustDecodeOutput[analytics4.ReportPage](`{"rows":[{"dimensions":["US"],"metrics":["5"]}],"rowCount":1}`)
+	return connectormock.Branch(analytics4.RunRealtimeReportBranchReported, value, nil)
+}
+
+// RunRealtimeReportDefault is the manifest default, reportedDefault, which New installs.
+func RunRealtimeReportDefault() connectormock.Case[analytics4.ReportPage] {
+	return RunRealtimeReportReportedDefault()
+}
+
+// ListPropertiesListed selects the listed branch: Google returned a property page.
+func ListPropertiesListed(value analytics4.PropertiesPage, failure *sdkgo.Failure) connectormock.Case[analytics4.PropertiesPage] {
+	return connectormock.Branch(analytics4.ListPropertiesBranchListed, value, failure)
+}
+
+// ListPropertiesProviderRejected selects the providerRejected branch: Google rejected the property listing.
+func ListPropertiesProviderRejected(value analytics4.PropertiesPage, failure *sdkgo.Failure) connectormock.Case[analytics4.PropertiesPage] {
+	return connectormock.Branch(analytics4.ListPropertiesBranchProviderRejected, value, failure)
+}
+
+// ListPropertiesInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized property JSON.
+func ListPropertiesInvalidResponse(value analytics4.PropertiesPage, failure *sdkgo.Failure) connectormock.Case[analytics4.PropertiesPage] {
+	return connectormock.Branch(analytics4.ListPropertiesBranchInvalidResponse, value, failure)
+}
+
+// ListPropertiesDefect selects the defect branch: Account ID or page input is invalid.
+func ListPropertiesDefect(value analytics4.PropertiesPage, failure *sdkgo.Failure) connectormock.Case[analytics4.PropertiesPage] {
+	return connectormock.Branch(analytics4.ListPropertiesBranchDefect, value, failure)
+}
+
+// ListPropertiesRetry asks Dex to retry the listProperties Step, after the delay when it is positive.
+func ListPropertiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[analytics4.PropertiesPage] {
+	return connectormock.Retry[analytics4.PropertiesPage](failure, after)
+}
+
+// ListPropertiesListedDefault is the manifest mock listedDefault: One GA4 property was listed.
+func ListPropertiesListedDefault() connectormock.Case[analytics4.PropertiesPage] {
+	value := connectormock.MustDecodeOutput[analytics4.PropertiesPage](`{"properties":[{"name":"properties/123456789","displayName":"Example Analytics","timeZone":"America/Los_Angeles","currencyCode":"USD"}]}`)
+	return connectormock.Branch(analytics4.ListPropertiesBranchListed, value, nil)
+}
+
+// ListPropertiesDefault is the manifest default, listedDefault, which New installs.
+func ListPropertiesDefault() connectormock.Case[analytics4.PropertiesPage] {
+	return ListPropertiesListedDefault()
+}
+
+// ListDataStreamsListed selects the listed branch: Google returned a data stream page.
+func ListDataStreamsListed(value analytics4.DataStreamsPage, failure *sdkgo.Failure) connectormock.Case[analytics4.DataStreamsPage] {
+	return connectormock.Branch(analytics4.ListDataStreamsBranchListed, value, failure)
+}
+
+// ListDataStreamsProviderRejected selects the providerRejected branch: Google rejected the data stream listing.
+func ListDataStreamsProviderRejected(value analytics4.DataStreamsPage, failure *sdkgo.Failure) connectormock.Case[analytics4.DataStreamsPage] {
+	return connectormock.Branch(analytics4.ListDataStreamsBranchProviderRejected, value, failure)
+}
+
+// ListDataStreamsInvalidResponse selects the invalidResponse branch: Google returned malformed or oversized data stream JSON.
+func ListDataStreamsInvalidResponse(value analytics4.DataStreamsPage, failure *sdkgo.Failure) connectormock.Case[analytics4.DataStreamsPage] {
+	return connectormock.Branch(analytics4.ListDataStreamsBranchInvalidResponse, value, failure)
+}
+
+// ListDataStreamsDefect selects the defect branch: Property ID or page input is invalid.
+func ListDataStreamsDefect(value analytics4.DataStreamsPage, failure *sdkgo.Failure) connectormock.Case[analytics4.DataStreamsPage] {
+	return connectormock.Branch(analytics4.ListDataStreamsBranchDefect, value, failure)
+}
+
+// ListDataStreamsRetry asks Dex to retry the listDataStreams Step, after the delay when it is positive.
+func ListDataStreamsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[analytics4.DataStreamsPage] {
+	return connectormock.Retry[analytics4.DataStreamsPage](failure, after)
+}
+
+// ListDataStreamsListedDefault is the manifest mock listedDefault: One web stream was listed.
+func ListDataStreamsListedDefault() connectormock.Case[analytics4.DataStreamsPage] {
+	value := connectormock.MustDecodeOutput[analytics4.DataStreamsPage](`{"dataStreams":[{"name":"properties/123456789/dataStreams/42","displayName":"Example Web","type":"WEB_DATA_STREAM"}]}`)
+	return connectormock.Branch(analytics4.ListDataStreamsBranchListed, value, nil)
+}
+
+// ListDataStreamsDefault is the manifest default, listedDefault, which New installs.
+func ListDataStreamsDefault() connectormock.Case[analytics4.DataStreamsPage] {
+	return ListDataStreamsListedDefault()
 }
 
 // RunReportReported selects the reported branch: Google returned a report page.
