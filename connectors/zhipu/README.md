@@ -15,3 +15,7 @@ No live BigModel API key is bundled or required for mock verification. A real pr
 ## Python
 
 The [`python/`](python/) package implements the `generateText` Query. Its checked-in example runs a Worker and a real Dex retry test; provider authorization remains unverified.
+
+## TypeScript
+
+The TypeScript package under [`typescript/`](typescript/) implements `generateText` with a runnable Dex Flow, Go-recorded conformance replay, and a real Dex integration test.
