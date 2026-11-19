@@ -155,7 +155,10 @@ func (operation SetInventoryPhysicalCountOperation) Invoke(call sdkgo.Call, inpu
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[InventoryCounts](*failureFor("setInventoryPhysicalCount", sdkgo.FailureAvailability, "provider inventory change is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(SetInventoryPhysicalCountBranchProviderRejected, InventoryCounts{}, failureFor("setInventoryPhysicalCount", sdkgo.FailureProviderRejection, "provider rejected inventory change with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(SetInventoryPhysicalCountBranchProviderRejected, InventoryCounts{}, failureFor("setInventoryPhysicalCount", sdkgo.FailureProviderRejection, "provider rejected inventory change with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[InventoryCounts](*failureFor("setInventoryPhysicalCount", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

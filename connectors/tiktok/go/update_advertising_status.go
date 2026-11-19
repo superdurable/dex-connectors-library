@@ -148,10 +148,13 @@ func invokeAdvertisingStatus(call sdkgo.Call, client *Client, resource, identifi
 		return retry(sdkgo.FailureAvailability, "TikTok status outcome is unknown", response)
 	}
 	if response.status != http.StatusOK {
-		return branch(rejected, sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteTikTokRefusal(response) {
+			return branch(rejected, sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return retry(sdkgo.FailureAvailability, "TikTok status outcome is unknown", response)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return branch(invalid, sdkgo.FailureResponseTooLarge, "TikTok response exceeded the configured limit")
+		return retry(sdkgo.FailureResponseTooLarge, "TikTok response exceeded the configured limit", response)
 	}
 	if response.err != nil {
 		return retry(sdkgo.FailureTransport, "TikTok response was interrupted", response)
@@ -160,7 +163,7 @@ func invokeAdvertisingStatus(call sdkgo.Call, client *Client, resource, identifi
 		Code *int `json:"code"`
 	}
 	if json.Unmarshal(response.body, &envelope) != nil || envelope.Code == nil {
-		return branch(invalid, sdkgo.FailureProtocol, "TikTok returned invalid status JSON")
+		return retry(sdkgo.FailureProtocol, "TikTok returned invalid status JSON", response)
 	}
 	if *envelope.Code == tiktokCodeRateLimited {
 		return retry(sdkgo.FailureRateLimit, "TikTok rate limited the request", response)
@@ -169,7 +172,7 @@ func invokeAdvertisingStatus(call sdkgo.Call, client *Client, resource, identifi
 		return retry(sdkgo.FailureAvailability, "TikTok status outcome is unknown", response)
 	}
 	if *envelope.Code != 0 {
-		return branch(rejected, sdkgo.FailureProviderRejection, "TikTok rejected status with code "+strconv.Itoa(*envelope.Code))
+		return retry(sdkgo.FailureAvailability, "TikTok status outcome is unknown", response)
 	}
 	return sdkgo.NewMutationBranch(updated, AdvertisingStatusResult{ResourceID: resourceID, OperationStatus: operationStatus}, nil, sdkgo.Receipt{})
 }

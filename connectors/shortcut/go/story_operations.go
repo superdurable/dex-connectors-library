@@ -274,14 +274,17 @@ func (operation UpdateStoryOperation) Invoke(call sdkgo.Call, input UpdateStoryI
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusRequestTimeout || response.status >= 500 || errors.Is(response.err, errRequest) {
 		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("updateStory", sdkgo.FailureAvailability, "Shortcut update is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteShortcutRefusal(response) {
 		return storyMutationBranch(UpdateStoryBranchNotFound, "updateStory", sdkgo.FailureNotFound, "Shortcut did not find the story")
 	}
 	if errors.Is(response.err, errCredential) {
 		return storyMutationBranch(UpdateStoryBranchDefect, "updateStory", sdkgo.FailureAuthentication, "Shortcut credentials are unavailable")
 	}
 	if response.status != http.StatusOK {
-		return storyMutationBranch(UpdateStoryBranchProviderRejected, "updateStory", sdkgo.FailureProviderRejection, "Shortcut rejected the update")
+		if isDefiniteShortcutRefusal(response) {
+			return storyMutationBranch(UpdateStoryBranchProviderRejected, "updateStory", sdkgo.FailureProviderRejection, "Shortcut rejected the update")
+		}
+		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("updateStory", sdkgo.FailureAvailability, "Shortcut update outcome is unknown"), response.retryAfter)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[StoryMetadata](storyOperationFailure("updateStory", sdkgo.FailureProtocol, "Shortcut update response is invalid"), 0)
@@ -331,13 +334,16 @@ func (operation DeleteStoryOperation) Invoke(call sdkgo.Call, input DeleteStoryI
 	if errors.Is(response.err, errCredential) {
 		return deleteStoryBranch(DeleteStoryBranchDefect, sdkgo.FailureAuthentication, "Shortcut credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 && isDefiniteShortcutRefusal(response) {
 		return deleteStoryBranch(DeleteStoryBranchNotFound, sdkgo.FailureNotFound, "Shortcut did not find the story")
 	}
-	if response.status == http.StatusNoContent || response.status == http.StatusNotFound {
+	if response.status == http.StatusNoContent || response.status == http.StatusNotFound && isDefiniteShortcutRefusal(response) {
 		return sdkgo.NewMutationBranch(DeleteStoryBranchDeleted, DeleteStoryOutput{StoryID: input.StoryID}, nil, storyReceipt(call, input.StoryID))
 	}
-	return deleteStoryBranch(DeleteStoryBranchProviderRejected, sdkgo.FailureProviderRejection, "Shortcut rejected the delete")
+	if isDefiniteShortcutRefusal(response) {
+		return deleteStoryBranch(DeleteStoryBranchProviderRejected, sdkgo.FailureProviderRejection, "Shortcut rejected the delete")
+	}
+	return sdkgo.NewMutationRetry[DeleteStoryOutput](storyOperationFailure("deleteStory", sdkgo.FailureAvailability, "Shortcut delete outcome is unknown"), response.retryAfter)
 }
 
 func validStoryType(storyType string) bool {

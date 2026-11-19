@@ -876,7 +876,7 @@
       "callId": "9cb7dbd6-6b07-53aa-b040-8cf1c0e3a053",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1230,7 +1230,7 @@
       "callId": "6e6283eb-9b1c-5c74-a6aa-df36cd9cb7f1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1590,7 +1590,7 @@
       "callId": "6e6283eb-9b1c-5c74-a6aa-df36cd9cb7f1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"INVALID_REQUEST_ERROR\",\"code\":\"NOT_FOUND\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1652,7 +1652,7 @@
       "callId": "12130385-1796-519e-b276-81aabcfb0558",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1950,7 +1950,7 @@
       "callId": "12130385-1796-519e-b276-81aabcfb0558",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"INVALID_REQUEST_ERROR\",\"code\":\"NOT_FOUND\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1996,7 +1996,7 @@
       "callId": "653936e4-490f-5a1e-8668-9c33c27419e3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2318,7 +2318,7 @@
       "callId": "653936e4-490f-5a1e-8668-9c33c27419e3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"INVALID_REQUEST_ERROR\",\"code\":\"NOT_FOUND\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3167,7 +3167,7 @@
       "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4767,7 +4767,7 @@
       "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5098,7 +5098,7 @@
       "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5417,7 +5417,7 @@
       "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"INVALID_REQUEST_ERROR\",\"code\":\"NOT_FOUND\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5469,7 +5469,7 @@
       "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5681,7 +5681,7 @@
       "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"INVALID_REQUEST_ERROR\",\"code\":\"NOT_FOUND\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -6562,7 +6562,7 @@
       "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -6987,7 +6987,7 @@
       "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7317,7 +7317,7 @@
       "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"INVALID_REQUEST_ERROR\",\"code\":\"NOT_FOUND\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -8656,7 +8656,7 @@
       "callId": "64e9a06d-416d-5d39-987e-abbca97a3f20",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -9152,7 +9152,7 @@
       "callId": "9de04684-6725-5d90-80fb-b3ced0445441",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -9402,7 +9402,7 @@
       "callId": "9de04684-6725-5d90-80fb-b3ced0445441",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"INVALID_REQUEST_ERROR\",\"code\":\"NOT_FOUND\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -9933,7 +9933,7 @@
       "callId": "4d1a2720-de2c-59fc-9411-8b3499bca318",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -11081,7 +11081,7 @@
       "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -11550,7 +11550,7 @@
       "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -11929,7 +11929,7 @@
       "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -12282,7 +12282,7 @@
       "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -12622,7 +12622,7 @@
       "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"AUTHENTICATION_ERROR\",\"code\":\"UNAUTHORIZED\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -12909,7 +12909,7 @@
       "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"category\":\"INVALID_REQUEST_ERROR\",\"code\":\"NOT_FOUND\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -13559,6 +13559,5514 @@
       },
       "name": "getLocation-not-found",
       "operation": "getLocation"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-safe-unknown-409",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-safe-unknown-405",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-safe-unknown-empty-refusal",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-safe-unknown-malformed-success",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "12130385-1796-519e-b276-81aabcfb0558",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-a868b8e78a9cd518049172dd40ca8546e3ba353f",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "cancelPayment-safe-unknown-409",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "12130385-1796-519e-b276-81aabcfb0558",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-a868b8e78a9cd518049172dd40ca8546e3ba353f",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "cancelPayment-safe-unknown-405",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "12130385-1796-519e-b276-81aabcfb0558",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-a868b8e78a9cd518049172dd40ca8546e3ba353f",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "cancelPayment-safe-unknown-empty-refusal",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "12130385-1796-519e-b276-81aabcfb0558",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-a868b8e78a9cd518049172dd40ca8546e3ba353f",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "cancelPayment-safe-unknown-malformed-success",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "653936e4-490f-5a1e-8668-9c33c27419e3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/complete",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-b6ab832d149167cb9a6b8b7e0afc3a2876d8a1ce",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "completePayment-safe-unknown-409",
+      "operation": "completePayment"
+    },
+    {
+      "callId": "653936e4-490f-5a1e-8668-9c33c27419e3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/complete",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-b6ab832d149167cb9a6b8b7e0afc3a2876d8a1ce",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "completePayment-safe-unknown-405",
+      "operation": "completePayment"
+    },
+    {
+      "callId": "653936e4-490f-5a1e-8668-9c33c27419e3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/complete",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-b6ab832d149167cb9a6b8b7e0afc3a2876d8a1ce",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "completePayment-safe-unknown-empty-refusal",
+      "operation": "completePayment"
+    },
+    {
+      "callId": "653936e4-490f-5a1e-8668-9c33c27419e3",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/complete",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-b6ab832d149167cb9a6b8b7e0afc3a2876d8a1ce",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "completePayment-safe-unknown-malformed-success",
+      "operation": "completePayment"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-safe-unknown-409",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-safe-unknown-405",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-safe-unknown-empty-refusal",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-safe-unknown-malformed-success",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-safe-unknown-409",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-safe-unknown-405",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-safe-unknown-empty-refusal",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-safe-unknown-malformed-success",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-safe-unknown-409",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-safe-unknown-405",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-safe-unknown-empty-refusal",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-safe-unknown-malformed-success",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "9cb7dbd6-6b07-53aa-b040-8cf1c0e3a053",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments",
+          "requestBody": {
+            "amount_money": {
+              "amount": 2900,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+            "source_id": "CASH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+      "input": {
+        "amountMoney": {
+          "amount": 2900,
+          "currency": "USD"
+        },
+        "sourceId": "CASH"
+      },
+      "name": "createPayment-safe-unknown-409",
+      "operation": "createPayment"
+    },
+    {
+      "callId": "9cb7dbd6-6b07-53aa-b040-8cf1c0e3a053",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments",
+          "requestBody": {
+            "amount_money": {
+              "amount": 2900,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+            "source_id": "CASH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+      "input": {
+        "amountMoney": {
+          "amount": 2900,
+          "currency": "USD"
+        },
+        "sourceId": "CASH"
+      },
+      "name": "createPayment-safe-unknown-405",
+      "operation": "createPayment"
+    },
+    {
+      "callId": "9cb7dbd6-6b07-53aa-b040-8cf1c0e3a053",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments",
+          "requestBody": {
+            "amount_money": {
+              "amount": 2900,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+            "source_id": "CASH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+      "input": {
+        "amountMoney": {
+          "amount": 2900,
+          "currency": "USD"
+        },
+        "sourceId": "CASH"
+      },
+      "name": "createPayment-safe-unknown-empty-refusal",
+      "operation": "createPayment"
+    },
+    {
+      "callId": "9cb7dbd6-6b07-53aa-b040-8cf1c0e3a053",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments",
+          "requestBody": {
+            "amount_money": {
+              "amount": 2900,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+            "source_id": "CASH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+      "input": {
+        "amountMoney": {
+          "amount": 2900,
+          "currency": "USD"
+        },
+        "sourceId": "CASH"
+      },
+      "name": "createPayment-safe-unknown-malformed-success",
+      "operation": "createPayment"
+    },
+    {
+      "callId": "9de04684-6725-5d90-80fb-b3ced0445441",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/catalog/object/item_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-cc7c683a82833617c7ff290fad45ea3b6ef39912",
+      "input": {
+        "objectId": "item_101"
+      },
+      "name": "deleteCatalogObject-safe-unknown-409",
+      "operation": "deleteCatalogObject"
+    },
+    {
+      "callId": "9de04684-6725-5d90-80fb-b3ced0445441",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/catalog/object/item_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-cc7c683a82833617c7ff290fad45ea3b6ef39912",
+      "input": {
+        "objectId": "item_101"
+      },
+      "name": "deleteCatalogObject-safe-unknown-405",
+      "operation": "deleteCatalogObject"
+    },
+    {
+      "callId": "9de04684-6725-5d90-80fb-b3ced0445441",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/catalog/object/item_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-cc7c683a82833617c7ff290fad45ea3b6ef39912",
+      "input": {
+        "objectId": "item_101"
+      },
+      "name": "deleteCatalogObject-safe-unknown-empty-refusal",
+      "operation": "deleteCatalogObject"
+    },
+    {
+      "callId": "9de04684-6725-5d90-80fb-b3ced0445441",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/catalog/object/item_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-cc7c683a82833617c7ff290fad45ea3b6ef39912",
+      "input": {
+        "objectId": "item_101"
+      },
+      "name": "deleteCatalogObject-safe-unknown-malformed-success",
+      "operation": "deleteCatalogObject"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-safe-unknown-409",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-safe-unknown-405",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-safe-unknown-empty-refusal",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-safe-unknown-malformed-success",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-safe-unknown-409",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-safe-unknown-405",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-safe-unknown-empty-refusal",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-safe-unknown-malformed-success",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-safe-unknown-409",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-safe-unknown-405",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-safe-unknown-empty-refusal",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-safe-unknown-malformed-success",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-safe-unknown-409",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-safe-unknown-405",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-safe-unknown-empty-refusal",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-safe-unknown-malformed-success",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inventory/changes/batch-create",
+          "requestBody": {
+            "changes": [
+              {
+                "physical_count": {
+                  "catalog_object_id": "variation_101",
+                  "location_id": "loc_101",
+                  "occurred_at": "2026-11-17T12:00:00Z",
+                  "quantity": "5",
+                  "state": "IN_STOCK"
+                },
+                "type": "PHYSICAL_COUNT"
+              }
+            ],
+            "idempotency_key": "4d1a2720-de2c-59fc-9411-8b3499bca318"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "input": {
+        "catalogObjectId": "variation_101",
+        "locationId": "loc_101",
+        "occurredAt": "2026-11-17T12:00:00Z",
+        "quantity": "5"
+      },
+      "name": "setInventoryPhysicalCount-safe-unknown-409",
+      "operation": "setInventoryPhysicalCount"
+    },
+    {
+      "callId": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inventory/changes/batch-create",
+          "requestBody": {
+            "changes": [
+              {
+                "physical_count": {
+                  "catalog_object_id": "variation_101",
+                  "location_id": "loc_101",
+                  "occurred_at": "2026-11-17T12:00:00Z",
+                  "quantity": "5",
+                  "state": "IN_STOCK"
+                },
+                "type": "PHYSICAL_COUNT"
+              }
+            ],
+            "idempotency_key": "4d1a2720-de2c-59fc-9411-8b3499bca318"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "input": {
+        "catalogObjectId": "variation_101",
+        "locationId": "loc_101",
+        "occurredAt": "2026-11-17T12:00:00Z",
+        "quantity": "5"
+      },
+      "name": "setInventoryPhysicalCount-safe-unknown-405",
+      "operation": "setInventoryPhysicalCount"
+    },
+    {
+      "callId": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inventory/changes/batch-create",
+          "requestBody": {
+            "changes": [
+              {
+                "physical_count": {
+                  "catalog_object_id": "variation_101",
+                  "location_id": "loc_101",
+                  "occurred_at": "2026-11-17T12:00:00Z",
+                  "quantity": "5",
+                  "state": "IN_STOCK"
+                },
+                "type": "PHYSICAL_COUNT"
+              }
+            ],
+            "idempotency_key": "4d1a2720-de2c-59fc-9411-8b3499bca318"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "input": {
+        "catalogObjectId": "variation_101",
+        "locationId": "loc_101",
+        "occurredAt": "2026-11-17T12:00:00Z",
+        "quantity": "5"
+      },
+      "name": "setInventoryPhysicalCount-safe-unknown-empty-refusal",
+      "operation": "setInventoryPhysicalCount"
+    },
+    {
+      "callId": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inventory/changes/batch-create",
+          "requestBody": {
+            "changes": [
+              {
+                "physical_count": {
+                  "catalog_object_id": "variation_101",
+                  "location_id": "loc_101",
+                  "occurred_at": "2026-11-17T12:00:00Z",
+                  "quantity": "5",
+                  "state": "IN_STOCK"
+                },
+                "type": "PHYSICAL_COUNT"
+              }
+            ],
+            "idempotency_key": "4d1a2720-de2c-59fc-9411-8b3499bca318"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "input": {
+        "catalogObjectId": "variation_101",
+        "locationId": "loc_101",
+        "occurredAt": "2026-11-17T12:00:00Z",
+        "quantity": "5"
+      },
+      "name": "setInventoryPhysicalCount-safe-unknown-malformed-success",
+      "operation": "setInventoryPhysicalCount"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-safe-unknown-409",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-safe-unknown-405",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-safe-unknown-empty-refusal",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-safe-unknown-malformed-success",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-safe-unknown-409",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-safe-unknown-405",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-safe-unknown-empty-refusal",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-safe-unknown-malformed-success",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-safe-unknown-409",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-safe-unknown-405",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-safe-unknown-empty-refusal",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-safe-unknown-malformed-success",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "6e6283eb-9b1c-5c74-a6aa-df36cd9cb7f1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/payments/pay_101",
+          "requestBody": {
+            "idempotency_key": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+            "payment": {
+              "amount_money": {
+                "amount": 3000,
+                "currency": "USD"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+      "input": {
+        "amountMoney": {
+          "amount": 3000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "updatePayment-safe-unknown-409",
+      "operation": "updatePayment"
+    },
+    {
+      "callId": "6e6283eb-9b1c-5c74-a6aa-df36cd9cb7f1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/payments/pay_101",
+          "requestBody": {
+            "idempotency_key": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+            "payment": {
+              "amount_money": {
+                "amount": 3000,
+                "currency": "USD"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+      "input": {
+        "amountMoney": {
+          "amount": 3000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "updatePayment-safe-unknown-405",
+      "operation": "updatePayment"
+    },
+    {
+      "callId": "6e6283eb-9b1c-5c74-a6aa-df36cd9cb7f1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/payments/pay_101",
+          "requestBody": {
+            "idempotency_key": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+            "payment": {
+              "amount_money": {
+                "amount": 3000,
+                "currency": "USD"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+      "input": {
+        "amountMoney": {
+          "amount": 3000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "updatePayment-safe-unknown-empty-refusal",
+      "operation": "updatePayment"
+    },
+    {
+      "callId": "6e6283eb-9b1c-5c74-a6aa-df36cd9cb7f1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/payments/pay_101",
+          "requestBody": {
+            "idempotency_key": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+            "payment": {
+              "amount_money": {
+                "amount": 3000,
+                "currency": "USD"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+      "input": {
+        "amountMoney": {
+          "amount": 3000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "updatePayment-safe-unknown-malformed-success",
+      "operation": "updatePayment"
+    },
+    {
+      "callId": "64e9a06d-416d-5d39-987e-abbca97a3f20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/catalog/object",
+          "requestBody": {
+            "idempotency_key": "dex-22054be050f514e694459033272a7ebfaaf92814",
+            "object": {
+              "id": "#coffee",
+              "item_data": {
+                "name": "Coffee",
+                "variations": [
+                  {
+                    "id": "#regular",
+                    "item_variation_data": {
+                      "item_id": "#coffee",
+                      "name": "Regular",
+                      "pricing_type": "VARIABLE_PRICING"
+                    },
+                    "type": "ITEM_VARIATION"
+                  }
+                ]
+              },
+              "type": "ITEM"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-22054be050f514e694459033272a7ebfaaf92814",
+      "input": {
+        "object": {
+          "id": "#coffee",
+          "item_data": {
+            "name": "Coffee",
+            "variations": [
+              {
+                "id": "#regular",
+                "item_variation_data": {
+                  "item_id": "#coffee",
+                  "name": "Regular",
+                  "pricing_type": "VARIABLE_PRICING"
+                },
+                "type": "ITEM_VARIATION"
+              }
+            ]
+          },
+          "type": "ITEM"
+        }
+      },
+      "name": "upsertCatalogObject-safe-unknown-409",
+      "operation": "upsertCatalogObject"
+    },
+    {
+      "callId": "64e9a06d-416d-5d39-987e-abbca97a3f20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/catalog/object",
+          "requestBody": {
+            "idempotency_key": "dex-22054be050f514e694459033272a7ebfaaf92814",
+            "object": {
+              "id": "#coffee",
+              "item_data": {
+                "name": "Coffee",
+                "variations": [
+                  {
+                    "id": "#regular",
+                    "item_variation_data": {
+                      "item_id": "#coffee",
+                      "name": "Regular",
+                      "pricing_type": "VARIABLE_PRICING"
+                    },
+                    "type": "ITEM_VARIATION"
+                  }
+                ]
+              },
+              "type": "ITEM"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-22054be050f514e694459033272a7ebfaaf92814",
+      "input": {
+        "object": {
+          "id": "#coffee",
+          "item_data": {
+            "name": "Coffee",
+            "variations": [
+              {
+                "id": "#regular",
+                "item_variation_data": {
+                  "item_id": "#coffee",
+                  "name": "Regular",
+                  "pricing_type": "VARIABLE_PRICING"
+                },
+                "type": "ITEM_VARIATION"
+              }
+            ]
+          },
+          "type": "ITEM"
+        }
+      },
+      "name": "upsertCatalogObject-safe-unknown-405",
+      "operation": "upsertCatalogObject"
+    },
+    {
+      "callId": "64e9a06d-416d-5d39-987e-abbca97a3f20",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/catalog/object",
+          "requestBody": {
+            "idempotency_key": "dex-22054be050f514e694459033272a7ebfaaf92814",
+            "object": {
+              "id": "#coffee",
+              "item_data": {
+                "name": "Coffee",
+                "variations": [
+                  {
+                    "id": "#regular",
+                    "item_variation_data": {
+                      "item_id": "#coffee",
+                      "name": "Regular",
+                      "pricing_type": "VARIABLE_PRICING"
+                    },
+                    "type": "ITEM_VARIATION"
+                  }
+                ]
+              },
+              "type": "ITEM"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-22054be050f514e694459033272a7ebfaaf92814",
+      "input": {
+        "object": {
+          "id": "#coffee",
+          "item_data": {
+            "name": "Coffee",
+            "variations": [
+              {
+                "id": "#regular",
+                "item_variation_data": {
+                  "item_id": "#coffee",
+                  "name": "Regular",
+                  "pricing_type": "VARIABLE_PRICING"
+                },
+                "type": "ITEM_VARIATION"
+              }
+            ]
+          },
+          "type": "ITEM"
+        }
+      },
+      "name": "upsertCatalogObject-safe-unknown-empty-refusal",
+      "operation": "upsertCatalogObject"
+    },
+    {
+      "callId": "64e9a06d-416d-5d39-987e-abbca97a3f20",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/catalog/object",
+          "requestBody": {
+            "idempotency_key": "dex-22054be050f514e694459033272a7ebfaaf92814",
+            "object": {
+              "id": "#coffee",
+              "item_data": {
+                "name": "Coffee",
+                "variations": [
+                  {
+                    "id": "#regular",
+                    "item_variation_data": {
+                      "item_id": "#coffee",
+                      "name": "Regular",
+                      "pricing_type": "VARIABLE_PRICING"
+                    },
+                    "type": "ITEM_VARIATION"
+                  }
+                ]
+              },
+              "type": "ITEM"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-22054be050f514e694459033272a7ebfaaf92814",
+      "input": {
+        "object": {
+          "id": "#coffee",
+          "item_data": {
+            "name": "Coffee",
+            "variations": [
+              {
+                "id": "#regular",
+                "item_variation_data": {
+                  "item_id": "#coffee",
+                  "name": "Regular",
+                  "pricing_type": "VARIABLE_PRICING"
+                },
+                "type": "ITEM_VARIATION"
+              }
+            ]
+          },
+          "type": "ITEM"
+        }
+      },
+      "name": "upsertCatalogObject-safe-unknown-malformed-success",
+      "operation": "upsertCatalogObject"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-safe-unknown-contradictory-refusal",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-safe-unknown-contradictory-success",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "12130385-1796-519e-b276-81aabcfb0558",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-a868b8e78a9cd518049172dd40ca8546e3ba353f",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "cancelPayment-safe-unknown-contradictory-refusal",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "12130385-1796-519e-b276-81aabcfb0558",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-a868b8e78a9cd518049172dd40ca8546e3ba353f",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "cancelPayment-safe-unknown-contradictory-success",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "653936e4-490f-5a1e-8668-9c33c27419e3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/complete",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-b6ab832d149167cb9a6b8b7e0afc3a2876d8a1ce",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "completePayment-safe-unknown-contradictory-refusal",
+      "operation": "completePayment"
+    },
+    {
+      "callId": "653936e4-490f-5a1e-8668-9c33c27419e3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments/pay_101/complete",
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-b6ab832d149167cb9a6b8b7e0afc3a2876d8a1ce",
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "completePayment-safe-unknown-contradictory-success",
+      "operation": "completePayment"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-safe-unknown-contradictory-refusal",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-safe-unknown-contradictory-success",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-safe-unknown-contradictory-refusal",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-safe-unknown-contradictory-success",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-safe-unknown-contradictory-refusal",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-safe-unknown-contradictory-success",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "9cb7dbd6-6b07-53aa-b040-8cf1c0e3a053",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments",
+          "requestBody": {
+            "amount_money": {
+              "amount": 2900,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+            "source_id": "CASH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+      "input": {
+        "amountMoney": {
+          "amount": 2900,
+          "currency": "USD"
+        },
+        "sourceId": "CASH"
+      },
+      "name": "createPayment-safe-unknown-contradictory-refusal",
+      "operation": "createPayment"
+    },
+    {
+      "callId": "9cb7dbd6-6b07-53aa-b040-8cf1c0e3a053",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments",
+          "requestBody": {
+            "amount_money": {
+              "amount": 2900,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+            "source_id": "CASH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-fe7f33cbbf305e1945a27521e0f2fbb3c15a0435",
+      "input": {
+        "amountMoney": {
+          "amount": 2900,
+          "currency": "USD"
+        },
+        "sourceId": "CASH"
+      },
+      "name": "createPayment-safe-unknown-contradictory-success",
+      "operation": "createPayment"
+    },
+    {
+      "callId": "9de04684-6725-5d90-80fb-b3ced0445441",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/catalog/object/item_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-cc7c683a82833617c7ff290fad45ea3b6ef39912",
+      "input": {
+        "objectId": "item_101"
+      },
+      "name": "deleteCatalogObject-safe-unknown-contradictory-refusal",
+      "operation": "deleteCatalogObject"
+    },
+    {
+      "callId": "9de04684-6725-5d90-80fb-b3ced0445441",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/catalog/object/item_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-cc7c683a82833617c7ff290fad45ea3b6ef39912",
+      "input": {
+        "objectId": "item_101"
+      },
+      "name": "deleteCatalogObject-safe-unknown-contradictory-success",
+      "operation": "deleteCatalogObject"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-safe-unknown-contradictory-refusal",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-safe-unknown-contradictory-success",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-safe-unknown-contradictory-refusal",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-safe-unknown-contradictory-success",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-safe-unknown-contradictory-refusal",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-safe-unknown-contradictory-success",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-safe-unknown-contradictory-refusal",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-safe-unknown-contradictory-success",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inventory/changes/batch-create",
+          "requestBody": {
+            "changes": [
+              {
+                "physical_count": {
+                  "catalog_object_id": "variation_101",
+                  "location_id": "loc_101",
+                  "occurred_at": "2026-11-17T12:00:00Z",
+                  "quantity": "5",
+                  "state": "IN_STOCK"
+                },
+                "type": "PHYSICAL_COUNT"
+              }
+            ],
+            "idempotency_key": "4d1a2720-de2c-59fc-9411-8b3499bca318"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "input": {
+        "catalogObjectId": "variation_101",
+        "locationId": "loc_101",
+        "occurredAt": "2026-11-17T12:00:00Z",
+        "quantity": "5"
+      },
+      "name": "setInventoryPhysicalCount-safe-unknown-contradictory-refusal",
+      "operation": "setInventoryPhysicalCount"
+    },
+    {
+      "callId": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inventory/changes/batch-create",
+          "requestBody": {
+            "changes": [
+              {
+                "physical_count": {
+                  "catalog_object_id": "variation_101",
+                  "location_id": "loc_101",
+                  "occurred_at": "2026-11-17T12:00:00Z",
+                  "quantity": "5",
+                  "state": "IN_STOCK"
+                },
+                "type": "PHYSICAL_COUNT"
+              }
+            ],
+            "idempotency_key": "4d1a2720-de2c-59fc-9411-8b3499bca318"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4d1a2720-de2c-59fc-9411-8b3499bca318",
+      "input": {
+        "catalogObjectId": "variation_101",
+        "locationId": "loc_101",
+        "occurredAt": "2026-11-17T12:00:00Z",
+        "quantity": "5"
+      },
+      "name": "setInventoryPhysicalCount-safe-unknown-contradictory-success",
+      "operation": "setInventoryPhysicalCount"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-safe-unknown-contradictory-refusal",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-safe-unknown-contradictory-success",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-safe-unknown-contradictory-refusal",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-safe-unknown-contradictory-success",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-safe-unknown-contradictory-refusal",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-safe-unknown-contradictory-success",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "6e6283eb-9b1c-5c74-a6aa-df36cd9cb7f1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/payments/pay_101",
+          "requestBody": {
+            "idempotency_key": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+            "payment": {
+              "amount_money": {
+                "amount": 3000,
+                "currency": "USD"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+      "input": {
+        "amountMoney": {
+          "amount": 3000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "updatePayment-safe-unknown-contradictory-refusal",
+      "operation": "updatePayment"
+    },
+    {
+      "callId": "6e6283eb-9b1c-5c74-a6aa-df36cd9cb7f1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/payments/pay_101",
+          "requestBody": {
+            "idempotency_key": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+            "payment": {
+              "amount_money": {
+                "amount": 3000,
+                "currency": "USD"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-88b3cec90c15e213c710560b4593dfc8470fde48",
+      "input": {
+        "amountMoney": {
+          "amount": 3000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "updatePayment-safe-unknown-contradictory-success",
+      "operation": "updatePayment"
+    },
+    {
+      "callId": "64e9a06d-416d-5d39-987e-abbca97a3f20",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/catalog/object",
+          "requestBody": {
+            "idempotency_key": "dex-22054be050f514e694459033272a7ebfaaf92814",
+            "object": {
+              "id": "#coffee",
+              "item_data": {
+                "name": "Coffee",
+                "variations": [
+                  {
+                    "id": "#regular",
+                    "item_variation_data": {
+                      "item_id": "#coffee",
+                      "name": "Regular",
+                      "pricing_type": "VARIABLE_PRICING"
+                    },
+                    "type": "ITEM_VARIATION"
+                  }
+                ]
+              },
+              "type": "ITEM"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-22054be050f514e694459033272a7ebfaaf92814",
+      "input": {
+        "object": {
+          "id": "#coffee",
+          "item_data": {
+            "name": "Coffee",
+            "variations": [
+              {
+                "id": "#regular",
+                "item_variation_data": {
+                  "item_id": "#coffee",
+                  "name": "Regular",
+                  "pricing_type": "VARIABLE_PRICING"
+                },
+                "type": "ITEM_VARIATION"
+              }
+            ]
+          },
+          "type": "ITEM"
+        }
+      },
+      "name": "upsertCatalogObject-safe-unknown-contradictory-refusal",
+      "operation": "upsertCatalogObject"
+    },
+    {
+      "callId": "64e9a06d-416d-5d39-987e-abbca97a3f20",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/catalog/object",
+          "requestBody": {
+            "idempotency_key": "dex-22054be050f514e694459033272a7ebfaaf92814",
+            "object": {
+              "id": "#coffee",
+              "item_data": {
+                "name": "Coffee",
+                "variations": [
+                  {
+                    "id": "#regular",
+                    "item_variation_data": {
+                      "item_id": "#coffee",
+                      "name": "Regular",
+                      "pricing_type": "VARIABLE_PRICING"
+                    },
+                    "type": "ITEM_VARIATION"
+                  }
+                ]
+              },
+              "type": "ITEM"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-22054be050f514e694459033272a7ebfaaf92814",
+      "input": {
+        "object": {
+          "id": "#coffee",
+          "item_data": {
+            "name": "Coffee",
+            "variations": [
+              {
+                "id": "#regular",
+                "item_variation_data": {
+                  "item_id": "#coffee",
+                  "name": "Regular",
+                  "pricing_type": "VARIABLE_PRICING"
+                },
+                "type": "ITEM_VARIATION"
+              }
+            ]
+          },
+          "type": "ITEM"
+        }
+      },
+      "name": "upsertCatalogObject-safe-unknown-contradictory-success",
+      "operation": "upsertCatalogObject"
     }
   ],
   "schemaVersion": 1

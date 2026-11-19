@@ -1247,7 +1247,7 @@
       "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1294,7 +1294,7 @@
       "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Invalid API token\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1574,7 +1574,7 @@
       "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1613,7 +1613,7 @@
       "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Invalid API token\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2932,7 +2932,7 @@
       "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -2979,7 +2979,7 @@
       "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Invalid API token\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -3259,7 +3259,7 @@
       "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3298,7 +3298,7 @@
       "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Invalid API token\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3994,7 +3994,7 @@
       "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4034,7 +4034,7 @@
       "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Invalid API token\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4200,6 +4200,1371 @@
       },
       "name": "deleteResponse-transportFailure",
       "operation": "deleteResponse"
+    },
+    {
+      "attempts": 1,
+      "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "input": {
+        "collectorId": "2345"
+      },
+      "name": "deleteCollector-safe-unknown-409",
+      "operation": "deleteCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "input": {
+        "collectorId": "2345"
+      },
+      "name": "deleteCollector-safe-unknown-405",
+      "operation": "deleteCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "input": {
+        "collectorId": "2345"
+      },
+      "name": "deleteCollector-safe-unknown-empty-refusal",
+      "operation": "deleteCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "input": {
+        "collectorId": "2345"
+      },
+      "name": "deleteCollector-safe-unknown-malformed-success",
+      "operation": "deleteCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "input": {
+        "collectorId": "2345",
+        "responseId": "987654321"
+      },
+      "name": "deleteResponse-safe-unknown-409",
+      "operation": "deleteResponse"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "input": {
+        "collectorId": "2345",
+        "responseId": "987654321"
+      },
+      "name": "deleteResponse-safe-unknown-405",
+      "operation": "deleteResponse"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "input": {
+        "collectorId": "2345",
+        "responseId": "987654321"
+      },
+      "name": "deleteResponse-safe-unknown-empty-refusal",
+      "operation": "deleteResponse"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "input": {
+        "collectorId": "2345",
+        "responseId": "987654321"
+      },
+      "name": "deleteResponse-safe-unknown-malformed-success",
+      "operation": "deleteResponse"
+    },
+    {
+      "attempts": 1,
+      "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/surveys/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "input": {
+        "surveyId": "123456789"
+      },
+      "name": "deleteSurvey-safe-unknown-409",
+      "operation": "deleteSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/surveys/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "input": {
+        "surveyId": "123456789"
+      },
+      "name": "deleteSurvey-safe-unknown-405",
+      "operation": "deleteSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/surveys/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "input": {
+        "surveyId": "123456789"
+      },
+      "name": "deleteSurvey-safe-unknown-empty-refusal",
+      "operation": "deleteSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/surveys/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "input": {
+        "surveyId": "123456789"
+      },
+      "name": "deleteSurvey-safe-unknown-malformed-success",
+      "operation": "deleteSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/collectors/2345",
+          "requestBody": {
+            "name": "Customer link"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "input": {
+        "collectorId": "2345",
+        "name": "Customer link"
+      },
+      "name": "updateCollector-safe-unknown-409",
+      "operation": "updateCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/collectors/2345",
+          "requestBody": {
+            "name": "Customer link"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "input": {
+        "collectorId": "2345",
+        "name": "Customer link"
+      },
+      "name": "updateCollector-safe-unknown-405",
+      "operation": "updateCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/collectors/2345",
+          "requestBody": {
+            "name": "Customer link"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "input": {
+        "collectorId": "2345",
+        "name": "Customer link"
+      },
+      "name": "updateCollector-safe-unknown-empty-refusal",
+      "operation": "updateCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/collectors/2345",
+          "requestBody": {
+            "name": "Customer link"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "input": {
+        "collectorId": "2345",
+        "name": "Customer link"
+      },
+      "name": "updateCollector-safe-unknown-malformed-success",
+      "operation": "updateCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/surveys/123456789",
+          "requestBody": {
+            "title": "Customer feedback"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "input": {
+        "surveyId": "123456789",
+        "title": "Customer feedback"
+      },
+      "name": "updateSurvey-safe-unknown-409",
+      "operation": "updateSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/surveys/123456789",
+          "requestBody": {
+            "title": "Customer feedback"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "input": {
+        "surveyId": "123456789",
+        "title": "Customer feedback"
+      },
+      "name": "updateSurvey-safe-unknown-405",
+      "operation": "updateSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/surveys/123456789",
+          "requestBody": {
+            "title": "Customer feedback"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "input": {
+        "surveyId": "123456789",
+        "title": "Customer feedback"
+      },
+      "name": "updateSurvey-safe-unknown-empty-refusal",
+      "operation": "updateSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/surveys/123456789",
+          "requestBody": {
+            "title": "Customer feedback"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "input": {
+        "surveyId": "123456789",
+        "title": "Customer feedback"
+      },
+      "name": "updateSurvey-safe-unknown-malformed-success",
+      "operation": "updateSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "input": {
+        "collectorId": "2345"
+      },
+      "name": "deleteCollector-safe-unknown-contradictory-refusal",
+      "operation": "deleteCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "input": {
+        "collectorId": "2345"
+      },
+      "name": "deleteCollector-safe-unknown-contradictory-success",
+      "operation": "deleteCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "input": {
+        "collectorId": "2345",
+        "responseId": "987654321"
+      },
+      "name": "deleteResponse-safe-unknown-contradictory-refusal",
+      "operation": "deleteResponse"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "input": {
+        "collectorId": "2345",
+        "responseId": "987654321"
+      },
+      "name": "deleteResponse-safe-unknown-contradictory-success",
+      "operation": "deleteResponse"
+    },
+    {
+      "attempts": 1,
+      "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/surveys/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "input": {
+        "surveyId": "123456789"
+      },
+      "name": "deleteSurvey-safe-unknown-contradictory-refusal",
+      "operation": "deleteSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/surveys/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "input": {
+        "surveyId": "123456789"
+      },
+      "name": "deleteSurvey-safe-unknown-contradictory-success",
+      "operation": "deleteSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/collectors/2345",
+          "requestBody": {
+            "name": "Customer link"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "input": {
+        "collectorId": "2345",
+        "name": "Customer link"
+      },
+      "name": "updateCollector-safe-unknown-contradictory-refusal",
+      "operation": "updateCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/collectors/2345",
+          "requestBody": {
+            "name": "Customer link"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "input": {
+        "collectorId": "2345",
+        "name": "Customer link"
+      },
+      "name": "updateCollector-safe-unknown-contradictory-success",
+      "operation": "updateCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/surveys/123456789",
+          "requestBody": {
+            "title": "Customer feedback"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "input": {
+        "surveyId": "123456789",
+        "title": "Customer feedback"
+      },
+      "name": "updateSurvey-safe-unknown-contradictory-refusal",
+      "operation": "updateSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/surveys/123456789",
+          "requestBody": {
+            "title": "Customer feedback"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "input": {
+        "surveyId": "123456789",
+        "title": "Customer feedback"
+      },
+      "name": "updateSurvey-safe-unknown-contradictory-success",
+      "operation": "updateSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d7af5b8-07e1-5f9f-8061-23cf3ba9e5be",
+      "input": {
+        "collectorId": "2345"
+      },
+      "name": "deleteCollector-safe-retry-503",
+      "operation": "deleteCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/collectors/2345/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c0b468d-2c7b-512a-b436-397da0b2b3e1",
+      "input": {
+        "collectorId": "2345",
+        "responseId": "987654321"
+      },
+      "name": "deleteResponse-safe-retry-503",
+      "operation": "deleteResponse"
+    },
+    {
+      "attempts": 1,
+      "callId": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/surveys/123456789",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0feaac9-637b-5620-b9e2-8d586a160d26",
+      "input": {
+        "surveyId": "123456789"
+      },
+      "name": "deleteSurvey-safe-retry-503",
+      "operation": "deleteSurvey"
+    },
+    {
+      "attempts": 1,
+      "callId": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/collectors/2345",
+          "requestBody": {
+            "name": "Customer link"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d406b439-a2b0-589b-ae48-6b9b20e5eee4",
+      "input": {
+        "collectorId": "2345",
+        "name": "Customer link"
+      },
+      "name": "updateCollector-safe-retry-503",
+      "operation": "updateCollector"
+    },
+    {
+      "attempts": 1,
+      "callId": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/surveys/123456789",
+          "requestBody": {
+            "title": "Customer feedback"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4e00058c-82f3-5bfb-a29e-a2d9e22f9dcd",
+      "input": {
+        "surveyId": "123456789",
+        "title": "Customer feedback"
+      },
+      "name": "updateSurvey-safe-retry-503",
+      "operation": "updateSurvey"
     }
   ],
   "schemaVersion": 1

@@ -1389,7 +1389,7 @@
       "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
       "exchanges": [
         {
-          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "body": "{\"code\":\"PGRST301\",\"message\":\"SECRET SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1820,7 +1820,7 @@
       "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
       "exchanges": [
         {
-          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "body": "{\"code\":\"PGRST301\",\"message\":\"SECRET SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2887,6 +2887,755 @@
       ],
       "name": "createRow-read-back-confirms",
       "operation": "createRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROVIDER_REJECTION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-safe-unknown-409",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROVIDER_REJECTION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-safe-unknown-405",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "VALIDATION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-safe-unknown-empty-refusal",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-safe-unknown-malformed-success",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROVIDER_REJECTION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-safe-unknown-409",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROVIDER_REJECTION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-safe-unknown-405",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "VALIDATION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-safe-unknown-empty-refusal",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-safe-unknown-malformed-success",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "VALIDATION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-safe-unknown-contradictory-refusal",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-safe-unknown-contradictory-success",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "VALIDATION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-safe-unknown-contradictory-refusal",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-safe-unknown-contradictory-success",
+      "operation": "updateRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fe6775d5-56bf-5b0f-82cb-dcadadbee5dd",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1"
+      },
+      "name": "deleteRow-safe-retry-503",
+      "operation": "deleteRow"
+    },
+    {
+      "attempts": 1,
+      "callId": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v1/projects",
+          "query": {
+            "id": [
+              "eq.1"
+            ]
+          },
+          "requestBody": {
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "return=representation"
+            ],
+            "User-Agent": [
+              "superdurable-supabase/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07d4864f-0995-5708-a981-cedb9d1a471d",
+      "input": {
+        "column": "id",
+        "table": "projects",
+        "value": "1",
+        "values": {
+          "name": "Meridian"
+        }
+      },
+      "name": "updateRow-safe-retry-503",
+      "operation": "updateRow"
     }
   ],
   "schemaVersion": 1

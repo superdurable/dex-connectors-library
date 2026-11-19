@@ -156,11 +156,20 @@ func (operation RefundPaymentOperation) Invoke(call sdkgo.Call, input RefundPaym
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[Refund](*failureFor("refundPayment", sdkgo.FailureAvailability, "provider refund is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusUnauthorized:
-		return sdkgo.NewMutationBranch(RefundPaymentBranchProviderRejected, Refund{}, failureFor("refundPayment", sdkgo.FailureAuthentication, "provider rejected credentials"), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(RefundPaymentBranchProviderRejected, Refund{}, failureFor("refundPayment", sdkgo.FailureAuthentication, "provider rejected credentials"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Refund](*failureFor("refundPayment", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	case response.StatusCode == http.StatusForbidden:
-		return sdkgo.NewMutationBranch(RefundPaymentBranchProviderRejected, Refund{}, failureFor("refundPayment", sdkgo.FailureAuthorization, "provider denied access"), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(RefundPaymentBranchProviderRejected, Refund{}, failureFor("refundPayment", sdkgo.FailureAuthorization, "provider denied access"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Refund](*failureFor("refundPayment", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(RefundPaymentBranchProviderRejected, Refund{}, failureFor("refundPayment", sdkgo.FailureProviderRejection, "provider rejected refund with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(RefundPaymentBranchProviderRejected, Refund{}, failureFor("refundPayment", sdkgo.FailureProviderRejection, "provider rejected refund with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Refund](*failureFor("refundPayment", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

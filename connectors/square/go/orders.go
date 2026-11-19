@@ -270,9 +270,15 @@ func executeOrderMutation(client *Client, call sdkgo.Call, write orderWriteReque
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[Order](*failureFor(write.operation, sdkgo.FailureAvailability, "provider order write is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusNotFound && write.notFoundBranch != "":
-		return sdkgo.NewMutationBranch(write.notFoundBranch, Order{}, failureFor(write.operation, sdkgo.FailureNotFound, "order was not found"), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.notFoundBranch, Order{}, failureFor(write.operation, sdkgo.FailureNotFound, "order was not found"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Order](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(write.rejectedBranch, Order{}, failureFor(write.operation, sdkgo.FailureProviderRejection, "provider rejected order write with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.rejectedBranch, Order{}, failureFor(write.operation, sdkgo.FailureProviderRejection, "provider rejected order write with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Order](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

@@ -270,7 +270,10 @@ func (operation UpsertCatalogObjectOperation) Invoke(call sdkgo.Call, input Upse
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[CatalogObject](*failureFor("upsertCatalogObject", sdkgo.FailureAvailability, "provider catalog upsert is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(UpsertCatalogObjectBranchProviderRejected, CatalogObject{}, failureFor("upsertCatalogObject", sdkgo.FailureProviderRejection, "provider rejected catalog upsert with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(UpsertCatalogObjectBranchProviderRejected, CatalogObject{}, failureFor("upsertCatalogObject", sdkgo.FailureProviderRejection, "provider rejected catalog upsert with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[CatalogObject](*failureFor("upsertCatalogObject", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -315,9 +318,15 @@ func (operation DeleteCatalogObjectOperation) Invoke(call sdkgo.Call, input Dele
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[DeletedCatalogObjects](*failureFor("deleteCatalogObject", sdkgo.FailureAvailability, "provider catalog deletion is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusNotFound:
-		return sdkgo.NewMutationBranch(DeleteCatalogObjectBranchNotFound, DeletedCatalogObjects{}, failureFor("deleteCatalogObject", sdkgo.FailureNotFound, "catalog object was not found"), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(DeleteCatalogObjectBranchNotFound, DeletedCatalogObjects{}, failureFor("deleteCatalogObject", sdkgo.FailureNotFound, "catalog object was not found"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[DeletedCatalogObjects](*failureFor("deleteCatalogObject", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(DeleteCatalogObjectBranchProviderRejected, DeletedCatalogObjects{}, failureFor("deleteCatalogObject", sdkgo.FailureProviderRejection, "provider rejected catalog deletion with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(DeleteCatalogObjectBranchProviderRejected, DeletedCatalogObjects{}, failureFor("deleteCatalogObject", sdkgo.FailureProviderRejection, "provider rejected catalog deletion with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[DeletedCatalogObjects](*failureFor("deleteCatalogObject", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

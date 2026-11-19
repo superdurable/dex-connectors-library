@@ -224,11 +224,14 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	if response.err == errCredential {
 		return taskMutationBranch(UpdateTaskBranchDefect, TaskSummary{}, "updateTask", sdkgo.FailureAuthentication, "credentials unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteTeamworkRefusal(response) {
 		return taskMutationBranch(UpdateTaskBranchNotFound, TaskSummary{}, "updateTask", sdkgo.FailureNotFound, "task not found")
 	}
 	if response.status != http.StatusOK {
-		return taskMutationBranch(UpdateTaskBranchProviderRejected, TaskSummary{}, "updateTask", sdkgo.FailureProviderRejection, "Teamwork rejected task update")
+		if isDefiniteTeamworkRefusal(response) {
+			return taskMutationBranch(UpdateTaskBranchProviderRejected, TaskSummary{}, "updateTask", sdkgo.FailureProviderRejection, "Teamwork rejected task update")
+		}
+		return sdkgo.NewMutationRetry[TaskSummary](taskOperationFailure("updateTask", sdkgo.FailureAvailability, "task update outcome unknown"), response.retryAfter)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[TaskSummary](taskOperationFailure("updateTask", sdkgo.FailureResponseTooLarge, "task response exceeded limit"), 0)
@@ -266,10 +269,13 @@ func (operation DeleteTaskOperation) Invoke(call sdkgo.Call, input DeleteTaskInp
 	if response.err == errCredential {
 		return taskMutationBranch(DeleteTaskBranchDefect, DeleteTaskOutput{}, "deleteTask", sdkgo.FailureAuthentication, "credentials unavailable")
 	}
-	if response.status != http.StatusNoContent && response.status != http.StatusNotFound {
+	if response.status == http.StatusNoContent && response.err == nil && len(response.body) == 0 || response.status == http.StatusNotFound && isDefiniteTeamworkRefusal(response) {
+		return sdkgo.NewMutationBranch(DeleteTaskBranchDeleted, DeleteTaskOutput{ID: input.TaskID}, nil, sdkgo.Receipt{})
+	}
+	if isDefiniteTeamworkRefusal(response) {
 		return taskMutationBranch(DeleteTaskBranchProviderRejected, DeleteTaskOutput{}, "deleteTask", sdkgo.FailureProviderRejection, "Teamwork rejected task delete")
 	}
-	return sdkgo.NewMutationBranch(DeleteTaskBranchDeleted, DeleteTaskOutput{ID: input.TaskID}, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationRetry[DeleteTaskOutput](taskOperationFailure("deleteTask", sdkgo.FailureAvailability, "task delete outcome unknown"), response.retryAfter)
 }
 
 func decodeCreatedTask(body []byte) (TaskSummary, error) {

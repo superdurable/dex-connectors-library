@@ -217,11 +217,14 @@ func (operation UpdateFolderOperation) Invoke(call sdkgo.Call, input UpdateFolde
 	if errors.Is(response.err, errCredential) {
 		return folderMutationBranch(UpdateFolderBranchDefect, "updateFolder", sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSheetRefusal(response) {
 		return folderMutationBranch(UpdateFolderBranchNotFound, "updateFolder", sdkgo.FailureNotFound, "Smartsheet did not find the folder")
 	}
 	if response.status != http.StatusOK {
-		return folderMutationBranch(UpdateFolderBranchProviderRejected, "updateFolder", sdkgo.FailureProviderRejection, "Smartsheet rejected folder update")
+		if isDefiniteSheetRefusal(response) {
+			return folderMutationBranch(UpdateFolderBranchProviderRejected, "updateFolder", sdkgo.FailureProviderRejection, "Smartsheet rejected folder update")
+		}
+		return sdkgo.NewMutationRetry[FolderSummary](sheetFailure("updateFolder", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	folder, decodeErr := decodeFolderResult(response.body)
 	if decodeErr != nil {
@@ -268,14 +271,17 @@ func (operation DeleteFolderOperation) Invoke(call sdkgo.Call, input DeleteFolde
 	if errors.Is(response.err, errCredential) {
 		return folderDeleteBranch(DeleteFolderBranchDefect, sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 && isDefiniteSheetRefusal(response) {
 		return folderDeleteBranch(DeleteFolderBranchNotFound, sdkgo.FailureNotFound, "Smartsheet did not find the folder")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 && isDefiniteSheetRefusal(response) {
 		return sdkgo.NewMutationBranch(DeleteFolderBranchDeleted, DeleteFolderOutput{FolderID: input.FolderID}, nil, sheetReceipt(call, strconv.FormatInt(input.FolderID, 10)))
 	}
 	if response.status != http.StatusOK {
-		return folderDeleteBranch(DeleteFolderBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected folder deletion")
+		if isDefiniteSheetRefusal(response) {
+			return folderDeleteBranch(DeleteFolderBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected folder deletion")
+		}
+		return sdkgo.NewMutationRetry[DeleteFolderOutput](sheetFailure("deleteFolder", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	if !validSuccessEnvelope(response.body) {
 		return sdkgo.NewMutationRetry[DeleteFolderOutput](sheetFailure("deleteFolder", sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation"), 0)

@@ -1051,7 +1051,7 @@
       "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"STATUS\":\"ERROR\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1343,7 +1343,7 @@
       "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"STATUS\":\"ERROR\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2506,7 +2506,7 @@
       "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"STATUS\":\"ERROR\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2749,6 +2749,888 @@
       },
       "name": "updateProject-transportFailure",
       "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-safe-unknown-409",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-safe-unknown-405",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-safe-unknown-empty-refusal",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-safe-unknown-malformed-success",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-safe-unknown-409",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-safe-unknown-405",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-safe-unknown-empty-refusal",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-safe-unknown-malformed-success",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-safe-unknown-409",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-safe-unknown-405",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-safe-unknown-empty-refusal",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-safe-unknown-malformed-success",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-safe-unknown-contradictory-refusal",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-safe-unknown-contradictory-success",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-safe-unknown-contradictory-refusal",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-safe-unknown-contradictory-success",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-safe-unknown-contradictory-refusal",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-safe-unknown-contradictory-success",
+      "operation": "updateTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebab701b-5aaf-5ada-9761-e7d3d7201551",
+      "input": {
+        "taskId": "12345"
+      },
+      "name": "deleteTask-safe-retry-503",
+      "operation": "deleteTask"
+    },
+    {
+      "attempts": 1,
+      "callId": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123.json",
+          "requestBody": {
+            "project": {
+              "name": "Launch 2"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "075b7a3e-2afa-57af-8cfc-77c5a21d4cd1",
+      "input": {
+        "name": "Launch 2",
+        "projectId": "123"
+      },
+      "name": "updateProject-safe-retry-503",
+      "operation": "updateProject"
+    },
+    {
+      "attempts": 1,
+      "callId": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/projects/api/v3/tasks/12345.json",
+          "requestBody": {
+            "task": {
+              "name": "Renamed task"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXRlYW13b3JrLWFwaS10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e7f23b7-1478-5e80-b9f2-7a1140550e07",
+      "input": {
+        "name": "Renamed task",
+        "taskId": "12345"
+      },
+      "name": "updateTask-safe-retry-503",
+      "operation": "updateTask"
     }
   ],
   "schemaVersion": 1

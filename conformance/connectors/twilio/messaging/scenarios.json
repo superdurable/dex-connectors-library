@@ -2772,6 +2772,474 @@
       },
       "name": "redactMessage_transport",
       "operation": "redactMessage"
+    },
+    {
+      "callId": "b3872261-b551-5017-8a95-d87503061b02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3872261-b551-5017-8a95-d87503061b02",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "deleteMessage-safe-unknown-409",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "b3872261-b551-5017-8a95-d87503061b02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3872261-b551-5017-8a95-d87503061b02",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "deleteMessage-safe-unknown-405",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "b3872261-b551-5017-8a95-d87503061b02",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3872261-b551-5017-8a95-d87503061b02",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "deleteMessage-safe-unknown-empty-refusal",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "b3872261-b551-5017-8a95-d87503061b02",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3872261-b551-5017-8a95-d87503061b02",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "deleteMessage-safe-unknown-malformed-success",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "Body": [
+              ""
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "redactMessage-safe-unknown-409",
+      "operation": "redactMessage"
+    },
+    {
+      "callId": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "Body": [
+              ""
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "redactMessage-safe-unknown-405",
+      "operation": "redactMessage"
+    },
+    {
+      "callId": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "Body": [
+              ""
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "redactMessage-safe-unknown-empty-refusal",
+      "operation": "redactMessage"
+    },
+    {
+      "callId": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "exchanges": [
+        {
+          "body": "{",
+          "form": {
+            "Body": [
+              ""
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "redactMessage-safe-unknown-malformed-success",
+      "operation": "redactMessage"
+    },
+    {
+      "callId": "b3872261-b551-5017-8a95-d87503061b02",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3872261-b551-5017-8a95-d87503061b02",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "deleteMessage-safe-unknown-contradictory-refusal",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "b3872261-b551-5017-8a95-d87503061b02",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3872261-b551-5017-8a95-d87503061b02",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "deleteMessage-safe-unknown-contradictory-success",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "form": {
+            "Body": [
+              ""
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "redactMessage-safe-unknown-contradictory-refusal",
+      "operation": "redactMessage"
+    },
+    {
+      "callId": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "form": {
+            "Body": [
+              ""
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a11f768-9119-59fd-a592-fe3daf325df6",
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "redactMessage-safe-unknown-contradictory-success",
+      "operation": "redactMessage"
     }
   ],
   "schemaVersion": 1

@@ -196,18 +196,25 @@ func executePaymentWrite(client *Client, call sdkgo.Call, write paymentWriteRequ
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return confirmPaymentWrite(client, call, write, "provider write outcome is unavailable")
 	case response.StatusCode == http.StatusNotFound && write.notFoundBranch != "":
-		return sdkgo.NewMutationBranch(write.notFoundBranch, Payment{}, failureFor(write.operation, sdkgo.FailureNotFound, "payment was not found"), sdkgo.Receipt{})
-	case response.StatusCode == http.StatusUnauthorized:
-		return sdkgo.NewMutationBranch(write.rejectedBranch, Payment{}, failureFor(write.operation, sdkgo.FailureAuthentication, "provider rejected credentials"), sdkgo.Receipt{})
-	case response.StatusCode == http.StatusForbidden:
-		return sdkgo.NewMutationBranch(write.rejectedBranch, Payment{}, failureFor(write.operation, sdkgo.FailureAuthorization, "provider denied access"), sdkgo.Receipt{})
-	case response.StatusCode < 200 || response.StatusCode >= 300:
-		if write.confirmationStatus != "" && (response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusConflict || response.StatusCode == http.StatusUnprocessableEntity) {
-			if confirmed, payment := readPaymentWriteConfirmation(client, call, write); confirmed {
-				return sdkgo.NewMutationBranch(write.successBranch, payment, nil, sdkgo.Receipt{})
-			}
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.notFoundBranch, Payment{}, failureFor(write.operation, sdkgo.FailureNotFound, "payment was not found"), sdkgo.Receipt{})
 		}
-		return sdkgo.NewMutationBranch(write.rejectedBranch, Payment{}, failureFor(write.operation, sdkgo.FailureProviderRejection, "provider rejected write with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Payment](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
+	case response.StatusCode == http.StatusUnauthorized:
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.rejectedBranch, Payment{}, failureFor(write.operation, sdkgo.FailureAuthentication, "provider rejected credentials"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Payment](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
+	case response.StatusCode == http.StatusForbidden:
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.rejectedBranch, Payment{}, failureFor(write.operation, sdkgo.FailureAuthorization, "provider denied access"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Payment](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
+	case response.StatusCode < 200 || response.StatusCode >= 300:
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.rejectedBranch, Payment{}, failureFor(write.operation, sdkgo.FailureProviderRejection, "provider rejected write with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Payment](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

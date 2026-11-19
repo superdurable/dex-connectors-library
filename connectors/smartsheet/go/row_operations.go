@@ -176,11 +176,14 @@ func (operation UpdateRowOperation) Invoke(call sdkgo.Call, input UpdateRowInput
 	if errors.Is(response.err, errCredential) {
 		return rowMutationBranch(UpdateRowBranchDefect, "updateRow", sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSheetRefusal(response) {
 		return rowMutationBranch(UpdateRowBranchNotFound, "updateRow", sdkgo.FailureNotFound, "Smartsheet did not find the row")
 	}
 	if response.status != http.StatusOK {
-		return rowMutationBranch(UpdateRowBranchProviderRejected, "updateRow", sdkgo.FailureProviderRejection, "Smartsheet rejected the update")
+		if isDefiniteSheetRefusal(response) {
+			return rowMutationBranch(UpdateRowBranchProviderRejected, "updateRow", sdkgo.FailureProviderRejection, "Smartsheet rejected the update")
+		}
+		return sdkgo.NewMutationRetry[SheetRow](rowFailure("updateRow", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	row, decodeErr := decodeRowResult(response.body)
 	if decodeErr != nil {
@@ -230,14 +233,17 @@ func (operation DeleteRowOperation) Invoke(call sdkgo.Call, input DeleteRowInput
 	if errors.Is(response.err, errCredential) {
 		return deleteRowBranch(DeleteRowBranchDefect, sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 && isDefiniteSheetRefusal(response) {
 		return deleteRowBranch(DeleteRowBranchNotFound, sdkgo.FailureNotFound, "Smartsheet did not find the row")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 && isDefiniteSheetRefusal(response) {
 		return sdkgo.NewMutationBranch(DeleteRowBranchDeleted, DeleteRowOutput{RowID: input.RowID}, nil, rowReceipt(call, strconv.FormatInt(input.RowID, 10)))
 	}
 	if response.status != http.StatusOK {
-		return deleteRowBranch(DeleteRowBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected row deletion")
+		if isDefiniteSheetRefusal(response) {
+			return deleteRowBranch(DeleteRowBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected row deletion")
+		}
+		return sdkgo.NewMutationRetry[DeleteRowOutput](rowFailure("deleteRow", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	if !validSuccessEnvelope(response.body) {
 		return sdkgo.NewMutationRetry[DeleteRowOutput](rowFailure("deleteRow", sdkgo.FailureProtocol, "Smartsheet returned invalid delete confirmation"), 0)

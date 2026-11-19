@@ -240,11 +240,14 @@ func (operation UpdateCollectorOperation) Invoke(call sdkgo.Call, input UpdateCo
 	if response.err == errCredential {
 		return surveyMutationBranch(UpdateCollectorBranchDefect, CollectorMetadata{}, "updateCollector", sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSurveyRefusal(response) {
 		return surveyMutationBranch(UpdateCollectorBranchNotFound, CollectorMetadata{}, "updateCollector", sdkgo.FailureNotFound, "collector was not found")
 	}
 	if response.status != http.StatusOK {
-		return surveyMutationBranch(UpdateCollectorBranchProviderRejected, CollectorMetadata{}, "updateCollector", surveyFailureKind(response), "SurveyMonkey rejected the collector update")
+		if isDefiniteSurveyRefusal(response) {
+			return surveyMutationBranch(UpdateCollectorBranchProviderRejected, CollectorMetadata{}, "updateCollector", surveyFailureKind(response), "SurveyMonkey rejected the collector update")
+		}
+		return sdkgo.NewMutationRetry[CollectorMetadata](queryFailure("updateCollector", sdkgo.FailureAvailability, "collector update outcome is unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return sdkgo.NewMutationRetry[CollectorMetadata](queryFailure("updateCollector", sdkgo.FailureResponseTooLarge, "collector response exceeded the limit"), 0)
@@ -286,10 +289,13 @@ func (operation DeleteCollectorOperation) Invoke(call sdkgo.Call, input DeleteCo
 	if response.err == errCredential {
 		return surveyMutationBranch(DeleteCollectorBranchDefect, DeleteCollectorOutput{}, "deleteCollector", sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
-	if response.status != http.StatusNoContent && response.status != http.StatusOK && response.status != http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSurveyRefusal(response) || isDefiniteSurveyDeleteSuccess(response, input.CollectorID) {
+		return sdkgo.NewMutationBranch(DeleteCollectorBranchDeleted, DeleteCollectorOutput{ID: input.CollectorID}, nil, sdkgo.Receipt{})
+	}
+	if isDefiniteSurveyRefusal(response) {
 		return surveyMutationBranch(DeleteCollectorBranchProviderRejected, DeleteCollectorOutput{}, "deleteCollector", surveyFailureKind(response), "SurveyMonkey rejected the collector delete")
 	}
-	return sdkgo.NewMutationBranch(DeleteCollectorBranchDeleted, DeleteCollectorOutput{ID: input.CollectorID}, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationRetry[DeleteCollectorOutput](queryFailure("deleteCollector", sdkgo.FailureAvailability, "collector delete outcome is unknown"), response.retryAfter)
 }
 
 func decodeCollectorsPage(body []byte, input ListCollectorsInput) (CollectorsPage, error) {

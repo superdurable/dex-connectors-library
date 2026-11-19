@@ -308,7 +308,10 @@ func executeInvoiceMutation(client *Client, call sdkgo.Call, write invoiceWriteR
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[Invoice](*failureFor(write.operation, sdkgo.FailureAvailability, "provider invoice write is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(write.rejectedBranch, Invoice{}, failureFor(write.operation, sdkgo.FailureProviderRejection, "provider rejected invoice write with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.rejectedBranch, Invoice{}, failureFor(write.operation, sdkgo.FailureProviderRejection, "provider rejected invoice write with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Invoice](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -350,9 +353,15 @@ func (operation DeleteInvoiceOperation) Invoke(call sdkgo.Call, input DeleteInvo
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[DeletedInvoice](*failureFor("deleteInvoice", sdkgo.FailureAvailability, "provider invoice deletion is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusNotFound:
-		return sdkgo.NewMutationBranch(DeleteInvoiceBranchNotFound, DeletedInvoice{}, failureFor("deleteInvoice", sdkgo.FailureNotFound, "invoice was not found"), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(DeleteInvoiceBranchNotFound, DeletedInvoice{}, failureFor("deleteInvoice", sdkgo.FailureNotFound, "invoice was not found"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[DeletedInvoice](*failureFor("deleteInvoice", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(DeleteInvoiceBranchProviderRejected, DeletedInvoice{}, failureFor("deleteInvoice", sdkgo.FailureProviderRejection, "provider rejected invoice deletion with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(DeleteInvoiceBranchProviderRejected, DeletedInvoice{}, failureFor("deleteInvoice", sdkgo.FailureProviderRejection, "provider rejected invoice deletion with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[DeletedInvoice](*failureFor("deleteInvoice", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -362,7 +371,7 @@ func (operation DeleteInvoiceOperation) Invoke(call sdkgo.Call, input DeleteInvo
 		return sdkgo.NewMutationRetry[DeletedInvoice](*failureFor("deleteInvoice", sdkgo.FailureAvailability, "provider invoice delete response was interrupted"), 0)
 	}
 	var deletedResponse map[string]any
-	if err := json.Unmarshal(responseBody, &deletedResponse); err != nil || deletedResponse == nil {
+	if err := json.Unmarshal(responseBody, &deletedResponse); err != nil || deletedResponse == nil || len(deletedResponse) != 0 {
 		return sdkgo.NewMutationRetry[DeletedInvoice](*failureFor("deleteInvoice", sdkgo.FailureProtocol, "provider returned invalid invoice JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteInvoiceBranchDeleted, DeletedInvoice{InvoiceID: input.InvoiceID}, nil, sdkgo.Receipt{})

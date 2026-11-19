@@ -332,9 +332,25 @@ func (operation DeleteCustomerOperation) Invoke(call sdkgo.Call, input DeleteCus
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[DeletedCustomer](*failureFor("deleteCustomer", sdkgo.FailureAvailability, "provider customer deletion is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusNotFound:
-		return sdkgo.NewMutationBranch(DeleteCustomerBranchNotFound, DeletedCustomer{}, failureFor("deleteCustomer", sdkgo.FailureNotFound, "customer was not found"), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(DeleteCustomerBranchNotFound, DeletedCustomer{}, failureFor("deleteCustomer", sdkgo.FailureNotFound, "customer was not found"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[DeletedCustomer](*failureFor("deleteCustomer", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(DeleteCustomerBranchProviderRejected, DeletedCustomer{}, failureFor("deleteCustomer", sdkgo.FailureProviderRejection, "provider rejected customer deletion with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, operation.client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(DeleteCustomerBranchProviderRejected, DeletedCustomer{}, failureFor("deleteCustomer", sdkgo.FailureProviderRejection, "provider rejected customer deletion with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[DeletedCustomer](*failureFor("deleteCustomer", sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	if err != nil || response.StatusCode == http.StatusNoContent && len(body) != 0 {
+		return sdkgo.NewMutationRetry[DeletedCustomer](*failureFor("deleteCustomer", sdkgo.FailureProtocol, "provider delete response is invalid"), 0)
+	}
+	if response.StatusCode != http.StatusNoContent {
+		var payload map[string]json.RawMessage
+		if json.Unmarshal(body, &payload) != nil || len(payload) != 0 {
+			return sdkgo.NewMutationRetry[DeletedCustomer](*failureFor("deleteCustomer", sdkgo.FailureProtocol, "provider delete response is invalid"), 0)
+		}
 	}
 	return sdkgo.NewMutationBranch(DeleteCustomerBranchDeleted, DeletedCustomer{CustomerID: input.CustomerID}, nil, sdkgo.Receipt{})
 }
@@ -381,9 +397,15 @@ func executeCustomerMutation(client *Client, call sdkgo.Call, write customerWrit
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[Customer](*failureFor(write.operation, sdkgo.FailureAvailability, "provider customer write is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusNotFound && write.notFoundBranch != "":
-		return sdkgo.NewMutationBranch(write.notFoundBranch, Customer{}, failureFor(write.operation, sdkgo.FailureNotFound, "customer was not found"), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.notFoundBranch, Customer{}, failureFor(write.operation, sdkgo.FailureNotFound, "customer was not found"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Customer](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		return sdkgo.NewMutationBranch(write.rejectedBranch, Customer{}, failureFor(write.operation, sdkgo.FailureProviderRejection, "provider rejected customer write with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		if isDefiniteSquareWriteRefusal(response, client.maxResponseBytes) {
+			return sdkgo.NewMutationBranch(write.rejectedBranch, Customer{}, failureFor(write.operation, sdkgo.FailureProviderRejection, "provider rejected customer write with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[Customer](*failureFor(write.operation, sdkgo.FailureAvailability, "provider write outcome is unknown"), 0)
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

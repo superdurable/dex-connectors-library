@@ -306,11 +306,14 @@ func (operation UpdateSourceOperation) Invoke(call sdkgo.Call, input UpdateSourc
 	if errors.Is(response.err, errCredential) {
 		return sourceMutationBranch[SourceProfile]("updateSource", UpdateSourceBranchDefect, sdkgo.FailureAuthentication, "Segment credentials are unavailable or invalid")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSegmentRefusal(response) {
 		return sourceMutationBranch[SourceProfile]("updateSource", UpdateSourceBranchNotFound, sdkgo.FailureNotFound, "Segment did not expose the source")
 	}
 	if response.status != http.StatusOK {
-		return sourceMutationBranch[SourceProfile]("updateSource", UpdateSourceBranchProviderRejected, sdkgo.FailureProviderRejection, "Segment rejected the source update")
+		if isDefiniteSegmentRefusal(response) {
+			return sourceMutationBranch[SourceProfile]("updateSource", UpdateSourceBranchProviderRejected, sdkgo.FailureProviderRejection, "Segment rejected the source update")
+		}
+		return sdkgo.NewMutationRetry[SourceProfile](managementFailure("updateSource", sdkgo.FailureAvailability, "Segment source update outcome is unknown"), response.retryAfter)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[SourceProfile](managementFailure("updateSource", sdkgo.FailureTransport, "Segment update response was interrupted"), 0)
@@ -342,10 +345,31 @@ func (operation DeleteSourceOperation) Invoke(call sdkgo.Call, input DeleteSourc
 	if errors.Is(response.err, errCredential) {
 		return sourceMutationBranch[DeletedSource]("deleteSource", DeleteSourceBranchDefect, sdkgo.FailureAuthentication, "Segment credentials are unavailable or invalid")
 	}
-	if response.status == http.StatusOK || response.status == http.StatusNoContent || response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSegmentRefusal(response) || isDefiniteSegmentDeleteSuccess(response) {
 		return sdkgo.NewMutationBranch(DeleteSourceBranchDeleted, DeletedSource{SourceID: input.SourceID}, nil, sdkgo.Receipt{})
 	}
-	return sourceMutationBranch[DeletedSource]("deleteSource", DeleteSourceBranchProviderRejected, sdkgo.FailureProviderRejection, "Segment rejected the source deletion")
+	if isDefiniteSegmentRefusal(response) {
+		return sourceMutationBranch[DeletedSource]("deleteSource", DeleteSourceBranchProviderRejected, sdkgo.FailureProviderRejection, "Segment rejected the source deletion")
+	}
+	return sdkgo.NewMutationRetry[DeletedSource](managementFailure("deleteSource", sdkgo.FailureAvailability, "Segment source delete outcome is unknown"), response.retryAfter)
+}
+
+func isDefiniteSegmentDeleteSuccess(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	if response.status == http.StatusNoContent {
+		return len(response.body) == 0
+	}
+	if response.status != http.StatusOK {
+		return false
+	}
+	var envelope struct {
+		Data struct {
+			Status string `json:"status"`
+		} `json:"data"`
+	}
+	return json.Unmarshal(response.body, &envelope) == nil && envelope.Data.Status == "SUCCESS"
 }
 
 func decodeSourceRecord(raw []byte) (SourceProfile, error) {

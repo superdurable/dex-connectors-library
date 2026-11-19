@@ -135,6 +135,9 @@ func (operation UpdateRowOperation) Invoke(call sdkgo.Call, input UpdateRowInput
 		return sdkgo.NewMutationRetry[UpdateRowOutput](*response.failure, response.retryAfter)
 	}
 	if response.failure != nil {
+		if response.branch == "invalidResponse" || response.branch == "providerRejected" && !isDefiniteSupabaseRefusal(response) {
+			return sdkgo.NewMutationRetry[UpdateRowOutput](*response.failure, response.retryAfter)
+		}
 		return sdkgo.NewMutationBranch(response.branch, UpdateRowOutput{}, response.failure, sdkgo.Receipt{})
 	}
 	if !hasResponseShape(response.body, "array") {
@@ -168,6 +171,9 @@ func (operation DeleteRowOperation) Invoke(call sdkgo.Call, input DeleteRowInput
 		return sdkgo.NewMutationRetry[DeleteRowOutput](*response.failure, response.retryAfter)
 	}
 	if response.failure != nil {
+		if response.branch == "invalidResponse" || response.branch == "providerRejected" && !isDefiniteSupabaseRefusal(response) {
+			return sdkgo.NewMutationRetry[DeleteRowOutput](*response.failure, response.retryAfter)
+		}
 		return sdkgo.NewMutationBranch(response.branch, DeleteRowOutput{}, response.failure, sdkgo.Receipt{})
 	}
 	if !hasResponseShape(response.body, "array") {

@@ -1433,6 +1433,480 @@
         "sendCount": 3,
         "state": "claimed"
       }
+    },
+    {
+      "callId": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sources/source123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "input": {
+        "sourceId": "source123"
+      },
+      "name": "deleteSource-safe-unknown-409",
+      "operation": "deleteSource"
+    },
+    {
+      "callId": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sources/source123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "input": {
+        "sourceId": "source123"
+      },
+      "name": "deleteSource-safe-unknown-405",
+      "operation": "deleteSource"
+    },
+    {
+      "callId": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sources/source123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "input": {
+        "sourceId": "source123"
+      },
+      "name": "deleteSource-safe-unknown-empty-refusal",
+      "operation": "deleteSource"
+    },
+    {
+      "callId": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sources/source123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "input": {
+        "sourceId": "source123"
+      },
+      "name": "deleteSource-safe-unknown-malformed-success",
+      "operation": "deleteSource"
+    },
+    {
+      "callId": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/sources/source123",
+          "requestBody": {
+            "enabled": true,
+            "name": "Updated Source"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "input": {
+        "enabled": true,
+        "name": "Updated Source",
+        "sourceId": "source123"
+      },
+      "name": "updateSource-safe-unknown-409",
+      "operation": "updateSource"
+    },
+    {
+      "callId": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/sources/source123",
+          "requestBody": {
+            "enabled": true,
+            "name": "Updated Source"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "input": {
+        "enabled": true,
+        "name": "Updated Source",
+        "sourceId": "source123"
+      },
+      "name": "updateSource-safe-unknown-405",
+      "operation": "updateSource"
+    },
+    {
+      "callId": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/sources/source123",
+          "requestBody": {
+            "enabled": true,
+            "name": "Updated Source"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "input": {
+        "enabled": true,
+        "name": "Updated Source",
+        "sourceId": "source123"
+      },
+      "name": "updateSource-safe-unknown-empty-refusal",
+      "operation": "updateSource"
+    },
+    {
+      "callId": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/sources/source123",
+          "requestBody": {
+            "enabled": true,
+            "name": "Updated Source"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "input": {
+        "enabled": true,
+        "name": "Updated Source",
+        "sourceId": "source123"
+      },
+      "name": "updateSource-safe-unknown-malformed-success",
+      "operation": "updateSource"
+    },
+    {
+      "callId": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sources/source123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "input": {
+        "sourceId": "source123"
+      },
+      "name": "deleteSource-safe-unknown-contradictory-refusal",
+      "operation": "deleteSource"
+    },
+    {
+      "callId": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sources/source123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5457d1-0952-53f6-82ae-c259d72dc707",
+      "input": {
+        "sourceId": "source123"
+      },
+      "name": "deleteSource-safe-unknown-contradictory-success",
+      "operation": "deleteSource"
+    },
+    {
+      "callId": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/sources/source123",
+          "requestBody": {
+            "enabled": true,
+            "name": "Updated Source"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "input": {
+        "enabled": true,
+        "name": "Updated Source",
+        "sourceId": "source123"
+      },
+      "name": "updateSource-safe-unknown-contradictory-refusal",
+      "operation": "updateSource"
+    },
+    {
+      "callId": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/sources/source123",
+          "requestBody": {
+            "enabled": true,
+            "name": "Updated Source"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-segment-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "804402e2-da87-54f8-8beb-62bd87c2a320",
+      "input": {
+        "enabled": true,
+        "name": "Updated Source",
+        "sourceId": "source123"
+      },
+      "name": "updateSource-safe-unknown-contradictory-success",
+      "operation": "updateSource"
     }
   ],
   "schemaVersion": 1

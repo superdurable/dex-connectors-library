@@ -177,11 +177,14 @@ func (operation UpdateSurveyOperation) Invoke(call sdkgo.Call, input UpdateSurve
 	if response.err == errCredential {
 		return surveyMutationBranch(UpdateSurveyBranchDefect, SurveyMetadata{}, "updateSurvey", sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSurveyRefusal(response) {
 		return surveyMutationBranch(UpdateSurveyBranchNotFound, SurveyMetadata{}, "updateSurvey", sdkgo.FailureNotFound, "survey was not found")
 	}
 	if response.status != http.StatusOK {
-		return surveyMutationBranch(UpdateSurveyBranchProviderRejected, SurveyMetadata{}, "updateSurvey", surveyFailureKind(response), "SurveyMonkey rejected the survey update with HTTP "+strconv.Itoa(response.status))
+		if isDefiniteSurveyRefusal(response) {
+			return surveyMutationBranch(UpdateSurveyBranchProviderRejected, SurveyMetadata{}, "updateSurvey", surveyFailureKind(response), "SurveyMonkey rejected the survey update with HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[SurveyMetadata](queryFailure("updateSurvey", sdkgo.FailureAvailability, "survey update outcome is unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return sdkgo.NewMutationRetry[SurveyMetadata](queryFailure("updateSurvey", sdkgo.FailureResponseTooLarge, "survey response exceeded the limit"), 0)
@@ -219,10 +222,13 @@ func (operation DeleteSurveyOperation) Invoke(call sdkgo.Call, input DeleteSurve
 	if response.err == errCredential {
 		return surveyMutationBranch(DeleteSurveyBranchDefect, DeleteSurveyOutput{}, "deleteSurvey", sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
-	if response.status != http.StatusNoContent && response.status != http.StatusOK && response.status != http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSurveyRefusal(response) || isDefiniteSurveyDeleteSuccess(response, input.SurveyID) {
+		return sdkgo.NewMutationBranch(DeleteSurveyBranchDeleted, DeleteSurveyOutput{ID: input.SurveyID}, nil, sdkgo.Receipt{})
+	}
+	if isDefiniteSurveyRefusal(response) {
 		return surveyMutationBranch(DeleteSurveyBranchProviderRejected, DeleteSurveyOutput{}, "deleteSurvey", surveyFailureKind(response), "SurveyMonkey rejected the survey delete with HTTP "+strconv.Itoa(response.status))
 	}
-	return sdkgo.NewMutationBranch(DeleteSurveyBranchDeleted, DeleteSurveyOutput{ID: input.SurveyID}, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationRetry[DeleteSurveyOutput](queryFailure("deleteSurvey", sdkgo.FailureAvailability, "survey delete outcome is unknown"), response.retryAfter)
 }
 
 type surveyHTTPResponse struct {
@@ -294,11 +300,28 @@ func isDefiniteSurveyRefusal(response surveyHTTPResponse) bool {
 	default:
 		return false
 	}
-	var body struct {
-		Error string `json:"error"`
-		ID    string `json:"id"`
+	var body map[string]json.RawMessage
+	if json.Unmarshal(response.body, &body) != nil || len(body) != 1 {
+		return false
 	}
-	return json.Unmarshal(response.body, &body) == nil && body.Error != "" && body.ID == ""
+	var errorMessage string
+	return json.Unmarshal(body["error"], &errorMessage) == nil && errorMessage != ""
+}
+
+func isDefiniteSurveyDeleteSuccess(response surveyHTTPResponse, resourceID string) bool {
+	if response.err != nil {
+		return false
+	}
+	if response.status == http.StatusNoContent {
+		return len(response.body) == 0
+	}
+	if response.status != http.StatusOK {
+		return false
+	}
+	var body struct {
+		ID string `json:"id"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && body.ID == resourceID
 }
 
 func surveyMutationBranch[T any](branch sdkgo.BranchID, value T, operation string, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[T] {

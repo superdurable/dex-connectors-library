@@ -160,7 +160,7 @@ func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Co
 	}
 	if response.StatusCode != successStatus && !(operationID == "upsertRows" && response.StatusCode == http.StatusOK) {
 		var refusalBody []byte
-		if operationID == "createRow" {
+		if operationID == "createRow" || operationID == "updateRow" || operationID == "deleteRow" {
 			refusalBody, err = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 			if err != nil {
 				return providerResponse{status: response.StatusCode, retry: true, failure: failure(operationID, sdkgo.FailureProtocol, "provider rejection body could not be read")}

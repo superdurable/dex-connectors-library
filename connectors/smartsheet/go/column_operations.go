@@ -218,11 +218,14 @@ func (operation UpdateColumnOperation) Invoke(call sdkgo.Call, input UpdateColum
 	if errors.Is(response.err, errCredential) {
 		return columnMutationBranch(UpdateColumnBranchDefect, "updateColumn", sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSheetRefusal(response) {
 		return columnMutationBranch(UpdateColumnBranchNotFound, "updateColumn", sdkgo.FailureNotFound, "Smartsheet did not find the column")
 	}
 	if response.status != http.StatusOK {
-		return columnMutationBranch(UpdateColumnBranchProviderRejected, "updateColumn", sdkgo.FailureProviderRejection, "Smartsheet rejected the column update")
+		if isDefiniteSheetRefusal(response) {
+			return columnMutationBranch(UpdateColumnBranchProviderRejected, "updateColumn", sdkgo.FailureProviderRejection, "Smartsheet rejected the column update")
+		}
+		return sdkgo.NewMutationRetry[ColumnSummary](sheetFailure("updateColumn", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	column, decodeErr := decodeColumnResult(response.body, false)
 	if decodeErr != nil {
@@ -271,14 +274,17 @@ func (operation DeleteColumnOperation) Invoke(call sdkgo.Call, input DeleteColum
 	if errors.Is(response.err, errCredential) {
 		return columnDeleteBranch(DeleteColumnBranchDefect, sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 && isDefiniteSheetRefusal(response) {
 		return columnDeleteBranch(DeleteColumnBranchNotFound, sdkgo.FailureNotFound, "Smartsheet did not find the column")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 && isDefiniteSheetRefusal(response) {
 		return sdkgo.NewMutationBranch(DeleteColumnBranchDeleted, DeleteColumnOutput{ColumnID: input.ColumnID}, nil, sheetReceipt(call, strconv.FormatInt(input.ColumnID, 10)))
 	}
 	if response.status != http.StatusOK {
-		return columnDeleteBranch(DeleteColumnBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected column deletion")
+		if isDefiniteSheetRefusal(response) {
+			return columnDeleteBranch(DeleteColumnBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected column deletion")
+		}
+		return sdkgo.NewMutationRetry[DeleteColumnOutput](sheetFailure("deleteColumn", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	if !validSuccessEnvelope(response.body) {
 		return sdkgo.NewMutationRetry[DeleteColumnOutput](sheetFailure("deleteColumn", sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation"), 0)

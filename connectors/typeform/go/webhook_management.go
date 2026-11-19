@@ -4,10 +4,12 @@
 package typeform
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 // ListWebhooksInput identifies a form whose webhooks should be listed.
@@ -150,14 +152,37 @@ func (operation DeleteWebhookOperation) Invoke(call sdkgo.Call, input DeleteWebh
 		return mutationAttempt[DeletedWebhook](client, credentialOutcome(operationID, err), "")
 	}
 	response, err := client.sendTypeformRequest(call.Context, credentials, http.MethodDelete, "/forms/"+input.FormID+"/webhooks/"+url.PathEscape(input.Tag), nil, nil)
-	if err == nil && (response.statusCode >= 200 && response.statusCode < 300 || response.statusCode == http.StatusNotFound) {
+	if err != nil {
+		return sdkgo.NewMutationRetry[DeletedWebhook](typeformFailure(operationID, sdkgo.FailureTransport, "Typeform webhook delete outcome is unknown"), 0)
+	}
+	if response.statusCode == http.StatusNoContent && len(response.body) == 0 || response.statusCode == http.StatusNotFound && isDefiniteTypeformDeleteRefusal(response) && typeformErrorCode(response.body) == "NOT_EXISTING_ID" {
 		return sdkgo.NewMutationBranch(DeleteWebhookBranchDeleted, DeletedWebhook{FormID: input.FormID, Tag: input.Tag}, nil, client.typeformReceipt(input.Tag))
 	}
-	branches := failureBranches{providerRejected: DeleteWebhookBranchProviderRejected}
-	if outcome, terminal := classifyExchange(client, operationID, response, err, branches); terminal {
-		return mutationAttempt[DeletedWebhook](client, outcome, input.Tag)
+	if response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable {
+		return sdkgo.NewMutationRetry[DeletedWebhook](typeformFailure(operationID, sdkgo.FailureAvailability, "Typeform temporarily refused the webhook delete"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
 	}
-	return sdkgo.NewMutationRetry[DeletedWebhook](typeformFailure(operationID, sdkgo.FailureProtocol, "Typeform returned an unexpected webhook deletion status"), 0)
+	if isDefiniteTypeformDeleteRefusal(response) {
+		return mutationAttempt[DeletedWebhook](client, exchangeOutcome{branch: DeleteWebhookBranchProviderRejected, failure: typeformFailure(operationID, sdkgo.FailureProviderRejection, "Typeform rejected the webhook delete")}, input.Tag)
+	}
+	return sdkgo.NewMutationRetry[DeletedWebhook](typeformFailure(operationID, sdkgo.FailureAvailability, "Typeform webhook delete outcome is unknown"), 0)
+}
+
+func isDefiniteTypeformDeleteRefusal(response typeformResponse) bool {
+	if response.isErrorBodyIncomplete {
+		return false
+	}
+	switch response.statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body map[string]json.RawMessage
+	if json.Unmarshal(response.body, &body) != nil || len(body) != 1 {
+		return false
+	}
+	return typeformErrorCode(response.body) != ""
 }
 
 func validateWebhookIdentity(formID, tag string) error {

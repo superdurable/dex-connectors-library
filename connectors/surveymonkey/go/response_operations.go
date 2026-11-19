@@ -106,10 +106,13 @@ func (operation DeleteResponseOperation) Invoke(call sdkgo.Call, input DeleteRes
 	if response.err == errCredential {
 		return surveyMutationBranch(DeleteResponseBranchDefect, DeleteResponseOutput{}, "deleteResponse", sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
-	if response.status != http.StatusNoContent && response.status != http.StatusOK && response.status != http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSurveyRefusal(response) || isDefiniteSurveyDeleteSuccess(response, input.ResponseID) {
+		return sdkgo.NewMutationBranch(DeleteResponseBranchDeleted, DeleteResponseOutput{ID: input.ResponseID}, nil, sdkgo.Receipt{})
+	}
+	if isDefiniteSurveyRefusal(response) {
 		return surveyMutationBranch(DeleteResponseBranchProviderRejected, DeleteResponseOutput{}, "deleteResponse", surveyFailureKind(response), "SurveyMonkey rejected the response delete")
 	}
-	return sdkgo.NewMutationBranch(DeleteResponseBranchDeleted, DeleteResponseOutput{ID: input.ResponseID}, nil, sdkgo.Receipt{})
+	return sdkgo.NewMutationRetry[DeleteResponseOutput](queryFailure("deleteResponse", sdkgo.FailureAvailability, "response delete outcome is unknown"), response.retryAfter)
 }
 
 func decodeResponseIDsPage(body []byte, input ListResponsesInput) (ResponseIDsPage, error) {

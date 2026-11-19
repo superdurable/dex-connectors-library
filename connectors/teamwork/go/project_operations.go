@@ -266,11 +266,14 @@ func (operation UpdateProjectOperation) Invoke(call sdkgo.Call, input UpdateProj
 	if response.err == errCredential {
 		return taskMutationBranch(UpdateProjectBranchDefect, ProjectID{}, "updateProject", sdkgo.FailureAuthentication, "credentials unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteTeamworkRefusal(response) {
 		return taskMutationBranch(UpdateProjectBranchNotFound, ProjectID{}, "updateProject", sdkgo.FailureNotFound, "project not found")
 	}
 	if response.status != http.StatusOK {
-		return taskMutationBranch(UpdateProjectBranchProviderRejected, ProjectID{}, "updateProject", sdkgo.FailureProviderRejection, "Teamwork rejected project update")
+		if isDefiniteTeamworkRefusal(response) {
+			return taskMutationBranch(UpdateProjectBranchProviderRejected, ProjectID{}, "updateProject", sdkgo.FailureProviderRejection, "Teamwork rejected project update")
+		}
+		return sdkgo.NewMutationRetry[ProjectID](taskOperationFailure("updateProject", sdkgo.FailureAvailability, "project update outcome unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return sdkgo.NewMutationRetry[ProjectID](taskOperationFailure("updateProject", sdkgo.FailureResponseTooLarge, "project response exceeded limit"), 0)

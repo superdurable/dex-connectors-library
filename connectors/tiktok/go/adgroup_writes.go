@@ -217,7 +217,10 @@ func (operation UpdateAdgroupOperation) Invoke(call sdkgo.Call, input UpdateAdgr
 		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureAvailability, "TikTok update outcome unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return adgroupWriteBranch(UpdateAdgroupBranchProviderRejected, "updateAdgroup", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteTikTokRefusal(response) {
+			return adgroupWriteBranch(UpdateAdgroupBranchProviderRejected, "updateAdgroup", sdkgo.FailureProviderRejection, "TikTok rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureAvailability, "TikTok update outcome unknown"), response.retryAfter)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureResponseTooLarge, "TikTok response exceeded limit"), 0)
@@ -238,7 +241,7 @@ func (operation UpdateAdgroupOperation) Invoke(call sdkgo.Call, input UpdateAdgr
 		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureAvailability, "TikTok update outcome unknown"), response.retryAfter)
 	}
 	if *envelope.Code != 0 {
-		return adgroupWriteBranch(UpdateAdgroupBranchProviderRejected, "updateAdgroup", sdkgo.FailureProviderRejection, "TikTok rejected update with code "+strconv.Itoa(*envelope.Code))
+		return sdkgo.NewMutationRetry[AdgroupWriteResult](adgroupWriteFailure("updateAdgroup", sdkgo.FailureAvailability, "TikTok update outcome unknown"), response.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(UpdateAdgroupBranchUpdated, AdgroupWriteResult{ID: input.AdgroupID}, nil, sdkgo.Receipt{})
 }

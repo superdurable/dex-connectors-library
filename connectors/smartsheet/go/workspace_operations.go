@@ -220,11 +220,14 @@ func (operation UpdateWorkspaceOperation) Invoke(call sdkgo.Call, input UpdateWo
 	if errors.Is(response.err, errCredential) {
 		return workspaceMutationBranch(UpdateWorkspaceBranchDefect, "updateWorkspace", sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSheetRefusal(response) {
 		return workspaceMutationBranch(UpdateWorkspaceBranchNotFound, "updateWorkspace", sdkgo.FailureNotFound, "Smartsheet did not find the workspace")
 	}
 	if response.status != http.StatusOK {
-		return workspaceMutationBranch(UpdateWorkspaceBranchProviderRejected, "updateWorkspace", sdkgo.FailureProviderRejection, "Smartsheet rejected workspace update")
+		if isDefiniteSheetRefusal(response) {
+			return workspaceMutationBranch(UpdateWorkspaceBranchProviderRejected, "updateWorkspace", sdkgo.FailureProviderRejection, "Smartsheet rejected workspace update")
+		}
+		return sdkgo.NewMutationRetry[WorkspaceSummary](sheetFailure("updateWorkspace", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	workspace, decodeErr := decodeWorkspaceResult(response.body)
 	if decodeErr != nil {
@@ -275,14 +278,17 @@ func (operation DeleteWorkspaceOperation) Invoke(call sdkgo.Call, input DeleteWo
 	if errors.Is(response.err, errCredential) {
 		return workspaceDeleteBranch(DeleteWorkspaceBranchDefect, sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 && isDefiniteSheetRefusal(response) {
 		return workspaceDeleteBranch(DeleteWorkspaceBranchNotFound, sdkgo.FailureNotFound, "Smartsheet did not find the workspace")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 && isDefiniteSheetRefusal(response) {
 		return sdkgo.NewMutationBranch(DeleteWorkspaceBranchDeleted, DeleteWorkspaceOutput{WorkspaceID: input.WorkspaceID}, nil, sheetReceipt(call, strconv.FormatInt(input.WorkspaceID, 10)))
 	}
 	if response.status != http.StatusOK {
-		return workspaceDeleteBranch(DeleteWorkspaceBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected workspace deletion")
+		if isDefiniteSheetRefusal(response) {
+			return workspaceDeleteBranch(DeleteWorkspaceBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected workspace deletion")
+		}
+		return sdkgo.NewMutationRetry[DeleteWorkspaceOutput](sheetFailure("deleteWorkspace", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	if !validSuccessEnvelope(response.body) {
 		return sdkgo.NewMutationRetry[DeleteWorkspaceOutput](sheetFailure("deleteWorkspace", sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation"), 0)

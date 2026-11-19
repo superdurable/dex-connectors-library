@@ -791,14 +791,17 @@ func (operation DeleteMessageOperation) Invoke(call sdkgo.Call, input DeleteMess
 		return sdkgo.NewMutationRetry[DeletedMessage](newFailure("deleteMessage", sdkgo.FailureTransport, "Twilio message deletion is temporarily unavailable"), 0)
 	}
 	switch {
-	case response.statusCode == http.StatusNoContent || response.statusCode == http.StatusNotFound:
+	case response.statusCode == http.StatusNoContent && !response.hasBodyReadFailed && !response.isBodyTooLarge && len(response.body) == 0 || response.statusCode == http.StatusNotFound && isDefiniteTwilioMessageRefusal(response):
 		return sdkgo.NewMutationBranch(DeleteMessageBranchDeleted, DeletedMessage{MessageSID: messageSID}, nil, client.receipt(call, response, messageSID, 0))
 	case response.statusCode == http.StatusTooManyRequests:
 		return sdkgo.NewMutationRetry[DeletedMessage](newFailure("deleteMessage", sdkgo.FailureRateLimit, "Twilio rate limited message deletion"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
 	case response.statusCode == http.StatusRequestTimeout || response.statusCode >= 500:
 		return sdkgo.NewMutationRetry[DeletedMessage](newFailure("deleteMessage", sdkgo.FailureAvailability, "Twilio message deletion is temporarily unavailable"), 0)
 	default:
-		return sdkgo.NewMutationBranch(DeleteMessageBranchProviderRejected, DeletedMessage{}, rejectionFailure("deleteMessage", "message deletion", response.statusCode, readErrorCode(response.body)), client.receipt(call, response, messageSID, readErrorCode(response.body)))
+		if isDefiniteTwilioMessageRefusal(response) {
+			return sdkgo.NewMutationBranch(DeleteMessageBranchProviderRejected, DeletedMessage{}, rejectionFailure("deleteMessage", "message deletion", response.statusCode, readErrorCode(response.body)), client.receipt(call, response, messageSID, readErrorCode(response.body)))
+		}
+		return sdkgo.NewMutationRetry[DeletedMessage](newFailure("deleteMessage", sdkgo.FailureAvailability, "Twilio message deletion outcome is unknown"), 0)
 	}
 }
 
@@ -837,9 +840,15 @@ func (operation RedactMessageOperation) Invoke(call sdkgo.Call, input RedactMess
 	case response.statusCode == http.StatusRequestTimeout || response.statusCode >= 500:
 		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureAvailability, "Twilio message redaction is temporarily unavailable"), 0)
 	case response.statusCode == http.StatusNotFound:
-		return sdkgo.NewMutationBranch(RedactMessageBranchNotFound, Message{}, failurePointer("redactMessage", sdkgo.FailureNotFound, "Twilio has no message with that SID"), client.receipt(call, response, messageSID, 0))
+		if isDefiniteTwilioMessageRefusal(response) {
+			return sdkgo.NewMutationBranch(RedactMessageBranchNotFound, Message{}, failurePointer("redactMessage", sdkgo.FailureNotFound, "Twilio has no message with that SID"), client.receipt(call, response, messageSID, 0))
+		}
+		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureAvailability, "Twilio message redaction outcome is unknown"), 0)
 	case response.statusCode != http.StatusOK:
-		return sdkgo.NewMutationBranch(RedactMessageBranchProviderRejected, Message{}, rejectionFailure("redactMessage", "message redaction", response.statusCode, readErrorCode(response.body)), client.receipt(call, response, messageSID, readErrorCode(response.body)))
+		if isDefiniteTwilioMessageRefusal(response) {
+			return sdkgo.NewMutationBranch(RedactMessageBranchProviderRejected, Message{}, rejectionFailure("redactMessage", "message redaction", response.statusCode, readErrorCode(response.body)), client.receipt(call, response, messageSID, readErrorCode(response.body)))
+		}
+		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureAvailability, "Twilio message redaction outcome is unknown"), 0)
 	case response.hasBodyReadFailed || response.isBodyTooLarge:
 		return sdkgo.NewMutationRetry[Message](newFailure("redactMessage", sdkgo.FailureTransport, "Twilio message redaction response was interrupted"), 0)
 	}
@@ -1275,6 +1284,25 @@ func readErrorCode(body []byte) int {
 		}
 	}
 	return 0
+}
+
+func isDefiniteTwilioMessageRefusal(response providerResponse) bool {
+	if response.hasBodyReadFailed || response.isBodyTooLarge {
+		return false
+	}
+	switch response.statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body map[string]json.RawMessage
+	if json.Unmarshal(response.body, &body) != nil || len(body) != 1 {
+		return false
+	}
+	errorCode := readErrorCode(response.body)
+	return errorCode == 20003 || errorCode == 20404
 }
 
 func rejectionFailure(operationID string, subject string, statusCode int, errorCode int) *sdkgo.Failure {

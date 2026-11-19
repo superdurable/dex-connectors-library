@@ -1258,14 +1258,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "operationStatus": "",
-          "resourceId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1574,14 +1570,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "operationStatus": "",
-          "resourceId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1890,14 +1882,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "operationStatus": "",
-          "resourceId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4814,6 +4802,2029 @@
       },
       "name": "updateAd-transportFailure",
       "operation": "updateAd"
+    },
+    {
+      "callId": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "advertiser_id": "1845123456789012344",
+            "creatives": [
+              {
+                "ad_id": "1845123456789012347",
+                "ad_name": "Updated Ad",
+                "ad_text": "Updated copy"
+              }
+            ],
+            "patch_update": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "input": {
+        "adId": "1845123456789012347",
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "name": "Updated Ad",
+        "text": "Updated copy"
+      },
+      "name": "updateAd-safe-unknown-409",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "advertiser_id": "1845123456789012344",
+            "creatives": [
+              {
+                "ad_id": "1845123456789012347",
+                "ad_name": "Updated Ad",
+                "ad_text": "Updated copy"
+              }
+            ],
+            "patch_update": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "input": {
+        "adId": "1845123456789012347",
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "name": "Updated Ad",
+        "text": "Updated copy"
+      },
+      "name": "updateAd-safe-unknown-405",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "advertiser_id": "1845123456789012344",
+            "creatives": [
+              {
+                "ad_id": "1845123456789012347",
+                "ad_name": "Updated Ad",
+                "ad_text": "Updated copy"
+              }
+            ],
+            "patch_update": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "input": {
+        "adId": "1845123456789012347",
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "name": "Updated Ad",
+        "text": "Updated copy"
+      },
+      "name": "updateAd-safe-unknown-empty-refusal",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "advertiser_id": "1845123456789012344",
+            "creatives": [
+              {
+                "ad_id": "1845123456789012347",
+                "ad_name": "Updated Ad",
+                "ad_text": "Updated copy"
+              }
+            ],
+            "patch_update": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "input": {
+        "adId": "1845123456789012347",
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "name": "Updated Ad",
+        "text": "Updated copy"
+      },
+      "name": "updateAd-safe-unknown-malformed-success",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/status/update/",
+          "requestBody": {
+            "ad_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "input": {
+        "adId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdStatus-safe-unknown-409",
+      "operation": "updateAdStatus"
+    },
+    {
+      "callId": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/status/update/",
+          "requestBody": {
+            "ad_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "input": {
+        "adId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdStatus-safe-unknown-405",
+      "operation": "updateAdStatus"
+    },
+    {
+      "callId": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/status/update/",
+          "requestBody": {
+            "ad_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "input": {
+        "adId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdStatus-safe-unknown-empty-refusal",
+      "operation": "updateAdStatus"
+    },
+    {
+      "callId": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/status/update/",
+          "requestBody": {
+            "ad_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "input": {
+        "adId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdStatus-safe-unknown-malformed-success",
+      "operation": "updateAdStatus"
+    },
+    {
+      "callId": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "adgroup_name": "Updated Adgroup",
+            "advertiser_id": "1845123456789012344",
+            "budget": 70
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "input": {
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "name": "Updated Adgroup"
+      },
+      "name": "updateAdgroup-safe-unknown-409",
+      "operation": "updateAdgroup"
+    },
+    {
+      "callId": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "adgroup_name": "Updated Adgroup",
+            "advertiser_id": "1845123456789012344",
+            "budget": 70
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "input": {
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "name": "Updated Adgroup"
+      },
+      "name": "updateAdgroup-safe-unknown-405",
+      "operation": "updateAdgroup"
+    },
+    {
+      "callId": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "adgroup_name": "Updated Adgroup",
+            "advertiser_id": "1845123456789012344",
+            "budget": 70
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "input": {
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "name": "Updated Adgroup"
+      },
+      "name": "updateAdgroup-safe-unknown-empty-refusal",
+      "operation": "updateAdgroup"
+    },
+    {
+      "callId": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "adgroup_name": "Updated Adgroup",
+            "advertiser_id": "1845123456789012344",
+            "budget": 70
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "input": {
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "name": "Updated Adgroup"
+      },
+      "name": "updateAdgroup-safe-unknown-malformed-success",
+      "operation": "updateAdgroup"
+    },
+    {
+      "callId": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/status/update/",
+          "requestBody": {
+            "adgroup_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "input": {
+        "adgroupId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdgroupStatus-safe-unknown-409",
+      "operation": "updateAdgroupStatus"
+    },
+    {
+      "callId": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/status/update/",
+          "requestBody": {
+            "adgroup_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "input": {
+        "adgroupId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdgroupStatus-safe-unknown-405",
+      "operation": "updateAdgroupStatus"
+    },
+    {
+      "callId": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/status/update/",
+          "requestBody": {
+            "adgroup_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "input": {
+        "adgroupId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdgroupStatus-safe-unknown-empty-refusal",
+      "operation": "updateAdgroupStatus"
+    },
+    {
+      "callId": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/status/update/",
+          "requestBody": {
+            "adgroup_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "input": {
+        "adgroupId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdgroupStatus-safe-unknown-malformed-success",
+      "operation": "updateAdgroupStatus"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 70,
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-safe-unknown-409",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 70,
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-safe-unknown-405",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 70,
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-safe-unknown-empty-refusal",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 70,
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-safe-unknown-malformed-success",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/status/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_ids": [
+              "1845123456789012345"
+            ],
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateCampaignStatus-safe-unknown-409",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/status/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_ids": [
+              "1845123456789012345"
+            ],
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateCampaignStatus-safe-unknown-405",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/status/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_ids": [
+              "1845123456789012345"
+            ],
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateCampaignStatus-safe-unknown-empty-refusal",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/status/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_ids": [
+              "1845123456789012345"
+            ],
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateCampaignStatus-safe-unknown-malformed-success",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "advertiser_id": "1845123456789012344",
+            "creatives": [
+              {
+                "ad_id": "1845123456789012347",
+                "ad_name": "Updated Ad",
+                "ad_text": "Updated copy"
+              }
+            ],
+            "patch_update": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "input": {
+        "adId": "1845123456789012347",
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "name": "Updated Ad",
+        "text": "Updated copy"
+      },
+      "name": "updateAd-safe-unknown-contradictory-refusal",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "advertiser_id": "1845123456789012344",
+            "creatives": [
+              {
+                "ad_id": "1845123456789012347",
+                "ad_name": "Updated Ad",
+                "ad_text": "Updated copy"
+              }
+            ],
+            "patch_update": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "input": {
+        "adId": "1845123456789012347",
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "name": "Updated Ad",
+        "text": "Updated copy"
+      },
+      "name": "updateAd-safe-unknown-contradictory-success",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/status/update/",
+          "requestBody": {
+            "ad_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "input": {
+        "adId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdStatus-safe-unknown-contradictory-refusal",
+      "operation": "updateAdStatus"
+    },
+    {
+      "callId": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/status/update/",
+          "requestBody": {
+            "ad_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "input": {
+        "adId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdStatus-safe-unknown-contradictory-success",
+      "operation": "updateAdStatus"
+    },
+    {
+      "callId": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "adgroup_name": "Updated Adgroup",
+            "advertiser_id": "1845123456789012344",
+            "budget": 70
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "input": {
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "name": "Updated Adgroup"
+      },
+      "name": "updateAdgroup-safe-unknown-contradictory-refusal",
+      "operation": "updateAdgroup"
+    },
+    {
+      "callId": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "adgroup_name": "Updated Adgroup",
+            "advertiser_id": "1845123456789012344",
+            "budget": 70
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "input": {
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "name": "Updated Adgroup"
+      },
+      "name": "updateAdgroup-safe-unknown-contradictory-success",
+      "operation": "updateAdgroup"
+    },
+    {
+      "callId": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/status/update/",
+          "requestBody": {
+            "adgroup_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "input": {
+        "adgroupId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdgroupStatus-safe-unknown-contradictory-refusal",
+      "operation": "updateAdgroupStatus"
+    },
+    {
+      "callId": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/status/update/",
+          "requestBody": {
+            "adgroup_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "input": {
+        "adgroupId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdgroupStatus-safe-unknown-contradictory-success",
+      "operation": "updateAdgroupStatus"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 70,
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-safe-unknown-contradictory-refusal",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 70,
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-safe-unknown-contradictory-success",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/status/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_ids": [
+              "1845123456789012345"
+            ],
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateCampaignStatus-safe-unknown-contradictory-refusal",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/status/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_ids": [
+              "1845123456789012345"
+            ],
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateCampaignStatus-safe-unknown-contradictory-success",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "advertiser_id": "1845123456789012344",
+            "creatives": [
+              {
+                "ad_id": "1845123456789012347",
+                "ad_name": "Updated Ad",
+                "ad_text": "Updated copy"
+              }
+            ],
+            "patch_update": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc0445e0-da10-56a3-8887-41f79395ba13",
+      "input": {
+        "adId": "1845123456789012347",
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "name": "Updated Ad",
+        "text": "Updated copy"
+      },
+      "name": "updateAd-safe-retry-503",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ad/status/update/",
+          "requestBody": {
+            "ad_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2688a796-60bf-55c2-98e5-9cb89ea16ac7",
+      "input": {
+        "adId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdStatus-safe-retry-503",
+      "operation": "updateAdStatus"
+    },
+    {
+      "callId": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/update/",
+          "requestBody": {
+            "adgroup_id": "1845123456789012346",
+            "adgroup_name": "Updated Adgroup",
+            "advertiser_id": "1845123456789012344",
+            "budget": 70
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "973f2163-8a09-5aed-9344-2b7b173863d7",
+      "input": {
+        "adgroupId": "1845123456789012346",
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "name": "Updated Adgroup"
+      },
+      "name": "updateAdgroup-safe-retry-503",
+      "operation": "updateAdgroup"
+    },
+    {
+      "callId": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/adgroup/status/update/",
+          "requestBody": {
+            "adgroup_ids": [
+              "1845123456789012345"
+            ],
+            "advertiser_id": "1845123456789012344",
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9ac68c5a-37f3-562f-a650-37d0d8ffa812",
+      "input": {
+        "adgroupId": "1845123456789012345",
+        "advertiserId": "1845123456789012344",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateAdgroupStatus-safe-retry-503",
+      "operation": "updateAdgroupStatus"
+    },
+    {
+      "callId": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "budget": 70,
+            "campaign_id": "1845123456789012345",
+            "campaign_name": "Updated Campaign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cea6367d-2cc4-5fdf-83e2-975737d63b01",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "budget": 70,
+        "campaignId": "1845123456789012345",
+        "name": "Updated Campaign"
+      },
+      "name": "updateCampaign-safe-retry-503",
+      "operation": "updateCampaign"
+    },
+    {
+      "callId": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaign/status/update/",
+          "requestBody": {
+            "advertiser_id": "1845123456789012344",
+            "campaign_ids": [
+              "1845123456789012345"
+            ],
+            "operation_status": "DISABLE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a999875-5114-5410-b092-6b2bcd5315b3",
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "campaignId": "1845123456789012345",
+        "operationStatus": "DISABLE"
+      },
+      "name": "updateCampaignStatus-safe-retry-503",
+      "operation": "updateCampaignStatus"
     }
   ],
   "schemaVersion": 1

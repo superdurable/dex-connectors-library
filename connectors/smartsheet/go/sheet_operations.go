@@ -194,11 +194,14 @@ func (operation UpdateSheetOperation) Invoke(call sdkgo.Call, input UpdateSheetI
 	if errors.Is(response.err, errCredential) {
 		return sheetSummaryBranch(UpdateSheetBranchDefect, "updateSheet", sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSheetRefusal(response) {
 		return sheetSummaryBranch(UpdateSheetBranchNotFound, "updateSheet", sdkgo.FailureNotFound, "Smartsheet did not find the sheet")
 	}
 	if response.status != http.StatusOK {
-		return sheetSummaryBranch(UpdateSheetBranchProviderRejected, "updateSheet", sdkgo.FailureProviderRejection, "Smartsheet rejected the sheet update")
+		if isDefiniteSheetRefusal(response) {
+			return sheetSummaryBranch(UpdateSheetBranchProviderRejected, "updateSheet", sdkgo.FailureProviderRejection, "Smartsheet rejected the sheet update")
+		}
+		return sdkgo.NewMutationRetry[SheetSummary](sheetFailure("updateSheet", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	summary, decodeErr := decodeSheetSummaryResult(response.body)
 	if decodeErr != nil {
@@ -245,14 +248,17 @@ func (operation DeleteSheetOperation) Invoke(call sdkgo.Call, input DeleteSheetI
 	if errors.Is(response.err, errCredential) {
 		return deleteSheetBranch(DeleteSheetBranchDefect, sdkgo.FailureAuthentication, "Smartsheet credentials are unavailable")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() == 1 && isDefiniteSheetRefusal(response) {
 		return deleteSheetBranch(DeleteSheetBranchNotFound, sdkgo.FailureNotFound, "Smartsheet did not find the sheet")
 	}
-	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 {
+	if response.status == http.StatusNotFound && call.Context.Attempt() > 1 && isDefiniteSheetRefusal(response) {
 		return sdkgo.NewMutationBranch(DeleteSheetBranchDeleted, DeleteSheetOutput{SheetID: input.SheetID}, nil, sheetReceipt(call, strconv.FormatInt(input.SheetID, 10)))
 	}
 	if response.status != http.StatusOK {
-		return deleteSheetBranch(DeleteSheetBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected sheet deletion")
+		if isDefiniteSheetRefusal(response) {
+			return deleteSheetBranch(DeleteSheetBranchProviderRejected, sdkgo.FailureProviderRejection, "Smartsheet rejected sheet deletion")
+		}
+		return sdkgo.NewMutationRetry[DeleteSheetOutput](sheetFailure("deleteSheet", sdkgo.FailureAvailability, "Smartsheet write outcome is unknown"), response.retryAfter)
 	}
 	if !validSuccessEnvelope(response.body) {
 		return sdkgo.NewMutationRetry[DeleteSheetOutput](sheetFailure("deleteSheet", sdkgo.FailureProtocol, "Smartsheet returned invalid deletion confirmation"), 0)

@@ -1238,7 +1238,7 @@
       "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1298,7 +1298,7 @@
       "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1624,7 +1624,7 @@
       "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1668,7 +1668,7 @@
       "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2517,7 +2517,7 @@
       "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2563,7 +2563,7 @@
       "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2813,7 +2813,7 @@
       "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2851,7 +2851,7 @@
       "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4023,7 +4023,7 @@
       "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4071,7 +4071,7 @@
       "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4353,7 +4353,7 @@
       "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4392,7 +4392,7 @@
       "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5504,7 +5504,7 @@
       "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5550,7 +5550,7 @@
       "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5823,7 +5823,7 @@
       "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5861,7 +5861,7 @@
       "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -6978,7 +6978,7 @@
       "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7024,7 +7024,7 @@
       "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -7297,7 +7297,7 @@
       "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Resource not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7335,7 +7335,7 @@
       "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errorCode\":1001,\"message\":\"Request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7527,6 +7527,2855 @@
       },
       "name": "deleteWorkspace-transport",
       "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-safe-unknown-409",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-safe-unknown-405",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-safe-unknown-empty-refusal",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-safe-unknown-malformed-success",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-safe-unknown-409",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-safe-unknown-405",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-safe-unknown-empty-refusal",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-safe-unknown-malformed-success",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-safe-unknown-409",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-safe-unknown-405",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-safe-unknown-empty-refusal",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-safe-unknown-malformed-success",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-safe-unknown-409",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-safe-unknown-405",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-safe-unknown-empty-refusal",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-safe-unknown-malformed-success",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-safe-unknown-409",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-safe-unknown-405",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-safe-unknown-empty-refusal",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-safe-unknown-malformed-success",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-safe-unknown-409",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-safe-unknown-405",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-safe-unknown-empty-refusal",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-safe-unknown-malformed-success",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-safe-unknown-409",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-safe-unknown-405",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-safe-unknown-empty-refusal",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-safe-unknown-malformed-success",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-safe-unknown-409",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-safe-unknown-405",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-safe-unknown-empty-refusal",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-safe-unknown-malformed-success",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-safe-unknown-409",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-safe-unknown-405",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-safe-unknown-empty-refusal",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-safe-unknown-malformed-success",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-safe-unknown-409",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-safe-unknown-405",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-safe-unknown-empty-refusal",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-safe-unknown-malformed-success",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-safe-unknown-contradictory-refusal",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-safe-unknown-contradictory-success",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-safe-unknown-contradictory-refusal",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-safe-unknown-contradictory-success",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-safe-unknown-contradictory-refusal",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-safe-unknown-contradictory-success",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-safe-unknown-contradictory-refusal",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-safe-unknown-contradictory-success",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-safe-unknown-contradictory-refusal",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-safe-unknown-contradictory-success",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-safe-unknown-contradictory-refusal",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-safe-unknown-contradictory-success",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-safe-unknown-contradictory-refusal",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-safe-unknown-contradictory-success",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-safe-unknown-contradictory-refusal",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-safe-unknown-contradictory-success",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-safe-unknown-contradictory-refusal",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-safe-unknown-contradictory-success",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-safe-unknown-contradictory-refusal",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-safe-unknown-contradictory-success",
+      "operation": "updateWorkspace"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-safe-retry-503",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-safe-retry-503",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-safe-retry-503",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7814394e-1f36-5aa3-beaa-a41a00e535c2",
+      "input": {
+        "sheetId": 1001
+      },
+      "name": "deleteSheet-safe-retry-503",
+      "operation": "deleteSheet"
+    },
+    {
+      "callId": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/workspaces/4001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "35d0a123-6543-5691-b800-5e7e3ca07a4e",
+      "input": {
+        "workspaceId": 4001
+      },
+      "name": "deleteWorkspace-safe-retry-503",
+      "operation": "deleteWorkspace"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-safe-retry-503",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-safe-retry-503",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-safe-retry-503",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001",
+          "requestBody": {
+            "name": "Meridian Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3ade499e-d96c-5869-b621-04bb18aec558",
+      "input": {
+        "name": "Meridian Planning",
+        "sheetId": 1001
+      },
+      "name": "updateSheet-safe-retry-503",
+      "operation": "updateSheet"
+    },
+    {
+      "callId": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/workspaces/4001",
+          "requestBody": {
+            "name": "Meridian Workspace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8de0e0d4-4d6d-561a-ad13-10dd84a407b1",
+      "input": {
+        "name": "Meridian Workspace",
+        "workspaceId": 4001
+      },
+      "name": "updateWorkspace-safe-retry-503",
+      "operation": "updateWorkspace"
     }
   ],
   "schemaVersion": 1

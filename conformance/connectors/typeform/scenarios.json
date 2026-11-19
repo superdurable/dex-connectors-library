@@ -2261,7 +2261,7 @@
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
+        "failureKind": "PROVIDER_REJECTION",
         "output": {
           "formId": "",
           "tag": ""
@@ -2341,7 +2341,7 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "RATE_LIMIT",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2446,6 +2446,222 @@
         "tag": "dex-hook"
       },
       "name": "deleteWebhook-defect",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/forms/u6nXL7/webhooks/dex-hook",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "input": {
+        "formId": "u6nXL7",
+        "tag": "dex-hook"
+      },
+      "name": "deleteWebhook-safe-unknown-409",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/forms/u6nXL7/webhooks/dex-hook",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "input": {
+        "formId": "u6nXL7",
+        "tag": "dex-hook"
+      },
+      "name": "deleteWebhook-safe-unknown-405",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/forms/u6nXL7/webhooks/dex-hook",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "input": {
+        "formId": "u6nXL7",
+        "tag": "dex-hook"
+      },
+      "name": "deleteWebhook-safe-unknown-empty-refusal",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/forms/u6nXL7/webhooks/dex-hook",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "input": {
+        "formId": "u6nXL7",
+        "tag": "dex-hook"
+      },
+      "name": "deleteWebhook-safe-unknown-malformed-success",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/forms/u6nXL7/webhooks/dex-hook",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "input": {
+        "formId": "u6nXL7",
+        "tag": "dex-hook"
+      },
+      "name": "deleteWebhook-safe-unknown-contradictory-refusal",
+      "operation": "deleteWebhook"
+    },
+    {
+      "callId": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rejected\",\"result\":{\"id\":\"accepted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/forms/u6nXL7/webhooks/dex-hook",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d8bd75b0-9dfa-56cf-8e7a-e245a0bf0c39",
+      "input": {
+        "formId": "u6nXL7",
+        "tag": "dex-hook"
+      },
+      "name": "deleteWebhook-safe-unknown-contradictory-success",
       "operation": "deleteWebhook"
     }
   ],
