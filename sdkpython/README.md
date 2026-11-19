@@ -538,7 +538,9 @@ assert token.access_token.reveal() == "INERT_ACCESS"
 ## Single dispatch checkpoints
 
 `singledispatch.Marker` uses the Go marker JSON shape. `decide_dispatch`
-allows an initial send or a resend only after the immediately prior attempt
+takes the previous heartbeat as decoded wire JSON, a `dict` or `None`. From
+`0.13.0` it no longer accepts a `Marker` instance, which counts as no marker;
+pass `marker.to_wire()` instead. It allows an initial send or a resend only after the immediately prior attempt
 recorded `notSent` or `canResend` without a provider ID for this call. A
 claimed, missing, stale, or accepted checkpoint requires read-back. A
 heartbeat the SDK cannot read counts as no marker; only a heartbeat read
