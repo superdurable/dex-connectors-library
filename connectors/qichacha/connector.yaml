@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: qichacha
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-qichacha", operations: [getEnterpriseBasicDetails], triggers: []}
   codegen:
     go:
       package: qichacha
