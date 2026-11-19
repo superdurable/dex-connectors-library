@@ -7,3 +7,5 @@ The [official payment result query](https://api-doc.lianlianpay.com/openplatform
 HTTP 429, 408 and 5xx plus transport failures retry. Definite provider rejections take the optional `providerRejected` branch; malformed or oversized responses take `invalidResponse`. The example leaves these branches unwired so the Flow fails when selected. The response is bounded to 256 KiB.
 
 The [runnable Dex Flow](go/examples/payment-status/README.md) demonstrates a static connection, typed input, durable result, strict FDG, and mock-backed integration through a real Dex Worker and Client. Live merchant authorization and production responses remain unverified. The logo is rendered from [LianLian Pay's official brand resources](https://pdcenter.lianlianpay.com/tool.html).
+
+The [TypeScript package](typescript/) exposes `queryPaymentStatus`, replays all Go-recorded provider scenarios, and includes a runnable real Dex Worker/Client example.
