@@ -7,3 +7,5 @@ Open [Zhongke Yunxing](https://www.zhongkeyunx.com), sign in, then create an API
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "zhongkeyunxing"`. Run the worker with `go run .` from its directory, then start `ZhongkeYunxingModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [official developer documentation](https://www.zhongkeyunx.com/brand/guide.html). Real provider authorization is unverified without a customer-controlled Key.
+
+The [TypeScript package](typescript/README.md) implements `listModels` with a [runnable Dex Flow](typescript/examples/model-list/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.
