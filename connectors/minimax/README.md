@@ -39,3 +39,5 @@ References: [MiniMax Token Plan usage endpoint](https://platform.minimaxi.com/su
 and [MiniMax's CLI quota response fixture](https://github.com/MiniMax-AI/cli/blob/main/test/fixtures/quota-response.json).
 
 The [Python getTokenPlanRemains example](python/examples/) provides a runnable Dex Worker and local conformance replay.
+
+The [TypeScript getTokenPlanRemains example](typescript/examples/basic/) runs a Dex Worker and Client, with Go-recorded provider scenarios replayed by the package tests.

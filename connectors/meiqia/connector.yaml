@@ -11,6 +11,7 @@ spec:
   provider: meiqia
   languages:
     python: {version: v0.1.0, operations: [getConversation], triggers: []}
+    typescript: {version: v0.1.0, operations: [getConversation], triggers: []}
   codegen:
     go:
       package: meiqia

@@ -5,3 +5,5 @@ This connector checks one Chinese securities exchange date through the [Tushare 
 Register at [Tushare Pro](https://tushare.pro), open 个人中心 > 接口 TOKEN, copy your secret token, and add a `tushare` Dex Web connection. Check `trade_cal` access and points in 权限中心. Supply `exchange` as `SSE`, `SZSE`, or `BSE`, and `date` as `YYYYMMDD`. The connector sends a fixed `trade_cal` POST over HTTPS and returns only the exchange, date, open flag, and previous trading date. It excludes the token and raw provider response from Flow output and errors. Blank timeout and maxResponseBytes use their displayed defaults.
 
 The [runnable Dex example](go/examples/get-trading-day/) uses a synthetic mock by default. It does not verify live authorization or financial data freshness.
+
+The [Python trading-day Flow](python/examples/get_trading_day/) runs against a real Dex Worker and Client with synthetic calendar data.

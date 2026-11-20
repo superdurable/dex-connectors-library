@@ -7,3 +7,7 @@ The output contains only `remark` and `apiCallCount`; the provider's App Key and
 The [runnable Dex Flow](go/examples/access-client/README.md) demonstrates a static connection, durable result, strict FDG, and a mock backed by a real Dex Worker and Client. Live provider authorization and production responses remain unverified. The logo is the [official Gowu site icon](https://www.gowu.net/icon.svg).
 
 The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.
+
+## Python
+
+The [Python package](python/) provides the same signed application Query and a runnable Dex Worker example.

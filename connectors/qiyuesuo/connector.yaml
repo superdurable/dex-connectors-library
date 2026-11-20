@@ -8,6 +8,8 @@ metadata:
   categories: [files-documents]
   version: v0.1.0
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [listContracts], triggers: []}
   provider: qiyuesuo
   codegen:
     go:

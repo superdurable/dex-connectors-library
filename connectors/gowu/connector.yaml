@@ -8,9 +8,10 @@ metadata:
   categories: [ecommerce]
   version: v0.1.0
 spec:
-  provider: gowu
   languages:
+    python: {version: v0.1.0, operations: [getAccessClient], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-gowu", operations: [getAccessClient], triggers: []}
+  provider: gowu
   codegen:
     go:
       package: gowu

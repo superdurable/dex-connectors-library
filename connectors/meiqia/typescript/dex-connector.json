@@ -1,0 +1,65 @@
+{
+  "connectorId": "meiqia",
+  "releaseTag": "connectors/meiqia/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-meiqia",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetConversationStep",
+      "kind": "query",
+      "operationId": "getConversation",
+      "inputType": "GetConversationInput",
+      "description": "Read only ID, timestamps, and channel for one Meiqia conversation.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "noData",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetConversationInput identifies one Meiqia conversation.",
+        "properties": {
+          "conversationID": {
+            "description": "ConversationID is a positive provider conversation identifier.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conversationID"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

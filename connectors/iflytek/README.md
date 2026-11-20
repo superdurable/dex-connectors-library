@@ -11,3 +11,5 @@ The operation accepts a `prompt` and returns assistant `content`, the selected m
 Run the [Spark Chat example](go/examples/spark-chat) with its static `iflytek` connection. Provider tests use a local HTTP server. A real Spark generation with user credentials, authorization for Lite/Pro/Ultra, and actual token billing remain unverified.
 
 The [Python package](python/) implements `createChatCompletion` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
+
+The [TypeScript package](typescript/) implements the same Query and Go-recorded scenarios. Its runnable Flow tests retry and persistence against a real Dex Worker and Client.

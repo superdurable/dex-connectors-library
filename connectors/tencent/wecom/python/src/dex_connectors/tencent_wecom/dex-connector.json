@@ -1,0 +1,170 @@
+{
+  "connectorId": "wecom",
+  "releaseTag": "connectors/tencent/wecom/go/v0.1.1",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-tencent-wecom",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_send_group_robot_message_step",
+      "kind": "mutation",
+      "operationId": "sendGroupRobotMessage",
+      "inputType": "SendGroupRobotMessageInput",
+      "description": "Post one text or markdown message to the group chat that owns the robot webhook. WeCom offers no idempotency key for robot posts, so an unknown outcome posts again up to the send cap and the group may show a duplicate.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "sent",
+          "field": "sent",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendGroupRobotMessageInput is one post to the group chat that owns the connection's webhook key.",
+        "properties": {
+          "content": {
+            "description": "Content is the UTF-8 message body: at most 2048 bytes for text and 4096 bytes for markdown.",
+            "type": "string"
+          },
+          "mentionedMobileNumbers": {
+            "description": "MentionedMobileNumbers lists member mobile numbers to mention in a text post; \"@all\" mentions everyone. Markdown posts cannot mention.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "mentionedUserIds": {
+            "description": "MentionedUserIDs lists WeCom member user IDs to mention in a text post; \"@all\" mentions everyone. Markdown posts cannot mention.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "messageType": {
+            "description": "MessageType is text or markdown.",
+            "enum": [
+              "markdown",
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "messageType"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_send_application_message_step",
+      "kind": "mutation",
+      "operationId": "sendApplicationMessage",
+      "inputType": "SendApplicationMessageInput",
+      "description": "Send one text or markdown message from a self-built application to members, departments, or tags. Every attempt sends an identical request with WeCom duplicate checking, which suppresses a repeat for four hours; an unknown outcome sends again up to the send cap, and a retry after that window selects uncertain instead of sending.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "sent",
+          "field": "sent",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendApplicationMessageInput is one message from the connection's self-built application. Choose ToAllMembers, or at least one of ToUserIDs, ToDepartmentIDs, and ToTagIDs.",
+        "properties": {
+          "content": {
+            "description": "Content is the UTF-8 message body of at most 2048 bytes.",
+            "type": "string"
+          },
+          "isConfidential": {
+            "description": "IsConfidential marks a text message as confidential: WeCom blocks forwarding and adds a watermark. Markdown messages cannot set it.",
+            "type": "boolean"
+          },
+          "messageType": {
+            "description": "MessageType is text or markdown.",
+            "enum": [
+              "markdown",
+              "text"
+            ],
+            "type": "string"
+          },
+          "toAllMembers": {
+            "description": "ToAllMembers sends to every member in the application's visible range and excludes the ID lists.",
+            "type": "boolean"
+          },
+          "toDepartmentIds": {
+            "description": "ToDepartmentIDs lists at most 100 decimal department IDs.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "toTagIds": {
+            "description": "ToTagIDs lists at most 100 decimal tag IDs.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "toUserIds": {
+            "description": "ToUserIDs lists at most 1000 member user IDs, as shown in the admin console Contacts > member > Account.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "content",
+          "messageType"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

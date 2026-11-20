@@ -7,3 +7,7 @@ The provider requires enterprise real-name verification, an approved application
 See the [runnable Dex Flow](go/examples/enterprise-basic-details/README.md). Mock tests do not verify live authorization, billing, provider status codes, or response behavior.
 
 The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.
+
+## Python
+
+The Python package under [python/](python/) implements the same enterprise lookup Query and includes a runnable Dex Worker example.

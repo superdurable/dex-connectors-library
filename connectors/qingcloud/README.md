@@ -11,3 +11,7 @@ HTTP 429, server failures, QingCloud server codes `5000`, `5100`, `5200`, `5300`
 The runnable example is in [`go/examples/zone-read`](go/examples/zone-read). Provider tests use a local HTTP server and the official signature vector. Real QingCloud key authorization and live zone discovery remain unverified without a user-controlled account.
 
 The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.
+
+## Python
+
+The [Python package](python/) provides the same signed zones Query and a runnable Dex Worker example.

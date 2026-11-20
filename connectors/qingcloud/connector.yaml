@@ -8,9 +8,10 @@ metadata:
   categories: [developer-tools]
   version: v0.1.0
 spec:
-  provider: qingcloud
   languages:
+    python: {version: v0.1.0, operations: [describeZones], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-qingcloud", operations: [describeZones], triggers: []}
+  provider: qingcloud
   codegen:
     go:
       package: qingcloud

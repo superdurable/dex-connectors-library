@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     typescript: {version: v0.1.0, operations: [generateText], triggers: []}
+    python: {version: v0.1.0, operations: [generateText], triggers: []}
   provider: qihoo360
   codegen:
     go:
