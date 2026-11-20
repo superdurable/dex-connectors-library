@@ -10,6 +10,7 @@ metadata:
 spec:
   provider: sfexpress
   languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-sfexpress", operations: [queryRoutes], triggers: []}
     python: {version: v0.1.0, operations: [queryRoutes], triggers: []}
   codegen:
     go:

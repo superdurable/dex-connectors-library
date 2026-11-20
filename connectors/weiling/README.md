@@ -9,3 +9,5 @@ The [official OpenAPI guide](https://s.apifox.cn/19699d3b-8e70-434a-b516-ce35107
 As a Weiling CRM administrator, open **设置 > 开放平台** and copy AppId and AppSecret into the secret connection fields. Leave endpoint and limits blank for defaults. The token endpoint uses provider-defined GET query parameters, so the connector never logs request URLs or credentials. Provider 429, 408, 5xx, transport failures, and documented rate code 1009 retry; other rejections take an optional branch.
 
 Run the [department directory example](go/examples/department-directory/README.md). Its synthetic mock is not live Weiling data. Live credentials, permissions, and actual department response compatibility remain unverified.
+
+The [Python package](python/README.md) includes a runnable Dex Worker and Client example and replays the Go-recorded provider scenarios.

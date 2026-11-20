@@ -1,6 +1,6 @@
 # WeCom connector
 
-The Go and TypeScript connectors send messages through WeCom (WeChat Work, 企业微信), Tencent's
+The Go, Python, and TypeScript connectors send messages through WeCom (WeChat Work, 企业微信), Tencent's
 workplace messaging service. It offers two operations, each with its own
 connection method:
 
@@ -206,6 +206,10 @@ run, and these provider behaviors remain unconfirmed:
 - whether WeCom measures `duplicate_check_interval` from the first accepted
   send; the cutoff assumes it does and that the Worker clock is within ten
   minutes of Dex's `FirstAttemptAt`.
+
+## Python
+
+The [Python package](python/) implements both group robot and self-built application message Mutations. Its runnable examples exercise both paths through a Dex Worker and Client with synthetic provider responses. WeCom live authorization and delivery are not yet verified.
 
 ## TypeScript
 

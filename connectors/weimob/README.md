@@ -10,4 +10,4 @@ Under **Overview → Development Configuration**, copy `client_id` into `clientI
 
 HTTP 429, HTTP 5xx, and transport failures retry. Definite token or API rejections select optional `providerRejected`; malformed or oversized responses select optional `invalidResponse`. The example leaves optional branches unwired, so those outcomes fail the Flow. Credentials and tokens never enter Flow data, receipts, or failure messages. Weimob's public page does not state a fee for this API; review pricing in the console.
 
-The runnable example is in [`go/examples/store-read`](go/examples/store-read). Provider tests use a local HTTP server. Live Weimob authorization and the production store response remain unverified without a user-controlled application.
+Runnable examples are in [`go/examples/store-read`](go/examples/store-read) and [`python/examples/get_store_basic`](python/examples/get_store_basic). Provider tests use a local HTTP server. Live Weimob authorization and the production store response remain unverified without a user-controlled application.

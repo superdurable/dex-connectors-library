@@ -10,6 +10,7 @@ metadata:
 spec:
   provider: smzdm
   languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-smzdm", operations: [searchProducts], triggers: []}
     python: {version: v0.1.0, operations: [searchProducts], triggers: []}
   codegen:
     go:

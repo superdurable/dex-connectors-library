@@ -9,3 +9,5 @@ The [official shop API](https://open.wangdian.cn/Y/open/apidoc/doc?path=shop_Y) 
 Register at the [Wangdian Open Platform](https://open.wangdian.cn/), wait for approval, then open **自助对接 > 应用管理** to create or select an appkey with `shop.php` access and obtain the paired appsecret. Obtain the seller account `sid` from the ERP buyer administrator. Store all three as secret connection fields. The appsecret is used only to sign requests and never transmitted. Leave endpoint and limits blank for defaults. `page` is zero based and `pageSize` is 1–100, default 30.
 
 Run the [shop directory example](go/examples/shop-directory/README.md). Its synthetic mock is not live Wangdian data. Live credentials, permissions, actual shop list compatibility, and production rate limits have not been verified.
+
+The [Python shop-directory Flow](python/examples/list_shops/) also runs against a real Dex Worker and Client with a synthetic provider page.

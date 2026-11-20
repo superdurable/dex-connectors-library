@@ -1,0 +1,52 @@
+{
+  "connectorId": "qingcloud",
+  "releaseTag": "connectors/qingcloud/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-qingcloud",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_describe_zones_step",
+      "kind": "query",
+      "operationId": "describeZones",
+      "inputType": "DescribeZonesInput",
+      "description": "Return up to 100 accessible IaaS zones and their availability status.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DescribeZonesInput has no parameters; QingCloud lists accessible zones.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

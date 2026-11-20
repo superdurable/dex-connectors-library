@@ -7,3 +7,7 @@ The client obtains a short-lived token with AppID/AppSecret through the [officia
 In Lingxing ERP, a super administrator enables **Settings > Business Configuration > Global > Open Interface**, enters the notification email, and uses **Open Backend > API Information** to get AppID/AppSecret. The same page configures the outbound public IP allowlist. See [official setup guidance](https://apidoc.lingxing.com/new/guides/app-id/). Both credentials are protected connection fields. IP allowlisting and account API entitlement must be complete before the Flow can call the provider.
 
 The [runnable Dex Flow](go/examples/stores/README.md) demonstrates the static `lingxing` connection and typed output. The [official Lingxing site logo](https://static.distributetop.com/office-site-new/office-site-upload/img/logo.838214a.png) is embedded without alteration in `logo.svg`. Production authorization, signature acceptance, token expiry behavior, and live responses remain unverified because no provider credentials were available.
+
+## Python
+
+The [Python package](python/) provides the same token-backed store Query and a runnable Dex Worker example.

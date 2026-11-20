@@ -1,0 +1,65 @@
+{
+  "connectorId": "worktile",
+  "releaseTag": "connectors/worktile/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-worktile",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListProjectsStep",
+      "kind": "query",
+      "operationId": "listProjects",
+      "inputType": "ListProjectsInput",
+      "description": "List one zero-based page of projects available to the tenant.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListProjectsInput selects one zero-based page of projects.",
+        "properties": {
+          "pageIndex": {
+            "description": "PageIndex starts at zero.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of projects to request, from one through one hundred.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageIndex",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

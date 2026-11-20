@@ -11,3 +11,5 @@ The [Open API pricing notice](https://api-doc.xiaoe-tech.com/xiaoe_cloud_charge.
 ## Go
 
 The [root goods categories Flow](go/examples/root-goods-categories/) is a runnable Worker with static Dex Web connection name `xiaoetech`. `listed` completes the Flow; optional branches fail it unless an application wires a business response. The mock integration test uses synthetic sample data and a real Dex Worker and Client. Live authorization, billing, and category data remain unverified without a user-controlled connection.
+
+The [Python Flow example](python/examples/list_root_goods_categories/) exercises this Query through Dex. Live provider authorization remains unverified.

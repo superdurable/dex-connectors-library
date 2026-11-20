@@ -1,0 +1,65 @@
+{
+  "connectorId": "qiyuesuo",
+  "releaseTag": "connectors/qiyuesuo/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-qiyuesuo",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_contracts_step",
+      "kind": "query",
+      "operationId": "listContracts",
+      "inputType": "ListContractsInput",
+      "description": "List one bounded page of contract IDs and statuses.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContractsInput selects one zero-based contract window; zero limit uses 20.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the number of contracts requested, from 1 to 100.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based first contract to request.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "offset"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
