@@ -1002,6 +1002,72 @@
         }
       ],
       "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+          "responseId": "resp_001",
+          "sendCount": 1
+        },
+        "output": {
+          "id": "resp_001",
+          "model": "gpt-test",
+          "outputText": "Done.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "",
+        "Model": "gpt-test",
+        "StructuredOutput": null
+      },
+      "name": "create-response-id-checkpoint-recovery",
+      "operation": "createResponse",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+          "responseId": "resp_001",
+          "sendCount": 1
+        }
+      }
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_001\",\"model\":\"gpt-test\",\"status\":\"completed\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
         "branch": "found",
         "failureKind": "",
         "output": {

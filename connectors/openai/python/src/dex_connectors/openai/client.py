@@ -304,11 +304,13 @@ class _CreateResponseHeartbeat:
 
     async def record_response_id(self, response_id: str) -> bool:
         """Checkpoint the observed response ID, keeping the claim's send count."""
-        return await self.record(
-            CreateResponseCheckpoint(
-                str(self._call.id), _attempt(self._call), response_id, send_count=self.current_send_count
-            )
+        checkpoint = CreateResponseCheckpoint(
+            str(self._call.id), _attempt(self._call), response_id, send_count=self.current_send_count
         )
+        for _ in range(3):
+            if await self.record(checkpoint):
+                return True
+        return False
 
     async def record_can_resend(self, send_count: int) -> bool:
         """Checkpoint that the next attempt may resend, with send_count possible creates so far."""

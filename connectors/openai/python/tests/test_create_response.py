@@ -743,3 +743,27 @@ async def test_periodic_renewal_never_overwrites_newer_response_id(monkeypatch: 
     first_with_id = response_ids.index(RESPONSE_ID)
     assert all(response_id == RESPONSE_ID for response_id in response_ids[first_with_id:])
     assert len(response_ids) > first_with_id + 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fail_every_response_beat", [False, True])
+async def test_response_id_heartbeat_failure_keeps_paid_result(fail_every_response_beat: bool) -> None:
+    class FailingResponseHeartbeatContext(FakeContext):
+        response_beats = 0
+
+        async def heartbeat(self, value: object = None) -> None:
+            assert isinstance(value, CreateResponseCheckpoint)
+            if value.response_id:
+                self.response_beats += 1
+                if fail_every_response_beat or self.response_beats == 1:
+                    raise RuntimeError("response heartbeat unavailable")
+            await super().heartbeat(value)
+
+    context = FailingResponseHeartbeatContext()
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(200, json=wire()), requests)
+    result = await create(client, make_call(context))
+    assert result.branch == COMPLETED
+    assert result.value.id == RESPONSE_ID
+    assert context.response_beats == (3 if fail_every_response_beat else 2)
+    assert [request.method for request in requests] == ["POST"]
