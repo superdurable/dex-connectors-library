@@ -60,6 +60,22 @@ func TestMoveMessageLostReplyIsRetriedAndFindsTheMessageMoved(t *testing.T) {
 	require.Len(t, fixture.imap.Messages(t, "Archive"), 1)
 }
 
+func TestMoveMessageLostReplyWithoutMessageIDIsUncertain(t *testing.T) {
+	fixture := newMailFixture(t)
+	source := fixture.appendMessage(t, "INBOX", plainMessage("jane@acme.example.com", testUsername, "Hello", "lost-blind@acme.example.com", "Body."), nil, januaryTwentyEighth)
+	fixture.imap.DropNextMoveReply()
+	client := fixture.client(t)
+	input := email.MoveMessageInput{Message: source, DestinationMailbox: "Archive"}
+	firstAttempt := newEmailDexContext("lost-blind-move")
+	_, err := sdkgo.RunMutation(firstAttempt, client.MoveMessage(), emailConnection, input)
+	requireRetry(t, err, sdkgo.FailureTransport)
+	retried, err := sdkgo.RunMutation(firstAttempt.nextAttempt(), client.MoveMessage(), emailConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, email.MoveMessageBranchUncertain, retried.Branch)
+	require.Equal(t, sdkgo.FailureTransport, retried.Failure.Kind)
+	require.Equal(t, 1, fixture.imap.MoveCount())
+}
+
 func TestMoveMessageFallsBackToCopyOnlyWithUIDPlus(t *testing.T) {
 	certificates := mailtest.NewCertificates(t)
 	for name, capabilities := range map[string]imap.CapSet{

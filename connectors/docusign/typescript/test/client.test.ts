@@ -35,13 +35,13 @@ describe('Go-compatible DocuSign wire values', () => {
 });
 
 /** A DocuSign client that answers each POST from a script and every listing with no tagged envelope. */
-function scriptedDocuSign(posts: Array<{ status: number; body: string; isErrorBodyIncomplete?: boolean } | Error>, sessionError?: SessionError, envelopes: Record<string, string> = {}) {
+function scriptedDocuSign(posts: Array<{ status: number; body: string; isErrorBodyIncomplete?: boolean } | Error>, sessionError?: SessionError, envelopes: Record<string, string> = {}, readRefusals: Record<string, { status: number; body: string }> = {}) {
   const methods: string[] = [];
   const paths: string[] = [];
   const client = {
     openSession: async () => { if (sessionError) throw sessionError; return {}; }, currentTime: () => new Date('2026-10-04T12:00:00Z'), receipt: () => ({}),
     classify: (operation: string, response: { status: number }) => ({
-      retry: response.status === 429 || response.status >= 500, notFound: false, retryAfterMs: 0, errorCode: '',
+      retry: response.status === 429 || response.status >= 500, notFound: response.status === 404, retryAfterMs: 0, errorCode: '',
       failure: { kind: response.status === 429 ? 'RATE_LIMIT' : response.status >= 500 ? 'AVAILABILITY' : 'PROVIDER_REJECTION', provider: 'docusign', operation, message: `HTTP ${response.status}` },
     }),
     requestAPI: async (_call: Call, _session: unknown, method: string, path: string) => {
@@ -49,6 +49,7 @@ function scriptedDocuSign(posts: Array<{ status: number; body: string; isErrorBo
       paths.push(`${method} ${path}`);
       const stored = envelopes[path];
       if (method === 'GET' && stored !== undefined) return { status: 200, headers: {}, body: Buffer.from(stored), isTooLarge: false };
+      if (method === 'GET' && readRefusals[path]) return { ...readRefusals[path], headers: {}, body: Buffer.from(readRefusals[path].body), isTooLarge: false };
       if (method === 'GET' && path !== '/envelopes') return { status: 404, headers: {}, body: Buffer.from('{"errorCode":"ENVELOPE_DOES_NOT_EXIST"}'), isTooLarge: false };
       if (method === 'GET') return { status: 200, headers: {}, body: Buffer.from('{"envelopes":[]}'), isTooLarge: false };
       const answer = posts.shift();
@@ -59,6 +60,35 @@ function scriptedDocuSign(posts: Array<{ status: number; body: string; isErrorBo
   } as unknown as DocuSignClient;
   return { client, methods, paths };
 }
+
+it('reads back a prior void before resending after an unknown answer', async () => {
+  const envelopeId = '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a';
+  const envelopes: Record<string, string> = {};
+  const { client, paths } = scriptedDocuSign([{ status: 500, body: '{}' }], undefined, envelopes);
+  const input = { envelopeId, voidedReason: 'Deal lost' };
+  const call = { id: 'call-1', idempotencyKey: 'call-1', context: { attempt: 1 } } as unknown as Call;
+  const first = await new VoidEnvelopeOperation(client).invoke(call, input);
+  expect(first.kind).toBe('retry');
+  envelopes[`/envelopes/${envelopeId}`] = JSON.stringify({ envelopeId, status: 'voided' });
+  (call.context as { attempt: number }).attempt = 2;
+  const second = await new VoidEnvelopeOperation(client).invoke(call, input);
+  expect(second.kind).toBe('branch');
+  if (second.kind === 'branch') { expect(second.branch).toBe('voided'); expect(second.value.wasAlreadyVoided).toBe(true); }
+  expect(paths).toEqual([`PUT /envelopes/${envelopeId}`, `GET /envelopes/${envelopeId}`]);
+});
+
+it.each([[404, 'ENVELOPE_DOES_NOT_EXIST', 'notFound'], [403, 'USER_LACKS_PERMISSIONS', 'providerRejected']] as const)(
+  'resends after a definite read-back HTTP %i refusal', async (status, code, branch) => {
+    const envelopeId = '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a';
+    const path = `/envelopes/${envelopeId}`;
+    const body = JSON.stringify({ errorCode: code });
+    const { client, paths } = scriptedDocuSign([{ status, body }], undefined, {}, { [path]: { status, body } });
+    const call = { id: 'call-1', idempotencyKey: 'call-1', context: { attempt: 2 } } as unknown as Call;
+    const result = await new VoidEnvelopeOperation(client).invoke(call, { envelopeId, voidedReason: 'Deal lost' });
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') expect(result.branch).toBe(branch);
+    expect(paths).toEqual([`GET ${path}`, `PUT ${path}`]);
+  });
 
 /** Run one attempt of a Step execution from the heartbeat its previous attempt left. */
 async function runCreateAttempt(client: DocuSignClient, attempt: number, heartbeat: unknown, isAcceptedMarkerLost = false) {

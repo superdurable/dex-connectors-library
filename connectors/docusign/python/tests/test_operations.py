@@ -366,6 +366,51 @@ class _ScriptedDocuSign:
         return sdk.Receipt()
 
 
+@pytest.mark.asyncio
+async def test_void_reads_back_before_resending_after_unknown_answer() -> None:
+    """A retry recognizes the prior void without sending another PUT."""
+    provider = _ScriptedDocuSign([_docusign_error(500, "UNSPECIFIED_ERROR")])
+    input = VoidEnvelopeInput(envelope_id=_ENVELOPE_ID, voided_reason="Deal lost")
+    first = SimpleNamespace(id="call-1", idempotency_key="call-1", context=_AttemptContext(1, None))
+    result = await VoidEnvelopeOperation(provider).invoke(first, input)  # type: ignore[arg-type]
+    assert result.kind == "retry"
+    provider.envelopes["/envelopes/" + _ENVELOPE_ID] = json.dumps(
+        {"envelopeId": _ENVELOPE_ID, "status": "voided"}
+    ).encode()
+    second = SimpleNamespace(id="call-1", idempotency_key="call-1", context=_AttemptContext(2, None))
+    result = await VoidEnvelopeOperation(provider).invoke(second, input)  # type: ignore[arg-type]
+    assert result.branch == "voided"
+    assert result.value is not None and result.value.was_already_voided
+    assert provider.paths == ["PUT /envelopes/" + _ENVELOPE_ID, "GET /envelopes/" + _ENVELOPE_ID]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "code", "branch"),
+    ((404, "ENVELOPE_DOES_NOT_EXIST", "notFound"), (403, "USER_LACKS_PERMISSIONS", "providerRejected")),
+)
+async def test_void_resends_after_definite_read_back_refusal(status: int, code: str, branch: str) -> None:
+    """A definite read refusal lets the repeat PUT classify the outcome."""
+
+    class RefusedReadDocuSign(_ScriptedDocuSign):
+        async def request(
+            self, call: object, session: object, method: str, path: str, *args: object, **kwargs: object
+        ) -> ProviderResponse:
+            if method == "GET" and path == "/envelopes/" + _ENVELOPE_ID:
+                self.methods.append(method)
+                self.paths.append(method + " " + path)
+                return _docusign_error(status, code)
+            return await super().request(call, session, method, path, *args, **kwargs)
+
+    provider = RefusedReadDocuSign([_docusign_error(status, code)])
+    call = SimpleNamespace(id="call-1", idempotency_key="call-1", context=_AttemptContext(2, None))
+    result = await VoidEnvelopeOperation(provider).invoke(  # type: ignore[arg-type]
+        call, VoidEnvelopeInput(envelope_id=_ENVELOPE_ID, voided_reason="Deal lost")
+    )
+    assert result.branch == branch
+    assert provider.paths == ["GET /envelopes/" + _ENVELOPE_ID, "PUT /envelopes/" + _ENVELOPE_ID]
+
+
 async def _run_create_attempt(
     provider: _ScriptedDocuSign, attempt: int, heartbeat: _CreateDispatchCheckpoint | None
 ) -> tuple[sdk.MutationAttempt[object], _CreateDispatchCheckpoint | None]:

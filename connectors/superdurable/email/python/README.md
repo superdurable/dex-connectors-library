@@ -1,6 +1,6 @@
 # Email connector for Python
 
-Install `dex-connector-superdurable-email==0.1.1`. The package implements all six
+Install `dex-connector-superdurable-email==0.1.2`. The package implements all six
 email operations in the manifest: search, read, send, reply, move, and set flags.
 It uses verified TLS 1.2 or later for IMAP and SMTP, including STARTTLS when
 selected in the connection. Credentials are resolved on each operation attempt.

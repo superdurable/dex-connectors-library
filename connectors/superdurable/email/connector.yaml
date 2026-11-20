@@ -6,17 +6,17 @@ metadata:
   description: Search, read, flag, and move messages in any IMAP mailbox and send new messages or threaded replies over SMTP, for mail providers other than Gmail and Microsoft 365.
   company: Super Durable
   categories: [communication]
-  version: v0.23.1
+  version: v0.23.2
 spec:
   provider: email
   languages:
     python:
-      version: v0.1.1
+      version: v0.1.2
       package: dex-connector-superdurable-email
       operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setFlags]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.1.2
       package: "@superdurable/connector-superdurable-email"
       operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setFlags]
       triggers: []
@@ -288,6 +288,7 @@ spec:
       branches:
         - {id: moved, goName: Moved, description: "The message is in the destination mailbox, moved now or by an earlier attempt."}
         - {id: notFound, goName: NotFound, description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID and none with the expected Message-ID is in the destination.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A prior attempt may have moved the message, but its UID is gone and no Message-ID was supplied to confirm the destination.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:

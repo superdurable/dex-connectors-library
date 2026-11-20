@@ -6,17 +6,17 @@ metadata:
   description: "Send DocuSign eSignature envelopes from templates, guarded against duplicates on retry, read envelope and recipient status, void an envelope as compensation, record the signed combined PDF's digest outside Dex payloads, and receive HMAC-verified Connect envelope-completed, envelope-declined, and envelope-voided events."
   company: DocuSign
   categories: [files-documents]
-  version: v0.24.1
+  version: v0.24.2
 spec:
   provider: docusign
   languages:
     python:
-      version: v0.2.1
+      version: v0.2.2
       package: dex-connector-docusign
       operations: [createEnvelopeFromTemplate, getEnvelope, listEnvelopeRecipients, voidEnvelope, downloadCombinedDocument]
       triggers: [envelopeEventReceived]
     typescript:
-      version: v0.2.1
+      version: v0.2.2
       package: '@superdurable/connector-docusign'
 
       operations: [createEnvelopeFromTemplate, getEnvelope, listEnvelopeRecipients, voidEnvelope, downloadCombinedDocument]

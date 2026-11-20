@@ -138,6 +138,8 @@ export interface MoveMessageStepConfig<StepInput, OperationInput = MoveMessageIn
   moved: StepTarget<MutationResult<OperationOutput>>;
   /** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID and none with the expected Message-ID is in the destination. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
+  /** A prior attempt may have moved the message, but its UID is gone and no Message-ID was supplied to confirm the destination. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
@@ -149,11 +151,12 @@ export interface MoveMessageStepConfig<StepInput, OperationInput = MoveMessageIn
 /** Build the moveMessage Step from a named connection. */
 export function newMoveMessageStep<StepInput, OperationInput = MoveMessageInput, OperationOutput = MovedMessage>(configuration: MoveMessageStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
-  const { connection, connectionName, moved, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
+  const { connection, connectionName, moved, notFound, uncertain, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.moveMessage(), connection: connection.reference, branches: [
     goToBranch("moved", moved),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });

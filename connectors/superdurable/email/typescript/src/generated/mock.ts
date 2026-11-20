@@ -228,6 +228,8 @@ export function moveMessageProviderRejected(value: MovedMessage, failure?: Failu
 export function moveMessageDefect(value: MovedMessage, failure?: Failure): Case<MovedMessage> { return branchCase("defect", value, failure); }
 /** Script a safe retry of moveMessage. */
 export function moveMessageRetry(failure: Failure, retryAfterMs = 0): Case<MovedMessage> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain moveMessage attempt. */
+export function moveMessageUncertain(value: MovedMessage, failure: Failure): Case<MovedMessage> { return uncertainCase(value, failure); }
 /** Manifest scenario archivedCustomerRequest for moveMessage. */
 export function moveMessageArchivedCustomerRequest(): Case<MovedMessage> {
   const value = MovedMessageSchema.parse({"destination":{"mailbox":"Archive","uid":50,"uidValidity":43}});

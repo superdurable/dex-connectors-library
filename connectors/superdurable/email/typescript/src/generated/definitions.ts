@@ -145,6 +145,7 @@ export const ReplyToMessageMetadata = { kind: "mutation", idempotency: "required
 export const MoveMessageBranch = {
   Moved: "moved",
   NotFound: "notFound",
+  Uncertain: "uncertain",
   ProviderRejected: "providerRejected",
   Defect: "defect",
 } as const;
@@ -152,6 +153,8 @@ export const MoveMessageBranch = {
 export const MoveMessageBranchMoved = MoveMessageBranch.Moved;
 /** The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID and none with the expected Message-ID is in the destination. */
 export const MoveMessageBranchNotFound = MoveMessageBranch.NotFound;
+/** A prior attempt may have moved the message, but its UID is gone and no Message-ID was supplied to confirm the destination. */
+export const MoveMessageBranchUncertain = MoveMessageBranch.Uncertain;
 /** The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS. */
 export const MoveMessageBranchProviderRejected = MoveMessageBranch.ProviderRejected;
 /** Local input, connection configuration, or connector definition is invalid. */
@@ -162,6 +165,7 @@ export const MoveMessageDefinition: MutationDefinition = {
   branches: [
     { id: "moved", description: "The message is in the destination mailbox, moved now or by an earlier attempt." },
     { id: "notFound", description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID and none with the expected Message-ID is in the destination.", optional: true },
+    { id: "uncertain", description: "A prior attempt may have moved the message, but its UID is gone and no Message-ID was supplied to confirm the destination.", optional: true },
     { id: "providerRejected", description: "The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],

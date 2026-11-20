@@ -1,6 +1,6 @@
 # Email (IMAP and SMTP) Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go@v0.23.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go@v0.23.2`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/email`.
 
@@ -14,7 +14,7 @@ than Gmail and Microsoft 365. It exposes these operation-specific Dex Step
 factories:
 
 The [Python package](python/README.md) implements the same six operations at
-`v0.1.1`, with a [runnable mailbox search Flow](python/examples/mailbox_search/README.md).
+`v0.1.2`, with a [runnable mailbox search Flow](python/examples/mailbox_search/README.md).
 Its CI protocol integration test uses GreenMail; live mail-provider behavior
 remains unverified.
 
@@ -277,7 +277,7 @@ take these positions:
   destination. Every unconfirmed outcome, including a lost connection, is
   retried. The example drops a `MOVE` answer after applying it; read-back
   confirms the message was archived once. Without `messageId`, a repeat after
-  a lost `MOVE` answer cannot find the message and selects `notFound`.
+  a lost `MOVE` answer cannot find the message and selects `uncertain` on a retry.
 - **sendMessage** and **replyToMessage** are `repeatOnUnknown: limited` with
   `maxSends: 3`: a duplicate email is acceptable, and the connector cannot read
   a sent message back. They run with sync durability, which persists the

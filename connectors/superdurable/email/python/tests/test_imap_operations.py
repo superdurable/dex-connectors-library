@@ -97,7 +97,7 @@ class IMAPServer:
         return "BYE", [b"done"]
 
 
-def make_call(operation: str) -> Call:
+def make_call(operation: str, context: Context | None = None) -> Call:
     """Use one stable logical email connection."""
     identifier = CallID("00000000-0000-4000-8000-000000000001")
     return Call(
@@ -105,7 +105,7 @@ def make_call(operation: str) -> Call:
         ConnectionRef("email", "mail"),
         OperationRef("email", operation),
         IdempotencyKey(identifier),
-        context=cast(dex.AsyncContext, Context()),
+        context=cast(dex.AsyncContext, context or Context()),
     )
 
 
@@ -243,6 +243,24 @@ async def test_move_lost_reply_finds_already_moved_message(monkeypatch: pytest.M
     assert second.branch == "moved"
     assert second.value is not None and second.value.was_already_moved
     assert second.value.destination.uid == 98
+
+
+@pytest.mark.asyncio
+async def test_move_without_message_id_is_uncertain_after_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A missing UID after a possible move cannot prove its destination without Message-ID."""
+    client = make_client()
+    server = IMAPServer()
+    server.has_source = False
+    monkeypatch.setattr(client, "open_imap", lambda *_: server)
+    context = Context()
+    call = make_call("moveMessage", context)
+    input_value = MoveMessageInput(MessageReference("INBOX", 42, 97), "Archive")
+    missing = await client.move_message().invoke(call, input_value)
+    assert missing.branch == "notFound"
+    context.next_attempt()
+    uncertain = await client.move_message().invoke(call, input_value)
+    assert uncertain.kind == "uncertain"
+    assert uncertain.branch == "uncertain"
 
 
 @pytest.mark.parametrize(

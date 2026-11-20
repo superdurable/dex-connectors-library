@@ -73,6 +73,20 @@ describe('email operation decisions', () => {
     if (move.kind === 'branch') expect(move.branch).toBe('notFound');
   });
 
+  test('move without Message-ID selects uncertain after an earlier possible move', async () => {
+    const email = client();
+    vi.spyOn(email, 'openIMAP').mockResolvedValue(fakeIMAP({ fetchOne: async () => false }));
+    const call = fakeCall('moveMessage').call;
+    const input = { message: { mailbox: 'INBOX', uidValidity: 42, uid: 100 }, destinationMailbox: 'Archive' };
+    const missing = await email.moveMessage().invoke(call, input);
+    expect(missing.kind).toBe('branch');
+    if (missing.kind === 'branch') expect(missing.branch).toBe('notFound');
+    (call.context as { attempt: number }).attempt = 2;
+    const uncertain = await email.moveMessage().invoke(call, input);
+    expect(uncertain.kind).toBe('uncertain');
+    if (uncertain.kind === 'uncertain') expect(uncertain.failure.kind).toBe('TRANSPORT');
+  });
+
   test('setFlags reports an already applied value and a rejected write', async () => {
     const email = client();
     const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };

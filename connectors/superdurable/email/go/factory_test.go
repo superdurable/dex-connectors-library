@@ -103,7 +103,7 @@ func TestDefinitionsDeclareOptionalBranchesAndDurability(t *testing.T) {
 		branchOptionality(email.SendMessageDefinition.Branches))
 	require.Equal(t, map[sdkgo.BranchID]bool{"sent": false, "notFound": true, "providerRejected": true, "invalidResponse": true, "uncertain": true, "defect": true},
 		branchOptionality(email.ReplyToMessageDefinition.Branches))
-	require.Equal(t, map[sdkgo.BranchID]bool{"moved": false, "notFound": true, "providerRejected": true, "defect": true},
+	require.Equal(t, map[sdkgo.BranchID]bool{"moved": false, "notFound": true, "providerRejected": true, "uncertain": true, "defect": true},
 		branchOptionality(email.MoveMessageDefinition.Branches))
 	require.Equal(t, map[sdkgo.BranchID]bool{"updated": false, "notFound": true, "providerRejected": true, "defect": true},
 		branchOptionality(email.SetFlagsDefinition.Branches))

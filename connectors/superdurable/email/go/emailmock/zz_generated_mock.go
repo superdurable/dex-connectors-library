@@ -320,6 +320,11 @@ func MoveMessageNotFound(value email.MovedMessage, failure *sdkgo.Failure) conne
 	return connectormock.Branch(email.MoveMessageBranchNotFound, value, failure)
 }
 
+// MoveMessageUncertain returns an uncertain moveMessage outcome.
+func MoveMessageUncertain(value email.MovedMessage, failure sdkgo.Failure) connectormock.Case[email.MovedMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
 // MoveMessageProviderRejected selects the providerRejected branch: The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS.
 func MoveMessageProviderRejected(value email.MovedMessage, failure *sdkgo.Failure) connectormock.Case[email.MovedMessage] {
 	return connectormock.Branch(email.MoveMessageBranchProviderRejected, value, failure)

@@ -82,7 +82,7 @@ func (operation MoveMessageOperation) Invoke(call sdkgo.Call, input MoveMessageI
 	}
 	source := findFetchedMessage(fetched, uid)
 	if source == nil {
-		return operation.findAlreadyMovedMessage(session, input)
+		return operation.findAlreadyMovedMessage(call, session, input)
 	}
 	if input.MessageID != "" && (source.Envelope == nil || source.Envelope.MessageID != input.MessageID) {
 		return sdkgo.NewMutationBranch(MoveMessageBranchNotFound, MovedMessage{},
@@ -102,8 +102,12 @@ func (operation MoveMessageOperation) Invoke(call sdkgo.Call, input MoveMessageI
 }
 
 // findAlreadyMovedMessage looks for the expected Message-ID in the destination after the UID was not found.
-func (operation MoveMessageOperation) findAlreadyMovedMessage(session *imapSession, input MoveMessageInput) sdkgo.MutationAttempt[MovedMessage] {
+func (operation MoveMessageOperation) findAlreadyMovedMessage(call sdkgo.Call, session *imapSession, input MoveMessageInput) sdkgo.MutationAttempt[MovedMessage] {
 	if input.MessageID == "" {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationUncertain(MovedMessage{}, emailFailure(sdkgo.FailureTransport, moveMessageOperation,
+				"an earlier attempt may have moved the message, but no Message-ID can confirm its destination"), sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationBranch(MoveMessageBranchNotFound, MovedMessage{}, emailFailurePointer(sdkgo.FailureNotFound, moveMessageOperation,
 			"no message in the source mailbox has the UID; set messageId so a repeated move can find it in the destination"), sdkgo.Receipt{})
 	}
