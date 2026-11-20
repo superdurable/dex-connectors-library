@@ -394,6 +394,41 @@ directories:
 	}}, readReleaseMatrixOutput(t, githubOutput).Include, "only the connector whose version moved releases")
 }
 
+func TestCatalogKeepsCompletedGoReleaseWhenManifestIsAhead(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	const directory = "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/"+directory)
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\n"+
+		"kind: ConnectorCatalogSource\ndirectories:\n  - "+directory+"\n"), 0o600))
+	manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
+	replaceInFile(t, manifestPath, "  categories: [developer-tools]\n", "")
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/go/v0.1.0")
+	replaceInFile(t, manifestPath, "  company: acme\n", "  company: acme\n  categories: [developer-tools]\n")
+	outputDirectory := t.TempDir()
+	completedTagsPath := filepath.Join(outputDirectory, "completed-go-tags")
+	require.NoError(t, os.WriteFile(completedTagsPath, []byte(directory+"/go/v0.1.0\n"), 0o600))
+	outputPath := filepath.Join(outputDirectory, "catalog.yaml")
+	arguments := []string{"--catalog", catalogPath, "--output", outputPath, "--completed-go-tags", completedTagsPath}
+	require.NoError(t, catalogCommand(arguments))
+	baseline, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	require.Contains(t, string(baseline), "version: v0.1.0")
+	replaceInFile(t, manifestPath, "version: v0.1.0", "version: v0.2.0")
+	replaceInFile(t, manifestPath, "OAuth manifest fixture for generated connector metadata.", "Unreleased connector description.")
+	require.NoError(t, catalogCommand(arguments))
+	current, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	require.Equal(t, baseline, current)
+	require.NoError(t, os.WriteFile(completedTagsPath, nil, 0o600))
+	require.NoError(t, catalogCommand(arguments))
+	withoutRelease, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	var catalog connectorCatalog
+	require.NoError(t, yaml.Unmarshal(withoutRelease, &catalog))
+	require.Empty(t, catalog.Connectors)
+}
+
 func TestReleaseMatrixLabelsGoReleaseStatesForThePerRunCap(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	directories := []string{"connectors/acme/chat", "connectors/acme/mail", "connectors/acme/news"}
@@ -506,7 +541,7 @@ func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
 			},
 		},
 	}}
-	encoded, err := encodeConnectorCatalog(entries, nil, nil, "")
+	encoded, err := encodeConnectorCatalog(entries, nil, nil, nil, "")
 	require.NoError(t, err)
 	catalog := string(encoded)
 	require.Contains(t, catalog, "name: channelPicker")
@@ -678,9 +713,9 @@ func TestCatalogEncodingRejectsAPublishedPackageNameOfTwoDirectories(t *testing.
 	initializeConnectorReleaseRepository(t, repositoryRoot, "connectors/acme/chat/typescript/v0.1.0")
 	tagConnectorRelease(t, repositoryRoot, "connectors/beta/chat/typescript/v0.1.0")
 	completed := map[string]bool{"connectors/acme/chat/typescript/v0.1.0": true, "connectors/beta/chat/typescript/v0.1.0": true}
-	_, err := encodeConnectorCatalog(entries, completed, nil, repositoryRoot)
+	_, err := encodeConnectorCatalog(entries, nil, completed, nil, repositoryRoot)
 	require.ErrorContains(t, err, "typescript package @superdurable/connector-chat of connectors/beta/chat is also the package of connectors/acme/chat")
-	encoded, err := encodeConnectorCatalog(entries[:1], completed, nil, repositoryRoot)
+	encoded, err := encodeConnectorCatalog(entries[:1], nil, completed, nil, repositoryRoot)
 	require.NoError(t, err)
 	require.Contains(t, string(encoded), "languagePackages:\n        typescript: '@superdurable/connector-chat'\n")
 }
@@ -794,7 +829,7 @@ func TestGoOnlyCatalogCapabilityBytesStayUnchanged(t *testing.T) {
 		},
 		Spec: schema.Spec{Operations: []schema.Operation{{Name: "getThing", Kind: "query", Description: "Get a thing."}}},
 	}}
-	baseline, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, nil, "")
+	baseline, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, nil, nil, "")
 	require.NoError(t, err)
 	encodedTaxonomy, err := yaml.Marshal(struct {
 		Categories []schema.ConnectorCategory `yaml:"categories"`
@@ -819,7 +854,7 @@ kind: ConnectorCatalog
           description: Get a thing.
 `, string(baseline))
 	entry.Manifest.Spec.Languages = &schema.Languages{}
-	withEmptyLanguages, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, nil, "")
+	withEmptyLanguages, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, nil, nil, "")
 	require.NoError(t, err)
 	require.Equal(t, baseline, withEmptyLanguages)
 	require.NotContains(t, string(baseline), "languages:")

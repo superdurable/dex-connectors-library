@@ -870,6 +870,7 @@ def main() -> int:
     attach_parser.add_argument("assets", nargs="+", type=Path, help="files in upload order")
     completed_parser = commands.add_parser("completed-language-tags")
     completed_parser.add_argument("--output", type=Path, required=True)
+    completed_parser.add_argument("--go-output", type=Path)
     pypi_tags_parser = commands.add_parser("pypi-published-language-tags")
     pypi_tags_parser.add_argument("--matrix-output", type=Path, required=True)
     pypi_tags_parser.add_argument("--completed-language-tags", type=Path, required=True)
@@ -1000,8 +1001,12 @@ def main() -> int:
                 upload=lambda tag, asset: upload_release_asset(args.repository, tag, asset))
             print(f"Attached to {args.tag}: {', '.join(uploaded) or 'nothing; every asset was already identical'}")
         elif args.command == "completed-language-tags":
-            completed_tags = list_completed_language_tags()
-            args.output.write_text("\n".join(sorted(completed_tags)) + "\n", encoding="utf-8")
+            inventory = read_release_inventory()
+            language_tags = {tag for tag, assets in inventory.items() if "language-release.complete" in assets}
+            args.output.write_text("\n".join(sorted(language_tags)) + "\n", encoding="utf-8")
+            if args.go_output:
+                go_tags = {tag for tag, assets in inventory.items() if CONNECTOR_RELEASE_COMPLETE in assets}
+                args.go_output.write_text("\n".join(sorted(go_tags)) + "\n", encoding="utf-8")
         elif args.command == "pypi-published-language-tags":
             _, items = read_language_matrix(args.matrix_output)
             completed_tags = {line for line in args.completed_language_tags.read_text(encoding="utf-8").splitlines() if line}

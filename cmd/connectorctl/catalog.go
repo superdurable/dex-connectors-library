@@ -138,13 +138,14 @@ func catalogCommand(args []string) error {
 	catalogPath := flags.String("catalog", "", "connector catalog source")
 	outputPath := flags.String("output", "", "generated catalog path")
 	jsonOutputPath := flags.String("json-output", "", "generated JSON catalog path")
+	completedGoTagsPath := flags.String("completed-go-tags", "", "file listing completed Go release tags")
 	completedLanguageTagsPath := flags.String("completed-language-tags", "", "file listing completed language release tags")
 	pypiPublishedLanguageTagsPath := flags.String("pypi-published-language-tags", "", "file listing completed Python release tags that PyPI serves")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 || *catalogPath == "" || (*check && (*outputPath != "" || *jsonOutputPath != "")) || (!*check && *outputPath == "") {
-		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH [--json-output PATH] [--completed-language-tags PATH] [--pypi-published-language-tags PATH])")
+		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH [--json-output PATH] [--completed-go-tags PATH] [--completed-language-tags PATH] [--pypi-published-language-tags PATH])")
 	}
 	entries, err := loadConnectorDirectoryEntries(*catalogPath)
 	if err != nil {
@@ -155,6 +156,12 @@ func catalogCommand(args []string) error {
 	}
 	if *check {
 		return nil
+	}
+	var completedGoTags map[string]bool
+	if *completedGoTagsPath != "" {
+		if completedGoTags, err = readReleaseTagSet(*completedGoTagsPath); err != nil {
+			return fmt.Errorf("read completed Go release tags: %w", err)
+		}
 	}
 	completedLanguageTags := make(map[string]bool)
 	if *completedLanguageTagsPath != "" {
@@ -169,7 +176,7 @@ func catalogCommand(args []string) error {
 			return fmt.Errorf("read PyPI-published language release tags: %w", err)
 		}
 	}
-	generated, err := encodeConnectorCatalog(entries, completedLanguageTags, pypiPublishedLanguageTags, filepath.Dir(*catalogPath))
+	generated, err := encodeConnectorCatalog(entries, completedGoTags, completedLanguageTags, pypiPublishedLanguageTags, filepath.Dir(*catalogPath))
 	if err != nil {
 		return err
 	}
@@ -661,8 +668,16 @@ func validateDiscoveredConnectorDirectories(repositoryRoot string, registeredDir
 	})
 }
 
-func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguageTags, pypiPublishedLanguageTags map[string]bool,
+func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedGoTags, completedLanguageTags, pypiPublishedLanguageTags map[string]bool,
 	repositoryRoot string) ([]byte, error) {
+	var reachableTags map[string]bool
+	if completedGoTags != nil {
+		var err error
+		reachableTags, err = reachableConnectorTags(repositoryRoot)
+		if err != nil {
+			return nil, err
+		}
+	}
 	catalog := connectorCatalog{
 		APIVersion: connectorCatalogAPIVersion,
 		Kind:       "ConnectorCatalog",
@@ -670,10 +685,35 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 		Connectors: make([]connectorCatalogItem, 0, len(entries)),
 	}
 	for _, entry := range entries {
+		declaredLanguages := entry.Manifest.Spec.Languages
+		if completedGoTags != nil {
+			releasedManifest, found, err := releasedGoManifest(entry, completedGoTags, reachableTags, repositoryRoot)
+			if err != nil {
+				return nil, err
+			}
+			if !found {
+				continue
+			}
+			entry.Manifest = releasedManifest
+			if releasedManifest.Spec.Languages != nil {
+				if declaredLanguages == nil {
+					declaredLanguages = releasedManifest.Spec.Languages
+				} else {
+					retainedLanguages := *declaredLanguages
+					if retainedLanguages.Python == nil {
+						retainedLanguages.Python = releasedManifest.Spec.Languages.Python
+					}
+					if retainedLanguages.TypeScript == nil {
+						retainedLanguages.TypeScript = releasedManifest.Spec.Languages.TypeScript
+					}
+					declaredLanguages = &retainedLanguages
+				}
+			}
+		}
 		metadata := entry.Manifest.Metadata
 		var releasedLanguages *schema.Languages
-		if entry.Manifest.Spec.Languages != nil {
-			filtered := *entry.Manifest.Spec.Languages
+		if declaredLanguages != nil {
+			filtered := *declaredLanguages
 			var declarationErr error
 			filtered.Python, declarationErr = releasedLanguageDeclaration(entry, "python", filtered.Python, completedLanguageTags, repositoryRoot)
 			if declarationErr != nil {
@@ -750,6 +790,62 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 		return nil, fmt.Errorf("encode connector catalog: %w", err)
 	}
 	return encoded, nil
+}
+
+func reachableConnectorTags(repositoryRoot string) (map[string]bool, error) {
+	command := exec.Command("git", "for-each-ref", "--merged=HEAD", "--format=%(refname:short)", "refs/tags/connectors/")
+	command.Dir = repositoryRoot
+	output, err := command.Output()
+	if err != nil {
+		return nil, fmt.Errorf("list reachable connector tags for catalog: %w", err)
+	}
+	tags := make(map[string]bool)
+	for _, tag := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		tags[tag] = true
+	}
+	return tags, nil
+}
+
+func releasedGoManifest(entry connectorDirectoryEntry, completedGoTags, reachableTags map[string]bool,
+	repositoryRoot string) (schema.Manifest, bool, error) {
+	selectedTag := ""
+	selectedVersion := ""
+	for tag := range completedGoTags {
+		prefix := entry.Directory + "/go/"
+		if !strings.HasPrefix(tag, prefix) {
+			prefix = entry.Directory + "/"
+		}
+		if !strings.HasPrefix(tag, prefix) || !reachableTags[tag] {
+			continue
+		}
+		version := strings.TrimPrefix(tag, prefix)
+		if !connectorVersionPattern.MatchString(version) || compareConnectorVersions(version, entry.Manifest.Metadata.Version) > 0 {
+			continue
+		}
+		if selectedTag == "" || compareConnectorVersions(version, selectedVersion) > 0 {
+			selectedTag, selectedVersion = tag, version
+		}
+	}
+	if selectedTag == "" {
+		return schema.Manifest{}, false, nil
+	}
+	command := exec.Command("git", "show", selectedTag+":"+entry.ManifestPath)
+	command.Dir = repositoryRoot
+	contents, err := command.Output()
+	if err != nil {
+		return schema.Manifest{}, false, fmt.Errorf("read %s release manifest for catalog: %w", selectedTag, err)
+	}
+	var releasedManifest schema.Manifest
+	if err := yaml.Unmarshal(contents, &releasedManifest); err != nil {
+		return schema.Manifest{}, false, fmt.Errorf("decode %s release manifest for catalog: %w", selectedTag, err)
+	}
+	if releasedManifest.Metadata.Version != selectedVersion {
+		return schema.Manifest{}, false, fmt.Errorf("%s release manifest has a different Go version", selectedTag)
+	}
+	if len(releasedManifest.Metadata.Categories) == 0 {
+		releasedManifest.Metadata.Categories = entry.Manifest.Metadata.Categories
+	}
+	return releasedManifest, true, nil
 }
 
 func releasedLanguageDeclaration(entry connectorDirectoryEntry, language string, current *schema.LanguagePackage,
