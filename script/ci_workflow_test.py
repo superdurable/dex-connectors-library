@@ -419,7 +419,7 @@ class CommonBlockJobsTest(unittest.TestCase):
         self.assertIn("ROOT_GO_CACHEABLE_TEST_PACKAGES = ./internal/codegen/gomodel\n", self.makefile)
         # Packages default to -count=1; a new package is cached only after review adds it to the list.
         self.assertIn('grep -vxF "$$cacheable"', root)
-        self.assertIn("go test -race -count=1 $$uncached", root)
+        self.assertIn("go test -race -count=1 -timeout=30m $$uncached", root)
         self.assertIn("go test -race $$cacheable", root)
 
     def test_root_go_recipe_fails_when_either_test_run_fails(self) -> None:
@@ -443,7 +443,7 @@ class CommonBlockJobsTest(unittest.TestCase):
                                              "FAILING_RUN": failing_run, "LOG": str(log)})
                 self.assertEqual(failing_run == "", result.returncode == 0, result.stderr)
                 runs = sorted(log.read_text().splitlines())
-                self.assertEqual(["cacheable test -race ./internal/compliance", "uncached test -race -count=1 ./cmd/x"], runs)
+                self.assertEqual(["cacheable test -race ./internal/compliance", "uncached test -race -count=1 -timeout=30m ./cmd/x"], runs)
 
 
 class QueueOnlyJobsTest(unittest.TestCase):

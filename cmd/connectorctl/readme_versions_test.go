@@ -19,11 +19,12 @@ import (
 // another module, the SDK, or Dex is not matched. connectorctl bump rewrites the same pins, and also the exact
 // Python "<package>==X.Y.Z" and TypeScript "<package>@X.Y.Z" pins, which stay on each declared package version.
 func TestConnectorREADMEsNameTheManifestVersion(t *testing.T) {
-	var stalePins []string
 	for _, directory := range registeredConnectorDirectories(t) {
-		stalePins = append(stalePins, staleREADMEVersionPins(t, filepath.Join("..", "..", filepath.FromSlash(directory)), directory)...)
+		t.Run(directory, func(t *testing.T) {
+			t.Parallel()
+			require.Empty(t, staleREADMEVersionPins(t, filepath.Join("..", "..", filepath.FromSlash(directory)), directory))
+		})
 	}
-	require.Empty(t, stalePins)
 }
 
 // staleREADMEVersionPins describes each README pin that differs from its package's declared version.
