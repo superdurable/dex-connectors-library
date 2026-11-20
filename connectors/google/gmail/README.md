@@ -220,7 +220,9 @@ uses that header for Sent Mail read-back:
   back or resend. The same holds for a
   failed pre-send search or reply source read after a `canResend` checkpoint
   that still counts an earlier send: the attempt returns Retry and records
-  nothing, so the next attempt still reads back first. Gmail does not deduplicate by
+  `notSent` with the earlier count, so the next attempt still reads back first.
+  An accepted POST without a message ID records `accepted`, which forbids a resend.
+  Gmail does not deduplicate by
   `Message-ID`, so an unknown outcome can deliver up to three copies when Sent
   Mail indexing lags an accepted send. An application changes one Step's cap
   with the factory's `MaxSends` field, from 1 (never resend) to 10.

@@ -1775,11 +1775,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-1",
@@ -1833,9 +1837,14 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "messageId": "",
@@ -1904,11 +1913,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-1",
@@ -2017,10 +2030,14 @@
         "branch": "",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2065,10 +2082,14 @@
         "branch": "",
         "failureKind": "CONFLICT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2141,9 +2162,14 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2216,11 +2242,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-1",
@@ -2352,9 +2382,14 @@
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "output": {
           "messageId": "",
@@ -2490,9 +2525,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "state": "notSent"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 0,
+              "state": "notSent"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -2621,11 +2661,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 2,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 2,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-1",
@@ -2707,11 +2751,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-1",
@@ -2860,10 +2908,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 5,
         "retry": true,
@@ -3004,10 +3056,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 5,
         "retry": true,
@@ -3146,10 +3202,14 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 5,
         "retry": true,
@@ -3192,9 +3252,14 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 0,
         "retry": true,
@@ -3385,10 +3450,14 @@
           "exchangeCount": 5,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+                "attempt": 1,
+                "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -3563,11 +3632,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 2,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-2",
-          "sendCount": 2,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 2,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-2",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-2",
@@ -3595,10 +3668,14 @@
           "exchangeCount": 5,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+                "attempt": 1,
+                "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -3740,11 +3817,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 2,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 2,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-1",
@@ -3851,11 +3932,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-1",
@@ -4029,10 +4114,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 6,
         "retry": true,
@@ -4198,10 +4287,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 6,
         "retry": true,
@@ -4365,10 +4458,14 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 6,
         "retry": true,
@@ -4436,9 +4533,14 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "state": "canResend"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 0,
+              "state": "canResend"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -4649,10 +4751,14 @@
           "exchangeCount": 6,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+                "attempt": 1,
+                "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -4883,11 +4989,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 2,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "providerId": "reply-2",
-          "sendCount": 2,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 2,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "providerId": "reply-2",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "reply-2",
@@ -4912,10 +5022,14 @@
           "exchangeCount": 6,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "attempt": 1,
-            "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-            "sendCount": 1,
-            "state": "claimed"
+            "singleDispatchMarkers": {
+              "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+                "attempt": 1,
+                "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+                "sendCount": 1,
+                "state": "claimed"
+              }
+            }
           },
           "retryAfterMs": 0
         }
@@ -5089,11 +5203,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 2,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-2",
-          "sendCount": 2,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 2,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-2",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-2",
@@ -5176,11 +5294,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 2,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-2",
-          "sendCount": 2,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 2,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-2",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-2",
@@ -5287,10 +5409,14 @@
         "branch": "uncertain",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "sendCount": 3,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 3,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "",
@@ -5399,11 +5525,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 2,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "providerId": "reply-2",
-          "sendCount": 2,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 2,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "providerId": "reply-2",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "reply-2",
@@ -5511,11 +5641,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 2,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "providerId": "reply-2",
-          "sendCount": 2,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 2,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "providerId": "reply-2",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "reply-2",
@@ -5647,10 +5781,14 @@
         "branch": "uncertain",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "sendCount": 3,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 3,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "",
@@ -5829,9 +5967,14 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "state": "notSent"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 1,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 0,
+              "state": "notSent"
+            }
+          }
         },
         "requestCount": 1,
         "retry": true,
@@ -5845,6 +5988,93 @@
       },
       "name": "replyToMessage-source-unavailable",
       "operation": "replyToMessage"
+    },
+    {
+      "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+      "exchanges": [
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:adafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages/message-1",
+          "query": {
+            "format": [
+              "metadata"
+            ],
+            "metadataHeaders": [
+              "Message-ID",
+              "In-Reply-To",
+              "References",
+              "From",
+              "Reply-To",
+              "To",
+              "Subject"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 3,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 2,
+              "state": "notSent"
+            }
+          }
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+      "input": {
+        "messageId": "message-1",
+        "textBody": "Reply"
+      },
+      "name": "replyToMessage-source-unavailable-after-sends",
+      "operation": "replyToMessage",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
@@ -5891,11 +6121,15 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "sent-1",
@@ -5966,11 +6200,15 @@
         "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-1",
-          "sendCount": 1,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 1,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "providerId": "sent-1",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
         },
         "requestCount": 2,
         "retry": true,
@@ -6135,10 +6373,14 @@
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "sendCount": 3,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "9d2167f5-ff7c-53fa-b238-886c4dcac6e9": {
+              "attempt": 3,
+              "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "",
@@ -6341,10 +6583,14 @@
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 3,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "sendCount": 3,
-          "state": "claimed"
+          "singleDispatchMarkers": {
+            "d7b3cda7-c00c-5757-a41a-7b0109f0ede9": {
+              "attempt": 3,
+              "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+              "sendCount": 3,
+              "state": "claimed"
+            }
+          }
         },
         "output": {
           "messageId": "",

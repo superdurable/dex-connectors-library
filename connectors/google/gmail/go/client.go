@@ -465,8 +465,8 @@ func (client *Client) reconcileEarlierSends(
 	if call.Context.Attempt() == 1 && decision.Kind == singledispatch.SendAllowed {
 		return sdkgo.MutationAttempt[SendMessageOutput]{}, false
 	}
-	mayDispatch := decision.Kind == singledispatch.SendAllowed ||
-		(decision.Kind == singledispatch.ReadBackThenResendAllowed && !hasSavedProviderID)
+	mayDispatch := decision.Marker.State != singledispatch.StateAccepted && (decision.Kind == singledispatch.SendAllowed ||
+		(decision.Kind == singledispatch.ReadBackThenResendAllowed && !hasSavedProviderID))
 	var searchContext context.Context
 	var cancelSearch context.CancelFunc
 	if mayDispatch {
@@ -583,10 +583,9 @@ func acceptedMessageIdentity(content []byte) (sendResponse, bool) {
 	return identity, true
 }
 
-// recordNotSentBeforeAnySend records notSent only when no earlier attempt may have sent, because
-// notSent would otherwise hide that send from later attempts.
+// recordNotSentBeforeAnySend preserves earlier possible sends while excluding this attempt.
 func recordNotSentBeforeAnySend(fence *singledispatch.Fence, decision singledispatch.Decision) {
-	if decision.Kind == singledispatch.SendAllowed && decision.MaximumPriorSends == 0 {
+	if decision.Kind == singledispatch.SendAllowed || decision.Kind == singledispatch.ReadBackThenResendAllowed {
 		_ = fence.RecordNotSent() // A failed checkpoint cannot permit a later send.
 	}
 }
@@ -653,6 +652,7 @@ func (client *Client) confirmAcceptedMessage(
 	call sdkgo.Call, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
 	receipt sdkgo.Receipt, fence *singledispatch.Fence,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
+	_ = fence.RecordAccepted() // A failed checkpoint keeps the claim and forbids an unbounded resend.
 	sent, isFound, _ := client.pollSentMessageByRFCMessageID(budget.attemptContext, call, credentials)
 	if isFound {
 		return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)

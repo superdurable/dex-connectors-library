@@ -147,7 +147,7 @@ class Fence:
         Allowed once after `SEND_ALLOWED`, or after `READ_BACK_THEN_RESEND_ALLOWED`
         when read-back did not confirm the write. The claim records one more
         send than the decision's prior send upper bound. A too-short write
-        window or failed claim records `notSent` only after `SEND_ALLOWED`.
+        window or failed claim records `notSent` after either send decision.
         A too-short window raises `InsufficientAttemptTimeError`; when its
         `notSent` heartbeat fails, the heartbeat error is its `__cause__`.
         A send still running at the write deadline is cancelled and raises
@@ -159,21 +159,17 @@ class Fence:
                 or self._has_dispatched or self._has_pre_send_retry or send is None
             ):
                 raise DispatchNotAllowedError("single dispatch is not allowed for this attempt")
-            # notSent after an unresolved earlier send would let the next attempt skip read-back.
-            should_record_not_sent = self._decision.kind == DecisionKind.SEND_ALLOWED
             if (
                 self._minimum_request_time <= timedelta(0)
                 or self.write_deadline - datetime.now(UTC) < self._minimum_request_time
             ):
                 self._has_pre_send_retry = True
-                if should_record_not_sent:
-                    try:
-                        await self._record(self._not_sent_marker())
-                    except Exception as error:
-                        # Nothing was sent, so callers must still see the not-sent error type.
-                        raise InsufficientAttemptTimeError(
-                            "single dispatch has insufficient time and checkpoint failed"
-                        ) from error
+                try:
+                    await self._record(self._not_sent_marker())
+                except Exception as error:
+                    raise InsufficientAttemptTimeError(
+                        "single dispatch has insufficient time and checkpoint failed"
+                    ) from error
                 raise InsufficientAttemptTimeError("insufficient attempt time for single dispatch")
             self._has_dispatched = True
             claim = self._attempt_marker(State.CLAIMED, send_count=self._prior_send_count() + 1)
@@ -181,11 +177,10 @@ class Fence:
                 await self._record(claim)
             except Exception as error:
                 self._has_pre_send_retry = True
-                if should_record_not_sent:
-                    try:
-                        await self._record(self._not_sent_marker())
-                    except Exception:
-                        pass
+                try:
+                    await self._record(self._not_sent_marker())
+                except Exception:
+                    pass
                 raise CheckpointError("single-dispatch checkpoint could not be recorded") from error
         stop = asyncio.Event()
         repeater = asyncio.create_task(self._repeat_claim(claim, stop))
@@ -213,19 +208,34 @@ class Fence:
     async def record_not_sent(self) -> None:
         """Checkpoint a pre-send Retry and forbid Dispatch for this attempt.
 
-        Allowed only after `SEND_ALLOWED`. After `READ_BACK_THEN_RESEND_ALLOWED`
-        a possible earlier send is unresolved; a `notSent` would let the next
-        attempt send without reading back, so return Retry without it.
+        Allowed after either send-permitting decision. Earlier possible sends
+        remain counted and require read-back on the next attempt.
         The marker carries the prior send upper bound.
         """
         async with self._lock:
             if (
-                self._decision is None or self._decision.kind != DecisionKind.SEND_ALLOWED
+                self._decision is None or self._decision.kind not in _DISPATCH_PERMITTING_KINDS
                 or self._has_dispatched or self._has_pre_send_retry
             ):
                 raise DispatchNotAllowedError("single dispatch is not allowed for this attempt")
             self._has_pre_send_retry = True
             await self._record(self._not_sent_marker())
+
+    async def record_accepted(self) -> None:
+        """Checkpoint provider acceptance without an ID and prohibit another send."""
+        async with self._lock:
+            if (
+                not self._has_send_finished or self._marker is None
+                or self._marker.state != State.CLAIMED or self._marker.provider_id
+            ):
+                raise DispatchNotAllowedError("single dispatch is not allowed for this attempt")
+            accepted = self._attempt_marker(
+                State.ACCEPTED, send_count=self._prior_send_count() + 1
+            )
+            try:
+                await self._checkpoint.record(self._context, accepted, retain_on_failure=True)
+            finally:
+                self._marker = accepted
 
     async def record_can_resend(self) -> None:
         """Checkpoint positive proof that the provider did not process the request.

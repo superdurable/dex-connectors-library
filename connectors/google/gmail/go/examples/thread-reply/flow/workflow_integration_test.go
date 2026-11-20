@@ -157,6 +157,19 @@ func TestThreadReplyAcceptedResponseWithoutIDCompletesWithRealDex(t *testing.T) 
 	require.Equal(t, 4, provider.searchCount(threadID))
 }
 
+func TestThreadReplySourceReadFailurePreservesFinalSendWithRealDex(t *testing.T) {
+	provider := newGmailProvider(t)
+	defer provider.Close()
+	flow, harness := newGmailIntegrationHarness(t, provider.URL)
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	threadID := requireThreadReplyCompletesAfterReadBack(t, ctx, harness, flow,
+		"source-retry-"+strconv.FormatInt(time.Now().UnixNano(), 10))
+	require.Equal(t, 1, provider.sourceFailureCount(threadID))
+	require.Equal(t, 3, provider.sendCount(threadID))
+}
+
 func TestThreadReplyConfirmsALostSendResponseWithRealDex(t *testing.T) {
 	provider := newGmailProvider(t)
 	defer provider.Close()
@@ -256,18 +269,19 @@ func waitForGmailStatus(
 
 type gmailProvider struct {
 	*httptest.Server
-	release               chan struct{}
-	mutex                 sync.Mutex
-	sendsByThread         map[string]int
-	searchesByThread      map[string]int
-	threadsByRFCMessageID map[string]string
-	sentByRFCMessageID    map[string]struct{ ID, ThreadID string }
+	release                chan struct{}
+	mutex                  sync.Mutex
+	sendsByThread          map[string]int
+	sourceFailuresByThread map[string]int
+	searchesByThread       map[string]int
+	threadsByRFCMessageID  map[string]string
+	sentByRFCMessageID     map[string]struct{ ID, ThreadID string }
 }
 
 func newGmailProvider(t *testing.T) *gmailProvider {
 	t.Helper()
 	provider := &gmailProvider{
-		release: make(chan struct{}), sendsByThread: map[string]int{}, searchesByThread: map[string]int{},
+		release: make(chan struct{}), sendsByThread: map[string]int{}, sourceFailuresByThread: map[string]int{}, searchesByThread: map[string]int{},
 		threadsByRFCMessageID: map[string]string{}, sentByRFCMessageID: map[string]struct{ ID, ThreadID string }{},
 	}
 	provider.Server = httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
@@ -290,6 +304,17 @@ func (provider *gmailProvider) serveHTTP(response http.ResponseWriter, request *
 		messageIdentity := strings.TrimPrefix(messageID, "root-")
 		messageIdentity = strings.TrimPrefix(messageIdentity, "reply-")
 		threadID := "thread-" + messageIdentity
+		provider.mutex.Lock()
+		shouldFailSourceRead := strings.HasPrefix(threadID, "thread-source-retry-") &&
+			provider.sendsByThread[threadID] == 2 && provider.sourceFailuresByThread[threadID] == 0
+		if shouldFailSourceRead {
+			provider.sourceFailuresByThread[threadID]++
+		}
+		provider.mutex.Unlock()
+		if shouldFailSourceRead {
+			response.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 		response.Header().Set("Content-Type", "application/json")
 		writeGmailProviderResponse(response, gmailIntegrationMessageJSON(messageID, threadID, isReply))
 	case request.Method == http.MethodPost && request.URL.Path == "/users/me/messages/send":
@@ -360,6 +385,9 @@ func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *
 	case strings.HasPrefix(threadID, "thread-claimed-"):
 		response.WriteHeader(http.StatusInternalServerError)
 		writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)
+	case strings.HasPrefix(threadID, "thread-source-retry-") && provider.sendCount(threadID) < 3:
+		response.WriteHeader(http.StatusInternalServerError)
+		writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)
 	case strings.HasPrefix(threadID, "thread-retried-") && provider.sendCount(threadID) == 1:
 		response.WriteHeader(http.StatusServiceUnavailable)
 		writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)
@@ -378,6 +406,12 @@ func (provider *gmailProvider) sendCount(threadID string) int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return provider.sendsByThread[threadID]
+}
+
+func (provider *gmailProvider) sourceFailureCount(threadID string) int {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return provider.sourceFailuresByThread[threadID]
 }
 
 func (provider *gmailProvider) searchCount(threadID string) int {

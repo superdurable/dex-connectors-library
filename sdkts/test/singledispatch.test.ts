@@ -55,7 +55,7 @@ describe('single-dispatch marker decisions', () => {
 
   it('reads a legacy single marker of this call with its state, provider ID, and count', () => {
     expect(decideDispatch(callId, 3, { callId, attempt: 2, state: 'notSent', sendCount: 1 })).toEqual({
-      kind: 'sendAllowed', priorSendUpperBound: 1, marker: { callId, attempt: 2, state: 'notSent', sendCount: 1 },
+      kind: 'readBackRequired', priorSendUpperBound: 1, marker: { callId, attempt: 2, state: 'notSent', sendCount: 1 },
     });
     const accepted = { callId, attempt: 2, state: 'claimed', providerId: 'object-1', sendCount: 1 };
     expect(decideDispatch(callId, 3, accepted, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 1, marker: { providerId: 'object-1' } });
@@ -123,9 +123,9 @@ describe('single-dispatch bounded resend', () => {
     expect(decide(2, { callId, attempt: 1, state: 'claimed' }).marker).toEqual({ callId, attempt: 1, state: 'claimed', sendCount: 1 });
   });
 
-  it('keeps a proven not-sent or unprocessed retry send-allowed and carries its count', () => {
+  it('preserves earlier sends in a not-sent marker and carries the count', () => {
     expect(decide(2, { callId, attempt: 1, state: 'notSent' }, undefined, 3)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 0 });
-    expect(decide(7, { callId, attempt: 6, state: 'notSent', sendCount: 2 }, undefined, 3)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 2 });
+    expect(decide(7, { callId, attempt: 6, state: 'notSent', sendCount: 2 }, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
     expect(decide(8, { callId, attempt: 7, state: 'canResend', sendCount: 2 }, undefined, 2)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 2 });
   });
 
@@ -145,7 +145,7 @@ describe('single-dispatch bounded resend', () => {
     // The same vectors run in sdkgo and sdkpython to keep the count validity rule identical.
     const countVectors: readonly [attempt: number, marker: Marker, maxSends: number, kind: string, priorSendUpperBound: number | undefined][] = [
       [3, { callId, attempt: 2, state: 'claimed', sendCount: 2 }, 3, 'readBackThenResendAllowed', 2],
-      [3, { callId, attempt: 2, state: 'notSent', sendCount: 1 }, 3, 'sendAllowed', 1],
+      [3, { callId, attempt: 2, state: 'notSent', sendCount: 1 }, 3, 'readBackThenResendAllowed', 1],
       [3, { callId, attempt: 2, state: 'canResend', sendCount: 1 }, 3, 'sendAllowed', 1],
       [4, { callId, attempt: 2, state: 'notSent', sendCount: 1 }, 3, 'readBackThenResendAllowed', 2],
       [3, { callId, attempt: 2, state: 'claimed', sendCount: 3 }, 3, 'failClosed', undefined],

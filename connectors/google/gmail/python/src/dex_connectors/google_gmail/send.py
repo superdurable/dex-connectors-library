@@ -610,11 +610,11 @@ class SendService:
         )
 
     async def _record_not_sent(self, execution: SendExecution) -> None:
-        """Record notSent only before any possible send; otherwise it would hide an earlier send."""
+        """Exclude this attempt's send while retaining earlier possible sends."""
         if execution.fence is None:
             return
         decision = await execution.fence.decide()
-        if decision.kind == DecisionKind.SEND_ALLOWED and decision.prior_send_upper_bound == 0:
+        if decision.kind in (DecisionKind.SEND_ALLOWED, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED):
             await execution.fence.record_not_sent()
 
     async def _read_back_only(
@@ -873,6 +873,11 @@ class SendService:
         if accepted is not None:
             sent = accepted
         else:
+            if execution.fence is not None:
+                try:
+                    await execution.fence.record_accepted()
+                except Exception:  # noqa: BLE001
+                    pass  # The claim still prevents an unbounded resend.
             found, _ = await self._poll_sent(execution, budget, credential, message)
             sent = found or {"threadId": message.requested_thread_id}
         if sent.get("id"):

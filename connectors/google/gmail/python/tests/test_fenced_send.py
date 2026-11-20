@@ -508,7 +508,7 @@ async def test_reply_source_missing_after_unconfirmed_send_is_uncertain() -> Non
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("source_answer", [httpx.Response(409), httpx.Response(200, content=b"{")])
+@pytest.mark.parametrize("source_answer", [httpx.Response(503), httpx.Response(429)])
 async def test_reply_indefinite_source_read_counts_only_earlier_sends(source_answer: httpx.Response) -> None:
     """An unclear source read before any POST retries while two earlier sends stay below the cap of three."""
     context = HeartbeatContext(3)
@@ -523,7 +523,8 @@ async def test_reply_indefinite_source_read_counts_only_earlier_sends(source_ans
     attempt, requests = await _invoke(call, httpx.MockTransport(answer))
     assert attempt.kind == "retry"
     assert "POST" not in _methods(requests)
-    assert context.heartbeat_values == [], "a pre-send Retry after a possible send records nothing"
+    assert context.heartbeat_values, "a pre-send Retry records that this attempt did not send"
+    assert context.heartbeat_values[-1]["singleDispatchMarkers"][str(call.id)]["sendCount"] == 2
 
 
 @pytest.mark.asyncio
@@ -771,7 +772,7 @@ async def test_counted_can_resend_searches_before_resending(operation_id: str) -
 async def test_pre_send_retry_after_counted_can_resend_records_nothing(
     operation_id: str, failure: str
 ) -> None:
-    """notSent would hide the counted earlier send from the next attempt."""
+    """A pre-send retry preserves the counted earlier send."""
     context = HeartbeatContext(3)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 2, State.CAN_RESEND, send_count=1)
@@ -788,7 +789,7 @@ async def test_pre_send_retry_after_counted_can_resend_records_nothing(
     attempt, requests = await _invoke(call, httpx.MockTransport(answer))
     assert attempt.kind == "retry"
     assert "POST" not in [request.method for request in requests]
-    assert context.heartbeats == []
+    assert context.heartbeats == [Marker(call.id, 3, State.NOT_SENT, send_count=1)]
 
 
 class _SlowAcceptedBody(httpx.AsyncByteStream):
@@ -817,7 +818,7 @@ async def test_deadline_after_accepted_headers_is_never_resent(operation_id: str
     attempt, requests = await _invoke(call, httpx.MockTransport(answer))
     assert attempt.branch == "sent"
     assert [request.method for request in requests].count("POST") == 1
-    assert context.heartbeats[-1].state == State.CLAIMED
+    assert context.heartbeats[-1].state == State.ACCEPTED
 
 
 @pytest.mark.asyncio

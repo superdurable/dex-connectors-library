@@ -294,6 +294,7 @@ export class GmailSender {
       return rejectRefusedSend(call, fence, refusedBeforeProcessingStatuses.has(status) && isRefusalBodyClean, operation.providerRejectedBranch, receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
     }
     if (!sentResponse) {
+      await recordAcceptedWithoutIdentity(fence);
       const lookup = await this.#pollSentMessage(call, budget, credentials, message);
       if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
       return this.#sentMessage(call, budget, credentials, operation, message, { id: '', threadId: message.requestedThreadId }, receipt);
@@ -375,10 +376,10 @@ function isReadBackDecision(fence: Fence): boolean {
   const kind = fence.decide().kind;
   return kind === 'readBackRequired' || kind === 'readBackThenResendAllowed';
 }
-/** Record notSent only before any possible send; otherwise it would hide an earlier send. */
+/** Exclude this attempt's send while retaining earlier possible sends. */
 async function recordPreSendRetry(fence: Fence): Promise<void> {
   const decision = fence.decide();
-  if (decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0) return;
+  if (decision.kind !== 'sendAllowed' && decision.kind !== 'readBackThenResendAllowed') return;
   try { await fence.recordNotSent(); }
   catch { /* A missing checkpoint cannot authorize another send. */ }
 }
@@ -389,6 +390,10 @@ async function recordSafeResend(fence: Fence): Promise<void> {
 async function recordProviderIdentity(fence: Fence, providerId: string): Promise<void> {
   try { await fence.recordProviderId(providerId); }
   catch { /* A missing checkpoint forces read-back on retry. */ }
+}
+async function recordAcceptedWithoutIdentity(fence: Fence): Promise<void> {
+  try { await fence.recordAccepted(); }
+  catch { /* A missing checkpoint keeps the claim and prevents an unbounded resend. */ }
 }
 function emptySend(): SendMessageOutput { return { sender: '', recipients: [], messageId: '', threadId: '' }; }
 function defect(operation: 'sendMessage' | 'replyToMessage', kind: Failure['kind'], message: string): MutationAttempt<SendMessageOutput> { return newMutationBranch('defect', emptySend(), zeroReceipt(), failure(operation, kind, message)); }

@@ -25,7 +25,10 @@ function operationCall(operationId: string, attempt = 1, checkpoint: { value?: u
       attempt, runId: 'run-1', flowStartedAt: new Date('2026-01-02T00:00:00Z'), cancellationSignal: new AbortController().signal, flowId: 'flow-1',
       hasLastHeartbeatValue: () => checkpoint.value !== undefined,
       getLastHeartbeatValue: () => checkpoint.value,
-      recordHeartbeat: async (value: unknown) => { checkpoint.value = value; },
+      recordHeartbeat: async (value: unknown) => {
+        const entries = (value as { singleDispatchMarkers?: Record<string, unknown> }).singleDispatchMarkers;
+        checkpoint.value = entries?.['01234567-89ab-5cde-8f01-23456789abcd'] ?? value;
+      },
     },
   } as Call;
 }
@@ -360,8 +363,8 @@ describe('Gmail send and reply classification', () => {
   it('retries an unreadable or foreign checkpoint instead of selecting defect', async () => {
     let requests = 0;
     const operation = sender(async () => { requests++; return response(200, { messages: [] }); });
-    const foreign: { value?: unknown } = { value: { callId: 'foreign-call', attempt: 1, state: 'claimed', sendCount: 1 } };
-    expect(await operation.sendMessage(operationCall('sendMessage', 2, foreign), sendInput, new Date(Date.now() + 30_000)))
+    const invalidOwn: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed', sendCount: 2 } };
+    expect(await operation.sendMessage(operationCall('sendMessage', 2, invalidOwn), sendInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ kind: 'retry', failure: { message: 'Dex send checkpoint is unreadable or untrusted; an earlier send may still be delivered' } });
     const unreadable = { ...operationCall('replyToMessage', 2), context: { ...operationCall('replyToMessage', 2).context, hasLastHeartbeatValue: () => true, getLastHeartbeatValue: () => { throw new Error('heartbeat unavailable'); } } } as Call;
     expect(await operation.replyToMessage(unreadable, replyInput, new Date(Date.now() + 30_000)))
@@ -468,7 +471,7 @@ describe('Gmail send and reply classification', () => {
     expect(posts).toBe(2);
   });
 
-  it('records nothing when a pre-send search fails after a counted canResend', async () => {
+  it('records the unsent attempt after a pre-send search fails', async () => {
     const seeded = { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 2, state: 'canResend', sendCount: 1 };
     let posts = 0;
     const operation = sender(async request => {
@@ -482,8 +485,7 @@ describe('Gmail send and reply classification', () => {
         ? await operation.sendMessage(call, sendInput, new Date(Date.now() + 30_000))
         : await operation.replyToMessage(call, replyInput, new Date(Date.now() + 30_000));
       expect(attempt.kind).toBe('retry');
-      // notSent would hide the counted first send from the next attempt.
-      expect(checkpoint.value).toBe(seeded);
+      expect(checkpoint.value).toMatchObject({ state: 'notSent', attempt: 3, sendCount: 1 });
     }
     expect(posts).toBe(0);
   });
@@ -577,7 +579,22 @@ describe('Gmail send and reply classification', () => {
     const checkpoint: { value?: unknown } = { value: earlier };
     expect((await operation.replyToMessage(operationCall('replyToMessage', 3, checkpoint), replyInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
     expect(posts).toBe(0);
-    expect(checkpoint.value, 'a pre-send Retry after a possible send records nothing').toBe(earlier);
+    if (status === 409) expect(checkpoint.value).toMatchObject({ state: 'notSent', attempt: 3, sendCount: 2 });
+    else expect(checkpoint.value).toBe(earlier);
+  });
+
+  it('records an unsent reply after a transient source read failure', async () => {
+    let posts = 0;
+    const operation = sender(async request => {
+      if (request.url.includes('/source-1?')) return response(503, {});
+      if (request.method === 'POST') posts++;
+      return response(200, { messages: [] });
+    });
+    const earlier = { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 2, state: 'claimed', sendCount: 2 };
+    const checkpoint: { value?: unknown } = { value: earlier };
+    expect((await operation.replyToMessage(operationCall('replyToMessage', 3, checkpoint), replyInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
+    expect(posts).toBe(0);
+    expect(checkpoint.value).toMatchObject({ state: 'notSent', sendCount: 2 });
   });
 
   it('only searches Sent Mail on the attempt after an unrecorded source retry and selects uncertain', async () => {
@@ -774,8 +791,10 @@ describe('Gmail send and reply classification', () => {
       searches++;
       return response(200, { messages: [] });
     });
-    const result = await operation.sendMessage(operationCall('sendMessage'), sendInput, new Date(Date.now() + 30_000));
+    const checkpoint: { value?: unknown } = {};
+    const result = await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000));
     expect(result).toMatchObject({ branch: 'sent', value: { messageId: '', threadId: '' } });
+    expect(checkpoint.value).toMatchObject({ state: 'accepted', sendCount: 1 });
     expect(searches).toBe(4);
   });
 

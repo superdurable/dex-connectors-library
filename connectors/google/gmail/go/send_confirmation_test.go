@@ -342,7 +342,8 @@ func TestGmailAmbiguousWritesSearchSentMail(t *testing.T) {
 					behavior.searchMatch = `{"id":"sent-1","threadId":"thread-1"}`
 				}
 				fake := newGmailSendFake(t, behavior)
-				result := runGmailSendAttempt(newGmailDexContext(t.Name()), newGmailClient(t, fake.URL), isReply)
+				stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+				result := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), isReply)
 				sends, searches, _, rejectedSearch := fake.counts()
 				require.Empty(t, rejectedSearch, "the search must use the exact documented rfc822msgid query")
 				require.Equal(t, 1, sends)
@@ -357,6 +358,8 @@ func TestGmailAmbiguousWritesSearchSentMail(t *testing.T) {
 						require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
 						require.Empty(t, result.value.MessageID)
 						require.NotNil(t, result.value.Recipients)
+						stepContext.AdvanceAttempt()
+						require.Equal(t, singledispatch.StateAccepted, readPersistedMarker(t, stepContext).State)
 						if isReply {
 							require.Equal(t, "thread-1", result.value.ThreadID)
 						} else {
@@ -805,26 +808,31 @@ func TestGmailReplyIndefiniteSourceReadCountsOnlyEarlierSends(t *testing.T) {
 		stepContext.AdvanceAttempt()
 	}
 	fake.mutex.Lock()
-	fake.behavior.sourceReadStatusCode = http.StatusConflict
+	fake.behavior.sourceReadStatusCode = http.StatusServiceUnavailable
 	fake.mutex.Unlock()
-	heartbeatCount := len(stepContext.Heartbeats())
 	third := runGmailSendAttempt(stepContext, client, true)
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, third.err, &retry, "two earlier sends stay below the cap of three")
-	require.Len(t, stepContext.Heartbeats(), heartbeatCount, "a pre-send Retry after a possible send records nothing")
+	stepContext.AdvanceAttempt()
+	marker := readPersistedMarker(t, stepContext)
+	require.Equal(t, singledispatch.StateNotSent, marker.State)
+	require.Equal(t, int32(2), marker.SendCount)
 	sends, _, _, _ := fake.counts()
 	require.Equal(t, 2, sends)
 
-	// The unrecorded attempt counts as a possible send, so attempt four only searches Sent Mail.
-	stepContext.AdvanceAttempt()
+	fake.mutex.Lock()
+	fake.behavior.sourceReadStatusCode = 0
+	fake.behavior.answerSend = writeGmailSendJSON(`{"id":"sent-4","threadId":"thread-1"}`)
+	fake.mutex.Unlock()
 	_, searchesBefore, _, _ := fake.counts()
 	sourceReadsBefore := fake.sourceReadCount()
 	fourth := runGmailSendAttempt(stepContext, client, true)
-	requireGmailUncertain(t, fourth)
+	require.NoError(t, fourth.err)
+	require.Equal(t, gmail.ReplyToMessageBranchSent, fourth.branch)
 	sends, searches, _, _ := fake.counts()
-	require.Equal(t, 2, sends)
+	require.Equal(t, 3, sends)
 	require.Greater(t, searches, searchesBefore, "attempt four searches Sent Mail")
-	require.Equal(t, sourceReadsBefore, fake.sourceReadCount(), "attempt four never rereads the source")
+	require.Greater(t, fake.sourceReadCount(), sourceReadsBefore, "attempt four rereads the source")
 }
 
 // TestGmailReplySourceRejectedOnFirstAttemptIsProviderRejected keeps a clean first rejection terminal.
@@ -1447,11 +1455,12 @@ func TestGmailPreSendRetryAfterCountedCanResendRecordsNothing(t *testing.T) {
 			require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
 			sends, _, _, _ := fake.counts()
 			require.Equal(t, 2, sends)
-			// notSent would hide the counted first send from the next attempt.
+			// The notSent marker retains the counted first send.
 			stepContext.AdvanceAttempt()
 			marker := readPersistedMarker(t, stepContext)
-			require.Equal(t, singledispatch.StateCanResend, marker.State)
-			require.Equal(t, int32(2), marker.Attempt)
+			require.Equal(t, singledispatch.StateNotSent, marker.State)
+			require.Equal(t, int32(3), marker.Attempt)
+			require.Equal(t, int32(1), marker.SendCount)
 		})
 	}
 }
