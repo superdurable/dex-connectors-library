@@ -11,3 +11,5 @@ Register at the [Wangdian Open Platform](https://open.wangdian.cn/), wait for ap
 Run the [shop directory example](go/examples/shop-directory/README.md). Its synthetic mock is not live Wangdian data. Live credentials, permissions, actual shop list compatibility, and production rate limits have not been verified.
 
 The [Python shop-directory Flow](python/examples/list_shops/) also runs against a real Dex Worker and Client with a synthetic provider page.
+
+The [TypeScript package](typescript/) implements signed `listShops` and replays Go provider scenarios. Its [runnable Dex Flow](typescript/examples/basic/) persists a bounded shop page through a Worker and Client. Live Wangdian authorization remains unverified.

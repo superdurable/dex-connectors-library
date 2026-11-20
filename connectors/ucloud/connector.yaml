@@ -9,6 +9,7 @@ metadata:
   version: v0.1.0
 spec:
   languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-ucloud", operations: [getRegion], triggers: []}
     python: {version: v0.1.0, operations: [getRegion], triggers: []}
   provider: ucloud
   codegen:
