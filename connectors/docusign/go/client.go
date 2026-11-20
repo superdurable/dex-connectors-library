@@ -177,11 +177,12 @@ type docusignResponse struct {
 
 // docusignOutcome classifies a non-2xx answer: a Retry, or a conclusive failure the caller maps to a branch.
 type docusignOutcome struct {
-	isRetry    bool
-	isNotFound bool
-	retryAfter time.Duration
-	errorCode  string
-	failure    sdkgo.Failure
+	isRetry           bool
+	isNotFound        bool
+	isDefiniteRefusal bool
+	retryAfter        time.Duration
+	errorCode         string
+	failure           sdkgo.Failure
 }
 
 // New validates config and constructs a Client. Blank configuration fields take their manifest defaults.

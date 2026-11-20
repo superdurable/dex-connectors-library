@@ -98,7 +98,8 @@ below. An incomplete `401` body to a create, or one that names an
 declares `repeatOnUnknown: safe` and retries every unknown outcome without a
 send cap. Before a retry sends another PUT, it reads the envelope: an already
 voided envelope selects `voided`, while an inconclusive read retries without
-sending. A malformed or oversized status read-back after a refused void also
+sending. A definite read refusal allows the idempotent PUT to run and classify
+its own answer. A malformed or oversized status read-back after a refused void also
 retries. Its Step factory still accepts `MaxSends` for
 compatibility and ignores it.
 
@@ -177,7 +178,8 @@ answers `ENVELOPE_CANNOT_VOID_INVALID_STATE`, the connector reads the envelope:
 `voided` selects `voided` with `wasAlreadyVoided`, so a repeated Step and a
 duplicate dispatch are safe, and `completed`, `declined`, or a `created` draft
 select `notVoidable` with the status. Every retry reads the envelope before
-another PUT; a prior void is confirmed without a duplicate request. A real-Dex test lets the async Step be
+another PUT; a prior void is confirmed without a duplicate request. A definite
+read refusal falls through to the PUT. A real-Dex test lets the async Step be
 retried after an accepted void and still ends `voided`.
 
 ### downloadCombinedDocument and Dex payloads

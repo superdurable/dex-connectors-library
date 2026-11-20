@@ -192,7 +192,13 @@ export class VoidEnvelopeOperation implements Mutation<VoidEnvelopeInput, Voided
     if (call.context.attempt > 1) {
       const previous = await readEnvelope(this.client, call, session, envelopeId, operation);
       if (previous.error) return newMutationRetry(previous.error);
-      if (previous.outcome) return newMutationRetry(previous.outcome.failure, previous.outcome.retryAfterMs);
+      if (previous.outcome) {
+        const documentedCode = previous.outcome.notFound || ['AUTHENTICATION', 'AUTHORIZATION', 'QUOTA_EXHAUSTED'].includes(previous.outcome.failure.kind)
+          || ['ENVELOPE_CANNOT_VOID_INVALID_STATE', 'ENVELOPE_INVALID_STATUS'].includes(previous.outcome.errorCode.toUpperCase());
+        const isDefiniteRefusal = previous.response && previous.response.isErrorBodyIncomplete !== true && !hasEnvelopeId(previous.response.body)
+          && (definiteRefusalStatuses.has(previous.response.status) || documentedCode);
+        if (previous.outcome.retry || !isDefiniteRefusal) return newMutationRetry(previous.outcome.failure, previous.outcome.retryAfterMs);
+      }
       if (previous.envelope?.status === 'voided') return newMutationBranch('voided', {
         envelopeId, wasAlreadyVoided: true, status: 'voided',
         ...(previous.envelope.voidedReason ? { voidedReason: previous.envelope.voidedReason } : {}),
@@ -401,11 +407,11 @@ function decodeEnvelope(body: Uint8Array): Envelope {
   }
   return result;
 }
-async function readEnvelope(client: DocuSignClient, call: Call, session: DocuSignSession, envelopeId: string, operation: string): Promise<{ envelope?: Envelope; outcome?: DocuSignOutcome; error?: Failure }> {
+async function readEnvelope(client: DocuSignClient, call: Call, session: DocuSignSession, envelopeId: string, operation: string): Promise<{ envelope?: Envelope; outcome?: DocuSignOutcome; response?: DocuSignResponse; error?: Failure }> {
   let response: DocuSignResponse;
   try { response = await client.requestAPI(call, session, 'GET', `/envelopes/${escapePath(envelopeId)}`, { include: 'custom_fields' }); }
   catch (error) { return error instanceof ResponseTooLargeError ? { error: failure(operation, 'RESPONSE_TOO_LARGE', tooLarge) } : { outcome: { retry: true, notFound: false, retryAfterMs: 0, errorCode: '', failure: failure(operation, 'TRANSPORT', 'DocuSign could not be reached to read the envelope') } }; }
-  if (response.status !== 200) return { outcome: client.classify(operation, response) };
+  if (response.status !== 200) return { outcome: client.classify(operation, response), response };
   try { const envelope = decodeEnvelope(response.body); if (envelope.envelopeId !== envelopeId.toLowerCase()) throw new Error(malformed); return { envelope }; }
   catch { return { error: failure(operation, 'PROTOCOL', malformed) }; }
 }

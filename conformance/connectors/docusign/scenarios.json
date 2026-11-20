@@ -8330,6 +8330,236 @@
       ],
       "name": "void-read-back-after-unknown-write",
       "operation": "voidEnvelope"
+    },
+    {
+      "attempts": 2,
+      "callId": "3eb1f2ce-c852-5b18-9c07-fc0a7154f72a",
+      "exchanges": [
+        {
+          "body": "{\"accounts\":[{\"account_id\":\"a4ec37d6-1111-2222-3333-143885c220e1\",\"is_default\":true,\"base_uri\":\"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":\"SERVICE_UNAVAILABLE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"errorCode\":\"ENVELOPE_DOES_NOT_EXIST\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"errorCode\":\"ENVELOPE_DOES_NOT_EXIST\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "envelopeId": ""
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-04T12:00:00Z",
+      "idempotencyKey": "3eb1f2ce-c852-5b18-9c07-fc0a7154f72a",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "void-read-back-404-before-resend",
+      "operation": "voidEnvelope"
+    },
+    {
+      "attempts": 2,
+      "callId": "4ff138d3-0f1e-50c5-a500-ee04e3027d40",
+      "exchanges": [
+        {
+          "body": "{\"accounts\":[{\"account_id\":\"a4ec37d6-1111-2222-3333-143885c220e1\",\"is_default\":true,\"base_uri\":\"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":\"SERVICE_UNAVAILABLE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"errorCode\":\"USER_LACKS_PERMISSIONS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        },
+        {
+          "body": "{\"errorCode\":\"USER_LACKS_PERMISSIONS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "envelopeId": ""
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-04T12:00:00Z",
+      "idempotencyKey": "4ff138d3-0f1e-50c5-a500-ee04e3027d40",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "void-read-back-403-before-resend",
+      "operation": "voidEnvelope"
     }
   ],
   "schemaVersion": 1

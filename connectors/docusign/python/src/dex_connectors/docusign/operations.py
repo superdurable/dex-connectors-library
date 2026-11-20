@@ -475,16 +475,35 @@ class VoidEnvelopeOperation:
         except SessionFailure as error:
             return _session_attempt(error, zero, True)
         if call.context is not None and call.context.attempt > 1:
+            previous_envelope: Envelope | None = None
             try:
                 previous = await self.client.request(
                     call, session, "GET", "/envelopes/" + envelope_id, {"include": "custom_fields"}
                 )
                 if previous.status != 200:
                     previous_outcome = self.client.classify(operation, previous)
-                    return MutationAttempt.retry(previous_outcome.failure, previous_outcome.retry_after)
-                previous_envelope = _decode_envelope(previous.body)
-                if previous_envelope.envelope_id != envelope_id:
-                    raise ValueError("DocuSign returned a malformed response")
+                    has_documented_code = (
+                        previous_outcome.not_found
+                        or previous_outcome.failure.kind
+                        in (
+                            FailureKind.AUTHENTICATION,
+                            FailureKind.AUTHORIZATION,
+                            FailureKind.QUOTA_EXHAUSTED,
+                        )
+                        or previous_outcome.error_code.upper()
+                        in ("ENVELOPE_CANNOT_VOID_INVALID_STATE", "ENVELOPE_INVALID_STATUS")
+                    )
+                    is_definite_refusal = (
+                        not previous.is_error_body_incomplete
+                        and not _has_envelope_id(previous.body)
+                        and (previous.status in _DEFINITE_REFUSAL_STATUSES or has_documented_code)
+                    )
+                    if previous_outcome.retry or not is_definite_refusal:
+                        return MutationAttempt.retry(previous_outcome.failure, previous_outcome.retry_after)
+                else:
+                    previous_envelope = _decode_envelope(previous.body)
+                    if previous_envelope.envelope_id != envelope_id:
+                        raise ValueError("DocuSign returned a malformed response")
             except BodyTooLargeError:
                 return MutationAttempt.retry(
                     failure(
@@ -503,7 +522,7 @@ class VoidEnvelopeOperation:
                 return MutationAttempt.retry(
                     failure(operation, FailureKind.PROTOCOL, "DocuSign returned a malformed response")
                 )
-            if previous_envelope.status == "voided":
+            if previous_envelope is not None and previous_envelope.status == "voided":
                 return MutationAttempt.branch_result(
                     "voided",
                     VoidedEnvelope(

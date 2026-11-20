@@ -106,6 +106,33 @@ func TestVoidEnvelopeReadsBackBeforeRetryingAnUnknownWrite(t *testing.T) {
 	require.Len(t, fake.requestsTo(http.MethodGet, envelopePath), 1)
 }
 
+func TestVoidEnvelopeResendsAfterDefiniteReadBackRefusal(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		code   string
+		branch sdkgo.BranchID
+	}{
+		{name: "missing envelope", status: http.StatusNotFound, code: "ENVELOPE_DOES_NOT_EXIST", branch: docusign.VoidEnvelopeBranchNotFound},
+		{name: "permission denied", status: http.StatusForbidden, code: "USER_LACKS_PERMISSIONS", branch: docusign.VoidEnvelopeBranchProviderRejected},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			answer := respondJSON(test.status, docusignError(test.code))
+			fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+				"GET " + envelopePath: answer,
+				"PUT " + envelopePath: answer,
+			})
+			client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+			result, err := sdkgo.RunMutation(newRetriedTestDexContext("void-read-refusal", 2), client.VoidEnvelope(), testConnection,
+				docusign.VoidEnvelopeInput{EnvelopeID: testEnvelopeID, VoidedReason: "Deal lost"})
+			require.NoError(t, err)
+			require.Equal(t, test.branch, result.Branch)
+			require.Len(t, fake.requestsTo(http.MethodGet, envelopePath), 1)
+			require.Len(t, fake.requestsTo(http.MethodPut, envelopePath), 1)
+		})
+	}
+}
+
 func TestVoidEnvelopeClassifiesOtherAnswers(t *testing.T) {
 	for name, test := range map[string]struct {
 		status         int

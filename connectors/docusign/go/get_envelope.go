@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
@@ -65,6 +66,12 @@ func (client *Client) readEnvelope(
 	}
 	if response.statusCode != http.StatusOK {
 		outcome := client.classifyDocuSignFailure(operationID, response)
+		outcome.isDefiniteRefusal = !response.isErrorBodyIncomplete && !hasEnvelopeID(response.body) && (isDefiniteDocuSignRefusal(response.statusCode) ||
+			isDocuSignCodeIn(outcome.errorCode, docusignAuthenticationCodes) ||
+			isDocuSignCodeIn(outcome.errorCode, docusignAuthorizationCodes) ||
+			isDocuSignCodeIn(outcome.errorCode, docusignNotFoundCodes) ||
+			isDocuSignCodeIn(outcome.errorCode, voidRefusalCodes) ||
+			strings.EqualFold(outcome.errorCode, "ENVELOPE_ALLOWANCE_EXCEEDED"))
 		return Envelope{}, &outcome, nil
 	}
 	envelope, err := decodeEnvelope(response.body)

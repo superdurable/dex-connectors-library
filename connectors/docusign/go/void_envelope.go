@@ -74,7 +74,7 @@ func (operation VoidEnvelopeOperation) Invoke(call sdkgo.Call, input VoidEnvelop
 		switch {
 		case err != nil:
 			return sdkgo.NewMutationRetry[VoidedEnvelope](docusignFailure(voidEnvelopeOperationID, responseFailureKind(err), responseFailureMessage(err)), 0)
-		case readOutcome != nil:
+		case readOutcome != nil && (readOutcome.isRetry || !readOutcome.isDefiniteRefusal):
 			return sdkgo.NewMutationRetry[VoidedEnvelope](readOutcome.failure, readOutcome.retryAfter)
 		case envelope.Status == EnvelopeStatusVoided:
 			return sdkgo.NewMutationBranch(VoidEnvelopeBranchVoided, VoidedEnvelope{
