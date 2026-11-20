@@ -7,3 +7,7 @@ Enter your account origin, `https://<subdomain>.udesk.cn`, in the connection set
 The Query retries HTTP 408, 429, 5xx, and transport failures under Dex's default retry budget. Other HTTP failures or non-1000 provider codes select `providerRejected`; code 2059 is classified as authentication failure. Malformed or oversized responses select `invalidResponse`; invalid connection fields select `defect`.
 
 Install `github.com/superdurable/dex-connectors-library/connectors/udesk/go@v0.1.0` after release. Provider tests use an HTTP test server. The mock-backed example integration test uses a real Dex Worker and Client. Live Udesk login-token acquisition and account status listing remain unverified without a user-configured account.
+
+The [Python package](python/README.md) implements the same Query and includes
+a runnable [Flow and Worker](python/examples/list_ticket_statuses/README.md).
+Its Dex integration exercises a synthetic provider.
