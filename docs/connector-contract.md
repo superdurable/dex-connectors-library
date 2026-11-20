@@ -530,6 +530,14 @@ cap, or for a marker from the current or a later attempt, the decision stays
 Fence takes the cap per call, a marker's count stays valid when an application
 changes the cap.
 
+When the provider confirms acceptance without a usable resource ID, record
+`accepted` with the claim's send count. A later attempt must read back and
+must not resend, regardless of its cap. If read-back obtains an ID in the
+same attempt, `RecordProviderID` may attach it without changing the count.
+Deploy every Worker with a compatible SDK before a connector writes `accepted`;
+do not roll back while Steps are in flight, because older SDKs treat this
+state as a missing marker.
+
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
 `STEP_IN`, whereas Connector branch targets accept the factory output
