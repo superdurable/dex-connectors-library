@@ -8,6 +8,9 @@ fence that resends an unknown outcome only while possible sends stay below the
 Step's send cap, and selects `uncertain` at the cap. All other optional branches
 fail an example Flow unless the application wires them for a business reaction.
 
+Version `0.2.2` reads `addEmployee` back by email before resending an unknown
+outcome and rejects an older employee whose name or supplied hire date differs.
+
 Version `0.2.1` resends an `addEmployee` outcome that is unknown, such as a 5xx
 or lost response, below the send cap; returns Retry for an unreadable dispatch
 checkpoint; selects `providerRejected` for the documented duplicate-email 409 of

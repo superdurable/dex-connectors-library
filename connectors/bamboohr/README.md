@@ -31,18 +31,18 @@ The `employeeChanged` Trigger starts a Flow for each employee BambooHR lists
 as inserted, updated, or deleted, polled with a durable cursor; see
 [employeeChanged Trigger](#employeechanged-trigger).
 
-Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.24.1`.
+Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.24.2`.
 The module requires Connector Go SDK v0.38.0 for the durable poll Trigger kit
 (`sdkgo/pollingtrigger`) and the shared single-dispatch fence.
 
 ## Python package
 
-The independent `dex-connector-bamboohr` Python package `v0.2.1` implements all
+The independent `dex-connector-bamboohr` Python package `v0.2.2` implements all
 six operations above with the same branch IDs and provider request behavior as
 the Go connector. It includes generated typed inputs, outputs,
 operation-specific Step factories, named project connections, and mock
 outcomes. `addEmployee` uses the Python Connector SDK's single-dispatch fence
-and sync Execute durability. Install it with `dex-connector-bamboohr==0.2.1`;
+and sync Execute durability. Install it with `dex-connector-bamboohr==0.2.2`;
 it requires `dex-connectors-sdk` 0.12.0 or newer.
 
 The package also implements the `employeeChanged` Trigger on the Python poll
@@ -65,9 +65,9 @@ OAuth; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) v0.2.1 implements all six
+The [TypeScript package](typescript/README.md) v0.2.2 implements all six
 operations with generated Step factories and a hand-written provider client.
-Install it with `@superdurable/connector-bamboohr@0.2.1`; it requires
+Install it with `@superdurable/connector-bamboohr@0.2.2`; it requires
 `@superdurable/connectors-sdk` 0.12.0.
 Its [runnable getEmployee Flow](typescript/examples/get-employee/) uses the
 static `bamboohr-employees` connection name. Go-recorded conformance scenarios

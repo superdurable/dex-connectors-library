@@ -21,7 +21,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.25.0
+go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.25.1
 ```
 
 
