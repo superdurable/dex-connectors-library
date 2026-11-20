@@ -130,6 +130,30 @@ func TestUnexpiredCredentialIsUsedWhenTheDriverRequiresNoRefresh(t *testing.T) {
 	require.Zero(t, driver.requests)
 }
 
+func TestMalformedStoredCredentialHasTerminalClassification(t *testing.T) {
+	store := storedConnection(t, `{"access":42}`, nil)
+	resolver, err := projectconfig.NewCredentialResolver(store, refreshKey, decodeToken, encodeToken)
+	require.NoError(t, err)
+
+	_, err = resolver.Resolve(context.Background())
+	require.ErrorIs(t, err, projectconfig.ErrCredentialMaterialInvalid)
+	require.EqualError(t, err, "project credential decoding failed")
+
+	driver := refreshWith(func(context.Context, projectconfig.RefreshState[token]) (projectconfig.RefreshResult[token], error) {
+		t.Fatal("malformed credentials must not reach the refresh driver")
+		return projectconfig.RefreshResult[token]{}, nil
+	})
+	_, err = resolver.ResolveWithRefresh(context.Background(), driver)
+	require.ErrorIs(t, err, projectconfig.ErrCredentialMaterialInvalid)
+	require.EqualError(t, err, "project credential decoding failed")
+	require.Zero(t, driver.requests)
+
+	var credentials token
+	err = projectconfig.DecodeCredentials(json.RawMessage(`{"access":42}`), &credentials)
+	require.ErrorIs(t, err, projectconfig.ErrCredentialMaterialInvalid)
+	require.EqualError(t, err, "stored credential does not match the connector's credential fields")
+}
+
 func TestTransientRefreshFailureKeepsTheCredential(t *testing.T) {
 	store := expiredConnection(t)
 	resolver, err := projectconfig.NewCredentialResolver(store, refreshKey, decodeToken, encodeToken)

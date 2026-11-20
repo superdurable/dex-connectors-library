@@ -388,12 +388,13 @@ func validateMaterial(material CredentialMaterial) error {
 
 // DecodeCredentials strictly decodes one stored credential object into a connector's credential fields.
 // Unknown members and trailing values are rejected. Generated connector code is its caller.
+// Invalid material returns ErrCredentialMaterialInvalid without exposing decoder details.
 func DecodeCredentials(contents json.RawMessage, destination any) error {
 	if destination == nil {
 		return errors.New("credential destination is required")
 	}
 	if err := strictJSON(contents, destination); err != nil {
-		return errors.New("stored credential does not match the connector's credential fields")
+		return invalidCredentialMaterialError{reason: "stored credential does not match the connector's credential fields"}
 	}
 	return nil
 }
