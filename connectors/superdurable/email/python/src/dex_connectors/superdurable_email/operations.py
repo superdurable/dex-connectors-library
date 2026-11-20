@@ -1349,11 +1349,12 @@ class MoveMessageOperation:
             )
         try:
             credentials = await self.client.resolve_credentials(call, operation)
-            return await asyncio.to_thread(self._move, credentials, input)
+            attempt = call.context.attempt if call.context is not None else 1
+            return await asyncio.to_thread(self._move, credentials, input, attempt)
         except MailFailure as error:
             return _mutation_failure(call, error, True)
 
-    def _move(self, credentials: Any, input: MoveMessageInput) -> MutationAttempt[MovedMessage]:
+    def _move(self, credentials: Any, input: MoveMessageInput, attempt: int) -> MutationAttempt[MovedMessage]:
         operation = "moveMessage"
         session = self.client.open_imap(credentials, operation)
         try:
@@ -1373,6 +1374,17 @@ class MoveMessageOperation:
             fetched = _fetch(session, input.message.uid, operation)
             if fetched is None:
                 if not input.message_id:
+                    if attempt > 1:
+                        return MutationAttempt.uncertain(
+                            MovedMessage(),
+                            _failure(
+                                FailureKind.TRANSPORT,
+                                operation,
+                                "an earlier attempt may have moved the message, but no Message-ID "
+                                "can confirm its destination",
+                            ),
+                            _receipt(),
+                        )
                     return MutationAttempt.branch_result(
                         "notFound",
                         MovedMessage(),

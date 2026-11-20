@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-superdurable-email",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "description": "IMAP and SMTP email connector for Dex TypeScript applications",
   "repository": {

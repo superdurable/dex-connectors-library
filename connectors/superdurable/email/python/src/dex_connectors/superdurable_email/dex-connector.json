@@ -1,10 +1,10 @@
 {
   "connectorId": "email",
-  "releaseTag": "connectors/superdurable/email/go/v0.23.1",
+  "releaseTag": "connectors/superdurable/email/go/v0.23.2",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-superdurable-email",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "factories": [
     {
@@ -374,6 +374,11 @@
         {
           "id": "notFound",
           "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
           "optional": true
         },
         {

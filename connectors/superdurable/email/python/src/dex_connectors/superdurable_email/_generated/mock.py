@@ -191,6 +191,11 @@ def move_message_not_found(value: MovedMessage, failure: Failure | None = None) 
 
 setattr(move_message_not_found, '__module__', "dex_connectors.superdurable_email.emailmock")
 
+def move_message_uncertain(value: MovedMessage, failure: Failure) -> Case[MovedMessage]:
+    return Case.uncertain(value, failure)
+
+setattr(move_message_uncertain, '__module__', "dex_connectors.superdurable_email.emailmock")
+
 def move_message_provider_rejected(value: MovedMessage, failure: Failure | None = None) -> Case[MovedMessage]:
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
@@ -330,6 +335,7 @@ __all__ = [
     "reply_to_message_missing_reply_address",
     "move_message_moved",
     "move_message_not_found",
+    "move_message_uncertain",
     "move_message_provider_rejected",
     "move_message_defect",
     "move_message_retry",

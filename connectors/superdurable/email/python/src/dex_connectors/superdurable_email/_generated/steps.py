@@ -244,6 +244,7 @@ def new_move_message_step(
     map_to_operation_input: Callable[[StepInput], MoveMessageInput],
     moved: dex.StepTarget[MutationResult[MovedMessage]],
     not_found: dex.StepTarget[MutationResult[MovedMessage]] | None = None,
+    uncertain: dex.StepTarget[MutationResult[MovedMessage]] | None = None,
     provider_rejected: dex.StepTarget[MutationResult[MovedMessage]] | None = None,
     defect: dex.StepTarget[MutationResult[MovedMessage]] | None = None,
     result_attribute: dex.Attribute[MutationResult[MovedMessage]] | None = None,
@@ -266,6 +267,8 @@ def new_move_message_step(
     }
     if not_found is not None:
         branches["notFound"] = not_found
+    if uncertain is not None:
+        branches["uncertain"] = uncertain
     if provider_rejected is not None:
         branches["providerRejected"] = provider_rejected
     if defect is not None:

@@ -564,6 +564,7 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 
 const MoveMessageBranchMoved sdkgo.BranchID = "moved"
 const MoveMessageBranchNotFound sdkgo.BranchID = "notFound"
+const MoveMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const MoveMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const MoveMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -572,6 +573,7 @@ var MoveMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: MoveMessageBranchMoved, Description: "The message is in the destination mailbox, moved now or by an earlier attempt."},
 		{ID: MoveMessageBranchNotFound, Description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID and none with the expected Message-ID is in the destination.", Optional: true},
+		{ID: MoveMessageBranchUncertain, Description: "A prior attempt may have moved the message, but its UID is gone and no Message-ID was supplied to confirm the destination.", Optional: true},
 		{ID: MoveMessageBranchProviderRejected, Description: "The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS.", Optional: true},
 		{ID: MoveMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -596,6 +598,7 @@ type MoveMessageStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) MoveMessageInput                          `connector:"mapToOperationInput"`
 	Moved                             sdkgo.Target[MoveMessageResult]                    `connector:"branch=moved"`
 	NotFound                          sdkgo.Target[MoveMessageResult]                    `connector:"branch=notFound,optional"`
+	Uncertain                         sdkgo.Target[MoveMessageResult]                    `connector:"branch=uncertain,optional"`
 	ProviderRejected                  sdkgo.Target[MoveMessageResult]                    `connector:"branch=providerRejected,optional"`
 	Defect                            sdkgo.Target[MoveMessageResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MovedMessage]] `connector:"resultAttribute"`
@@ -616,12 +619,15 @@ func NewMoveMessageStep[IN any](config MoveMessageStepConfig[IN]) sdkgo.Mutation
 		Operation: config.Connection.operations.MoveMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[MoveMessageResult] {
-			branches := make([]sdkgo.BranchTarget[MoveMessageResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[MoveMessageResult], 0, 5)
 			if config.Moved.HasStep() {
 				branches = append(branches, config.Moved.BranchTarget(MoveMessageBranchMoved))
 			}
 			if config.NotFound.HasStep() {
 				branches = append(branches, config.NotFound.BranchTarget(MoveMessageBranchNotFound))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(MoveMessageBranchUncertain))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(MoveMessageBranchProviderRejected))

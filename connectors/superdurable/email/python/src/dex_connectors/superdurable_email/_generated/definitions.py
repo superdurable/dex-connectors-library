@@ -108,6 +108,7 @@ MOVE_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(MOVED, "The message is in the destination mailbox, moved now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID and none with the expected Message-ID is in the destination.", True),
+        BranchDefinition(UNCERTAIN, "A prior attempt may have moved the message, but its UID is gone and no Message-ID was supplied to confirm the destination.", True),
         BranchDefinition(PROVIDER_REJECTED, "The IMAP server conclusively refused the login, TLS, or move, such as a destination mailbox that does not exist or a server without MOVE or UIDPLUS.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),

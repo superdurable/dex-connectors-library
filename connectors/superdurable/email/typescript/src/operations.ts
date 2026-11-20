@@ -451,7 +451,9 @@ export class MoveMessageOperation {
       await select(session, input.message.mailbox, false, input.message.uidValidity);
       const source = await session.fetchOne(String(input.message.uid), { envelope: true }, { uid: true });
       if (!source) {
-        if (!input.messageId) return newMutationBranch('notFound', zeroMove, {}, failure('moveMessage', new MailFailure('notFound', 'NOT_FOUND', 'no message in source mailbox has the UID')));
+        if (!input.messageId) return call.context.attempt > 1
+          ? newMutationUncertain(zeroMove, failure('moveMessage', new MailFailure('rejected', 'TRANSPORT', 'an earlier attempt may have moved the message, but no Message-ID can confirm its destination')), {})
+          : newMutationBranch('notFound', zeroMove, {}, failure('moveMessage', new MailFailure('notFound', 'NOT_FOUND', 'no message in source mailbox has the UID')));
         const uidValidity = await select(session, input.destinationMailbox, true);
         const found = await session.search({ header: { 'Message-ID': `<${input.messageId}>` } }, { uid: true });
         if (!Array.isArray(found)) throw new MailFailure('rejected', 'PROVIDER_REJECTION', 'the IMAP server refused SEARCH');
