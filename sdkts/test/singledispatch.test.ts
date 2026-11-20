@@ -45,6 +45,7 @@ describe('single-dispatch marker decisions', () => {
     expect(decide(2, undefined).kind).toBe('readBackRequired');
     expect(decide(3, { callId, attempt: 1, state: 'notSent' }).kind).toBe('readBackRequired');
     expect(decide(2, { callId, attempt: 1, state: 'canResend', providerId: 'item-1' }).kind).toBe('readBackRequired');
+    expect(decide(3, { callId, attempt: 2, state: 'notSent' }).kind).toBe('readBackRequired');
   });
 
   it('never resends an accepted marker and rejects impossible counts', () => {

@@ -102,6 +102,14 @@ func TestNotSentPreservesProviderIDAndCapOneRequiresReadBack(t *testing.T) {
 	require.Equal(t, singledispatch.ReadBackRequired, newCappedFence(t, ctx, 1).Decide().Kind)
 }
 
+func TestLegacyNotSentWithoutCountRequiresReadBackAtCapOne(t *testing.T) {
+	ctx := contextAtAttempt(t, 3, nil)
+	require.NoError(t, ctx.SetPersistedMarkers(map[string]any{
+		"callId": "call-1", "attempt": 2, "state": "notSent",
+	}))
+	require.Equal(t, singledispatch.ReadBackRequired, newCappedFence(t, ctx, 1).Decide().Kind)
+}
+
 func TestBoundedResendIgnoresForeignOrUnreadableMarkers(t *testing.T) {
 	for name, checkpoint := range map[string]any{
 		"foreign":                 singledispatch.Marker{CallID: "call-2", Attempt: 1, State: singledispatch.StateNotSent},

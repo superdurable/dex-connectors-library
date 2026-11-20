@@ -181,7 +181,7 @@ def test_malformed_markers_are_rejected() -> None:
             Marker.from_wire(value)
 
 
-def _legacy_decision_kind(attempt: int, previous: Marker | None) -> DecisionKind:
+def _default_cap_decision_kind(attempt: int, previous: Marker | None) -> DecisionKind:
     """Compute the default-cap decision while preserving earlier possible sends."""
     if previous is None:
         return DecisionKind.SEND_ALLOWED if attempt == 1 else DecisionKind.READ_BACK_REQUIRED
@@ -195,8 +195,8 @@ def _legacy_decision_kind(attempt: int, previous: Marker | None) -> DecisionKind
     return DecisionKind.READ_BACK_REQUIRED
 
 
-def test_default_send_cap_matches_previous_decisions() -> None:
-    """With max_sends=1 every same-call marker yields the 0.9.0 decision."""
+def test_default_send_cap_requires_read_back_after_prior_sends() -> None:
+    """With max_sends=1 a prior send prevents direct dispatch after notSent."""
     previous_markers: list[Marker | None] = [None]
     for marker_attempt in range(1, 6):
         for state in (State.NOT_SENT, State.CLAIMED, State.CAN_RESEND):
@@ -211,8 +211,13 @@ def test_default_send_cap_matches_previous_decisions() -> None:
             wire = _checkpoint(previous) if previous is not None else None
             for max_sends in ({}, {"max_sends": 1}):
                 decision = decide_dispatch(CALL_ID, attempt, wire, **max_sends)
-                assert decision.kind == _legacy_decision_kind(attempt, previous)
+                assert decision.kind == _default_cap_decision_kind(attempt, previous)
                 assert decision.kind != DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+
+
+def test_legacy_not_sent_without_count_requires_read_back_at_cap_one() -> None:
+    checkpoint = {"callId": str(CALL_ID), "attempt": 2, "state": "notSent"}
+    assert decide_dispatch(CALL_ID, 3, checkpoint).kind == DecisionKind.READ_BACK_REQUIRED
 
 
 @pytest.mark.parametrize(
