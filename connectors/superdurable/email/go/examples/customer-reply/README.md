@@ -59,7 +59,7 @@ cd "$(git rev-parse --show-toplevel)"
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/email/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go \
-  --version v0.23.1 --tag connectors/superdurable/email/go/v0.23.1 \
+  --version v0.23.2 --tag connectors/superdurable/email/go/v0.23.2 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/email-reply/release/connector-release.json \
   --digest-output /tmp/email-reply/release/connector-release.json.sha256
