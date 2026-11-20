@@ -134,7 +134,7 @@ func markerFromValue(value any) (Marker, bool) {
 	}
 	marker := Marker{CallID: sdkgo.CallID(callID), Attempt: attempt, State: State(state)}
 	switch marker.State {
-	case StateNotSent, StateClaimed, StateCanResend:
+	case StateNotSent, StateClaimed, StateAccepted, StateCanResend:
 	default:
 		return Marker{}, false
 	}
@@ -160,7 +160,7 @@ func markerFromValue(value any) (Marker, bool) {
 
 // conservativeSendCount counts one send per attempt, excluding a notSent or canResend marker's own.
 func conservativeSendCount(marker Marker) int32 {
-	if marker.State == StateClaimed {
+	if marker.State == StateClaimed || marker.State == StateAccepted {
 		return marker.Attempt
 	}
 	return marker.Attempt - 1

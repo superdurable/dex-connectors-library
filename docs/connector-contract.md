@@ -404,7 +404,8 @@ guarantee.
 
 The fence reads the last checkpoint before credentials or provider lookups. It
 permits one send only on attempt one with no marker, or after the immediately
-preceding attempt recorded `notSent` or `canResend` for the same Call ID. A
+preceding attempt recorded `notSent` or `canResend` with zero prior sends and
+no provider ID for the same Call ID. A
 missing, stale, or claimed marker never authorizes another write,
 except through the [bounded resend](#bounded-resend) of a `limited` operation.
 Use exactly one Fence per Step call per attempt; separate Fence instances do
@@ -420,8 +421,9 @@ long operations such as OpenAI `createResponse` with a 150-second timeout:
 the default request deadline would be 87.5 seconds. A send is refused when
 less than budget/10 remains before the request deadline, and `notSent` is
 attempted before returning Retry.
-Do not record `notSent` before a credential or lookup operation that might
-later proceed to a send. If the attempt dies before deciding whether to send,
+Record `notSent` when a decided send path must Retry before dispatch, including
+credential or lookup failures; recording it forbids a send in this attempt.
+If the attempt dies before deciding whether to send,
 the next attempt fails closed; a slow credential refresh does not change that.
 Before `http.Client.Do`, a fenced HTTP write calls
 `singledispatch.PrepareHTTPWrite` on its request. Go's transport treats an
@@ -523,11 +525,22 @@ a confirmed write selects the happy path, and a definite absence or an
 inconclusive read-back permits one `Dispatch`, whose claim records the bound
 plus one. A saved provider ID is read back before any resend. A connector
 without read-back may dispatch directly. A pre-send Retry under this decision
-records no `notSent`, which would let the next attempt skip read-back. At the
+records `notSent` with the prior count and provider ID, preserving read-back. At the
 cap, or for a marker from the current or a later attempt, the decision stays
 `ReadBackRequired` and an unconfirmed write selects `uncertain`. Because the
 Fence takes the cap per call, a marker's count stays valid when an application
 changes the cap.
+
+When the provider confirms acceptance without a usable resource ID, record
+`accepted` with the claim's send count. A later attempt must read back and
+must not resend, regardless of its cap. If read-back obtains an ID in the
+same attempt, `RecordProviderID` may attach it without changing the count.
+That marker becomes an ordinary claim with a provider ID: read back the ID
+first, then resend only below the cap if read-back cannot confirm the write.
+Deploy every Worker with a compatible SDK before a connector relies on
+`accepted` or a counted `notSent`. Older SDKs treat `accepted` as missing and
+skip read-back for counted `notSent`, sending within the cap. Do not roll back
+while Steps are in flight.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
