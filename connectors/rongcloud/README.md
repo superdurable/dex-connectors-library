@@ -43,3 +43,5 @@ Dex Web connection are needed for live verification.
 References: [signing](https://docs.rongcloud.cn/platform-chat-api/auth),
 [domestic API domains](https://docs.rongcloud.cn/platform-chat-api/base-url), and
 [status codes](https://docs.rongcloud.cn/platform-chat-api/code).
+
+The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.

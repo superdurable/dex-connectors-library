@@ -15,3 +15,5 @@ The [knowledge catalog Flow](go/examples/knowledge-catalog/) is a runnable Worke
 The [Python package](python/README.md) includes a runnable
 [Flow and Worker](python/examples/list_knowledge_entries/README.md) and replays
 the Go-recorded provider scenarios. Its Dex integration uses a synthetic provider.
+
+The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.

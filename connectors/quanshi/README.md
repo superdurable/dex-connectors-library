@@ -15,3 +15,5 @@ The [room directory Flow](go/examples/room-directory/) is a runnable Worker with
 The [Python package](python/README.md) implements the same Query, replays the
 Go-recorded provider scenarios, and includes a runnable
 [Flow and Worker](python/examples/list_rooms/README.md) with a synthetic provider integration.
+
+The [TypeScript package](typescript/) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay. Live provider authorization remains unverified.

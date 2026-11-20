@@ -49,6 +49,7 @@ spec:
         - Register or sign in through the Quanshi developer platform and request a developer key for Cloud Meeting OpenAPI. Copy the assigned AppId and AppSecret into secret app_id and app_secret; both are required. Contact Quanshi support if the key or room-list permission is unavailable.
         - Leave baseUrl blank for the displayed production origin, or select the documented HTTPS beta origin for testing. Leave timeout and maxResponseBytes blank for displayed defaults. The Query creates a short-lived token, derives its administrator userId, and returns only room ID, name, capacity, and state.
   languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-quanshi", operations: [listRooms], triggers: []}
     python:
       version: v0.1.0
       operations: [listRooms]
