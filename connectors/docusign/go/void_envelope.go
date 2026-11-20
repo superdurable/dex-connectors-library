@@ -69,6 +69,19 @@ func (operation VoidEnvelopeOperation) Invoke(call sdkgo.Call, input VoidEnvelop
 	if sessionFailure != nil {
 		return mutationSessionFailure[VoidedEnvelope](sessionFailure, VoidEnvelopeBranchProviderRejected, VoidEnvelopeBranchInvalidResponse, VoidEnvelopeBranchDefect)
 	}
+	if call.Context.Attempt() > 1 {
+		envelope, readOutcome, err := client.readEnvelope(call, &session, voidEnvelopeOperationID, envelopeID)
+		switch {
+		case err != nil:
+			return sdkgo.NewMutationRetry[VoidedEnvelope](docusignFailure(voidEnvelopeOperationID, responseFailureKind(err), responseFailureMessage(err)), 0)
+		case readOutcome != nil:
+			return sdkgo.NewMutationRetry[VoidedEnvelope](readOutcome.failure, readOutcome.retryAfter)
+		case envelope.Status == EnvelopeStatusVoided:
+			return sdkgo.NewMutationBranch(VoidEnvelopeBranchVoided, VoidedEnvelope{
+				EnvelopeID: envelopeID, WasAlreadyVoided: true, Status: envelope.Status, VoidedReason: envelope.VoidedReason,
+			}, nil, client.receipt(envelopeID, ""))
+		}
+	}
 	response, err := client.sendAPIRequest(call, &session, docusignRequest{
 		method: http.MethodPut, path: "/envelopes/" + url.PathEscape(envelopeID),
 		body: map[string]string{"status": string(EnvelopeStatusVoided), "voidedReason": input.VoidedReason},

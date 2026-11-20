@@ -1,10 +1,10 @@
 {
   "connectorId": "docusign",
-  "releaseTag": "connectors/docusign/go/v0.24.1",
+  "releaseTag": "connectors/docusign/go/v0.24.2",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-docusign",
-    "version": "0.2.1"
+    "version": "0.2.2"
   },
   "factories": [
     {

@@ -78,6 +78,34 @@ func TestVoidEnvelopeRetriesAnUnreadableStatusReadBack(t *testing.T) {
 	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
 }
 
+func TestVoidEnvelopeReadsBackBeforeRetryingAnUnknownWrite(t *testing.T) {
+	var isVoided bool
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"PUT " + envelopePath: func(writer http.ResponseWriter, request *http.Request) {
+			isVoided = true
+			respondJSON(http.StatusInternalServerError, docusignError("UNSPECIFIED_ERROR"))(writer, request)
+		},
+		"GET " + envelopePath: func(writer http.ResponseWriter, request *http.Request) {
+			status := "sent"
+			if isVoided {
+				status = "voided"
+			}
+			respondJSON(http.StatusOK, envelopeJSON(testEnvelopeID, status, "marker"))(writer, request)
+		},
+	})
+	client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+	input := docusign.VoidEnvelopeInput{EnvelopeID: testEnvelopeID, VoidedReason: "Deal lost"}
+	_, err := sdkgo.RunMutation(newTestDexContext("void-read-back"), client.VoidEnvelope(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	result, err := sdkgo.RunMutation(newRetriedTestDexContext("void-read-back", 2), client.VoidEnvelope(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, docusign.VoidEnvelopeBranchVoided, result.Branch)
+	require.True(t, result.Value.WasAlreadyVoided)
+	require.Len(t, fake.requestsTo(http.MethodPut, envelopePath), 1)
+	require.Len(t, fake.requestsTo(http.MethodGet, envelopePath), 1)
+}
+
 func TestVoidEnvelopeClassifiesOtherAnswers(t *testing.T) {
 	for name, test := range map[string]struct {
 		status         int

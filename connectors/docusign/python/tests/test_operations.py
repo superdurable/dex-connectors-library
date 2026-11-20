@@ -366,6 +366,24 @@ class _ScriptedDocuSign:
         return sdk.Receipt()
 
 
+@pytest.mark.asyncio
+async def test_void_reads_back_before_resending_after_unknown_answer() -> None:
+    """A retry recognizes the prior void without sending another PUT."""
+    provider = _ScriptedDocuSign([_docusign_error(500, "UNSPECIFIED_ERROR")])
+    input = VoidEnvelopeInput(envelope_id=_ENVELOPE_ID, voided_reason="Deal lost")
+    first = SimpleNamespace(id="call-1", idempotency_key="call-1", context=_AttemptContext(1, None))
+    result = await VoidEnvelopeOperation(provider).invoke(first, input)  # type: ignore[arg-type]
+    assert result.kind == "retry"
+    provider.envelopes["/envelopes/" + _ENVELOPE_ID] = json.dumps(
+        {"envelopeId": _ENVELOPE_ID, "status": "voided"}
+    ).encode()
+    second = SimpleNamespace(id="call-1", idempotency_key="call-1", context=_AttemptContext(2, None))
+    result = await VoidEnvelopeOperation(provider).invoke(second, input)  # type: ignore[arg-type]
+    assert result.branch == "voided"
+    assert result.value is not None and result.value.was_already_voided
+    assert provider.paths == ["PUT /envelopes/" + _ENVELOPE_ID, "GET /envelopes/" + _ENVELOPE_ID]
+
+
 async def _run_create_attempt(
     provider: _ScriptedDocuSign, attempt: int, heartbeat: _CreateDispatchCheckpoint | None
 ) -> tuple[sdk.MutationAttempt[object], _CreateDispatchCheckpoint | None]:

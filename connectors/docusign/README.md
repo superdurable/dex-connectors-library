@@ -1,6 +1,6 @@
 # DocuSign eSignature Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/docusign/go@v0.24.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/docusign/go@v0.24.2`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/docusign`.
 
@@ -96,9 +96,10 @@ any status, means DocuSign created the envelope: it is accepted, as in step 6
 below. An incomplete `401` body to a create, or one that names an
 `envelopeId`, is not followed by a token refresh and a second `POST`. `voidEnvelope`
 declares `repeatOnUnknown: safe` and retries every unknown outcome without a
-send cap, because voiding sets an absolute status and an already voided
-envelope selects `voided`. A malformed or oversized status read-back after a
-refused void also retries. Its Step factory still accepts `MaxSends` for
+send cap. Before a retry sends another PUT, it reads the envelope: an already
+voided envelope selects `voided`, while an inconclusive read retries without
+sending. A malformed or oversized status read-back after a refused void also
+retries. Its Step factory still accepts `MaxSends` for
 compatibility and ignores it.
 
 ### createEnvelopeFromTemplate and duplicate dispatch
@@ -175,7 +176,8 @@ select `defect` without a request.
 answers `ENVELOPE_CANNOT_VOID_INVALID_STATE`, the connector reads the envelope:
 `voided` selects `voided` with `wasAlreadyVoided`, so a repeated Step and a
 duplicate dispatch are safe, and `completed`, `declined`, or a `created` draft
-select `notVoidable` with the status. A real-Dex test lets the async Step be
+select `notVoidable` with the status. Every retry reads the envelope before
+another PUT; a prior void is confirmed without a duplicate request. A real-Dex test lets the async Step be
 retried after an accepted void and still ends `voided`.
 
 ### downloadCombinedDocument and Dex payloads

@@ -189,6 +189,15 @@ export class VoidEnvelopeOperation implements Mutation<VoidEnvelopeInput, Voided
     let session: DocuSignSession;
     try { session = await this.client.openSession(call, operation); }
     catch (error) { if (error instanceof SessionError) return sessionMutationFailure(error, zeroVoided, 'providerRejected', 'invalidResponse'); throw error; }
+    if (call.context.attempt > 1) {
+      const previous = await readEnvelope(this.client, call, session, envelopeId, operation);
+      if (previous.error) return newMutationRetry(previous.error);
+      if (previous.outcome) return newMutationRetry(previous.outcome.failure, previous.outcome.retryAfterMs);
+      if (previous.envelope?.status === 'voided') return newMutationBranch('voided', {
+        envelopeId, wasAlreadyVoided: true, status: 'voided',
+        ...(previous.envelope.voidedReason ? { voidedReason: previous.envelope.voidedReason } : {}),
+      }, this.client.receipt(envelopeId));
+    }
     let response: DocuSignResponse;
     try { response = await this.client.requestAPI(call, session, 'PUT', `/envelopes/${escapePath(envelopeId)}`, undefined, { status: 'voided', voidedReason: input.voidedReason }); }
     catch (error) { if (error instanceof ResponseTooLargeError) return newMutationBranch('voided', { envelopeId }, this.client.receipt(envelopeId)); return newMutationRetry(failure(operation, 'TRANSPORT', 'DocuSign could not be reached to void the envelope; voiding again is safe')); }

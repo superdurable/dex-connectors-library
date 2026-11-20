@@ -60,6 +60,22 @@ function scriptedDocuSign(posts: Array<{ status: number; body: string; isErrorBo
   return { client, methods, paths };
 }
 
+it('reads back a prior void before resending after an unknown answer', async () => {
+  const envelopeId = '8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a';
+  const envelopes: Record<string, string> = {};
+  const { client, paths } = scriptedDocuSign([{ status: 500, body: '{}' }], undefined, envelopes);
+  const input = { envelopeId, voidedReason: 'Deal lost' };
+  const call = { id: 'call-1', idempotencyKey: 'call-1', context: { attempt: 1 } } as unknown as Call;
+  const first = await new VoidEnvelopeOperation(client).invoke(call, input);
+  expect(first.kind).toBe('retry');
+  envelopes[`/envelopes/${envelopeId}`] = JSON.stringify({ envelopeId, status: 'voided' });
+  (call.context as { attempt: number }).attempt = 2;
+  const second = await new VoidEnvelopeOperation(client).invoke(call, input);
+  expect(second.kind).toBe('branch');
+  if (second.kind === 'branch') { expect(second.branch).toBe('voided'); expect(second.value.wasAlreadyVoided).toBe(true); }
+  expect(paths).toEqual([`PUT /envelopes/${envelopeId}`, `GET /envelopes/${envelopeId}`]);
+});
+
 /** Run one attempt of a Step execution from the heartbeat its previous attempt left. */
 async function runCreateAttempt(client: DocuSignClient, attempt: number, heartbeat: unknown, isAcceptedMarkerLost = false) {
   let value = heartbeat;
