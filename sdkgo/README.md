@@ -686,9 +686,9 @@ count, such as one seeded from a `Marker` whose JSON omits zero, is counted
 conservatively.
 `RecordAccepted` records provider acceptance without an ID as `accepted`.
 Later attempts may read back but never resend that write.
-Deploy every Worker with this SDK before deploying a connector that writes `accepted`.
-Do not roll back the SDK while Steps are in flight: older SDKs read unknown
-`accepted` markers as missing and could send again.
+Deploy every Worker with this SDK before connectors rely on `accepted` or a
+counted `notSent`. Older SDKs read `accepted` as missing and skip read-back for
+counted `notSent`, sending within the cap. Do not roll back while Steps are in flight.
 
 An application raises or lowers the cap of one Step with
 `MutationStepConfig.MaxSends`, or the generated factory's `MaxSends` field, from

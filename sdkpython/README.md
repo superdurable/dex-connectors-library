@@ -627,9 +627,9 @@ it preserves the earlier send count so the next attempt still reads back.
 `dispatch` also records `notSent` for a too-short window or failed claim.
 `record_accepted` records provider acceptance without an ID; later attempts
 may read back but cannot resend.
-Deploy every Worker with this SDK before deploying a connector that writes
-`accepted`. Do not roll back the SDK while Steps are in flight: older SDKs
-read unknown `accepted` markers as missing and could send again.
+Deploy every Worker with this SDK before connectors rely on `accepted` or a
+counted `notSent`. Older SDKs read `accepted` as missing and skip read-back for
+counted `notSent`, sending within the cap. Do not roll back while Steps are in flight.
 
 `MutationDefinition.repeat_on_unknown` and `max_sends` carry the manifest
 `execution.repeatOnUnknown` tier and its `maxSends`. A `MutationStep` sets

@@ -422,7 +422,8 @@ the default request deadline would be 87.5 seconds. A send is refused when
 less than budget/10 remains before the request deadline, and `notSent` is
 attempted before returning Retry.
 Record `notSent` when a decided send path must Retry before dispatch, including
-credential or lookup failures. If the attempt dies before deciding whether to send,
+credential or lookup failures; recording it forbids a send in this attempt.
+If the attempt dies before deciding whether to send,
 the next attempt fails closed; a slow credential refresh does not change that.
 Before `http.Client.Do`, a fenced HTTP write calls
 `singledispatch.PrepareHTTPWrite` on its request. Go's transport treats an
@@ -534,9 +535,12 @@ When the provider confirms acceptance without a usable resource ID, record
 `accepted` with the claim's send count. A later attempt must read back and
 must not resend, regardless of its cap. If read-back obtains an ID in the
 same attempt, `RecordProviderID` may attach it without changing the count.
-Deploy every Worker with a compatible SDK before a connector writes `accepted`;
-do not roll back while Steps are in flight, because older SDKs treat this
-state as a missing marker.
+That marker becomes an ordinary claim with a provider ID: read back the ID
+first, then resend only below the cap if read-back cannot confirm the write.
+Deploy every Worker with a compatible SDK before a connector relies on
+`accepted` or a counted `notSent`. Older SDKs treat `accepted` as missing and
+skip read-back for counted `notSent`, sending within the cap. Do not roll back
+while Steps are in flight.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original
