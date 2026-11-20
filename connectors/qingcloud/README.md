@@ -9,3 +9,7 @@ Sign in at the [QingCloud console](https://console.qingcloud.com), then open **P
 HTTP 429, server failures, QingCloud server codes `5000`, `5100`, `5200`, `5300`, and transport failures retry. Definite provider codes such as authentication failure `1200`, expired timestamp `1300`, and quota `2500` select optional `providerRejected`; malformed or oversized JSON selects optional `invalidResponse`. The example leaves optional branches unwired, so these outcomes fail the Flow.
 
 The runnable example is in [`go/examples/zone-read`](go/examples/zone-read). Provider tests use a local HTTP server and the official signature vector. Real QingCloud key authorization and live zone discovery remain unverified without a user-controlled account.
+
+## Python
+
+The [Python package](python/) provides the same signed zones Query and a runnable Dex Worker example.
