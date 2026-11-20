@@ -42,6 +42,7 @@ test-common-sdkgo:
 # go, tsc, or tsx subprocesses whose inputs the cache cannot see, so it always reruns.
 ROOT_GO_CACHEABLE_TEST_PACKAGES = ./internal/codegen/gomodel
 
+# Full-catalog generation can exceed Go's default timeout on slower runners.
 test-common-root-go:
 	npm ci --prefix connectors/stripe/typescript
 	npm ci --prefix connectors/google/gmail/typescript
@@ -50,7 +51,7 @@ test-common-root-go:
 	all="$$(GOWORK=off go list ./...)" || exit 1; \
 	uncached="$$(printf '%s\n' "$$all" | grep -vxF "$$cacheable" | grep -vxF "$$repository_checks")" || exit 1; \
 	TS_CODEGEN_COMPILE=1 GOWORK=off go test -race $$cacheable & cacheable_pid=$$!; \
-	uncached_status=0; TS_CODEGEN_COMPILE=1 GOWORK=off go test -race -count=1 $$uncached || uncached_status=$$?; \
+	uncached_status=0; TS_CODEGEN_COMPILE=1 GOWORK=off go test -race -count=1 -timeout=30m $$uncached || uncached_status=$$?; \
 	cacheable_status=0; wait $$cacheable_pid || cacheable_status=$$?; \
 	test $$uncached_status -eq 0 && test $$cacheable_status -eq 0
 	GOWORK=off go vet ./...
