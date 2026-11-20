@@ -401,10 +401,13 @@ take these positions:
   `Retry-After` also retries; the provider says the header should be present,
   so the missing-header case has not been verified live.
 - An unknown outcome, such as a 500, 408, redirect, unlisted 4xx, or
-  ambiguous transport failure, returns Retry, and the next attempt posts again
-  while the possible sends stay below the cap; at the cap it selects
-  `uncertain`. A resend can therefore add a second employee when the work email
-  is blank.
+  ambiguous transport failure, returns Retry. On the next attempt, the connector
+  first searches by work email, or home email when work email is blank. An exact
+  email match confirms creation only when the first and last names and supplied
+  hire date also match. An older employee with a name or hire date mismatch
+  cannot confirm this call. If the lookup cannot confirm creation, the connector posts again
+  while possible sends stay below the cap; at the cap it selects `uncertain`.
+  Without an email, there is no lookup and a resend can add a second employee.
 - A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the
   documented duplicate-email 409, of the first send records `canResend` and
   selects `providerRejected`. After an earlier possible send, a refusal cannot
@@ -417,8 +420,9 @@ take these positions:
   resend would add a second employee. An oversized refusal proves nothing about
   the POST, so it is an unknown outcome. Terminal credentials while a saved
   employee ID awaits read-back select `uncertain`. The connector
-  cannot associate an email or name lookup with its specific POST. The
-  onboarding example looks up the hire by personal email; a missing or
+  cannot distinguish two employees with the same email, names, and hire date
+  without a saved provider ID. The onboarding example looks up the hire by
+  personal email; a missing or
   ambiguous result fails the Flow.
 
 Keep `addEmployee` sync. Async local-phase heartbeats are not visible to later

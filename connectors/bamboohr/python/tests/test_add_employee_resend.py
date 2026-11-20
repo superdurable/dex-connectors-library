@@ -103,6 +103,7 @@ async def run_add(
     respond: Callable[[httpx.Request], httpx.Response],
     context: AttemptContext,
     credentials: CredentialProvider[Credentials] | None = None,
+    employee_input: AddEmployeeInput | None = None,
 ) -> MutationResult[AddEmployeeOutput] | RetryError:
     """Run one Execute attempt of addEmployee against a provider handler."""
     if credentials is None:
@@ -118,7 +119,8 @@ async def run_add(
         )
         try:
             return await run_mutation(
-                client.add_employee(), call, AddEmployeeInput(first_name="Sam", last_name="Park")
+                client.add_employee(), call,
+                employee_input or AddEmployeeInput(first_name="Sam", last_name="Park"),
             )
         except RetryError as error:
             return error
@@ -188,6 +190,32 @@ async def test_saved_employee_id_is_read_back_instead_of_resent() -> None:
     result = await add(200, {"id": "142"}, context, requests)
     assert isinstance(result, MutationResult) and result.branch == "created"
     assert [request.method for request in requests] == ["GET"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("matching_name", [True, False])
+async def test_email_read_back_precedes_resend_and_rejects_older_mismatch(matching_name: bool) -> None:
+    context = AttemptContext()
+    requests: list[httpx.Request] = []
+    employee_input = AddEmployeeInput(first_name="Sam", last_name="Park", work_email="sam@example.com")
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "GET":
+            return httpx.Response(200, json={"data": [{
+                "employeeId": "140", "firstName": "Sam" if matching_name else "Other",
+                "lastName": "Park", "workEmail": "sam@example.com",
+            }], "meta": {"total": 1}})
+        if sum(previous.method == "POST" for previous in requests) == 1:
+            return httpx.Response(500, json={})
+        return httpx.Response(201, json={"id": "141"})
+
+    assert isinstance(await run_add(respond, context, employee_input=employee_input), RetryError)
+    context.attempt = 2
+    result = await run_add(respond, context, employee_input=employee_input)
+    assert isinstance(result, MutationResult) and result.branch == "created"
+    expected_methods = ["POST", "GET"] if matching_name else ["POST", "GET", "POST"]
+    assert [request.method for request in requests] == expected_methods
 
 
 @pytest.mark.asyncio

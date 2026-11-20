@@ -102,10 +102,9 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "the dispatch checkpoint could not be read; nothing was sent"), 0)
 	case singledispatch.ReadBackRequired:
-		if decision.Marker.CallID != call.ID || decision.Marker.ProviderID == "" {
-			return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "earlier attempts may have added the employee up to the send cap; no employee ID is available for read-back")
+		if decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" {
+			return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
 		}
-		return operation.readBackAddedEmployee(call, decision.Marker.ProviderID)
 	}
 	// BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
 	if decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" {
@@ -113,6 +112,14 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 	}
 	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
+	if hasPossibleEarlierSend {
+		if recovered, shouldReturn := operation.readBackAddedEmployeeByEmail(call, input, !canResendUnknownOutcome); shouldReturn {
+			return recovered
+		}
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return addEmployeeUncertain(receipt, sdkgo.FailureTransport, "earlier attempts may have added the employee up to the send cap; email read-back did not confirm one")
+	}
 	credentials, credentialErr := operation.client.credentials.Resolve(call)
 	isUnusableCredentials := credentialErr == nil && validateResolvedCredentials(credentials) != nil
 	if (credentialErr != nil || isUnusableCredentials) && hasPossibleEarlierSend {
@@ -218,6 +225,58 @@ func (operation AddEmployeeOperation) readBackAddedEmployee(call sdkgo.Call, emp
 		return addEmployeeUncertain(receipt, result.failure.Kind, "the created employee could not be confirmed")
 	}
 	return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter)
+}
+
+func (operation AddEmployeeOperation) readBackAddedEmployeeByEmail(call sdkgo.Call, input AddEmployeeInput, isAtSendCap bool) (sdkgo.MutationAttempt[AddEmployeeOutput], bool) {
+	address := input.WorkEmail
+	field := EmployeeEmailFieldWork
+	if address == "" {
+		address, field = input.HomeEmail, EmployeeEmailFieldHome
+	}
+	if address == "" {
+		return sdkgo.MutationAttempt[AddEmployeeOutput]{}, false
+	}
+	receipt := operation.client.receipt(call, "")
+	credentials, err := operation.client.credentials.Resolve(call)
+	if isTerminalCredentialError(err) || err == nil && validateResolvedCredentials(credentials) != nil {
+		return addEmployeeUncertain(receipt, sdkgo.FailureAuthentication, "the employee may have been added, and credentials are unavailable for email read-back"), true
+	}
+	if err != nil {
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "credentials are unavailable for email read-back"), 0), true
+	}
+	fields := []string{"firstName", "lastName"}
+	if input.HireDate != "" {
+		fields = append(fields, "hireDate")
+	}
+	lookup := FindEmployeeByEmailInput{Email: address, EmailField: field, Fields: fields}
+	request := buildFindEmployeeByEmailRequest(lookup)
+	request.query.Set("fields", strings.Join(append([]string{"workEmail", "homeEmail"}, fields...), ","))
+	result := operation.client.exchange(call, credentials, addEmployeeOperation, request)
+	if result.outcome != exchangeSucceeded {
+		if result.outcome == exchangeRateLimited || result.outcome == exchangeNotSent || result.outcome == exchangeUnavailable {
+			return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter), true
+		}
+		if isAtSendCap {
+			return addEmployeeUncertain(receipt, result.failure.Kind, "email read-back could not confirm the employee"), true
+		}
+		return sdkgo.MutationAttempt[AddEmployeeOutput]{}, false
+	}
+	candidates, _, hasMore, decodeErr := decodeEmployeeCandidates(result.response.body, fields)
+	if decodeErr != nil {
+		if isAtSendCap {
+			return addEmployeeUncertain(receipt, sdkgo.FailureProtocol, "email read-back returned an invalid employee list"), true
+		}
+		return sdkgo.MutationAttempt[AddEmployeeOutput]{}, false
+	}
+	if !hasMore {
+		matches := exactEmailMatches(candidates, field, address)
+		if len(matches) == 1 && matches[0].FirstName == input.FirstName && matches[0].LastName == input.LastName &&
+			(input.HireDate == "" || matches[0].Fields["hireDate"] == input.HireDate) {
+			employeeID := matches[0].EmployeeID
+			return sdkgo.NewMutationBranch(AddEmployeeBranchCreated, AddEmployeeOutput{EmployeeID: employeeID}, nil, operation.client.receipt(call, employeeID)), true
+		}
+	}
+	return sdkgo.MutationAttempt[AddEmployeeOutput]{}, false
 }
 
 func addEmployeeUncertain(receipt sdkgo.Receipt, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[AddEmployeeOutput] {

@@ -88,8 +88,10 @@ func TestAddEmployeeResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
 			ctx := newBambooHRDexContext("add-" + test.name)
+			input := validAddEmployeeInput()
+			input.HomeEmail = ""
 			for attempt := 1; attempt < 3; attempt++ {
-				_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+				_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, input)
 				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry, "attempt %d is below the send cap of 3", attempt)
 				require.Equal(t, test.kind, retry.Failure.Kind)
@@ -97,14 +99,14 @@ func TestAddEmployeeResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
 				require.Equal(t, attempt, provider.requestCount())
 				ctx = ctx.nextAttempt()
 			}
-			result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+			result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, input)
 			require.NoError(t, err, "the third send reaches the cap")
 			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
 			requireNoLeak(t, result)
 			require.Equal(t, 3, provider.requestCount())
 
 			replay := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected at the cap") })
-			result, err = sdkgo.RunMutation(ctx.nextAttempt(), newBambooHRClient(t, replay.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+			result, err = sdkgo.RunMutation(ctx.nextAttempt(), newBambooHRClient(t, replay.URL).AddEmployee(), bambooHRConnection, input)
 			require.NoError(t, err)
 			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
 		})
@@ -152,8 +154,14 @@ func TestAddEmployeeNeverResendsAnAcceptedOrDefinitelyRefusedRequest(t *testing.
 func TestAddEmployeeSelectsUncertainForARefusalAfterAPossibleSend(t *testing.T) {
 	for _, status := range []int{http.StatusBadRequest, http.StatusConflict} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
-			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, index int) {
-				if index == 0 {
+			posts := 0
+			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodGet {
+					writeJSON(t, response, http.StatusOK, `{"data":[],"meta":{"total":0}}`)
+					return
+				}
+				posts++
+				if posts == 1 {
 					writeBambooHRError(t, response, http.StatusBadGateway, ``)
 					return
 				}
@@ -166,7 +174,8 @@ func TestAddEmployeeSelectsUncertainForARefusalAfterAPossibleSend(t *testing.T) 
 			result, err := sdkgo.RunMutation(ctx.nextAttempt(), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
 			require.NoError(t, err)
 			require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch, "the first send may have added the employee; a duplicate-email conflict may be our own write")
-			require.Equal(t, 2, provider.requestCount())
+			require.Equal(t, 2, posts)
+			require.Equal(t, http.MethodGet, provider.request(1).method)
 		})
 	}
 }

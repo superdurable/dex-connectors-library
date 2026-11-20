@@ -52,7 +52,7 @@ export class FindEmployeeByEmailOperation implements Query<FindEmployeeByEmailIn
     const credential = await this.client.resolveKey(call);
     if (credential.kind !== 'resolved') return credentialFailureQuery('findEmployeeByEmail', zeroFind, credential);
     const key = credential.key;
-    const fields = ['workEmail', 'homeEmail', ...(input.fields ?? []).filter(field => !summaryFields.has(field) && !['workEmail', 'homeEmail'].includes(field))];
+    const fields = ['workEmail', 'homeEmail', ...(input.fields ?? []).filter(field => (!summaryFields.has(field) || field === 'firstName' || field === 'lastName') && !['workEmail', 'homeEmail'].includes(field))];
     const query = new URLSearchParams({ [`filter[${emailField}]`]: input.email, fields: fields.join(','), sort: 'employeeId', 'page[limit]': '100' });
     if (input.status) query.set('filter[status]', input.status);
     const result = await this.client.exchange(call, 'findEmployeeByEmail', key, 'GET', '/employees', query);
@@ -213,7 +213,7 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     // BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
     if (decision.kind === 'readBackRequired' || savedEmployeeId) {
       const employeeId = savedEmployeeId;
-      if (!employeeId || !employeeIdPattern.test(employeeId)) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'earlier attempts may have added the employee up to the send cap; no employee ID is available for read-back'), receipt);
+      if (employeeId && employeeIdPattern.test(employeeId)) {
       const credential = await this.client.resolveKey(call);
       if (credential.kind === 'terminal') return newMutationUncertain(zeroAdd, failure('addEmployee', 'AUTHENTICATION', 'the employee may have been added, and the connection credentials are unavailable to read it back; reconnect the connection'), this.client.receipt(call, employeeId));
       if (credential.kind !== 'resolved') return newMutationRetry(failure('addEmployee', 'AUTHENTICATION', 'connection credentials are unavailable'));
@@ -226,10 +226,16 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
       }
       if (result.kind === 'notFound' || result.kind === 'rejected') return newMutationUncertain(zeroAdd, result.failure, this.client.receipt(call, employeeId));
       return newMutationRetry(result.failure, result.retryAfterMs);
+      }
     }
     const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
     const canResendUnknownOutcome = priorSendUpperBound + 1 < (operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);
     const hasPossibleEarlierSend = priorSendUpperBound > 0;
+    if (hasPossibleEarlierSend) {
+      const recovered = await this.readBackByEmail(call, input, !canResendUnknownOutcome);
+      if (recovered) return recovered;
+    }
+    if (decision.kind === 'readBackRequired') return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'earlier attempts may have added the employee up to the send cap; email read-back did not confirm one'), receipt);
     const credential = await this.client.resolveKey(call);
     if (credential.kind !== 'resolved' && hasPossibleEarlierSend) {
       // notSent would hide the earlier possible send, so nothing is recorded.
@@ -283,6 +289,23 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     }
     // A timeout, 5xx, 408, redirect, or other status leaves the outcome unknown.
     return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, result.failure, result.retryAfterMs);
+  }
+
+  private async readBackByEmail(call: Call, input: AddEmployeeInput, isAtSendCap: boolean): Promise<MutationAttempt<AddEmployeeOutput> | undefined> {
+    const address = input.workEmail || input.homeEmail;
+    if (!address) return undefined;
+    const fields = input.hireDate ? ['firstName', 'lastName', 'hireDate'] : ['firstName', 'lastName'];
+    const lookup = await new FindEmployeeByEmailOperation(this.client).invoke(call, { email: address, emailField: input.workEmail ? 'workEmail' : 'homeEmail', fields });
+    if (lookup.kind === 'retry') return newMutationRetry(lookup.failure, lookup.retryAfterMs);
+    if (lookup.branch === 'found') {
+      const employee = lookup.value.employee;
+      if (employee.firstName === input.firstName && employee.lastName === input.lastName && (!input.hireDate || employee.fields?.hireDate === input.hireDate)) {
+        return newMutationBranch('created', { employeeId: employee.employeeId }, this.client.receipt(call, employee.employeeId));
+      }
+    }
+    if (lookup.branch === 'defect') return newMutationUncertain(zeroAdd, failure('addEmployee', 'AUTHENTICATION', 'credentials are unavailable for email read-back'), this.client.receipt(call));
+    if (isAtSendCap) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'email read-back could not confirm the employee'), this.client.receipt(call));
+    return undefined;
   }
 }
 
