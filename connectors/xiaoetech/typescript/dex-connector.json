@@ -1,0 +1,52 @@
+{
+  "connectorId": "xiaoetech",
+  "releaseTag": "connectors/xiaoetech/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-xiaoetech",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListRootGoodsCategoriesStep",
+      "kind": "query",
+      "operationId": "listRootGoodsCategories",
+      "inputType": "ListRootGoodsCategoriesInput",
+      "description": "Read root goods category IDs, titles, and child availability.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListRootGoodsCategoriesInput has no arguments; the operation requests parent_id zero.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
