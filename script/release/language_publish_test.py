@@ -638,6 +638,22 @@ class RegistryLookupTests(unittest.TestCase):
             self.assertEqual({"connectors/one/python/v0.1.0"}, language_publish.list_completed_language_tags())
         fetch.assert_called_once_with()
 
+    def test_writes_completed_go_and_language_tags_from_one_inventory(self) -> None:
+        inventory = {"connectors/one/go/v0.1.0": ["connector-release.complete"],
+                     "connectors/two/go/v0.1.0": ["connector-release.json"],
+                     "connectors/one/python/v0.1.0": ["language-release.complete"]}
+        with tempfile.TemporaryDirectory() as temporary:
+            go_output = Path(temporary) / "completed-go-tags"
+            language_output = Path(temporary) / "completed-language-tags"
+            arguments = ["language_publish.py", "completed-language-tags", "--output", str(language_output),
+                         "--go-output", str(go_output)]
+            with patch.object(language_publish, "release_inventory", return_value=inventory) as fetch, \
+                 patch.object(language_publish.sys, "argv", arguments):
+                self.assertEqual(0, language_publish.main())
+            fetch.assert_called_once_with()
+            self.assertEqual("connectors/one/go/v0.1.0\n", go_output.read_text(encoding="utf-8"))
+            self.assertEqual("connectors/one/python/v0.1.0\n", language_output.read_text(encoding="utf-8"))
+
     def test_release_inventory_failure_retains_pending_go_matrix(self) -> None:
         workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text()
         inventory_step = workflow.split("      - name: Resolve release inventory once for planning and release jobs\n", 1)[1]

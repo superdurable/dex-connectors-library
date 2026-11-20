@@ -550,7 +550,13 @@ description, and operations by name, kind, and
 description, so the directory can show and search supported configuration and
 actions without reading provider code. A connector with mocks also lists them
 under `mocks` with the import path of its generated `mockPackage`. The workflow
-publishes matching `catalog.yaml` and `catalog.json` documents.
+publishes matching `catalog.yaml` and `catalog.json` documents. Each published
+connector entry comes from its latest reachable Go tag with a GitHub release
+carrying `connector-release.complete`; an unreleased manifest bump keeps the
+previous released entry, and a connector without a completed Go release is
+omitted. Older release manifests without directory categories use the current
+catalog categories. Python and TypeScript versions likewise appear only after their
+language releases carry `language-release.complete`.
 Each operation and Trigger also lists its supported languages for connectors
 with language packages. Language release validation checks declared operations
 and Triggers against generated `dex-connector.json` factories. Python and

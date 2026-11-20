@@ -1274,7 +1274,8 @@ jobs:
         run: |
           mkdir -p dist/pages
           python3 script/release/language_publish.py completed-language-tags \
-            --output "${RUNNER_TEMP}/completed-language-tags"
+            --output "${RUNNER_TEMP}/completed-language-tags" \
+            --go-output "${RUNNER_TEMP}/completed-go-tags"
           go run ./cmd/connectorctl release-matrix --catalog catalog.yaml --include-published-languages \
             --github-output "${RUNNER_TEMP}/language-packages"
           python3 script/release/language_publish.py pypi-published-language-tags \
@@ -1283,6 +1284,7 @@ jobs:
             --output "${RUNNER_TEMP}/pypi-published-language-tags"
           go run ./cmd/connectorctl catalog \
             --catalog catalog.yaml \
+            --completed-go-tags "${RUNNER_TEMP}/completed-go-tags" \
             --completed-language-tags "${RUNNER_TEMP}/completed-language-tags" \
             --pypi-published-language-tags "${RUNNER_TEMP}/pypi-published-language-tags" \
             --output dist/pages/catalog.yaml \
