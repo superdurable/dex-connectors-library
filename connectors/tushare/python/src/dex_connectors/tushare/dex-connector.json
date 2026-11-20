@@ -1,0 +1,70 @@
+{
+  "connectorId": "tushare",
+  "releaseTag": "connectors/tushare/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-tushare",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_trading_day_step",
+      "kind": "query",
+      "operationId": "getTradingDay",
+      "inputType": "GetTradingDayInput",
+      "description": "Check whether one calendar date is open for trading on one Chinese exchange.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "no_data",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTradingDayInput identifies one exchange and calendar date.",
+        "properties": {
+          "date": {
+            "description": "Date is a calendar date in YYYYMMDD format.",
+            "type": "string"
+          },
+          "exchange": {
+            "description": "Exchange is SSE, SZSE, or BSE.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "exchange"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

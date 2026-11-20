@@ -11,3 +11,5 @@ Sign in through [Useasy](https://app.useasy.cn/login), open upper-right personal
 ## Example
 
 The [agent directory Flow](go/examples/agent-directory/) is a runnable Worker with static Dex connection name `useasy`. Its mock contains synthetic agent metadata and is verified with a real Dex Worker and Client. Live Useasy authorization, provider pagination, and provider error-code behavior remain unverified without an approved account.
+
+The [Python agent-directory Flow](python/examples/list_agents/) also runs against a real Dex Worker and Client with a synthetic provider page.

@@ -7,3 +7,5 @@ An enterprise administrator creates a secret API Key at [伙伴云](https://app.
 The [official OpenAPI introduction](https://openapi.huoban.com/) specifies HTTPS and a default limit of 10 requests per second per key, plus a plan-specific per-minute limit. The fixed host supports 伙伴云 accounts; 伙伴钉 uses another host and is outside this connector's scope. Run the [example Flow](go/examples/list-spaces/) with the generated mock or a user-controlled connection.
 
 The [Python package](python/) implements `listSpaces` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
+
+The [TypeScript package](typescript/) implements the same Query and Go-recorded scenarios. Its runnable Flow tests retry and persistence against a real Dex Worker and Client.

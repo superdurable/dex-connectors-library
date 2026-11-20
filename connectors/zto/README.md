@@ -15,3 +15,7 @@ The [waybill-trace example](go/examples/waybill-trace/README.md) starts `ZTOWayb
 ## Python
 
 The [`python/`](python/) package implements the `queryWaybillTrace` Query. Its checked-in example runs a Worker and a real Dex retry test; provider authorization remains unverified.
+
+## TypeScript
+
+The TypeScript package under [`typescript/`](typescript/) implements `queryWaybillTrace` and includes a runnable Dex Flow, Go-recorded conformance replay, and a real Dex integration test.

@@ -1,0 +1,60 @@
+{
+  "connectorId": "iflytek",
+  "releaseTag": "connectors/iflytek/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-iflytek",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newCreateChatCompletionStep",
+      "kind": "query",
+      "operationId": "createChatCompletion",
+      "inputType": "CreateChatCompletionInput",
+      "description": "Generate one nonstreaming text answer from a bounded user message.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateChatCompletionInput contains one bounded user prompt.",
+        "properties": {
+          "prompt": {
+            "description": "Prompt is nonempty UTF-8 text of at most 2000 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

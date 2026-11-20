@@ -1,0 +1,52 @@
+{
+  "connectorId": "weimob",
+  "releaseTag": "connectors/weimob/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-weimob",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_store_basic_step",
+      "kind": "query",
+      "operationId": "getStoreBasic",
+      "inputType": "GetStoreBasicInput",
+      "description": "Read the authorized WOS store ID, name, logo, and description.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetStoreBasicInput has no parameters; application credentials identify the authorized store.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

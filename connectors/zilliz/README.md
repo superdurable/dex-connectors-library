@@ -11,3 +11,5 @@ Run the [example Flow](go/examples/list-clusters/) with `{}` input. The checked-
 ## Python
 
 The `python/` package provides the `listClusters` Query. Run its checked-in example from `python/examples/`.
+
+The [TypeScript package](typescript/README.md) implements `listClusters` with a [runnable Dex Flow](typescript/examples/cluster-list/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.

@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listModels], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-zhongkeyunxing", operations: [listModels], triggers: []}
   provider: zhongkeyunxing
   codegen:
     go:

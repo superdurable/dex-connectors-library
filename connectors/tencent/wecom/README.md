@@ -206,3 +206,7 @@ run, and these provider behaviors remain unconfirmed:
 - whether WeCom measures `duplicate_check_interval` from the first accepted
   send; the cutoff assumes it does and that the Worker clock is within ten
   minutes of Dex's `FirstAttemptAt`.
+
+## Python
+
+The [Python package](python/) implements both group robot and self-built application message Mutations. Its runnable examples exercise both paths through a Dex Worker and Client with synthetic provider responses. WeCom live authorization and delivery are not yet verified.

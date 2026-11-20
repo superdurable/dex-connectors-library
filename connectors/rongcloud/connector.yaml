@@ -50,6 +50,11 @@ spec:
         - On the application's App Key page, copy the App Key into app_key and its paired App Secret into the secret app_secret field. The key and secret must belong to the same application and data center.
         - Rotate the App Secret from the RongCloud console if exposed. Keep both values in Dex Web Connections; never use the App Secret in a Flow input or client-side code.
         - Leave baseUrl, timeout, and maxResponseBytes blank for defaults. Use the documented domestic backup host only when the primary is unavailable.
+  languages:
+    python:
+      version: v0.1.0
+      operations: [checkUserOnline]
+      triggers: []
   operations:
     - name: checkUserOnline
       goName: CheckUserOnline
