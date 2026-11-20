@@ -26,6 +26,10 @@ to 100 calls per second by default; callers should avoid rapid polling.
 
 ## Verification
 
+The [Python package](python/README.md) implements the same Query, and its
+checked-in [Dex Flow and Worker](python/examples/check_user_online/README.md)
+exercise a synthetic provider through a real Dex stack.
+
 ```bash
 cd connectors/rongcloud/go
 GOWORK=off go test ./...

@@ -1,0 +1,52 @@
+{
+  "connectorId": "gowu",
+  "releaseTag": "connectors/gowu/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-gowu",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_access_client_step",
+      "kind": "query",
+      "operationId": "getAccessClient",
+      "inputType": "GetAccessClientInput",
+      "description": "Read the authorized app's remark and API call count without returning its App Key or signing secret.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccessClientInput requests information for the app bound to the connection.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -9,3 +9,5 @@ The [official authentication guide](https://api.west.cn/CustomerCenter/doc/apiv2
 ## Go
 
 The [domain catalog Flow](go/examples/domain-catalog/) is a runnable Worker with static Dex Web connection name `west`. Input `page` and `limit` default to 1 and 20; `listed` completes the Flow. Optional branches fail unless an application wires a business response. Transient failures retry safely. The local mock integration uses synthetic domain data and a real Dex Worker and Client. Live reseller authorization and domain values remain unverified without a user-controlled connection.
+
+The [Python Flow example](python/examples/list_domains/) exercises this Query through Dex. Live provider authorization remains unverified.

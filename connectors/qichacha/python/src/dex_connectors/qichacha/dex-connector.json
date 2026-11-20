@@ -1,0 +1,60 @@
+{
+  "connectorId": "qichacha",
+  "releaseTag": "connectors/qichacha/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-qichacha",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_enterprise_basic_details_step",
+      "kind": "query",
+      "operationId": "getEnterpriseBasicDetails",
+      "inputType": "GetEnterpriseBasicDetailsInput",
+      "description": "Get enterprise name, registration status, and mainland unified social credit code.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEnterpriseBasicDetailsInput identifies one mainland enterprise by company name or unified social credit code.",
+        "properties": {
+          "keyword": {
+            "description": "Keyword is the exact enterprise name or 18-character unified social credit code.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

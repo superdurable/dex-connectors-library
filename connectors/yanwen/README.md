@@ -5,3 +5,5 @@
 The [official warehouse API](https://opendocs.yw56.com.cn/webfile/7128649694825156608/) defines the HTTPS production and sandbox endpoints, credential location, request signing, and response fields. The Query omits the optional product filter so it lists all available handover warehouses. HTTP 429 and 5xx, transport failures, and provider negative system codes retry. Definite provider errors take an optional `providerRejected` branch, which fails the example Flow unless wired.
 
 The response is bounded to 1 MiB and 500 warehouses. The [runnable Dex Flow](go/examples/warehouses/README.md) demonstrates a static connection, typed output, durable result, strict FDG, and a mock backed by a real Dex Worker and Client. Live customer authorization and production warehouse lists remain unverified. The logo uses the [official Yanwen Open Platform brand image](https://opendocs.yw56.com.cn/webfile/image/logo.jpg).
+
+The [Python Flow example](python/examples/list_warehouses/) exercises this Query through Dex. Live provider authorization remains unverified.

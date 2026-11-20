@@ -11,3 +11,7 @@ Sign in to [360 智脑 API Key management](https://ai.360.com/open/zh/platform/a
 The [text generation example](go/examples/text-generation/) is a runnable Worker with the static Dex Web connection name `qihoo360`. `generated` completes the Flow; `truncated`, `blocked`, `providerRejected`, `invalidResponse`, and `defect` are optional branches and fail the Flow unless an application wires a business response. HTTP 429, 408, and 5xx retry at most three attempts. Generation may be billed before a response reaches Dex, so repeating it may add cost. The example stores the model answer and usage, but does not log the prompt or API key. Use a nonsensitive prompt because Dex persists Flow start input.
 
 No live API key is bundled. The local integration test uses the manifest's sample mock response; real 360 智脑 authorization and model generation remain unverified without a user-controlled connection in Dex Web.
+
+## Python
+
+The [Python package](python/) implements `generateText` with the same branches and Go-recorded provider scenarios. Its checked-in Flow runs against a real Dex Worker and Client with synthetic provider responses. Real API key authorization and model generation remain unverified.

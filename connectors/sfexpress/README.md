@@ -7,3 +7,5 @@ The [official route contract](https://qiao.sf-express.com/doc/download/%E4%B8%B0
 HTTP 429 and 5xx, transport failures, and documented temporary platform errors retry. A definite permission or waybill rejection takes the optional `providerRejected` branch, which fails an example Flow unless deliberately wired. The response is limited to 1 MiB and 100 events by default.
 
 The [runnable Dex Flow](go/examples/route-query/README.md) demonstrates a static connection, typed input, durable result, strict FDG, and a mock backed by a real Dex Worker and Client. Live customer-code authorization, the production endpoint, and real route responses remain unverified. The logo uses the [official SF Express brand asset](https://www-static.sf-express.com/ssr2_green/_next/static/media/ic-black-logo.c86816fe.png).
+
+TypeScript package: `@superdurable/connector-sfexpress` (v0.1.0). See [`typescript/examples/basic`](typescript/examples/basic) for a runnable Dex Flow.
