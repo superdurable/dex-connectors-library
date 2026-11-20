@@ -20,8 +20,10 @@ var ErrCredentialMaterialInvalid = errors.New("project credential material is in
 
 type invalidCredentialMaterialError struct{ reason string }
 
+// Error returns a secret-safe description of the malformed credential.
 func (err invalidCredentialMaterialError) Error() string { return err.reason }
 
+// Unwrap exposes the terminal credential classification to errors.Is.
 func (err invalidCredentialMaterialError) Unwrap() error { return ErrCredentialMaterialInvalid }
 
 // RefreshState carries private current credentials only at the provider boundary.
