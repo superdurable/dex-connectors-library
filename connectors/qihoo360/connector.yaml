@@ -8,9 +8,10 @@ metadata:
   categories: [ai]
   version: v0.1.0
 spec:
-  provider: qihoo360
   languages:
+    typescript: {version: v0.1.0, operations: [generateText], triggers: []}
     python: {version: v0.1.0, operations: [generateText], triggers: []}
+  provider: qihoo360
   codegen:
     go:
       package: qihoo360

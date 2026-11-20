@@ -1,0 +1,61 @@
+{
+  "connectorId": "oceanbase",
+  "releaseTag": "connectors/oceanbase/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-oceanbase",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListInstancesStep",
+      "kind": "query",
+      "operationId": "listInstances",
+      "inputType": "ListInstancesInput",
+      "description": "List one page of instances in the configured project.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListInstancesInput selects a one-based page and number of instances per page.",
+        "properties": {
+          "pageNumber": {
+            "description": "PageNumber defaults to 1 when omitted; valid values are positive.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize defaults to 10 when omitted; valid values are 1 through 100.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -6,6 +6,8 @@ OceanBase Cloud uses HTTP Digest with an AccessKey ID and Secret. In the [OceanB
 
 The runnable [instance-list Flow](go/examples/instance-list/README.md) uses a static `oceanbase` connection and generated operation-specific Step. Transient HTTP/transport failures retry under Dex's default one-hour retry budget. Definite provider rejections select the optional `providerRejected` branch. Live AccessKey authorization and real instance responses remain unverified without a user-controlled OceanBase Cloud connection.
 
+The [TypeScript package](typescript/) (v0.1.0) implements the same listInstances Query. Its [runnable Flow](typescript/examples/basic/) persists results through Dex; conformance and synthetic-provider integration tests cover Digest challenge and retry.
+
 ## Python
 
 The [Python package](python/) provides the same Digest-authenticated instance Query and a runnable Dex Worker example.

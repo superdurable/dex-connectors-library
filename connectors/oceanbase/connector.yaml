@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listInstances], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-oceanbase", operations: [listInstances], triggers: []}
   provider: oceanbase
   codegen:
     go:
