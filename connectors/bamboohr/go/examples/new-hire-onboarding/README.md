@@ -90,7 +90,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/bamboohr/connector.y
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/bamboohr/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/bamboohr/go \
-  --version v0.24.1 --tag connectors/bamboohr/go/v0.24.1 \
+  --version v0.24.2 --tag connectors/bamboohr/go/v0.24.2 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/bamboohr-release/connector-ui.tgz --ui-digest /tmp/bamboohr-release/connector-ui.tgz.sha256 \
   --output /tmp/bamboohr-release/connector-release.json \

@@ -21,7 +21,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.25.0
+go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.25.1
 ```
 
 
@@ -275,6 +275,13 @@ possible create and reaches the send cap sooner. The Step
 records its checkpoint every 5 seconds, so the Dex default heartbeat timeout of
 one minute, or any override of at least 10 seconds, holds during a silent
 call.
+
+After a `2xx` names a Response, the connector retries a failed response-ID
+heartbeat write up to three times and returns the Response even if all writes
+fail. A failed Dex Execute commit after those writes can lose the ID and permit
+another billed create on a retry. OpenAI does not provide a create deduplication
+key or a lookup by request ID; `createResponse` is limited-tier because a
+duplicate billed call is acceptable within the send cap.
 
 ## Migrate from generateText
 

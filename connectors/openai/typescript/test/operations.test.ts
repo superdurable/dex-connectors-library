@@ -42,6 +42,28 @@ function client(send: (request: ProviderRequest) => Promise<ProviderResponse>): 
 }
 
 describe('createResponse checkpoint recovery', () => {
+  it.each([false, true])('keeps a paid result after response ID heartbeat failures: always=%s', async failEveryResponseBeat => {
+    const { invocation } = call();
+    const context = invocation.context as { recordHeartbeat: (value: unknown) => Promise<void> };
+    let responseBeats = 0;
+    context.recordHeartbeat = async value => {
+      if ((value as { responseId?: string }).responseId) {
+        responseBeats++;
+        if (failEveryResponseBeat || responseBeats === 1) throw new Error('response heartbeat unavailable');
+      }
+    };
+    const methods: string[] = [];
+    const provider = client(async request => {
+      methods.push(request.method);
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) };
+    });
+    const result = await provider.createResponse().invoke(invocation, input);
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') expect(result.value.id).toBe('resp_123');
+    expect(responseBeats).toBe(failEveryResponseBeat ? 3 : 2);
+    expect(methods).toEqual(['POST']);
+  });
+
   it('reads back a checkpointed response without another POST', async () => {
     const methods: string[] = [];
     const provider = client(async request => { methods.push(request.method); return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) }; });

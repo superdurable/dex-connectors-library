@@ -31,18 +31,18 @@ The `employeeChanged` Trigger starts a Flow for each employee BambooHR lists
 as inserted, updated, or deleted, polled with a durable cursor; see
 [employeeChanged Trigger](#employeechanged-trigger).
 
-Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.24.1`.
+Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.24.2`.
 The module requires Connector Go SDK v0.38.0 for the durable poll Trigger kit
 (`sdkgo/pollingtrigger`) and the shared single-dispatch fence.
 
 ## Python package
 
-The independent `dex-connector-bamboohr` Python package `v0.2.1` implements all
+The independent `dex-connector-bamboohr` Python package `v0.2.2` implements all
 six operations above with the same branch IDs and provider request behavior as
 the Go connector. It includes generated typed inputs, outputs,
 operation-specific Step factories, named project connections, and mock
 outcomes. `addEmployee` uses the Python Connector SDK's single-dispatch fence
-and sync Execute durability. Install it with `dex-connector-bamboohr==0.2.1`;
+and sync Execute durability. Install it with `dex-connector-bamboohr==0.2.2`;
 it requires `dex-connectors-sdk` 0.12.0 or newer.
 
 The package also implements the `employeeChanged` Trigger on the Python poll
@@ -65,9 +65,9 @@ OAuth; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) v0.2.1 implements all six
+The [TypeScript package](typescript/README.md) v0.2.2 implements all six
 operations with generated Step factories and a hand-written provider client.
-Install it with `@superdurable/connector-bamboohr@0.2.1`; it requires
+Install it with `@superdurable/connector-bamboohr@0.2.2`; it requires
 `@superdurable/connectors-sdk` 0.12.0.
 Its [runnable getEmployee Flow](typescript/examples/get-employee/) uses the
 static `bamboohr-employees` connection name. Go-recorded conformance scenarios
@@ -401,10 +401,13 @@ take these positions:
   `Retry-After` also retries; the provider says the header should be present,
   so the missing-header case has not been verified live.
 - An unknown outcome, such as a 500, 408, redirect, unlisted 4xx, or
-  ambiguous transport failure, returns Retry, and the next attempt posts again
-  while the possible sends stay below the cap; at the cap it selects
-  `uncertain`. A resend can therefore add a second employee when the work email
-  is blank.
+  ambiguous transport failure, returns Retry. On the next attempt, the connector
+  first searches by work email, or home email when work email is blank. An exact
+  email match confirms creation only when the first and last names and supplied
+  hire date also match. An older employee with a name or hire date mismatch
+  cannot confirm this call. If the lookup cannot confirm creation, the connector posts again
+  while possible sends stay below the cap; at the cap it selects `uncertain`.
+  Without an email, there is no lookup and a resend can add a second employee.
 - A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the
   documented duplicate-email 409, of the first send records `canResend` and
   selects `providerRejected`. After an earlier possible send, a refusal cannot
@@ -417,8 +420,9 @@ take these positions:
   resend would add a second employee. An oversized refusal proves nothing about
   the POST, so it is an unknown outcome. Terminal credentials while a saved
   employee ID awaits read-back select `uncertain`. The connector
-  cannot associate an email or name lookup with its specific POST. The
-  onboarding example looks up the hire by personal email; a missing or
+  cannot distinguish two employees with the same email, names, and hire date
+  without a saved provider ID. The onboarding example looks up the hire by
+  personal email; a missing or
   ambiguous result fails the Flow.
 
 Keep `addEmployee` sync. Async local-phase heartbeats are not visible to later

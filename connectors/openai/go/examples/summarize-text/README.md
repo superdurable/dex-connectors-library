@@ -73,7 +73,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/openai/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/openai/go \
-  --version v0.25.0 --tag connectors/openai/go/v0.25.0 \
+  --version v0.25.1 --tag connectors/openai/go/v0.25.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/openai-release/connector-ui.tgz \
   --ui-digest /tmp/openai-release/connector-ui.tgz.sha256 \

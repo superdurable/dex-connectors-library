@@ -2894,14 +2894,45 @@
     },
     {
       "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
-      "exchanges": [],
+      "exchanges": [
+        {
+          "body": "{\"data\":[],\"meta\":{\"total\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,firstName,lastName,hireDate"
+            ],
+            "filter[workEmail]": [
+              "sam@example.com"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "output": {
           "employeeId": ""
         },
-        "requestCount": 0,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -2924,6 +2955,67 @@
         "attempt": 3,
         "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
         "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"employeeId\":\"140\",\"firstName\":\"Sam\",\"lastName\":\"Park\",\"workEmail\":\"sam@example.com\",\"hireDate\":\"2026-10-01\"}],\"meta\":{\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,firstName,lastName,hireDate"
+            ],
+            "filter[workEmail]": [
+              "sam@example.com"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "employeeId": "140"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "firstName": "Sam",
+        "hireDate": "2026-10-01",
+        "lastName": "Park",
+        "workEmail": "sam@example.com"
+      },
+      "name": "addEmployee-email-read-back-confirmed",
+      "operation": "addEmployee",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+        "sendCount": 1,
         "state": "claimed"
       }
     },
@@ -2958,6 +3050,36 @@
             ]
           },
           "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"employeeId\":\"139\",\"firstName\":\"Older\",\"lastName\":\"Park\",\"workEmail\":\"sam@example.com\",\"hireDate\":\"2024-01-01\"}],\"meta\":{\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,firstName,lastName,hireDate"
+            ],
+            "filter[workEmail]": [
+              "sam@example.com"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
         },
         {
           "body": "{\"id\":\"142\"}",
@@ -3001,7 +3123,7 @@
         "output": {
           "employeeId": "142"
         },
-        "requestCount": 2,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false

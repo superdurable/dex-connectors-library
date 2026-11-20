@@ -164,9 +164,8 @@ func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	require.Equal(t, outcome.HandoffValue, provider.field(hire, integrationHandoffField), "the repeated write stored the same text")
 }
 
-// TestLostWorkerDuringAddIsResentBelowTheSendCapWithRealDex replaces the Worker while BambooHR
-// holds the add; the next attempt counts the claimed send and, below the cap, posts again.
-func TestLostWorkerDuringAddIsResentBelowTheSendCapWithRealDex(t *testing.T) {
+// TestLostWorkerDuringAddReadsBackByEmailWithRealDex replaces the Worker while BambooHR holds the add.
+func TestLostWorkerDuringAddReadsBackByEmailWithRealDex(t *testing.T) {
 	provider := newFakeBambooHR(t)
 	provider.holdsFirstAdd = make(chan struct{})
 	harness := newOnboardingHarness(t, provider, slowRequestTimeout)
@@ -183,12 +182,11 @@ func TestLostWorkerDuringAddIsResentBelowTheSendCapWithRealDex(t *testing.T) {
 	require.Equal(t, OnboardingHeld, outcome.Action)
 	require.True(t, outcome.WasEmployeeAdded)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 2, provider.count("add"), "the attempt on the new Worker resent the add below the send cap")
-	// BambooHR has no idempotency key, so the held first add and the resend each added an employee.
-	require.Equal(t, 2, provider.employeeCount())
+	require.Equal(t, 1, provider.count("add"), "the new Worker confirmed the employee by email before another POST")
+	require.Equal(t, 1, provider.employeeCount())
 }
 
-func TestLostAddResponseIsResentBelowTheSendCapWithRealDex(t *testing.T) {
+func TestLostAddResponseIsReadBackByEmailWithRealDex(t *testing.T) {
 	provider := newFakeBambooHR(t)
 	provider.losesFirstAddResponse = true
 	harness := newOnboardingHarness(t, provider, defaultRequestTimeout)
@@ -197,9 +195,8 @@ func TestLostAddResponseIsResentBelowTheSendCapWithRealDex(t *testing.T) {
 	require.Equal(t, OnboardingHeld, outcome.Action)
 	require.True(t, outcome.WasEmployeeAdded)
 	require.False(t, outcome.WasAdditionReconciled)
-	require.Equal(t, 2, provider.count("add"), "an unconfirmed add is resent below the send cap")
-	// The lost first add was applied, so the resend added a second employee.
-	require.Equal(t, 2, provider.employeeCount())
+	require.Equal(t, 1, provider.count("add"), "the accepted add is confirmed by email before another POST")
+	require.Equal(t, 1, provider.employeeCount())
 }
 
 func TestUnappliedAddWithUnknownOutcomeIsResentWithRealDex(t *testing.T) {

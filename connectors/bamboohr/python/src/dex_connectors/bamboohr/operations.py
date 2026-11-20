@@ -320,7 +320,10 @@ class FindEmployeeByEmailOperation:
             return _credential_query_failure("findEmployeeByEmail", failure, is_terminal, empty)
         assert credentials is not None
         fields = ["workEmail", "homeEmail"]
-        fields.extend(field for field in input.fields if field not in fields and field not in _SUMMARY_FIELDS)
+        fields.extend(
+            field for field in input.fields
+            if field not in fields and (field not in _SUMMARY_FIELDS or field in ("firstName", "lastName"))
+        )
         query = {
             f"filter[{email_field}]": input.email,
             "fields": ",".join(fields),
@@ -859,19 +862,23 @@ class AddEmployeeOperation:
             )
         saved_identifier = decision.marker.provider_id if decision.marker else ""
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            if not _valid_employee_id(saved_identifier):
-                return _add_uncertain(
-                    receipt,
-                    FailureKind.TRANSPORT,
-                    "earlier attempts may have added the employee up to the send cap; "
-                    "no employee ID is available for read-back",
-                )
-            return await self._read_back(call, saved_identifier)
+            if _valid_employee_id(saved_identifier):
+                return await self._read_back(call, saved_identifier)
         # BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
         if saved_identifier:
             return await self._read_back(call, saved_identifier)
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        if has_possible_earlier_send:
+            recovered = await self._read_back_by_email(call, input, not can_resend_unknown_outcome)
+            if recovered is not None:
+                return recovered
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return _add_uncertain(
+                receipt, FailureKind.TRANSPORT,
+                "earlier attempts may have added the employee up to the send cap; "
+                "email read-back did not confirm one",
+            )
         credentials, failure, is_terminal_credential = await self.client.resolve_credentials_with_terminality(
             call, "addEmployee"
         )
@@ -1052,6 +1059,42 @@ class AddEmployeeOperation:
             )
         assert exchange.failure is not None
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+
+    async def _read_back_by_email(
+        self, call: Call, input: AddEmployeeInput, is_at_send_cap: bool
+    ) -> MutationAttempt[AddEmployeeOutput] | None:
+        address = input.work_email or input.home_email
+        if not address:
+            return None
+        email_field = "workEmail" if input.work_email else "homeEmail"
+        fields = ("firstName", "lastName", "hireDate") if input.hire_date else ("firstName", "lastName")
+        lookup = await FindEmployeeByEmailOperation(self.client).invoke(
+            call, FindEmployeeByEmailInput(email=address, email_field=email_field, fields=fields)
+        )
+        if lookup.kind == "retry":
+            assert lookup.failure is not None
+            return MutationAttempt.retry(lookup.failure, lookup.retry_after_seconds)
+        receipt = self.client.receipt(call)
+        if lookup.branch == "found" and lookup.value is not None:
+            employee = lookup.value.employee
+            if (
+                employee.first_name == input.first_name
+                and employee.last_name == input.last_name
+                and (not input.hire_date or employee.fields.get("hireDate") == input.hire_date)
+            ):
+                identifier = employee.employee_id
+                return MutationAttempt.branch_result(
+                    "created", AddEmployeeOutput(identifier), self.client.receipt(call, identifier)
+                )
+        if lookup.branch == "defect":
+            return _add_uncertain(
+                receipt, FailureKind.AUTHENTICATION, "credentials are unavailable for email read-back"
+            )
+        if is_at_send_cap:
+            return _add_uncertain(
+                receipt, FailureKind.TRANSPORT, "email read-back could not confirm the employee"
+            )
+        return None
 
 
 def _resend_or_select_add_uncertain(

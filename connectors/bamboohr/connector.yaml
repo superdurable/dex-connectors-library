@@ -6,16 +6,16 @@ metadata:
   description: Read BambooHR employee records, find an employee by email, poll employee changes, start Flows when employees are added, updated, or deleted, list time off requests, update employee fields, and add employees, keeping BambooHR's own field names and status values.
   company: BambooHR
   categories: [hr-recruiting]
-  version: v0.24.1
+  version: v0.24.2
 spec:
   provider: bamboohr
   languages:
     python:
-      version: v0.2.1
+      version: v0.2.2
       operations: [getEmployee, findEmployeeByEmail, listEmployeeChanges, listTimeOffRequests, updateEmployee, addEmployee]
       triggers: [employeeChanged]
     typescript:
-      version: v0.2.1
+      version: v0.2.2
       operations: [getEmployee, findEmployeeByEmail, listEmployeeChanges, listTimeOffRequests, updateEmployee, addEmployee]
       triggers: [employeeChanged]
   codegen:

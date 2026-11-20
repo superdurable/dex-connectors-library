@@ -6,17 +6,17 @@ metadata:
   description: "OpenAI Responses API stored responses and conversations, with file listing and deletion: typed create, retrieve, update, and delete operations, streamed text and progress, and explicit uncertainty. Text generation Steps use the llm connector."
   company: OpenAI
   categories: [ai]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: openai
   languages:
     python:
-      version: v0.2.1
+      version: v0.2.2
       package: dex-connector-openai
       operations: [createResponse, retrieveResponse]
       triggers: []
     typescript:
-      version: v0.2.1
+      version: v0.2.2
       package: "@superdurable/connector-openai"
       operations: [createResponse, retrieveResponse]
       triggers: []

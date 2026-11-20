@@ -6,7 +6,7 @@ import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, ty
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { BambooHRClient } from '../src/client.js';
 import { AddEmployeeDefinition } from '../src/generated/definitions.js';
-import type { AddEmployeeOutput } from '../src/generated/models.js';
+import type { AddEmployeeInput, AddEmployeeOutput } from '../src/generated/models.js';
 
 const callId = '6c9e932e-fe09-5f01-8889-39650948771e';
 
@@ -37,9 +37,9 @@ function newClient(answer: (request: ProviderRequest) => BambooHRAnswer) {
   return { client, requests };
 }
 
-async function add(client: BambooHRClient, context: AttemptContext): Promise<MutationResult<AddEmployeeOutput> | RetryError> {
+async function add(client: BambooHRClient, context: AttemptContext, employeeInput: AddEmployeeInput = { firstName: 'Sam', lastName: 'Park' }): Promise<MutationResult<AddEmployeeOutput> | RetryError> {
   const call = { id: callId, connection: { provider: 'bamboohr', name: 'bamboohr' }, operation: AddEmployeeDefinition.operation, context } as unknown as Call;
-  try { return await runMutation(client.addEmployee(), call, { firstName: 'Sam', lastName: 'Park' }); }
+  try { return await runMutation(client.addEmployee(), call, employeeInput); }
   catch (error) {
     if (error instanceof RetryError) return error;
     throw error;
@@ -47,6 +47,21 @@ async function add(client: BambooHRClient, context: AttemptContext): Promise<Mut
 }
 
 describe('BambooHR addEmployee bounded resend', () => {
+  it.each([true, false])('reads email before resend and rejects an older mismatch: matching=%s', async matchingName => {
+    let posts = 0;
+    const { client, requests } = newClient(request => {
+      if (request.method === 'GET') return { status: 200, body: JSON.stringify({ data: [{ employeeId: '140', firstName: matchingName ? 'Sam' : 'Other', lastName: 'Park', workEmail: 'sam@example.com' }], meta: { total: 1 } }) };
+      posts++;
+      return posts === 1 ? { status: 500, body: '{}' } : { status: 201, body: '{"id":"141"}' };
+    });
+    const context = new AttemptContext();
+    const employeeInput = { firstName: 'Sam', lastName: 'Park', workEmail: 'sam@example.com' };
+    expect(await add(client, context, employeeInput)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    expect(await add(client, context, employeeInput)).toMatchObject({ branch: 'created' });
+    expect(requests.map(request => request.method)).toEqual(matchingName ? ['POST', 'GET'] : ['POST', 'GET', 'POST']);
+  });
+
   it.each([500, 408])('resends an unknown HTTP %i until the send cap, then selects uncertain', async status => {
     const { client, requests } = newClient(() => ({ status, body: '{}' }));
     const context = new AttemptContext();

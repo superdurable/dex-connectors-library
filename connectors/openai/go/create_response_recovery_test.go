@@ -44,6 +44,18 @@ type failingHeartbeatContext struct {
 	heartbeats atomic.Int32
 }
 
+type transientResponseHeartbeatContext struct {
+	*testsupport.DexContext
+	heartbeats atomic.Int32
+}
+
+func (ctx *transientResponseHeartbeatContext) RecordHeartbeat(value any) error {
+	if ctx.heartbeats.Add(1) == 2 {
+		return errors.New("heartbeat stream briefly unavailable")
+	}
+	return ctx.DexContext.RecordHeartbeat(value)
+}
+
 func (ctx *failingHeartbeatContext) RecordHeartbeat(value any) error {
 	if ctx.heartbeats.Add(1) > 1 {
 		return errors.New("heartbeat stream is closed")
@@ -376,6 +388,21 @@ func TestCreateResponseKeepsAResultWhenLaterHeartbeatsFail(t *testing.T) {
 		require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
 		require.Equal(t, "resp_kept", result.Value.ID)
 	})
+}
+
+func TestCreateResponseRetriesResponseIDCheckpointAfterTransientFailure(t *testing.T) {
+	script, server := newProviderScript(t, replyJSON(`{"id":"resp_kept","status":"completed"}`), replyJSON(`{"id":"resp_kept","status":"completed"}`))
+	ctx := &transientResponseHeartbeatContext{DexContext: testsupport.NewDexContext("flow-1", "transient-response-heartbeat")}
+	result, err := runCreateResponse(ctx, newClient(t, server.URL))
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+	require.Equal(t, int32(3), ctx.heartbeats.Load())
+	require.Equal(t, []string{http.MethodPost}, script.requestMethods())
+	ctx.AttemptNo = 2
+	result, err = runCreateResponse(ctx, newClient(t, server.URL))
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+	require.Equal(t, []string{http.MethodPost, http.MethodGet}, script.requestMethods())
 }
 
 // Progress writes fail outside a Dex Worker; the connector still reads the stream to its end.

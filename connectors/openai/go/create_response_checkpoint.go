@@ -84,10 +84,17 @@ func (heartbeat *createResponseHeartbeat) begin(checkpoint createResponseCheckpo
 
 // recordResponseID keeps the claim's SendCount, since the named response is the claimed send.
 func (heartbeat *createResponseHeartbeat) recordResponseID(responseID string) error {
-	return heartbeat.record(createResponseCheckpoint{
+	checkpoint := createResponseCheckpoint{
 		CallID: heartbeat.call.ID, Attempt: heartbeat.call.Context.Attempt(), ResponseID: responseID,
 		SendCount: heartbeat.currentSendCount(),
-	})
+	}
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		if err = heartbeat.record(checkpoint); err == nil {
+			return nil
+		}
+	}
+	return err
 }
 
 // recordCanResend records sendCount, the possibly effective creates through this attempt.

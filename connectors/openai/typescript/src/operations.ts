@@ -51,7 +51,13 @@ class CheckpointHeartbeat {
   }
   async record(checkpoint: Checkpoint): Promise<void> { this.checkpoint = checkpoint; await this.call.context.recordHeartbeat(checkpoint); }
   /** Record the response ID, keeping the claim's send count. */
-  async responseId(id: string): Promise<void> { await this.record({ callId: this.call.id, attempt: this.call.context.attempt, responseId: id, ...(this.sendCount === undefined ? {} : { sendCount: this.sendCount }) }); }
+  async responseId(id: string): Promise<void> {
+    const checkpoint = { callId: this.call.id, attempt: this.call.context.attempt, responseId: id, ...(this.sendCount === undefined ? {} : { sendCount: this.sendCount }) };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try { await this.record(checkpoint); return; }
+      catch (error) { if (attempt === 2) throw error; }
+    }
+  }
   /** Record that the next attempt may resend, with sendCount possible creates through this attempt. */
   async canResend(sendCount: number): Promise<void> { await this.record({ callId: this.call.id, attempt: this.call.context.attempt, canResend: true, sendCount }); }
   /** The send count of the checkpoint this attempt last recorded. */
