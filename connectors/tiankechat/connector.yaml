@@ -50,6 +50,7 @@ spec:
         - This connector uses v3 HMAC-SHA256 signatures, so the secret never travels in a request header. For an old v2-only app, coordinate a secret reset in 开放平台 > 应用 before switching; reset revokes its old credentials. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
         - The Query reads one page of knowledge entry IDs, categories, enabled flags, and hit counts. It omits customer questions, answers, and attachments.
   languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-tiankechat", operations: [listKnowledgeEntries], triggers: []}
     python:
       version: v0.1.0
       operations: [listKnowledgeEntries]

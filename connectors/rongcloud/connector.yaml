@@ -51,6 +51,7 @@ spec:
         - Rotate the App Secret from the RongCloud console if exposed. Keep both values in Dex Web Connections; never use the App Secret in a Flow input or client-side code.
         - Leave baseUrl, timeout, and maxResponseBytes blank for defaults. Use the documented domestic backup host only when the primary is unavailable.
   languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-rongcloud", operations: [checkUserOnline], triggers: []}
     python:
       version: v0.1.0
       operations: [checkUserOnline]
