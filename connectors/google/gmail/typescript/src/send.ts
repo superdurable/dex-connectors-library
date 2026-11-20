@@ -403,12 +403,7 @@ function retryAfterRefusal(operation: string, kind: Failure['kind'], message: st
   catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'Gmail returned an invalid Retry-After header')); }
 }
 
-/**
- * Classify a credential failure before any send in this attempt. After an earlier possible send, a transient
- * failure returns Retry without notSent, so later attempts still read back, and one that needs reconnection
- * selects uncertain, because no later attempt could read back or resend. On a clean first attempt a transient
- * failure records notSent and returns Retry; only a permanent one selects defect.
- */
+/** Classify credentials before this attempt's send; earlier possible sends remain unproven on transient failure. */
 async function unavailableCredentials(fence: Fence, operation: 'sendMessage' | 'replyToMessage', error: unknown, receipt: ReceiptDraft): Promise<MutationAttempt<SendMessageOutput>> {
   const isPermanent = !(error instanceof GmailCredentialError) || error.isPermanent;
   if (isEarlierSendPossible(fence)) {

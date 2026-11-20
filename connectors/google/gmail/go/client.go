@@ -228,10 +228,7 @@ func isPermanentCredentialFailure(err error) bool {
 }
 
 // unavailableCredentialsAttempt classifies a credential failure before any send in this attempt.
-// After an earlier possible send, a transient failure returns Retry without notSent, so later
-// attempts still read back, and one that needs reconnection selects uncertain, because no
-// later attempt could read back or resend. On a clean first attempt a transient failure
-// records notSent and returns Retry; only a permanent one selects defect.
+// Earlier possible sends remain unproven after a transient credential failure.
 func unavailableCredentialsAttempt(
 	fence *singledispatch.Fence, decision singledispatch.Decision, defectBranch sdkgo.BranchID, operationID string, err error, receipt sdkgo.Receipt,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
@@ -244,7 +241,7 @@ func unavailableCredentialsAttempt(
 			"Gmail credentials are temporarily unavailable; an earlier send may still be delivered"), 0)
 	}
 	if !isPermanentCredentialFailure(err) {
-		recordNotSentBeforeAnySend(fence, decision)
+		recordPreSendRetry(fence, decision)
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operationID, sdkgo.FailureAvailability,
 			"Gmail credentials are temporarily unavailable; nothing was sent"), 0)
 	}
@@ -490,7 +487,7 @@ func (client *Client) reconcileEarlierSends(
 	}
 	// Below the send cap, an inconclusive search still permits a resend.
 	if searchErr != nil && decision.Kind != singledispatch.ReadBackThenResendAllowed {
-		recordNotSentBeforeAnySend(fence, decision)
+		recordPreSendRetry(fence, decision)
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
 			"Gmail sent-mail search did not answer before the "+operation.requestName), 0), true
 	}
@@ -583,8 +580,8 @@ func acceptedMessageIdentity(content []byte) (sendResponse, bool) {
 	return identity, true
 }
 
-// recordNotSentBeforeAnySend preserves earlier possible sends while excluding this attempt.
-func recordNotSentBeforeAnySend(fence *singledispatch.Fence, decision singledispatch.Decision) {
+// recordPreSendRetry preserves earlier possible sends while excluding this attempt.
+func recordPreSendRetry(fence *singledispatch.Fence, decision singledispatch.Decision) {
 	if decision.Kind == singledispatch.SendAllowed || decision.Kind == singledispatch.ReadBackThenResendAllowed {
 		_ = fence.RecordNotSent() // A failed checkpoint cannot permit a later send.
 	}

@@ -69,7 +69,7 @@ function markerFromEntry(entry: unknown): Marker | undefined {
   const parsed = MarkerSchema.safeParse(entry);
   if (!parsed.success) return undefined;
   const marker = parsed.data;
-  return { ...marker, sendCount: marker.sendCount ?? (marker.state === 'claimed' || marker.state === 'accepted' ? marker.attempt : marker.attempt - 1) };
+  return { ...marker, sendCount: marker.sendCount ?? (marker.state === 'claimed' ? marker.attempt : marker.attempt - 1) };
 }
 
 /** Encodes the checkpoint map with call IDs in sorted order, Go's field order, and every entry's exact count. */

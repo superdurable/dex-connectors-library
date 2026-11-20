@@ -88,11 +88,15 @@ export class Fence {
    * Allowed once after a `sendAllowed` or `readBackThenResendAllowed` decision. Under the latter,
    * call it only after read-back did not confirm success. Whatever the cap, the claim records
    * the decision's `priorSendUpperBound` plus one as `sendCount`. A short write window
-   * records `notSent` after either send decision, retaining earlier possible sends.
+   * records `notSent` only after `sendAllowed`.
    */
   async dispatch<Result>(send: (signal: AbortSignal) => Promise<Result> | Result): Promise<Result> {
     if (!this.#isSendDecision() || this.#hasDispatched || this.#hasPreSendRetry || typeof send !== 'function') throw new DispatchNotAllowedError();
     if (this.#minimumRequestTime <= 0 || this.#writeDeadline - Date.now() < this.#minimumRequestTime) {
+      if (this.#decision?.kind !== 'sendAllowed') {
+        this.#hasPreSendRetry = true;
+        throw new InsufficientTimeError();
+      }
       try { await this.recordNotSent(); }
       catch (error) { throw new AggregateError([new InsufficientTimeError(), error], 'single dispatch has insufficient time and checkpoint failed'); }
       throw new InsufficientTimeError();
@@ -102,8 +106,10 @@ export class Fence {
     try { await this.#record(claim); }
     catch {
       this.#hasPreSendRetry = true;
-      try { await recordStepCheckpoint(this.#context, this.#checkpoint, this.#attemptMarker('notSent', this.#priorSendUpperBound())); }
-      catch { /* A failed best-effort proof never grants a send in this attempt. */ }
+      if (this.#decision?.kind === 'sendAllowed') {
+        try { await recordStepCheckpoint(this.#context, this.#checkpoint, this.#attemptMarker('notSent', this.#priorSendUpperBound())); }
+        catch { /* A failed best-effort proof never grants a send in this attempt. */ }
+      }
       throw new CheckpointError();
     }
     const requestController = new AbortController();
@@ -135,24 +141,14 @@ export class Fence {
   /**
    * Checkpoint a pre-send Retry with the sends made before this attempt, forbidding Dispatch in this attempt.
    *
-   * Allowed after either send-permitting decision. Earlier possible sends remain counted.
+   * Allowed only after `sendAllowed`. After `readBackThenResendAllowed` an earlier send is
+   * unresolved, and `notSent` would let the next attempt send without read-back, so return Retry
+   * without it.
    */
   async recordNotSent(): Promise<void> {
-    if (!this.#isSendDecision() || this.#hasDispatched || this.#hasPreSendRetry) throw new DispatchNotAllowedError();
+    if (this.#decision?.kind !== 'sendAllowed' || this.#hasDispatched || this.#hasPreSendRetry) throw new DispatchNotAllowedError();
     this.#hasPreSendRetry = true;
     await this.#record(this.#attemptMarker('notSent', this.#priorSendUpperBound()));
-  }
-
-  /** Checkpoint provider acceptance without an ID, prohibiting another send. */
-  async recordAccepted(): Promise<void> {
-    if (!this.#hasSendFinished || this.#hasTerminalRecordPending || this.#marker?.state !== 'claimed' || this.#marker.providerId) throw new DispatchNotAllowedError();
-    this.#hasTerminalRecordPending = true;
-    const accepted = this.#attemptMarker('accepted', this.#priorSendUpperBound() + 1);
-    try { await recordStepCheckpoint(this.#context, this.#checkpoint, accepted, true); }
-    finally {
-      this.#marker = accepted;
-      this.#hasTerminalRecordPending = false;
-    }
   }
 
   /** Checkpoint positive evidence that this attempt's request was not processed, so it is not counted. */

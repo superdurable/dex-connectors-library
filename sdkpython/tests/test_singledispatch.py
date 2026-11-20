@@ -91,7 +91,7 @@ def test_legacy_own_marker_is_read() -> None:
     """A legacy single marker of this call keeps its state, provider ID, and count."""
     immediate = Marker(CALL_ID, 2, State.NOT_SENT, send_count=1).to_wire()
     decision = decide_dispatch(CALL_ID, 3, immediate)
-    assert (decision.kind, decision.prior_send_upper_bound) == (DecisionKind.READ_BACK_REQUIRED, 1)
+    assert (decision.kind, decision.prior_send_upper_bound) == (DecisionKind.SEND_ALLOWED, 1)
     accepted = Marker(CALL_ID, 2, State.CLAIMED, "object-1", 1).to_wire()
     decision = decide_dispatch(CALL_ID, 3, accepted, max_sends=3)
     assert decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
@@ -153,13 +153,12 @@ def test_malformed_markers_are_rejected() -> None:
 
 
 def _legacy_decision_kind(attempt: int, previous: Marker | None) -> DecisionKind:
-    """Compute the default-cap decision while preserving earlier possible sends."""
+    """Mirror the 0.9.0 decision rules as an oracle for the default send cap."""
     if previous is None:
         return DecisionKind.SEND_ALLOWED if attempt == 1 else DecisionKind.READ_BACK_REQUIRED
     if (
         previous.attempt == attempt - 1
         and previous.state in (State.NOT_SENT, State.CAN_RESEND)
-        and (previous.state == State.CAN_RESEND or previous.attempt == 1 and previous.send_count == 0)
         and not previous.provider_id
     ):
         return DecisionKind.SEND_ALLOWED
@@ -170,7 +169,7 @@ def test_default_send_cap_matches_previous_decisions() -> None:
     """With max_sends=1 every same-call marker yields the 0.9.0 decision."""
     previous_markers: list[Marker | None] = [None]
     for marker_attempt in range(1, 6):
-        for state in (State.NOT_SENT, State.CLAIMED, State.CAN_RESEND):
+        for state in State:
             for provider_id in ("", "object-42"):
                 maximum_count = marker_attempt if state == State.CLAIMED else marker_attempt - 1
                 for send_count in sorted({0, min(1, maximum_count), maximum_count}):
@@ -207,7 +206,7 @@ def test_default_send_cap_matches_previous_decisions() -> None:
         (6, Marker(CALL_ID, 5, State.CLAIMED, send_count=3), 3,
          DecisionKind.READ_BACK_REQUIRED, 3),
         (7, Marker(CALL_ID, 6, State.NOT_SENT, send_count=2), 3,
-         DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 2),
+         DecisionKind.SEND_ALLOWED, 2),
         (8, Marker(CALL_ID, 6, State.NOT_SENT, send_count=2), 3,
          DecisionKind.READ_BACK_REQUIRED, 3),
         (8, Marker(CALL_ID, 7, State.CAN_RESEND, send_count=2), 3,
@@ -217,7 +216,7 @@ def test_default_send_cap_matches_previous_decisions() -> None:
         # Legacy markers: claimed counts k, notSent and canResend count k - 1.
         (3, Marker(CALL_ID, 2, State.CLAIMED), 3, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 2),
         (4, Marker(CALL_ID, 3, State.CLAIMED), 3, DecisionKind.READ_BACK_REQUIRED, 3),
-        (3, Marker(CALL_ID, 2, State.NOT_SENT), 3, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 1),
+        (3, Marker(CALL_ID, 2, State.NOT_SENT), 3, DecisionKind.SEND_ALLOWED, 1),
         (4, Marker(CALL_ID, 2, State.NOT_SENT), 3, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 2),
         (5, Marker(CALL_ID, 3, State.CAN_RESEND), 3, DecisionKind.READ_BACK_REQUIRED, 3),
         # A provider ID always demands read-back; resend only below the cap.
@@ -346,8 +345,7 @@ def test_foreign_and_unreadable_entries_are_ignored_with_bounded_resend() -> Non
         # The same vectors run in sdkgo and sdkts to keep the count validity rule identical.
         (3, Marker(CALL_ID, 2, State.CLAIMED, send_count=2), 3,
          DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 2),
-        (3, Marker(CALL_ID, 2, State.NOT_SENT, send_count=1), 3,
-         DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 1),
+        (3, Marker(CALL_ID, 2, State.NOT_SENT, send_count=1), 3, DecisionKind.SEND_ALLOWED, 1),
         (3, Marker(CALL_ID, 2, State.CAN_RESEND, send_count=1), 3, DecisionKind.SEND_ALLOWED, 1),
         (4, Marker(CALL_ID, 2, State.NOT_SENT, send_count=1), 3,
          DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 2),
@@ -687,7 +685,7 @@ async def test_bounded_fence_records_counts_on_follow_up_markers() -> None:
     with pytest.raises(DispatchNotAllowedError):
         await pre_send.dispatch(lambda deadline: asyncio.sleep(0))
     after_pre_send = await _fence(FakeContext(4, _persisted(pre_send_context)), max_sends=3).decide()
-    assert after_pre_send.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+    assert after_pre_send.kind == DecisionKind.SEND_ALLOWED
     assert after_pre_send.prior_send_upper_bound == 1
 
 
@@ -717,7 +715,7 @@ async def test_bounded_fence_pre_send_failures_keep_prior_count() -> None:
 
 @pytest.mark.asyncio
 async def test_bounded_fence_short_window_after_unresolved_send_writes_no_marker() -> None:
-    """A short window records notSent with the earlier send count."""
+    """READ_BACK_THEN_RESEND_ALLOWED with a short window retries without notSent."""
     claimed = Marker(CALL_ID, 2, State.CLAIMED, send_count=2)
     context = FakeContext(3, claimed)
     context.deadline = datetime.now(UTC) - timedelta(seconds=1)
@@ -725,7 +723,7 @@ async def test_bounded_fence_short_window_after_unresolved_send_writes_no_marker
     assert (await fence.decide()).kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
     with pytest.raises(InsufficientAttemptTimeError):
         await fence.dispatch(lambda deadline: asyncio.sleep(0))
-    assert _persisted(context) == Marker(CALL_ID, 3, State.NOT_SENT, send_count=2)
+    assert not context.heartbeats
     with pytest.raises(DispatchNotAllowedError):
         await fence.dispatch(lambda deadline: asyncio.sleep(0))
     # The next attempt still sees the unresolved claim and must read back.
@@ -735,7 +733,7 @@ async def test_bounded_fence_short_window_after_unresolved_send_writes_no_marker
 
 @pytest.mark.asyncio
 async def test_bounded_fence_failed_claim_after_unresolved_send_writes_no_marker() -> None:
-    """A failed claim can still record proof of no current send."""
+    """READ_BACK_THEN_RESEND_ALLOWED with a failed claim retries without notSent."""
     claimed = Marker(CALL_ID, 2, State.CLAIMED, send_count=1)
     context = FakeContext(3, claimed)
     context.failing_heartbeat_count = 1
@@ -750,7 +748,7 @@ async def test_bounded_fence_failed_claim_after_unresolved_send_writes_no_marker
     with pytest.raises(CheckpointError):
         await fence.dispatch(send)
     assert not sent
-    assert _persisted(context) == Marker(CALL_ID, 3, State.NOT_SENT, send_count=1)
+    assert not context.heartbeats
     with pytest.raises(DispatchNotAllowedError):
         await fence.dispatch(send)
     next_decision = await _fence(FakeContext(4, claimed), max_sends=3).decide()
@@ -767,46 +765,16 @@ async def test_bounded_fence_failed_claim_after_unresolved_send_writes_no_marker
     ],
 )
 async def test_bounded_fence_keeps_unresolved_send_for_read_back(previous: Marker | None) -> None:
-    """notSent preserves the earlier count, so the next attempt still reads back."""
+    """notSent is refused after a possible send, so the next attempt still reads back."""
     context = FakeContext(2, previous)
     fence = _fence(context, max_sends=3)
     decision = await fence.decide()
     assert decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
-    await fence.record_not_sent()
-    assert _persisted(context) == Marker(CALL_ID, 2, State.NOT_SENT, send_count=1)
     with pytest.raises(DispatchNotAllowedError):
-        await fence.dispatch(lambda deadline: asyncio.sleep(0))
-    next_decision = await _fence(FakeContext(3, _persisted(context)), max_sends=3).decide()
-    assert next_decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
-
-
-@pytest.mark.asyncio
-async def test_accepted_without_id_requires_read_back() -> None:
-    """A provider acceptance checkpoint forbids resend even below the cap."""
-    context = FakeContext()
-    fence = _fence(context, max_sends=3)
-    await fence.decide()
+        await fence.record_not_sent()
+    assert not context.heartbeats
     await fence.dispatch(lambda deadline: asyncio.sleep(0))
-    await fence.record_accepted()
-    assert _persisted(context) == Marker(CALL_ID, 1, State.ACCEPTED, send_count=1)
-    with pytest.raises(DispatchNotAllowedError):
-        await fence.record_can_resend()
-    next_decision = await _fence(FakeContext(2, _persisted(context)), max_sends=3).decide()
-    assert next_decision.kind == DecisionKind.READ_BACK_REQUIRED
-
-
-@pytest.mark.asyncio
-async def test_failed_accepted_checkpoint_never_allows_can_resend() -> None:
-    """A failed heartbeat retains acceptance in this attempt's fence."""
-    context = FakeContext()
-    fence = _fence(context, max_sends=3)
-    await fence.decide()
-    await fence.dispatch(lambda deadline: asyncio.sleep(0))
-    context.failing_heartbeat_count = 1
-    with pytest.raises(Exception, match="heartbeat"):
-        await fence.record_accepted()
-    with pytest.raises(DispatchNotAllowedError):
-        await fence.record_can_resend()
+    assert _persisted(context) == Marker(CALL_ID, 2, State.CLAIMED, send_count=2)
 
 
 @pytest.mark.asyncio

@@ -597,6 +597,25 @@ describe('Gmail send and reply classification', () => {
     expect(checkpoint.value).toMatchObject({ state: 'notSent', sendCount: 2 });
   });
 
+  it('keeps a saved reply ID through a short pre-send budget and never posts again', async () => {
+    let posts = 0;
+    const operation = sender(async request => {
+      if (request.method === 'POST') posts++;
+      if (request.url.includes('/sent-1?')) return response(200, { id: 'sent-1', threadId: 'thread-1' });
+      return response(200, { messages: [] });
+    });
+    const checkpoint: { value?: unknown } = { value: {
+      callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1,
+      state: 'claimed', providerId: 'sent-1', sendCount: 1,
+    } };
+    expect((await operation.replyToMessage(operationCall('replyToMessage', 2, checkpoint), replyInput,
+      new Date(Date.now() + 100))).kind).toBe('retry');
+    expect(checkpoint.value).toMatchObject({ state: 'notSent', providerId: 'sent-1', sendCount: 1 });
+    expect(await operation.replyToMessage(operationCall('replyToMessage', 3, checkpoint), replyInput,
+      new Date(Date.now() + 30_000))).toMatchObject({ branch: 'sent', value: { messageId: 'sent-1' } });
+    expect(posts).toBe(0);
+  });
+
   it('only searches Sent Mail on the attempt after an unrecorded source retry and selects uncertain', async () => {
     let posts = 0, sourceReads = 0, searches = 0;
     const operation = sender(async request => {

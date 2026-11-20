@@ -457,11 +457,9 @@ class SendService:
     ) -> MutationAttempt[SendMessageOutput]:
         """Classify a credential failure before any send in this attempt.
 
-        After an earlier possible send, a transient failure returns Retry
-        without notSent, so later attempts still read back, and one that needs
-        reconnection selects uncertain, because no later attempt could read
-        back or resend. On a clean first attempt a transient failure records
-        notSent and returns Retry; only a permanent one selects defect.
+        A transient failure after a possible send retries without new evidence.
+        Reconnection selects uncertain; a permanent first-attempt failure
+        selects defect.
         """
         is_permanent = isinstance(error, _PERMANENT_CREDENTIAL_ERRORS)
         if await self._is_earlier_send_possible(execution):
