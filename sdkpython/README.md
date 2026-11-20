@@ -622,10 +622,14 @@ The connector reads back when it can: confirmed success selects the happy
 path, and a definite not-found or inconclusive read-back permits one
 `dispatch`. A connector without read-back may dispatch directly. At the cap,
 the decision is `READ_BACK_REQUIRED` and an unconfirmed outcome selects
-`uncertain`. `record_not_sent` is allowed only after `SEND_ALLOWED`; after
-a possible earlier send, return Retry without it so the next attempt still
-reads back. For the same reason, `dispatch` records `notSent` for a too-short
-write window or failed claim only after `SEND_ALLOWED`.
+`uncertain`. `record_not_sent` is allowed after either send-permitting decision;
+it preserves the earlier send count so the next attempt still reads back.
+`dispatch` also records `notSent` for a too-short window or failed claim.
+`record_accepted` records provider acceptance without an ID; later attempts
+may read back but cannot resend.
+Deploy every Worker with this SDK before deploying a connector that writes
+`accepted`. Do not roll back the SDK while Steps are in flight: older SDKs
+read unknown `accepted` markers as missing and could send again.
 
 `MutationDefinition.repeat_on_unknown` and `max_sends` carry the manifest
 `execution.repeatOnUnknown` tier and its `maxSends`. A `MutationStep` sets

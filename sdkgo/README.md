@@ -677,13 +677,18 @@ first when the provider allows it: a confirmed write selects the happy path,
 and a definite absence or an inconclusive read-back permits `Dispatch`. A
 saved `Marker.ProviderID` is read back before any resend. A connector without
 read-back may call `Dispatch` directly. A pre-send Retry under this decision
-records nothing, because `notSent` would let the next attempt skip read-back.
+records `notSent` with the earlier send count, so the next attempt still reads back.
 At the cap, the decision is `ReadBackRequired` and an unconfirmed write selects
 `uncertain`. Every Fence, capped or not, records the exact `sendCount` in its
 checkpoint entry, zero included, and `Decide` reads it exactly, so two sends
 refused with 429 leave `MaximumPriorSends` at zero. An entry without the
 count, such as one seeded from a `Marker` whose JSON omits zero, is counted
 conservatively.
+`RecordAccepted` records provider acceptance without an ID as `accepted`.
+Later attempts may read back but never resend that write.
+Deploy every Worker with this SDK before deploying a connector that writes `accepted`.
+Do not roll back the SDK while Steps are in flight: older SDKs read unknown
+`accepted` markers as missing and could send again.
 
 An application raises or lowers the cap of one Step with
 `MutationStepConfig.MaxSends`, or the generated factory's `MaxSends` field, from

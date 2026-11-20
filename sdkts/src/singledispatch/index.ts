@@ -7,7 +7,7 @@ import { CallIDSchema, type CallID } from '../types.js';
 import { markersFromHeartbeat } from './checkpoint.js';
 
 /** Last known write state of one Dex Execute attempt. */
-export const MarkerStateSchema = z.enum(['notSent', 'claimed', 'canResend']);
+export const MarkerStateSchema = z.enum(['notSent', 'claimed', 'accepted', 'canResend']);
 /** Last known write state of one Dex Execute attempt. */
 export type MarkerState = z.infer<typeof MarkerStateSchema>;
 
@@ -18,7 +18,7 @@ export type MarkerState = z.infer<typeof MarkerStateSchema>;
  * `sendCount` is the number of possibly effective sends this call ID made up to and including the
  * marker's attempt. Every Fence, whatever its cap, writes the exact count into its checkpoint entry,
  * zero included, and decisions read a present count exactly. A checkpoint entry without it is read
- * as `attempt` for a claim and `attempt - 1` otherwise, which can only overcount; a claim with a
+ * as `attempt` for a claim or acceptance and `attempt - 1` otherwise, which can only overcount; a claim with a
  * count of 0 fails closed. Field order matches the Go encoding: `providerId`, when present,
  * precedes `sendCount`.
  */
@@ -84,7 +84,8 @@ export function decideDispatch(callId: CallID, attempt: number, lastHeartbeat: u
   // A marker from this or a later attempt would make the gap negative and undercount sends.
   if (marker.attempt >= attempt) return { kind: 'readBackRequired', marker, priorSendUpperBound: markerSendCount };
   const priorSendUpperBound = markerSendCount + (attempt - 1 - marker.attempt);
-  if (marker.attempt === attempt - 1 && (marker.state === 'notSent' || marker.state === 'canResend') && !marker.providerId) return { kind: 'sendAllowed', marker, priorSendUpperBound };
+  if (marker.state === 'accepted') return { kind: 'readBackRequired', marker, priorSendUpperBound };
+  if (marker.attempt === attempt - 1 && (marker.state === 'canResend' || priorSendUpperBound === 0) && (marker.state === 'notSent' || marker.state === 'canResend') && !marker.providerId) return { kind: 'sendAllowed', marker, priorSendUpperBound };
   return { kind: decideReadBack(priorSendUpperBound, maxSends), marker, priorSendUpperBound };
 }
 
@@ -95,12 +96,12 @@ function decideReadBack(priorSendUpperBound: number, maxSends: number): 'readBac
 /** Rejects a send count that one send per attempt could not produce, as Go does; a claim counts its own send. */
 function hasPossibleSendCount(marker: Marker): boolean {
   const sendCount = sendCountOfMarker(marker);
-  return marker.state === 'claimed' ? sendCount >= 1 && sendCount <= marker.attempt : sendCount <= marker.attempt - 1;
+  return marker.state === 'claimed' || marker.state === 'accepted' ? sendCount >= 1 && sendCount <= marker.attempt : sendCount <= marker.attempt - 1;
 }
 
 /** The checkpoint decoder fills an absent count conservatively; this fallback only guards that invariant. */
 function sendCountOfMarker(marker: Marker): number {
-  return marker.sendCount ?? (marker.state === 'claimed' ? marker.attempt : marker.attempt - 1);
+  return marker.sendCount ?? (marker.state === 'claimed' || marker.state === 'accepted' ? marker.attempt : marker.attempt - 1);
 }
 
 export * from './fence.js';

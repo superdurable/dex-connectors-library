@@ -22,6 +22,7 @@ class State(StrEnum):
 
     NOT_SENT = "notSent"
     CLAIMED = "claimed"
+    ACCEPTED = "accepted"
     CAN_RESEND = "canResend"
 
 
@@ -33,7 +34,7 @@ class Marker:
     up to and including `attempt`. Every Fence, whatever its cap, writes the
     exact count into its checkpoint entry, zero included, and decisions read
     a present count exactly. `to_wire` omits zero; a checkpoint entry without
-    the count is read as `attempt` for a claim and `attempt - 1` otherwise,
+    the count is read as `attempt` for a claim or acceptance and `attempt - 1` otherwise,
     which can only overcount.
     """
 
@@ -145,7 +146,7 @@ def decide_dispatch(
     marker.
 
     No marker on attempt one permits the first send, as does a `notSent` or
-    `canResend` entry without provider ID from the immediately prior
+    `canResend` entry without provider ID or earlier send from the immediately prior
     attempt. No marker on a later attempt, or any other entry, demands
     read-back; when `max_sends` is at least two and fewer than `max_sends`
     sends may have happened, it permits a resend after read-back instead.
@@ -168,8 +169,13 @@ def decide_dispatch(
         # A current or future attempt's marker never permits a resend; Go and TS report its count.
         return Decision(DecisionKind.READ_BACK_REQUIRED, marker, prior_send_upper_bound=marker.send_count)
     prior_send_upper_bound = marker.send_count + (attempt - 1 - marker.attempt)
+    if marker.state == State.ACCEPTED:
+        return Decision(
+            DecisionKind.READ_BACK_REQUIRED, marker, prior_send_upper_bound=prior_send_upper_bound
+        )
     if (
         marker.attempt == attempt - 1
+        and (marker.state == State.CAN_RESEND or prior_send_upper_bound == 0)
         and marker.state in (State.NOT_SENT, State.CAN_RESEND)
         and not marker.provider_id
     ):
@@ -246,7 +252,7 @@ def _bounded_read_back(
 
 def _has_possible_send_count(marker: Marker) -> bool:
     """Reject a send count that one send per attempt could not produce, as Go does."""
-    if marker.state == State.CLAIMED:
+    if marker.state in (State.CLAIMED, State.ACCEPTED):
         # A claim counts its own send.
         return 1 <= marker.send_count <= marker.attempt
     return marker.send_count <= marker.attempt - 1
@@ -254,7 +260,7 @@ def _has_possible_send_count(marker: Marker) -> bool:
 
 def _conservative_send_count(marker: Marker) -> int:
     # One send per attempt, excluding a notSent or canResend marker's own.
-    return marker.attempt if marker.state == State.CLAIMED else marker.attempt - 1
+    return marker.attempt if marker.state in (State.CLAIMED, State.ACCEPTED) else marker.attempt - 1
 
 
 def _is_plain_int(value: object) -> bool:

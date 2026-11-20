@@ -41,7 +41,7 @@ Shared behavior, not repeated per row:
   those four classes, never a base class. Every other credential failure,
   including a broker outage, a timeout, a network error, a connection the
   static provider does not configure, and any unlisted error, returns Retry,
-  recording `notSent` only before any possible send. A terminal failure
+  recording `notSent` before dispatch after either send-permitting decision. A terminal failure
   selects the declared terminal branch (`defect`, or the row's credential
   branch) before any possible send, and `uncertain` after one on a `limited`
   or `unsafe` operation; a `safe` operation without `uncertain` keeps its
