@@ -154,9 +154,11 @@ and is no longer selected by either write. `addReaction` is declared
 
 Stored credential material that does not decode, such as a token whose stored
 form is corrupt, is handled differently by language. In Python and TypeScript it
-selects `defect` before any request. In Go the SDK does not yet expose the
-decoder error type, so the operation retries without a request until the retry
-budget ends. A decoded token that is blank or unsafe in a header selects `defect`
+selects `defect` before any request. The Go SDK now exposes
+`projectconfig.ErrCredentialMaterialInvalid`, but this Go connector does not
+classify it yet; its adoption is tracked in #926. Until then, Go retries without
+a request until the retry budget ends. A decoded token that is blank or unsafe
+in a header selects `defect`
 in every language. After an earlier possible send, `createMessage` selects
 `uncertain` instead of `defect`.
 

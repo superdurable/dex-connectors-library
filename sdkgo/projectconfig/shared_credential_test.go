@@ -93,6 +93,7 @@ func TestSharedCredentialThatFailsUnmarshalSharedCredentialIsRejectedWithoutSecr
 
 	_, err = resolver.Resolve(context.Background())
 	require.EqualError(t, err, "shared project credential decoding failed")
+	require.ErrorIs(t, err, projectconfig.ErrCredentialMaterialInvalid)
 	requireNoSecrets(t, err)
 }
 
@@ -102,6 +103,7 @@ func TestConnectorWithoutUnmarshalSharedCredentialNeedsTheCompleteSharedCredenti
 	require.NoError(t, err)
 	_, err = resolver.Resolve(context.Background())
 	require.EqualError(t, err, "project credential decoding failed: this connector version does not support shared credentials")
+	require.ErrorIs(t, err, projectconfig.ErrCredentialMaterialInvalid)
 	requireNoSecrets(t, err)
 
 	fixture = newUnreadSharedFixture(t, sharedScope, readyReply(1, sharedAccessOne, epoch, time.Hour))
@@ -125,4 +127,5 @@ func TestOrdinaryEntryDecodesWithTheDecoderEvenWhenTheTypeDecodesSharedCredentia
 	require.NoError(t, err)
 	_, err = resolver.Resolve(context.Background())
 	require.EqualError(t, err, "project credential decoding failed", "a stored credential keeps every field, so its decoder requires them")
+	require.ErrorIs(t, err, projectconfig.ErrCredentialMaterialInvalid)
 }
