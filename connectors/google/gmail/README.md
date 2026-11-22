@@ -198,25 +198,31 @@ read as two recipients; Python encoded them validly but differently from Go. For
 an address whose local part and domain are dot-atoms, written bare or after a
 display name of one quoted string or of plain and encoded words, the `To:`
 header, the `recipients` output, a reply's recipient, and the `getMessage` `to`
-list now match in all three languages, apart from the Go version differences
-below. The read-back `to:` term still names only the address. Reading a header,
+list now match in all three languages, apart from the charset and Go version
+differences below. The read-back `to:` term still names only the address. Reading a header,
 the ports decode encoded words as `net/mail` does, dropping the space between
 adjacent encoded words. Go decodes only `utf-8`, `iso-8859-1`, and `us-ascii`.
 When a word in another charset is the last word of the name and not the first,
-Go drops it and keeps the earlier words; otherwise Go rejects the mailbox. Python
-and TypeScript decode any charset their platform knows and keep an unknown one
-as literal text. Go keeps invalid bytes of a `utf-8` encoded word, and the ports
+Go drops it and keeps the earlier words; otherwise Go rejects the mailbox, with
+"charset not supported" when the word starts the name. Python and TypeScript
+accept all of these mailboxes: they decode any charset their platform knows and
+keep an unknown one as literal text, so `=?koi8-r?B?8NLJ18XU?= <a@example.com>`
+reads as `Привет` and `=?x-unknown?q?abc?= <a@example.com>` keeps its name as
+written. Go keeps invalid bytes of a `utf-8` encoded word, and the ports
 replace them with U+FFFD.
 
 From Python v0.5.2, recipients, reply targets, and `To` headers are parsed by a
 port of Go's `net/mail` parser, so Python accepts and rejects the mailboxes Go
-does, apart from the Go version differences below. It reads groups, comments (a
-comment after a bare address becomes its display name), names that mix quoted
-and unquoted words, quoted local parts, and empty list entries. It rejects
+does, apart from the charset difference above and the Go version differences
+below. The charset difference also reaches the messageReceived and replyReceived
+sender filter: a From header that Go rejects for its charset still matches in
+Python. It reads groups, comments (a comment after a bare address becomes its
+display name), names that mix quoted and unquoted words, quoted local parts, and
+empty list entries. It rejects
 mailboxes such as `alice.@example.com`, an unclosed `<`, or
 `Alice @ Home <alice@example.com>`, which v0.5.1 sent to `Alice@Home`.
-`getMessage` omits `to` when Go rejects the header, where v0.5.1 returned the
-mailboxes it could read.
+`getMessage` omits `to` when the port rejects the header, where v0.5.1 returned
+the mailboxes it could read.
 The TypeScript parser reads only a bare address or a display name followed by
 `<address>`, so it rejects groups, comments, mixed names, and empty list
 entries. Its address check also differs from Go's: it accepts
