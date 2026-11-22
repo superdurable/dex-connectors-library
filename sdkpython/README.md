@@ -10,7 +10,7 @@ endpoint. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
 Dex Web FDG 2.0 connector metadata for Python requires upstream R4.
 
-Python 3.11 or newer and `dex-python-sdk>=1.28.0` are required. APIs are
+Python 3.11 or newer and `dex-python-sdk>=1.45.17` are required. APIs are
 async-first where they perform I/O. Connector Steps run in `AsyncWorker` and
 never place credentials in Flow state.
 
